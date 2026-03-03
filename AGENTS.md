@@ -23,9 +23,19 @@ See `docs/plan/` for the full specification:
 ## General Rules
 
 - Never do git write operations (commit, push, tag, etc.)
-- Never add comments to code.
+- Never add comments to code. This is critical!
+- Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
+- Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
+- Write idiomatic code that follows the conventions and best practices of the language and ecosystem in use.
+- Always verify that changes do not break existing functionality (run tests, type checks, linters as appropriate).
 - All strings (UI labels, PDF labels, API field names, log messages) must be in **English**.
   No Swedish or other languages anywhere in the codebase.
+
+## Dependency Hygiene
+
+- Always use the latest stable version of dependencies unless there is a documented reason not to.
+- Before pinning any package or image version, check the upstream source (registry, GitHub releases, etc.) to confirm it is the current stable release.
+- Do not leave stale, unused, or redundant dependencies in the project.
 
 ## Language-Specific Rules
 
