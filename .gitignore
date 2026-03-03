@@ -1,0 +1,36 @@
+# —— Go (backend/) ——————————————————————————————————————————
+backend/bin/
+backend/tmp/
+
+# —— Node / SvelteKit (frontend/) ————————————————————————————
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# —— Environment files (repo root) ———————————————————————————
+.env
+.env.*
+!.env.example
+
+# —— SQLite ——————————————————————————————————————————————————
+*.db
+*.db-shm
+*.db-wal
+
+# —— Docker ——————————————————————————————————————————————————
+# (docker-compose.yml and Dockerfiles are committed)
+
+# —— Caddy ———————————————————————————————————————————————————
+caddy/data/
+caddy/config/
+
+# —— OS / editor ——————————————————————————————————————————————
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

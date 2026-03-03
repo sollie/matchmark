@@ -1,0 +1,1658 @@
+Rulebook
+The intent of Precision Pistol Competition is
+to provide the target shooter is a competitive program
+which will improve the target shooter a competence
+as a fair and safely participant in
+a high-level shooting sport
+World Association
+Precision Pistol Competition 1500
+Register of associations: district court Stuttgart/Germany
+Registration projected
+Tax and revenue office: Backnang/Germany
+Taxpayer`s account number: 51049/47805
+Issue 2026-01-01
+Rulebook WA 1500 - Issue 2026-01-01
+Official Rules and Regulations to govern the conduct of all WA 1500 Precision Pistol Competition Matches
+These rules establish uniform standards for WA 1500 PPC competitions. Where alternatives are shown, the least
+restrictive conditions apply unless the tournament program sets forth limitations. They supersede all earlier editions
+and remain in effect until specifically superseded.
+Tournament sponsors may not alter these rules except regulations by national firearms laws. If sponsors require
+additional rules for special conditions, the additions must be fully set forth in the program for the competition
+concerned.
+These Rules provide for the efficient and orderly operation of a tournament. But that`s not all. Many local range
+regulations exist for one reason alone - SAFTY. Others serve a dual purpose, smooth range operation and SAFTY.
+It`s your responsibility as a competitor or as a tournament official to be familiar with the Rules and to know the
+meaning behind those which are safety oriented.
+Recommendations for rule changes may be forwarded by delegates to the WA 1500 Executive Committee latest to
+the 1st of april every year. Decision will be taken at the Annual Meeting held during the scheduled date. Rule
+changes will set into charge at 01.01. of the following year.
+CONTENTS
+WA 1500 PRECISION PISTOL COMPETITION RULES
+Section Content Page
+1 Type of Competition 3
+2 Eligibility of Competitors 4
+3 Equipment and Ammunition 5
+4 Targets 11
+5 Positions 12
+6 Range Standards 13
+7 Courses of Fire 14
+8 Time Limits 16
+9 Competition Regulations and Range Operation 16
+10 Range Control and Commands 20
+11 Tournament Officials 22
+12 Team Officers’ Duties and Position 24
+13 Physically disabled Shooters 25
+14 Scoring and Marking 26
+15 Penalties 28
+16 Decision of Ties 29
+17 Challenges and Protests 30
+18 WA1500 Records 31
+19 Competitor’s Duties and Responsibilities 31
+20 WA1500 Precision Pistol Competition Classification 33
+2
+Rulebook WA 1500 - Issue 2026-01-01
+1. TYPE OF COMPETITION
+1.1 WA1500 Competition
+Competition must be authorized in advance of firing by the WA1500 or a WA1500 affiliated organization. The
+program, procedures, range facilities and officials must comply with standards established by the WA1500 or a
+WA1500 affiliated organization.
+1.2 Sanctioned Tournament
+A series of matches covered by an Official program. Such matches may be all individual matches, all team
+matches, or a combination of both, which must be sponsored and sanctioned by a WA1500 affiliated organization.
+They may be all fired matches or a combination of fired and aggregate matches. A tournament may be conducted
+on one day, or successive days, or may provide for intervening days between portions of the tournament, such as
+tournaments programmed to be conducted over more than one weekend.
+1.3 Authorization
+Before being publicized in programs or otherwise, the sponsoring organization
+(a) of each type of competition mentioned in Rule 1.7 (a) and (b) shall have agreed to comply with the current
+regulations for such competition and shall have received approval from the WA1500
+(b) of each type of competition mentioned in Rule 1.7 (c), (d) or (e) shall have agreed to comply with the current
+regulations for such competition and shall have received approval from the affiliated member organization that the
+competition applied for has been authorized.
+1.4 Rules
+The local sponsor of each type of competition must agree to conduct the authorized competition according to
+WA1500 Rules, except as these Rules have been modified by the WA1500 in the General Regulations for that type
+of competition.
+1.5 General Regulations
+The local sponsor of each type of competition must agree to comply with the General Regulations published by the
+WA1500 for the competition concerned.
+1.6 Refusal or Withdrawal of WA1500 Authorization
+The WA1500 may refuse to authorize or may withdraw its authorization for any competition which cannot, or does
+not, comply with the requirements for that competition.
+1.7 Types of Tournaments
+The types of tournaments listed below are those which are sanctioned by WA1500 in its Competitive shooting
+program.
+(a) World Championships
+Sponsored by the WA1500 and organized by WA 1500 or a local sponsoring organization. These tournaments will
+be registered.
+(b) Continental Championships
+Arranged between the WA1500 and a local sponsoring organization. These tournaments will be registered.
+(c) Regional Championships
+Annual tournaments conducted by member countries affiliated with the WA1500. These tournaments will be
+registered.
+(d) Local Tournaments
+May be authorized by the WA1500 member countries after application has been filed by the local WA 1500
+affiliated member organization that will act as the sponsor. These tournaments will be registered.
+(e) Postal Matches
+May be sponsored by a national body or club affiliated with the WA 1500. These matches will not be registered.
+1.8 Types of Matches
+(a) Match Precision Pistol Competition
+Any match fired with firearms as defined in Rules 3.1 – 3.13 when specified in the tournament program. A match
+may consist of one or more stages.
+3
+Rulebook WA 1500 - Issue 2026-01-01
+(b) Stage
+A portion of a match which consists of one or more strings.
+(c) Classified Match
+A match in which awards are given to the winners and the highest competitors in several specified classes such as
+High Masters, Masters, Experts, Sharpshooters, Marksmen. The classification of competitors may be accomplished
+by the WA 1500 Classification System (see Section 20) or by other means. The program for classified matches
+must specify the groups or classes in which awards will be made.
+(d) Invitational Match
+A match in which participation is limited to those who have been invited to compete.
+(e) Squadded Individual Match
+A match in which each competitor is assigned a definite relay and target by the Statistical Office. Failure to report
+on the proper relay or firing point forfeits the right to fire. All entries must be made before firing commences in that
+match, except when otherwise stated in the tournament program.
+(f) Unsquadded Individual Match
+A match in which the competitor is not assigned a definite relay or target by the Statistical Office. The competitor
+reports to the Range Officer within the time limits specified in the program and is then assigned to a target and a
+relay in which to fire.
+(g) Re-Entry Match
+A match in which the competitor is permitted to fire more than one score for record, one or more of the highest
+scores being considered to determine the relative rank of competitors.
+The number of scores which may be fired and the number of high scores to be considered in deciding the relative
+rank of competitors must be specified in the program. Scores fired in these matches shall not be used for
+classification purposes nor for ranking.
+(h) Squadded Team Match
+A match in which the teams are assigned a definite time to fire. Teams may be assigned one or more adjacent
+targets. All entries must be made before firing commences in that match. The entire team must report and fire as a
+unit.
+(i) Unsquadded Team Match
+A match in which the teams may report at the firing line at any time within the limits specified in the program,
+targets being assigned by the Range Officer. The entire team must report and fire as a unit, unless the program
+provides otherwise.
+(j) Aggregate Match
+An aggregate of the scores from two or more matches. This may be an aggregate of match stages, individual
+matches, team matches, or any combination, provided the tournament program clearly states the matches which
+will comprise the aggregate. Entries in aggregate matches must be made before the competitor commences firing
+in any of the matches making up the aggregate match.
+1.9 PUBLIC AFFAIRS
+All tournament sponsors are urged to give special consideration to the needs of news media personnel in order to
+achieve maximum publicity for the competition. Public news media personnel representing print and/or broadcast
+should be given every consideration and cooperation in keeping with the proper conduct of the competition.
+2. ELIGIBILITY of COMPETITORS
+The conditions of a match shall prescribe the eligibility of competitors, teams or individuals. Any limitation of
+eligibility to compete must be stated in the Match Program. It is the intent and the spirit of these Rules for both
+individual and team entry that all competitors shall have the same rights. Individuals with a questionable category
+or classification or teams with a questionable proposed team composition must establish eligibility with the
+WA1500.
+INDIVIDUALS
+2.1 Members of the WA1500 affiliate organizations
+Any individual who is a member in any national shooting federation.
+4
+Rulebook WA 1500 - Issue 2026-01-01
+2.2 Eligibility Authentication
+It is the competitor’s responsibility to have his current classification in his possession when entering and competing
+in precision pistol competition tournaments. The competitor must be a member in good standing of his respective
+national shooting federations or associations in order to enter WA1500 registered competitions.
+2.3 Guest competitors
+The local Sponsor may agree guest competitors in a Match or tournament. The sponsor is responsible that all
+conditions of an individual member are fully filed.
+TEAMS
+2.4 Team Representation
+No competitor may fire in more than one team in any match.
+2.5 Teams
+(a) Members of teams must be from the same Shooting club. When a national team takes part in a competition
+abroad, the teams must be built out of the national team.
+(b) Entries may be accepted by Pickup Teams if the program specifically provides for such eligibility. Pickup Teams
+are not eligible for International or National Records.
+(c) Members of teams must represent the individual country if so stated in nation by nation matches.
+(d) Teams may consist of any mixture of classification of eligible members.
+3. EQUIPMENT AND AMMUNITION
+3.1 Revolver 1500
+A Revolver chambered to fire center-fire cartridges .32 caliber or larger.
+(a) Barrel
+Barrel length not to exceed 6 inches (153 mm).
+(b) Sights
+Sights may be fixed or adjustable. Front sight may not extend beyond the muzzle, the maximum sight radius to be
+no more than 8.5 inches (216 mm).
+Hooded or telescope sights prohibited.
+Sight guards may not extend rearward more than 2 inches (51 mm).
+(c) Trigger
+If the revolver has single-action capability the single action trigger pull must be at least 2 ½ lbs. (1135 g). A Trigger
+stop is allowed.
+Specifically prohibited is any system of recoil control based on compensators, barrel venting or barrel porting.
+All revolvers shall use double action on every stage except on 50 yards/meters were single action is allowed.
+3.2 Pistol 1500
+Center-fire Semi-automatic Pistols of .35 caliber or larger.
+(a) Barrel
+Barrel length not to exceed 6 inches (153mm).
+(b) Sights
+Sights may be fixed or adjustable. Front sight may not extend beyond the muzzle, the maximum sight radius to be
+no more than 8.5 inches (216 mm).
+Hooded or telescope sights prohibited.
+Sight guards may not extend rearward more than 2 inches (51 mm).
+(c) Trigger
+Trigger pull not less than 3 lbs. (1360 g) single action or for those of double action capability only.
+Specifically prohibited is any system of recoil control based on compensators, barrel venting or barrel porting and a
+separate thumbrest in front of the trigger.
+3.3 Revolver Optical Sight 1500
+A Revolver according to 3.1, except the sight.
+Sight must be an optical or electronic device, according to the national firearm laws.
+5
+Rulebook WA 1500 - Issue 2026-01-01
+3.4 Pistol Optical Sight 1500
+A Pistol according to 3.2 or a Pistol according to 3.2, except the sight.
+Sight must be an optical or electronic device, according to the national firearm laws.
+3.5 Open Match
+A revolver chambered to fire center-fire cartridges .32 caliber or larger or
+a center-fire semi-automatic pistol of .35 caliber or larger, including 9mm and .45 ACP.
+(a) Barrel
+No restrictions.
+(b) Sights
+No restrictions other than the national firearm laws. Optical or electronic, fixed or adjustable rear sight. Front sight
+may not extend beyond the muzzle.
+(c) Trigger
+If the revolver has single-action capability the single action trigger pull must be at least 2 ½ lbs. (1135 g). A Trigger
+stop is allowed.
+Trigger pull of a pistol not less than 3 lbs. (1360 g) single action or for those of double action capability only.
+Recoil control based on compensators, barrel venting or barrel porting is allowed.
+All revolvers shall use double action on every stage except on 50 yards/meters where single action is allowed.
+3.6 Distinguished Revolver
+A revolver capable of chambering and firing standard 158 grain lead, .38 special load.
+All revolvers shall use Double action on every stage except on 50 yards/meters where single action is allowed.
+It must be a serial manufactured revolver with no external modifications.
+No external or internal modifications may be made to the revolver as manufactured and sold by the factory of
+origin.
+Except as provided for below no parts may be removed from the revolver, either externally or internally, nor may
+any be added.
+(a) Barrel
+Barrel length not to exceed 6 inches (153 mm).
+(b) Sights
+Fixed or adjustable rear sights from any manufacturer are acceptable. No 3-position-sight or sighting rib is allowed.
+An adjustable front sight is not allowed. Front sight can have a maximum height of 10 mm.
+(c)Trigger
+Must have single and double action capability and must be capable of lifting 2 ½ lbs. (1135 g) when firearm is cocked
+for single action firing. Triggers will be weighed. Any trigger, sold by the original manufacturer of the revolver, without
+modification, may be used.
+The honing of the sear or sear notch in the hammer to make a crisper trigger pull and smooth the action and/or to
+maintain the required minimum trigger pull is allowed.
+(d) Grips
+The grip may be modified or changed because of the size of a competitor’s hand or to facilitate loading.
+Weighted grips or grip panels are prohibited.
+Size of grips may not exceed the following measure: base 45 x 60 mm, high 120 mm.
+e) Chamfered cylinders are allowed.
+(f) A crane lock is allowed.
+The following are not allowed: trigger shoes; compensator; any external trigger stop device; use of any filler
+substance to make the front of the trigger smooth; filing or otherwise removing ridges on the trigger; filing or
+otherwise reducing the trigger width or length, tape on stocks, thumb rests. Any substance (except sweat
+preventers) which results in a sticky surface to the stock or hand.
+Specifically prohibited is any system of recoil control based on compensators, barrel venting or barrel porting.
+3.7 Distinguished Pistol
+Factory manufactured (catalogue item) center-fire semi-automatic pistol of .35 caliber or larger.
+Any accessories, parts and components which are manufactured to duplicate, in materials, shape and dimensions,
+the original as offered by any of the manufacturers of the pistol, will be accepted.
+No external modifications are permitted.
+6
+Rulebook WA 1500 - Issue 2026-01-01
+(a) Barrel
+Barrel length not to exceed 5 inches (129 mm). Replacement barrels cannot be longer than the original.
+(b) Sights
+Open sights, from any manufacturer are acceptable. Rear sights may be fixed or adjustable and fixed open front
+sights may not extend beyond the front of the slide, with maximum sight radius not more than 7.5 inches (191 mm).
+(c) Trigger
+Trigger pull must not be less than 3 lbs. (1360 g) single action or for those of double action capability only.
+(d) Grips
+The grip may be modified or changed because of the size of a competitor’s hand. Finger groove and slip on grips
+are allowed.
+Thumb rest grips/stocks or those flared at the base are not allowed nor is tape on the grip or any substance (except
+sweat preventers) which results in a sticky surface to the grip or hand.
+Specifically prohibited are full-length sight-rails, trigger shoes, any system of recoil control based on compensators,
+barrel venting, or weighted grips or grip panels.
+3.8 Standard Revolver 4,25”
+A revolver capable of chambering and firing standard 158 grain lead, .38 special load.
+It must be a factory manufactured revolver with no external modifications, except for grip which may be modified or
+changed because of the size of a competitor’s hand or to facilitate loading.
+(a) Barrel
+Barrel length not to exceed 4,25 inches (108 mm)
+(b) Sights
+Fixed or adjustable rear sight. Adjustable front sight is not authorized. Front sight must be a ramp or post as sold by
+the manufacturer of the firearm; ramp may be exchanged for a partridge if so sold.
+(c) Trigger
+Must have single and double action capability. Hammerless action is allowed. No Trigger pull weight required.
+(d) Grips
+The grip may be modified or changed because of the size of a competitor’s hand or to facilitate loading.
+Weighted grips or grip panels are prohibited.
+Size of grips may not exceed the following measure: base 45 x 60 mm, high 120 mm.
+See appendix to this rulebook.
+(e) Chamfered cylinders are allowed.
+(f) A crane lock is allowed.
+Specifically prohibited is any system of recoil control based on compensators, barrel venting or barrel porting. Also
+prohibited is any substance (except sweat preventers) which results in a sticky surface to the grip or hand.
+In determining whether a specific firearm meets the spirit and intent as well as the letter of this Rule, it should be
+remembered that this is meant to be a totally stock firearm.
+3.9 Standard Revolver 2,75”
+A revolver capable of chambering and firing standard 158 grain lead, .38 special load.
+It must be a factory manufactured revolver with no external modifications, except for grips/stocks which may be
+modified or changed because of the size of a competitor’s hand or to facilitate loading.
+(a) Barrel
+Barrel length not to exceed 2,75 inches (70 mm).
+(b) Sights
+Fixed or adjustable rear sight. Adjustable front sight is not authorized. Front sight must be a ramp or post as sold by
+the manufacturer of the firearm; ramp may be exchanged for a partridge if so sold.
+(c) Trigger
+Must have single and double action capability. No Trigger pull weight required. Hammerless action is allowed.
+(d) Grips
+The grip may be modified or changed because of the size of a competitor’s hand or to facilitate loading.
+Weighted grips or grip panels are prohibited.
+Size of grips may not exceed the following measure: base 45 x 60 mm, high 120 mm.
+See appendix to this rulebook.
+(e) Chamfered cylinders are allowed.
+(f) A crane lock is allowed.
+7
+Rulebook WA 1500 - Issue 2026-01-01
+Specifically prohibited is any system of recoil control based on compensators, barrel venting or barrel porting. Also
+prohibited is any substance (except sweat preventers) which results in a sticky surface to the grip or hand.
+In determining whether a specific firearm meets the spirit and intent as well as the letter of this Rule, it should be
+remembered that this is meant to be a totally stock firearm.
+3.10 Standard Revolver 2,75” 5 Shot
+A revolver capable of chambering and firing standard 158 grain lead, .38 special load.
+It must be a factory manufactured revolver with no external modifications, except for grips/stocks which may be
+modified or changed because of the size of a competitor’s hand or to facilitate loading.
+(a) Barrel
+Barrel length not to exceed 2,75 inches (70 mm).
+(b) Sights
+Fixed or adjustable rear sight. Adjustable front sight is not authorized. Front sight must be a ramp or post as sold by
+the manufacturer of the firearm; ramp may be exchanged for a partridge if so sold. Manufacturer’s sights may be
+replaced with luminescent night sights (subject to the national firearm laws).
+(c) Trigger
+Must have single and double action capability No Trigger pull weight required. Hammerless action is allowed.
+(d) Grips
+The grip may be modified or changed because of the size of a competitor’s hand or to facilitate loading.
+Weighted grips or grip panels are prohibited.
+Size of grips may not exceed the following measure: base 45 x 60 mm, high 120 mm.
+See appendix to this rulebook.
+(e) Chamfered cylinders are allowed.
+(f) A crane lock is allowed.
+Specifically prohibited is any system of recoil control based on compensators, barrel venting or barrel porting. Also
+prohibited is any substance (except sweat preventers) which results in a sticky surface to the grip or hand.
+In determining whether a specific firearm meets the spirit and intent as well as the letter of this Rule, it should be
+remembered that this is meant to be a totally stock firearm.
+3.11 Standard Semi-Automatic Pistol 5,5” Production
+Mass produced (at least 1,000 produced), factory manufactured (catalog item), Center-Fire Semi-Automatic Pistol,
+.35 caliber or larger.
+The semi-automatic pistol must be approved by the WA1500 and included into the list of approved firearms.
+(a) Barrel
+Barrel length not to exceed 5.5 inches (140 mm).
+(b) Sights
+Fixed sights only. Manufacturer’s fixed sights may be replaced with other fixed sights such as three (3) dot systems
+or luminescent night sights if not banned by national firearms laws.
+(c) Trigger
+Trigger pull not less than 3 lbs. (1360 g) single action or for those of double action capability only.
+The only modification or replacement part allowed is the magazine bumper pad.
+Specifically prohibited are external modifications except for those listed above. Specifically prohibited are full-length
+sight-rails, trigger shoes, extended slide release, extended magazine well funnel and any system of recoil control
+based on compensators, barrel venting or barrel porting, or weighted grips or grip panels.
+The pistol must be equipped with standard issue or commercially procured grips of the same size and design. Finger
+groove and slip on grips are allowed. The grip may be modified or changed because of the size of a competitor’s
+hand. Thumb rest grips/stocks or those flared at the base are not allowed nor is tape on the grips/stocks or any
+substance (except sweat preventers) which results in a sticky or dry surface to the grip or hand.
+In determining whether a specific firearm meets the spirit and intent as well as the letter of this Rule, it should be
+remembered that this is meant to be a totally stock firearm.
+3.12 Standard Semi-Automatic Pistol 5,5”
+Serial manufactured (catalog item), Center-Fire Semi-Automatic Pistol, .35 caliber or larger.
+(a) Barrel
+Barrel length not to exceed 5.5 inches (140 mm).
+8
+Rulebook WA 1500 - Issue 2026-01-01
+(b) Sights
+Fixed sights only. Manufacturer’s fixed sights may be replaced with other fixed sights such as three (3) dot
+systems
+or luminescent night sights if not banned by national firearms laws.
+(c) Trigger
+Trigger pull not less than 3 lbs. (1360 g) single action or for those of double action capability only.
+The only modification or replacement part allowed is the magazine bumper pad.
+Specifically prohibited are external modifications except for those listed above. Specifically prohibited are full-
+length sight-rails, trigger shoes, extended slide release, extended magazine well funnel and any system of recoil
+control
+based on compensators, barrel venting or barrel porting, or weighted grips or grip panels.
+The pistol must be equipped with standard issue or commercially procured grips of the same size and design.
+Finger groove and slip on grips are allowed. The grip may be modified or changed because of the size of a
+competitor’s hand. Thumb rest grips/stocks or those flared at the base are not allowed nor is tape on the
+grips/stocks or any substance (except sweat preventers) which results in a sticky or dry surface to the grip or
+hand.
+3.13 Standard Semi-Automatic Pistol 3,7”
+Mass produced (at least 1.000 produced), factory manufactured (catalogue item), centre-fire semi-automatic pistol,
+.32 Caliber or larger.
+a) Barrel
+Barrel length not to exceed 3,7” (93 mm).
+b) Sights
+Fixed sights only. Manufacturer’s fixed sights may be replaced with other fixed sights such as three (3) dot
+systems or luminescent night sights if not banned by national firearms laws.
+c) Trigger
+Trigger pull not less than 3 lbs. (1360 g) single action or for those of double action capability only.
+The only modification or replacement part allowed is the magazine bumper pad.
+Specifically prohibited are external modifications except for those listed above. Specifically prohibited are full-length
+Bo-Mar type ribs on the slide, trigger shoes, extended slide release, extended magazine well funnel and any
+system of recoil control based on compensators, barrel venting or barrel porting, or weighted grips or grip panels.
+The pistol must be equipped with standard issue or commercially procured grips of the same size and design.
+Finger groove and slip-on grips are allowed. The grip may be modified or changed because of the size of a
+competitor’s hand. Thumb rest grips/stocks or those flared at the base are not allowed nor is tape on the
+grips/stocks or any substance (except sweat preventers) which results in a sticky or dry surface to the grip or hand.
+In determining whether a specific firearm meets the spirit and intent as well as the letter of this Rule, it should be
+remembered that this is meant to be a totally stock firearm
+3.14 Safety Parts
+No internal modifications may be made that would render the firearm less safe than originally designed by the
+manufacturer.
+All standard safety features of the firearm must operate properly.
+3.15 Optical Devices
+No optical devices (other than glasses worn for corrective eyesight purposes or sunglasses) will be permitted on
+the range during match firing for use by competitors. Optical devices have also been interpreted to prohibit the use
+of mechanical iris, eye patch, or eye cover. Only open sights are allowed. Optical, mirror, telescopic, laser beam,
+electronically projected dots, etc., computerized sighting-aiming devices are prohibited (for team coaches during
+team match, see rule 12.6, for Optical Sight Matches 1500 see rule 3.3 and 3.4.
+3.16 Release Triggers
+Triggers which function on release are prohibited.
+Any device programmed to activate the firing mechanism by other than conventional trigger movement is
+9
+Rulebook WA 1500 - Issue 2026-01-01
+prohibited.
+3.17 Ammunition
+(a) General
+No high speed or Magnum ammunition will be allowed.
+Maximal power 600 Joule.
+Any change to joule higher than 180, is prohibited.
+All ammunition must be loaded for and produce sufficient velocity to pass through the target and the backer.
+Shots which do not pass through the target and the backer will be scored as misses.
+(b) Revolver 1500, Optical Sight 1500, Open Match
+Either hand loaded or factory loaded ammunition of .32 caliber or larger may be used.
+(c) Pistol 1500, Optical Sight 1500, Open Match,
+Either hand loaded or factory loaded ammunition of .35 caliber or larger may be used.
+The semi-automatic function of the pistol must work properly.
+(d) Distinguished Revolver
+Either hand loaded or factory loaded ammunition of .38 special, 158 grain.
+No midrange wadcutter ammunition will be allowed.
+A minimum power factor of 110 is mandatory.
+(e) Distinguished Pistol
+Either hand loaded or factory loaded ammunition of caliber .35 or larger may be used.
+No midrange wadcutter ammunition will be allowed.
+A minimum power factor of 120 is mandatory.
+(f) Standard Revolver 4,25”
+Either hand loaded or factory loaded ammunition .38 special, 158 grain.
+No midrange wadcutter ammunition will be allowed.
+A minimum factor of 80 is mandatory.
+(g) Standard Revolver 2,75”, Standard Revolver 2,5” 5-shot
+Either hand loaded or factory loaded ammunition .38 special, 158 grain.
+No midrange wadcutter ammunition will be allowed.
+A minimum factor of 80 is mandatory.
+(h) Standard Semi-Automatic Pistol
+Either hand loaded or factory loaded ammunition. Caliber .35 or larger may be used.
+The semi-automatic function of the pistol must work properly. A minimum factor of 120 is mandatory.
+(i) Chronograph and Power Factors
+Power factor is calculated by velocity (fps) x projectile weight (grains) / 1000.
+3.18 Holster
+A conventional right- or left-handed holster must be used. For safety reasons, shoulder, cross draw, or holsters which
+require releasing by insertion of finger within the trigger guard will not be allowed. Holsters must completely cover
+the trigger.
+3.19 Ground Cloth
+A ground cloth may be used provided it is not constructed or used in a manner to provide artificial rest or support.
+The thickness of the ground cloth as used is not to exceed 19 mm. Any ground cloth which is questionable should
+be submitted to the Match Director for a decision.
+3.20 Gloves
+Gloves or similar devices can be used only when approved as provided in Section 13.
+3.21 Timing Devices
+Audible timing devices and/or timing devices sending out visible signals are not allowed except by the Range
+Officer as part of the range timing equipment.
+3.22 Eye Protection
+All competitors and other personnel in the immediate vicinity of the firing line must wear shatterproof shooting
+glasses or similar eye protection.
+10
+Rulebook WA 1500 - Issue 2026-01-01
+3.23 Ear Protection
+All competitors and other personnel in the immediate vicinity of the firing line must wear ear plugs, ear muffs or
+similar ear protection.
+3.24 Electronic Communication Devices
+No electronic communication devices permitted forward of the ready line, including, but not limited to pagers, cell
+phones, radios, tape recorders and the like, except hearing aids, cell phones in flight-mode which are used as timer
+or optical device for target observation at the warmup and those devices necessary for range officials.
+3.25 Other Calibers
+Under no circumstances will calibers other than those outlined in Rules 3.1 to 3.10 and 3.14 above be permitted in
+WA1500 PPC Competitions. Especially prohibited are pistols and revolvers using .22 Rimfire ammunition.
+3.26 Dropped Ammunition and other Equipment
+Any equipment dropped on the ground, stays on the ground and may not be touched by the competitor. You may
+only retrieve that which was dropped on the ground after the command THE LINE IS CLEAR has been given.
+Dropped firearms can only been handled by or under the control of the Range Officer.
+3.27 General
+(a) Each competitor is responsible for his/her firearms and equipment and any questionable item`s must be
+submitted to the match officials for a decision prior to being used in the tournament.
+(b) All devices or equipment which may facilitate shooting and which are not mentioned in these Rules, or which
+are contrary to the spirit of these rules and regulations, are forbidden.
+(c) The Match Director, Jury Members and any Official Range Officer shall have the right to examine a shooter’s
+equipment or apparel at any time, even during the competitions. During the competition, their approach should not
+be made while the shooter is firing. Immediate action must, however be taken when a matter of safety is involved.
+(d) The responsibility shall be upon the competitor to submit questionable equipment and apparel for official
+inspection and approval in sufficient time prior to the beginning of a match so that it will not inconvenience either
+the competitor or the official.
+(e) The Organizing Committee must inform team officials and shooters, in sufficient time prior to the competition,
+where and when they may have their equipment inspected.
+4. TARGETS
+4.1 Official Targets
+In WA1500 Sanctioned competitions, only targets approved by WA 1500 will be used.
+Affiliated organizations may apply by WA 1500 for permission. See statement #4.1
+4.2 Using the Targets
+The WA1500 targets are approved for precision pistol competition at the standard distances:
+3, 7, 15, 25 and 50 yards or meters.
+The reduced WA 1500 target is approved for shooting the 50 yards/meters stage at 25 yards/meters. Used in both
+Registered and Approved Tournaments. Reduced WA 1500 targets are not allowed for classification and ranking
+list.
+Use of an additional aiming mark, or marking is prohibited.
+4.3 Scoring basics
+The WA 1500 target counts with 7 scoring rings and with an X ring added for tie breaking.
+The width of the lines and numbers is 2 mm and the height of the numbers is 16 mm.
+11
+Rulebook WA 1500 - Issue 2026-01-01
+5. POSITIONS
+The positions for use in a match shall be stated in the program under conditions of the match and shall be in
+accordance with the definitions of positions prescribed in this section.
+Illustrations all show a right-handed shooter. Left-handed shooting positions are the same as those shown except
+left hand is the primary hand holding the firearm. Either foot may be in the forward position. Position illustrations on
+website WA1500.org are only examples. The written Rule is official.
+5.1 The Ground
+All references to “the ground” in the following position Rules are to be construed as applying to surface of the firing
+point, floor, such shooting mats, platforms as are customarily used on shooting ranges.
+5.2 Artificial Support
+(a) Any supporting surface except the ground not specifically authorized for use in the rules for the position
+prescribed is prohibited.
+(b) Digging or use of elbow or heel holes at the firing points or the use of depressions which form artificial support
+for the elbows, arms, or legs is prohibited.
+(c) Use of artificial support is prohibited except as individually authorized for the physically disabled shooter (see
+Section 13). Equipment such as speed loader, ammunition pouches, holster, or any other equipment would be
+considered “Artificial Support” when it is positioned in a location so as to provide or give reasonable appearance of
+providing support.
+(d) It is the intent that clothing must be normal street or uniform type, which corresponds to the weather conditions
+during the competition involved. No clothing may be worn which will, in any manner, give the wearer artificial
+support. This includes shooting jackets, coats or vests, which have tightening devices intended to stiffen the body
+or tightening devices to stiffen the arm or lend support to the arm.
+(e) The term artificial support shall not apply to an elastic type strap or band that is worn on the forearm and does
+not extend over the wrist or elbow joint.
+This rule recognizes that such a strap or band when required merely allows a competitor to compete up to his
+normal ability and offers no advantage to a shooter with no physical problems.
+5.3 Ready Position
+Loaded firearm in a conventional right- or left-handed holster. Competitor must start in the standing position.
+Competitor's hands may not touch the firearm or holster, before the targets start to turn or other fire commands are
+given. General: Relaxed position. One hand may hover over watch fixed on post or wrist.
+5.4 Prone
+Body extended on the ground parallel to the line of sight, head toward target. “Roll-over” prone position may be
+used as long if the body is extended on the ground generally parallel to the line of sight and the position does not
+interfere with another competitor. The revolver or pistol may not touch the ground but may be supported by one or
+both hands which may touch the ground, and which are extended toward the target. The competitor assumes the
+prone position from the sitting position and the revolver or pistol must remain pointing “down range” during the
+process of changing positions.
+5.5 Sitting
+The buttocks must be on the ground with the body facing target. Hand may be extended to rear for support; elbow
+may not touch the ground. Back cannot rest on the ground and one or both knees may be raised. Arm or arms,
+hand or hands may be supported on or by the knees. The firearm may be held by one or both hands and may
+touch the leg or legs exempt foot.
+5.6 Kneeling
+(a) Kneeling on one knee, the other extended toward the target. Buttocks may be on heel or side of foot but cannot
+touch the ground. One arm may be supported on the forward knee. The firearm may be held by one or both hands.
+(b) Kneeling on both knees, the buttocks clear of the ground but may rest on heels. The firearm may be held by one
+or both hands and one or both arms are to be extended without other support.
+(c) Kneeling in 48 (40) shot matches. No part of the shooter’s body may extend past the limit line or fault line (which
+is either real or imaginary) in the following matches: Standard Revolver 4,25”, Standard Revolver 2,75”, Standard
+12
+Rulebook WA 1500 - Issue 2026-01-01
+Revolver 2,75” 5-shot and Standard Semi-Automatic Pistol 5,5”and Standard Semi-Automatic Pistol 3,65”.
+5.7 Standing with Support
+(a) Standing behind a post.
+Both feet must be behind the line (which is either real or imaginary) extending from the firing line to the rear of the
+exposed or shooting side of the post.
+No part of the firearm may touch the post.
+Shooting hand or firearm may be supported by the other hand. The test will be: if the support hand is removed, the
+firearm can still be fired. Left hand post must be fired before right hand post.
+(b) Left hand post:
+All shots must be fired around the left site of the post.
+Firearm must be held with the left hand and only the left trigger finger may be in the trigger guard.
+(c) Right hand post:
+All shots must be fired around the right site of the post.
+Firearm must be held with the right hand and only the right trigger finger may be in the trigger guard.
+5.8 Standing without Support
+Standing with bent or straight legs, firearm held by one or both hands. All portions of the shooter’s clothing, body
+and firearm clear of artificial support.
+5.9 Changing Positions
+When changing positions from kneeling to standing, sitting to prone and prone to standing the firearm must be in
+the following condition:
+Semi-Automatic Pistol: Slide locked back, Magazine removed
+Revolver: Cylinder open, Cases removed
+Magazine or speed loader may be injected in the new position.
+Handling with the firearm in standing position means not “changing positions”; not standing without support neither
+standing with support. Finger must be clear of the trigger.
+During changing the positions and other handling the revolver or pistol must remain pointing down range.
+6. RANGE STANDARDS
+6.1 Firing Line
+The firing line is immediately in front of the several Firing points. All ranges are measured from this firing line to the
+face of the targets when targets are hung in their proper firing position in front of the backstop.
+6.2 Firing Point
+That part of the range provided for the competitor immediately to the rear of the firing line from which firing takes
+place. Each firing point is numbered to correspond with the target frames. It is recommended that each firing point
+has a minimum width of 3,28 feet (1,25 Meter) except where the Range Inspector of an individual country or region
+gives permission for shooting points to be closer.
+6.3 Shelter
+The firing point of outdoor ranges may be covered and enclosed on 3 sides, open toward the targets. There must
+be ample room for Range Officers and witnesses to move freely in the rear of the shooters. This does not preclude
+the construction of ranges within areas surrounded or partially surrounded by safety walls.
+6.4 Precision Pistol Competition distances are:
+3 yards, 7 yards, 15 yards, 25 yards, 50 yards. Distances may be measured in meters. Invitation must show the
+respective distance.
+6.5 Illumination
+Artificial illumination of ranges is authorized.
+13
+Rulebook WA 1500 - Issue 2026-01-01
+6.6 Target Numbers
+Target frames will be numbered on alternating background of contrasting color. The numbers will be large enough
+to be identified under ordinary light conditions. Numbers must correspond with the firing point numbers. Target
+numbers will be fixed in position so as to remain visible when the targets are exposed and when concealed.
+6.7 Types of Target Frames
+Turning targets or fixed frames may be used.
+Not more than one record target for each competitor will be in firing position at one time.
+7. COURSES OF FIRE
+7.1 General
+The following courses and types of fire are used in WA1500 Sanctioned Precision Pistol Competition, fired on
+standard WA1500 targets described in Section 4. See Section 8 for time limits; Rule 20.4 for courses of fire used
+for classification.
+Other courses of fire, other time limits, or the use of other targets, may be scheduled by sponsors provided the
+conditions are clearly stated in the program.
+Stages start with shooter in ready position. The signal to commence firing may be given orally, by whistle, by timer
+or by having targets turn.
+7.2 Standing Without Support Position Course at 7 and 15 yards/meters:
+Two stages of 12 shots each fired double action from the standing without support position. First stage fired at 7
+yards and second stage fired at 15 yards. Twenty seconds per stage starting with loaded firearm in holster and
+including time to reload. Revolver firing double action.
+7.3 Kneeling and Standing Course at 25 yards/meters:
+Six shots kneeling; 6 shots left hand standing with support; 6 shots right hand standing with support.
+Time is 90 seconds for entire course starting with loaded firearm in holster and including time to reload. Time starts
+with shooter in standing position. Revolver firing double action.
+7.4 Sitting, Prone and Standing Course at 50 yards/meters:
+6 shots sitting; 6 shots prone; 6 shots left hand standing with support; 6 shots right hand standing with support; all
+firing single or double action. Time 2 minutes and 45 seconds starting with loaded firearm in holster and including
+time to reload. Time starts with shooter in standing position.
+7.5 Standing Position Course without support at 25 yards/meters:
+Two stages of 12 shots each fired double action, standing without support at 25 yards. Time 35 seconds for each
+12-shot stage starting with loaded firearm in holster and including time to reload.
+7.6 Standing Position Course without support at 25 yards/meters:
+One stage of 6 shots each fired double action, standing without support at 25 yards. Time 12 seconds starting with
+loaded firearm in holster and including time to reload.
+7.7 WA1500 - 150 Shot Course:
+An aggregate of the following stages:
+Match 1 – enumeration 7.2.
+Stage 1
+7 yards — double action — 12 shots from the standing without support position. 20 seconds, time starts with
+loaded firearm in holster and includes reloading for second 6 shot string.
+Stage 2
+15 yards — double action — 12 shots from the standing without support position. 20 seconds, time starts with
+loaded firearm in holster and includes reloading for second 6 shot string.
+Match 2 – enumeration 7.3.
+25 yards — double action — 6 shots kneeling; 6 shots standing with support, left hand; 6 shots standing with
+support, right hand. 90 seconds, time starts with loaded firearm in holster and includes reloading for subsequent
+14
+Rulebook WA 1500 - Issue 2026-01-01
+6 shot strings.
+Match 3 – enumeration 7.4.
+50 yards — single or double action — 6 shots sitting; 6 shots prone; 6 shots standing with support, left hand; 6
+shots standing with support, right hand. 2 minutes and 45 seconds, time starts with loaded firearm in holster and
+includes reloading for subsequent 6 shot strings.
+Match 4 – enumeration 7.5
+25 yards – 2 stages of 12 shots each fired double action, standing without support position. 35 seconds for each
+12-shot stage, time starting with loaded firearm in holster and including time to reload.
+Match 5
+Stage 1 – enumeration 7.2
+7 yards — double action — 12 shots from the standing without support position. Twenty seconds, time starts with
+loaded firearm in holster and includes reloading for second 6 shot string.
+Stage 2 – enumeration 7.3.
+25 yards — double action — 6 shots kneeling; 6 shots standing with support, left hand; 6 shots standing with
+support, right hand. 90 seconds, time starts with loaded firearm in holster and includes reloading for subsequent 6
+shot strings.
+Stage 3 – enumeration 7.4.
+50 yards — single or double action — 6 shots sitting; 6 shots prone; 6 shots standing with support, left hand; 6
+shots standing with support, right hand. 2 minutes and 45 seconds, time starts with loaded firearm in holster and
+includes reloading for subsequent 6 shot strings.
+Stage 4 – enumeration 7.6.
+25 yards — double action — 6 shots from the standing without support position. 12 seconds, time starts with
+loaded firearm in holster.
+7.8 WA 1500 – 60 Shot Course:
+An aggregate of the following stages:
+Stage 1 – enumeration 7.2
+7 yards — double action — 12 shots from the standing without support position. 20 seconds, time starts with
+loaded firearm in holster and includes reloading for second 6 shot string.
+Stage 2 – enumeration 7.3.
+25 yards — double action — 6 shots kneeling; 6 shots standing with support, left hand; 6 shots standing with support,
+right hand. 90 seconds, time starts with loaded firearm in holster and includes reloading for subsequent 6 shot strings.
+Stage 3 – enumeration 7.4.
+50 yards — single or double action — 6 shots sitting; 6 shots prone; 6 shots standing with support, left hand; 6
+shots standing with support, right hand. 2 minutes and 45 seconds, time starts with loaded firearm in holster and
+includes reloading for subsequent 6 shot strings.
+Stage 4 – enumeration 7.6.
+25 yards — double action — 6 shots from the standing without support position. 12 seconds, time starts with
+loaded firearm in holster.
+7.9 WA1500 – 48 (40) Shot Course:
+An aggregate of the following stages:
+Stage 1.
+3 yards — double action — 6 shots, one hand, standing without support, 8 seconds.
+15
+Rulebook WA 1500 - Issue 2026-01-01
+Stage 2.
+7 yards — double action — 12 shots, one or both hands, standing without support. 20 seconds, includes reloading
+for second 6 shot string.
+Stage 3.
+15 yards — double action — 12 shots, one or both hands, standing without support. 20 seconds, includes reloading
+for second 6 shot string.
+Stage 4.
+25 yards — double action — 18 shots, one or two hands; 6 shots kneeling, using the post for support, observe the
+line; 6 shots standing with support, left hand; 6 shots standing with support, right hand. 90 seconds, includes
+reloading for subsequent 6 shot strings.
+7.10 Changing Targets
+New Targets are required as following:
+WA 1500 – 150 Shot Course
+Match 1, Match 2, Match 3, Match 4, Match 5 Stage 1 + 2, Match 5 Stage 3 + 4
+WA 1500 – 60 Shot Course
+Stage 1 + 2, Stage 3 + 4
+Reduced Targets in Match 5
+Stage 1 + 2, Stage 3 (reduced target), Stage 4
+7.11 Sequencing
+All matches and stages must be fired in the correct order. Targets used in a former stage may not be used in a
+second stage.
+8. TIME LIMITS
+8.1 Computing Time
+When turning targets are used in WA 1500 competition, time is begun from the time the target starts to move to
+face the shooter until it starts to move to edge position. The signal to commence firing may be given orally, by
+whistle or by having the targets turn.
+In respect of several – very slow – turning targets and skid shots it is to decide as follows:
+Using a timer, overtime will be decided 0,5 sec after the given time. Using oral or whistle signals late shot will be
+decided when the shot is fired after the given signal.
+8.2 Time Limits
+See Section 7.
+8.3 Team Time
+The same as in individual matches.
+9. COMPETITION REGULATIONS AND RANGE OPERATION
+9.1 Changing Firearms
+No competitor will change his firearm or interchange parts during the firing of any match (except aggregate
+matches) unless it has become disabled and has been so designated by the Chief Range Officer. Claim that a
+revolver or pistol is disabled must be made immediately. All shots fired up to the time that the claim is made will
+stand as part of the official score.
+9.2 Sighting Shots
+Sighting shots are not allowed as a part of the course of fire.
+16
+Rulebook WA 1500 - Issue 2026-01-01
+The Match Sponsor may offer a Warmup of 2 minutes and 45 seconds on 50 yards/meters and 1 minute and 30
+seconds on 25 yards/meters. This is obligate in World and Continental Championships.
+9.3 Defective Cartridge
+Is one
+(a) that is unsafe to fire by reason of improper loading or structural deficiencies
+(b) that fails to fire when the primer is indented by the firing pin
+(c) from which the bullet has not left the barrel.
+No claim for defective cartridge will be allowed.
+9.4 Disabled Firearm
+A disabled revolver or pistol is one that
+(a) cannot be safely aimed or fired
+(b) has suffered damage so that it cannot be fired or will not function properly or
+(c) has suffered the loss of a sight or visible damage to the sight or sights. The fact that the sights are improperly
+adjusted does not constitute disablement.
+A revolver or pistol once declared disabled by the Range Officer shall not again be used for competitive firing until
+the defect has been corrected and until it has been ruled as safe by the Chief Range Officer.
+No competitor will be allowed to re-fire because of a disabled revolver or pistol, defective cartridge or malfunction.
+9.5 Weighing Triggers
+Triggers may be weighed with official WA1500 trigger test weights, at the discretion of the Match Director, Official
+Referee, Jury or other Match Official; except triggers of revolvers and semi-automatic pistols used in establishing
+national records shall be weighed by a tournament official immediately after the firing of such record score and must
+meet the specifications of Section 3 for the firearm prescribed by the tournament program.
+Failure of the trigger to meet the trigger pull specifications shall disqualify the competitor in matches previously fired.
+While trigger pull is being weighed, the firearm shall be held with the barrel perpendicular to the horizontal surface
+on which test weight is supported. The rod or hook of test weight shall rest as near the middle of the curve in curved
+triggers or on a point approximately in middle from lower end of straight triggers.
+To pass the weight test, a weight of the correct number of pounds shall be lifted by the gun’s trigger while all safety
+devices are in firing position from the horizontal surface on which it is resting, until the weight hangs free and
+without releasing the trigger.
+Revolvers and/or pistols must be unloaded while trigger is being weighed.
+Competitors will be permitted to adjust triggers which have failed to pass the weight test provided they do not
+occasion any delay.
+Failure of trigger to pass the weight test is the competitor’s responsibility.
+9.6 Competitors’ Position
+Competitors will take their position at their numbered firing point in such a manner so as not to interfere with
+competitors on either side. No portion of the shooter’s body may rest upon or touch the ground forward of the firing
+line.
+9.7 Coaching Prohibited in Individual Matches
+Coaching is prohibited in all individual matches of Registered or Approved Tournaments. As used herein, the term
+“coaching” shall include, but not be limited to, any form of signaling or communication from or between persons
+behind the ready line to or with a competitor forward of the ready line at any time after firing has begun and before
+the competitor returns to a position behind the ready line.
+9.8 Matches Not Complete
+When a match is not completed by all competitors in accordance with the tournament schedule, the match may be
+scheduled or cancelled. Any stage which has been completed by all competitors will not be re-fired. Only scores of
+a match which has been completed will be included in an aggregate event or for WA 1500 Record purposes, and a
+match is not completed unless all competitors have fired.
+17
+Rulebook WA 1500 - Issue 2026-01-01
+9.9 Interference
+With the exception of competitors actually firing and such range personnel as may be necessary, the firing points
+and line will be kept clear at all times. Competitors will not be permitted to interfere with the handling of targets by
+range personnel.
+9.10 Re-firing
+No re-fires will be allowed for defective guns or ammunition or for other malfunctions of the shooter’s equipment. A
+competitor may clear jams or malfunctions and replace the necessary cartridge(s) that have misfired or have been
+dropped, provided all safety requirements are met.
+Completing a string of fire in this manner will not constitute a re-fire. No additional time will be allowed. A loaded
+magazine can be substituted for the dropped cartridge(s) or in case of a misfire or malfunction.
+(a) When the firing of a string is interrupted by some occurrence which renders it impossible for one or more
+competitors to complete the string under the conditions of the match, the Chief Range Officer will proceed as
+follows: Without being permitted to examine their targets, competitors in the relay who have been so prevented
+from completing their strings will be asked if they wish to re-fire or accept their score as fired. Targets will then be
+scored in the usual manner for all competitors except those who have elected to re-fire. Without being scored or
+otherwise examined, the targets of such competitors who have elected to re-fire will be pasted or replaced with new
+targets and a complete string will be fired and scored. Reasons authorizing this procedure are:
+(1) failure to allow full time,
+(2) failure of targets to operate properly or uniformly,
+(3) failure of the target to remain in position on the frame or carrier,
+(4) damage to the target rendering proper aiming or scoring impossible,
+(5) the appearance of some object in the line of fire constituting a hazard,
+(6) some incident involving a Range Officer or competitor on the firing line,
+(7) unintended moving of the target.
+(b) If, due a target breakdown, faulty target operation or error, one or more competitors are allowed more time to
+complete the string, the Chief Range Officer will immediately order all such targets to be repaired, pasted or new
+targets installed, the fired target(s) will not be scored or examined and a complete new string will then be fired by
+the competitor(s) who were allowed extra time. If in the same relay some targets operate properly in accordance
+with the legal time limit, such targets will be scored in the usual manner and competitors firing on those targets will
+not be required or permitted to re-fire.
+(c) In the case of crossfires or excessive hits, the competitor whose target includes the cross fire or excessive hits,
+has the option of accepting the low scoring string(s) or re-firing the string(s). If the competitor re-fires, the original
+target with excessive hits shall be retained by the scorer, and on re-firing the competitor may not receive a score
+higher than the required number of hits of highest value on the original target. If the score on the re-fired target is
+higher than the required number of hits of highest value on the original target then the original target shall be
+scored using the appropriate hits of the highest value; but if the score on the re-fired target is not higher, then such
+re-fired score will be recorded.
+Any shot which can be identified by the bullet hole as having been fired by another competitor, other than the
+competitor assigned to the target will be disregarded and will not be scored when after this procedure the number
+of visible hits is higher than the required number of hits on this target.
+(d) In the case of some accident involving a competitor on the firing line, such as being hit by lead or powder
+residue, that competitor must stop firing immediately. Any shots fired will be counted. The entire stage in which the
+incident occurred must be re-fired on the same target. The lowest scoring shots, which constitute the complete
+string, will determine the competitor’s score for that stage.
+9.11 Aliases
+No competitor may fire under an assumed name nor may be substituted for another in a match, register, enter or
+fire in the name of another.
+9.12 Score and Classification falsification
+No competitor will falsify his score, or classification, nor that of any other competitor, nor be an accessory thereto.
+18
+Rulebook WA 1500 - Issue 2026-01-01
+9.13 Cross Fires and Excessive Hits
+No competitor will deliberately fire on the wrong target nor fire more than the required number of shots, including
+hits on some other competitor’s target and misses.
+9.14 Bribery
+thereto.
+No person will offer a bribe of any kind to any of the range, statistical personnel or others, nor be an accessory
+9.15 Disorderly Conduct
+Disorderly conduct or intoxication is strictly prohibited on the range and anyone guilty of same will be expelled from
+the range. Expelled competitors will be disqualified from the competition with no return of entry fees.
+9.16 Willful Destruction of Range Equipment
+No competitor shall cause any range equipment to become damaged through a deliberate act, and any guilty of
+same will be expelled without a warning from the range. Expelled competitors will be disqualified from the
+competition with no return of entry fees.
+9.17 Refusal to obey
+No person will refuse to obey instructions of the Match Director, Official Referee, Jury, Range Officer or any other
+officer of the tournament, if instructions are given in the proper conduct of the office.
+9.18 Evasion of Rules
+No competitor will evade nor attempt to evade nor be an accessory to the evasion of any of the conditions of a
+match as prescribed in the tournament program or in these Rules. Refusal of a competitor or tournament official to
+give testimony regarding facts known to him/her concerning violations or attempted violations of these Rules will
+constitute being an accessory to the violation or attempted violation.
+9.19 Disqualification
+The Match Director, Official Referee or Jury upon proper presentation of evidence, may disqualify any competitor or
+order his expulsion from the range for violation of Rules or for other conduct they consider discreditable or unsafe.
+9.20 Suspension
+For violation of these Rules deemed so to justify, any member may be suspended or expelled from the WA1500
+upon presentation of evidence and conduct of a hearing as prescribed of each national shooting federation.
+9.21 Scorecards Must be signed
+See Rules 19.13, 19.16.
+9.22 Unsafe and Incompetent handling of Firearms
+Unsafe or incompetent handling of any firearm during any match or tournament will not be tolerated and may result
+in disqualification from a match or from an entire tournament. A tournament official may stop a competitor during a
+string of fire in order to ensure the safety of competitors or equipment.
+(a) Safety Violations
+Any of the following safety violations may result in disqualification from a match. An accumulation of two (2) such
+safety violations in any single match requires automatic disqualification from that match and may result in
+disqualification from the tournament.
+1. Pointing an unloaded firearm up range or at another competitor or range personnel.
+2. Dropping of an unloaded firearm.
+3. Leaving the firing line with a loaded firearm.
+4. Picking up a dropped firearm, except under the direction of a tournament official.
+5. Any accidental discharge. This does not include rounds fired down range over the established time limit, but
+does include discharges while loading or clearing a firearm.
+6. Any other action which a tournament official reasonably believes constitutes unsafe or incompetent gun
+handling, which in any way poses a potential danger to any person or which evidences a reckless or negligent
+disregard for commonly recognized safety practices.
+19
+Rulebook WA 1500 - Issue 2026-01-01
+(b) Disqualification Violations
+The commission of a disqualification violation in any match requires automatic disqualification from that match and
+may result in disqualification from the tournament. Disqualification violations include, but are not necessarily limited
+to, the following:
+1. Pointing a loaded firearm up range or at a competitor or range personnel.
+This violation will result in the immediate disqualification from the match and the Tournament. The offender should
+be escorted from the range at the earliest possible moment. This kind of behavior will not be tolerated under any
+circumstances.
+2. Dropping a loaded firearm.
+3. Placing a loaded firearm in the holster other than after the command “LOAD” for the start of a Match or Stage
+(see Rule 10.1.2 and 10.1.3)
+4. Any shot in the holster, into a barricade, into the ground less than six (6) feet down range from the firing line, into
+the air or which strikes a side wall/beam or ceiling.
+5. The consumption of or being under the influence of alcoholic beverages or drugs while competing in a match or
+tournament.
+6. Any other action which a tournament official reasonably believes constitutes unsafe or incompetent gun handling
+and which poses a danger to any person or which evidences a reckless disregard for the safety of self or others.
+(c) Consequence of Disqualification
+Any competitor disqualified as described above shall be considered as having completed that match or tournament
+and shall be placed at the bottom of the list of finishing competitors for ranking purposes.
+10. RANGE CONTROL AND COMMANDS
+10.1 Discipline
+The safety of competitors, range personnel and spectators requires continuous attention by all to the careful
+handling of firearms and caution in moving about the range. Self-discipline is necessary on the part of all. Where
+such self-discipline is lacking it is the duty of range personnel to enforce discipline and the duty of competitors to
+assist in such enforcement.
+10.1.1 Cylinders open
+Unless revolvers or pistols are holstered or cased, cylinders must be open at all times and/or slides locked open
+and magazine removed.
+10.1.2 Firearms unloaded
+Revolvers or pistols will not be loaded until the competitor has taken position at his firing point and the command
+“LOAD” has been given.
+10.1.3 Loaded Firearms
+A revolver or pistol that has a cartridge in the cylinder shall be considered as being loaded. A semi-automatic pistol
+which has the slide in the closed or open position and/or magazine inserted will be considered as being loaded. No
+revolver or pistol will be loaded until competitor has taken his place at the firing point and the command “LOAD”
+has been given by the Range Officer.
+10.1.4 “Cease Firing”
+All revolvers or pistols will be unloaded immediately upon command.
+10.1.5 Not Ready
+It is the duty of competitors to notify a Range Officer if not ready to fire at the time the Chief Range Officer asks, “IS
+THE LINE READY?” any competitor who is not ready or whose target is not in order will immediately raise his arm
+and call, “NOT READY ON TARGET…”. Should the Chief Range Officer cause firing to proceed, the competitor
+concerned will be given an opportunity to fire his score in the earliest possible relay or by time extension in his
+relay. Failure of a competitor to notify the Range Officer that he is not ready forfeits his right to fire.
+20
+Rulebook WA 1500 - Issue 2026-01-01
+10.2 Loud Language
+Loud and/or abusive language that disturbs the operation of the match or the competitors while firing, is not
+permitted.
+Competitors, scorers, and Range Officers will limit their conversation directly behind the firing line to official
+business. Verbal abuse by competitors or verbal abuse of competitors by match officials are grounds for
+disqualification or replacement of those guilty of such action.
+10.3 Delaying a Match
+No competitor may delay the start of a match through tardiness in reporting or undue delay in preparing to fire.
+10.4 Policing Range
+It is the duty of competitors to police the firing points after the completion of each match before leaving the firing
+line. The Range Officer will supervise such policing and see that the firing points are kept clean.
+10.5 Competitors will Score
+Competitors will act as Scorers when requested to do so by the Match Director, Chief Range Officer or if stated in
+the tournament program (except that no competitor will score his own target).
+10.6 Repeating Commands
+A Range Officer will repeat the Chief Range Officer’s commands only when those commands cannot be clearly
+heard by competitors under his supervision.
+10.7 Firing Line Commands
+When ready to start firing a match, the Chief Range Officer or other person giving firing line commands, calls the
+relay to the firing line. He then announces the match, relay, stage, position, number of rounds and time allowance.
+Having made sure that the range is clear, he then commands, “LOAD AND HOLSTER.”
+He then asks, “IS THE LINE READY?” Any competitor who is not ready or whose target is not in order will
+immediately raise his arm and call “NOT READY ON TARGET…” The person giving the commands will
+immediately state, ‘THE LINE IS NOT READY,” and then investigate the difficulty and assist in correcting it. When
+the difficulty has been corrected the person giving the commands calls, “THE LINE IS READY.”
+The targets will be exposed or the signal to commence firing will be given in approximately 3 seconds.
+He then commands, “COMMENCE FIRING” which means to start firing without delay as timing of the string or
+stage is started with this command or when the targets start to turn. In the case of Approved Tournaments,
+“Commence Firing” may be signaled verbally or by a short, sharp blast on a whistle or when the targets start to
+turn.
+“CEASE FIRING” is the command given at the end of the time limit for each string, stage or any other time he/she
+wishes all firing to cease. Firing must cease immediately. Even if a competitor is about to let off a carefully aimed
+shot he must hold his fire and open the cylinder of his revolver. Failure to immediately obey this command is one of
+the worst infractions of range discipline. “Cease firing” may be signaled verbally, by a short, sharp blast on a whistle
+or by moving the targets out of view. When the command to cease firing is given at the end of a string or stage the
+command is “CEASE FIRING– UNLOAD AND SHOW CLEAR.” On this command all Line Officers check their
+competitors to make sure each one obeys the command before signaling the person giving the commands that
+their portion of the firing line is clear. When all Line Officers have given the signal that the range is safe, the
+necessary commands to score and properly handle targets are given.
+10.8 Trigger Control
+(a) Double Action.
+Double Action firing is accomplished by pulling the trigger through with one motion to raise the hammer and let it
+fall without otherwise cocking the firearm. When double action is specified it must be used.
+(b) Single Action.
+Single Action firing is accomplished by cocking the hammer before each shot is fired. When single action is
+specified either single or double action may be used. Gun may be cocked with either hand.
+(c) Semi Automatic Pistol
+For semiautomatic pistols, single action is permitted. Semi-automatic pistols - single action style or capable of
+double action may chamber a round after the gun is clear of the holster and pointed in a safe, downrange direction.
+21
+Rulebook WA 1500 - Issue 2026-01-01
+10.9 Loading
+After initial loading, all loading will be with cartridges taken from the competitor’s pocket, cartridge belt, mechanical
+loaders or special pouch which must be on the competitor’s person, except as provided in Rule 19.11. Cartridge
+belts and special pouches may be used. No more than 6 cartridges may be loaded in a semi-automatic pistol or
+magazine. It is the competitor’s responsibility to have sufficient ammunition in his possession to complete the stage
+or match. If the equipment to be used is questionable, it should be submitted to the Match Director for decision prior
+to the first match.
+10.10 Holstered Guns
+At the beginning of each stage or match, the firearm must be in the holster. After the command “THE LINE IS
+READY”, no part of the competitor’s hands may touch the firearm or holster until the command to commence firing
+is given or when the targets start to turn.
+10.11 Holstered Semi-Automatic Pistols
+Semiautomatic pistols may not be holstered with a round in the chamber.
+11. TOURNAMENT OFFICIALS
+Officials will be thoroughly familiar with conditions of the program and with WA1500 Rules.
+11.1 Match Director
+The Match Director is directly responsible for the efficient conduct of the entire tournament. The Match Director
+may change the match and firing conditions as shown by the program provided a Match Director’s Bulletin is
+posted for the information of all competitors, and that such changes are not contrary to current WA1500 Rules. The
+Match Director is directly responsible for the efficient operation of the range and of the Statistical Office and for the
+safety and proper discipline of all tournament operating personnel, competitors and spectators. Instructions from
+the Match Director for the operation of the tournament will be complied with by all persons on the range. The Match
+Director will use his/her best judgment at all times and his/her behavior and decisions must be characterized by
+absolute impartiality, firmness, courtesy and constant vigilance. In the application of these Rules, the Match
+Director will confer with the Jury on any doubtful point and will be guided by the Jury’s decision.
+11.2 Jury
+In all Tournaments which are not World or Continental Championships, a 3-member Jury will be formed by the
+Match Director. The Chairman of the Jury must be a member of the sponsoring organization, and complete the
+reports required by WA1500.
+In World or Continental Championships one member of the Jury must be a person from a country or region who is
+not a member of the hosting Country or Region.
+Competitors in that Tournament may be members of the Jury.
+Jury Members shall exempt themselves from ruling on a matter in which they are personally involved. The Match
+Director will name a replacement for that Jury member while ruling on that action. Under no circumstances may any
+Match Official (Rules 11.1, 11.3, 11.4, and 11.5) be a member of the Jury. The Jury Chairman may disqualify
+competitor(s), as directed by the Jury, under provisions of Rule 9.19 and 9.22.
+11.3 Chief Range Officer
+Will have full charge of the range and will conduct the matches on the schedule approved by the Match Director.
+He is responsible for range safety, and for enforcing all Rules.
+11.4 Range Officers
+Each Range Officer is an assistant to the Chief Range Officer; competitors may be assigned this duty. He/she is
+responsible for the safety and discipline of range personnel, competitors and spectators in the sector of the range
+to which he/she has been assigned. He/she shall supervise the scoring. He/she is responsible for seeing that
+competitors’ equipment and positions are as authorized for the particular match being fired. It is his/her duty to be
+completely familiar with the program and with the WA 1500 Rules. He/she is to comply to the best of his/her ability
+with all instructions issued by the Match Director or Chief Range Officer and will render all possible cooperation to
+other officials. He/she must be constantly alert, impartial in his/her handling of competitors and courteous though
+firm.
+22
+Rulebook WA 1500 - Issue 2026-01-01
+11.5 Statistical Officer
+The Chief Statistical Officer is in charge of all statistical work in connection with the match except the actual
+recording of scores when this is done on the range. The Statistical Officer is directly responsible to the Match
+Director. He is assisted by such Assistant Statistical Officers as may be required.
+11.6 Duties of Statistical Office
+It is the duty of the Statistical Office to:
+(a) Register competitors and check their eligibility and classification.
+(b) Accept match entries.
+(c) Prepare, post and keep current a list of competitors showing name, competitor number and classification.
+(d) Squad competitors and prepare range assignment cards where such cards are used.
+(e) Prepare official scorecards.
+(f) Check addition on scorecards and correct totals.
+(g) Tabulate scores on order of merit.
+(h) Prepare Preliminary and Official Bulletins.
+(i) Maintain an Official Bulletin Board.
+(j) Determine winners and distribute awards.
+(k) Report to Match Director and Jury Chairman for appropriate disciplinary action any irregularities in firing or
+scoring which may be indicated by squadding records or scorecards.
+(l) Make required reports to WA1500 within specified time.
+11.7 Retention of Records
+The Statistical Office will retain in good order all completed official scorecards until the expiration of the time allowed
+for challenges and protests.
+11.8 Preliminary Bulletins
+Preliminary Bulletins on all matches will be posted promptly on the Official Bulletin Board and remain a reasonable
+length of time to allow competitors to notify the Statistical Office of apparent errors. The challenge closing time will
+be stated on each bulletin.
+However, where a bulletin board is used and all scores of competitors are posted thereon, such will be accepted in
+lieu of the above, provided a notice appears as to the close of challenge time.
+11.9 Official Bulletins
+Official Bulletins will be posted on the Official Bulletin Board. However, in the procedure outlined in Rule 11.8 for
+bulletin boards, such scores shall be acceptable and become final after the elapse of the challenge time period and
+shall act as an Official Bulletin.
+11.10 Correction of Bulletin Errors
+The Statistical Office will correct errors which may come to the attention of the office prior to the publication of the
+Official Bulletin.
+11.11 Changing Official Bulletins
+No Official Bulletin shall be changed except on authority of the Match Director or Jury granted before the time has
+expired for challenging the last of the preliminary bulletins required to cover all the scheduled events. Subsequent
+changes from the Match Director or Jury are limited to correction of:
+(a) Typographical errors.
+(b) Aggregate bulletins on which the total score does not agree with the scores shown on the Official Bulletins for
+the matches comprising the aggregate.
+(c) Where an error has been made by not following the program schedule of awards.
+(d) Errors in classification of competitors, the competitor having been previously advised of such error and of
+his/her correct classification.
+(e) Disqualification of competitors as provided by Rules 9.19 and 9.22.
+11.12 Individual Squadding
+Where advance entries are received, squadding for all matches may be made in advance. Competitors may be
+squadded so they move a predetermined distance along the firing line after each match. They may be squadded as
+23
+Rulebook WA 1500 - Issue 2026-01-01
+to class, but wherever practical all of a class should fire on the same relay. Where post entries are received, they
+may be squadded as fill-ins to the above. Squadding of classes together will be permitted as outlined above.
+Members from the same club should be separated by at least one firing point.
+11.13 Team Squadding
+All team matches will be squadded with one or two adjacent targets assigned to each team, and where possible all
+teams will fire concurrently. When enough targets are available, more than 2 adjacent targets may be assigned
+each team, but only when all teams can be squadded so as to fire concurrently. Coaching within the team is
+permitted in team matches. Therefore, not more than 2 adjacent targets will be assigned each team unless all
+Team Captains indicate their willingness to use more than 2 targets.
+Team targets may be assigned by the Statistical Officer or drawn by chance by the Team Captains under the
+supervision of the Statistical Office or Chief Range Officer.
+Team scorecards will show the names of the team officer, and each firing member and alternate.
+Except in matches where the targets have been marked with the competitor’s name or number, a Team Captain
+may assign team members to team targets in such order as he desires and may change the order of firing between
+stages.
+11.14 Range Assignment
+When used, range assignment cards are prepared by the Statistical Office and delivered to the Range Officers prior
+to each match. Range Officers check competitors on the firing line to ascertain that each is on the proper firing
+point as indicated by the range assignment card. Should any reassignment of competitors be necessary on the
+firing line Range Officers will carefully note such reassignments in the space provided on the range assignment
+card. These cards will be turned in to the Statistical Office immediately upon the conclusion of each relay.
+11.15 Range Assignment Semi-Automatic Pistols and Rifle 1500
+Competitors firing Semi-Automatic Pistols will fire on separate relays than those firing revolvers or will be squadded
+to the extreme right side of the firing line of each relay. Competitors firing Rifle 1500 will fire on separated relays.
+11.16 Target Officers
+The targets and frames are under the command of the Chief Target Officer and such Assistant Target Officers as
+may be required. Target Officers are under the command of the Chief Range Officer.
+The Target Officer is responsible for the safety and discipline of personnel engaged in the handling of targets.
+He/she is responsible for the maintenance of targets in the proper operating condition and for efficient mounting
+and dismounting of paper targets during the progress of the match. When targets are hung by the competitor, it is
+the competitor’s responsibility that the correct target for the match being fired is hung.
+11.17 Duty to Competitors
+It shall be the duty of all operating officials and personnel to conduct themselves properly by being fair and impartial
+to all in carrying out their various duties. No official shall molest a competitor nor allow such practice by another
+official or other competitors. Should a competitor’s equipment or demeanor warrant disqualification from an
+individual match or tournament, it should be done in such a manner as will cause the least inconvenience to all
+concerned. In so doing, the official should state to the competitor the Rule or section of Rules under which the
+disqualification is being made.
+12. TEAM OFFICERS’ DUTIES AND POSITION
+12.1 Team Captain
+In team matches, each team must have a designated Team Captain. He/she is responsible for maintaining
+discipline within the team squad. The Team Captain will at all times cooperate with the officials of the tournament in
+the interests of safety, efficiency and good sportsmanship.
+A Team Captain is responsible for all the duties of members of the team. In the team matches, it is the Team
+Captain’s responsibility to:
+(a) Be familiar with the program.
+(b) Make proper entries.
+(c) Enter all required data on team scorecards.
+(d) Have team members report at proper firing points at the right time, ready to fire.
+24
+Rulebook WA 1500 - Issue 2026-01-01
+(e) Check scores, sign scorecards and make challenges.
+(f) Check preliminary and Official Bulletin and official notices.
+(g) Make protests.
+(h) Collect awards.
+12.2 Team Coach
+The Team Coach is the Team Captain’s deputy performing such duties as the captain may assign to him/her. The
+Coach serves as Team Captain in the absence of the latter, and under such circumstances becomes responsible
+for maintaining discipline within the team and for all other responsibilities of the Team Captain.
+12.3 Team Entries
+In team matches the team officers, all firing members of the team, and alternate firing members if allowed by the
+match conditions and provided by the team, must be named on the entry form before the first shot of the match is
+fired. If the Team Captain or Coach is also a firing member, he/she must also be so named. See Rule 2.4.
+12.4 Substitution of Alternates
+If alternates are allowed and have been named on the entry form, the Team Captain may substitute an alternate for
+a firing member at any time before the firing member concerned has fired the first shot of the match (sighting or
+record), notifying the Scorer and a Range Officer accordingly. After a team member has fired his/her first shot,
+he/she may be substituted for only in case of disabling emergencies such as accident or illness, and then only if
+approved by the Chief Range Officer. All shots fired by the replaced shooter count; the replacement fires only the
+uncompleted portion of the replaced shooter’s course of fire.
+12.5 Team Captain and Coach, Position
+In team matches the Team Captain or Coach will be allowed on the firing line between and slightly to the rear of the
+shooter. In such a position as not to interfere with the proper operation of the range or with any members of another
+team. He/she may not deliberately act as a sunshade or windscreen.
+12.6 Coaching in Team Matches
+Coaching is permitted in all team matches within the team only. Each competitor may have a coach in fired team
+matches. No optical devices others than hand-held mono- or binoculars may be used by the coach in a standing or
+kneeling position. The coach assists team members by calling shots, checking time, checking scoring, ordering
+sight changes, etc.; but must so control voice and actions as not to disturb other competitors. The Coach will not
+physically assist in loading, or in making sight corrections, or be positioned to serve as a windbreak.
+Warm up may be offered. Shooters may observe their targets as in individual matches.
+13. PHYSICALLY DISABLED SHOOTERS
+13.1 Physically Disabled Shooters
+A shooter who because of a physical disability cannot fire from one or more of the prescribed shooting positions
+outlined in these Rules, or who must use special equipment or gloves when firing, is privileged to petition the
+Wa1500 or the national associations for permission to assume a special position or to use modified equipment, or
+both. This petition will be in the form of a written request from the person concerned to the officials outlining in
+detail the reasons why the special position must be assumed or the special equipment must be used. The petition
+will be accompanied by pictures of the shooter in the position he desires approved and, if special equipment is
+required, the pictures will show how this equipment is used. The petition and all pictures must be furnished in exact
+duplicate. The petition must be accompanied by a medical doctor’s statement if the physical disability is not
+completely evident in the pictures submitted.
+(a) Each petition will be reviewed by the WA1500 or the national associations. The officials may require additional
+or supplementary statements, medical information or pictures. After reviewing the WA1500 or national associations
+will issue a special authorization certificate to individuals who submit petitions and pictures which have been
+approved. If approved, the WA1500 or national associations will issue a special authorization certificate to the
+individual concerned. Such certificates will have necessary pictures attached.
+(b) Shooters who have received special authorization certificates will be required to carry them when competing in
+competition governed by WA1500 rules, and to present them when requested by officials of the competition.
+25
+Rulebook WA 1500 - Issue 2026-01-01
+(c) In the event of a protest involving the position or the equipment used by such a shooter, the Jury or Match
+Director will compare the questioned position or equipment with the certificate and photographs presented by the
+shooter. If the shooter’s position or equipment does not, in the opinion of the officials, conform to that authorized by
+the WA1500 (or if the shooter has no authorized certificate or pictures), the protest shall be allowed and the shooter
+will be required to change immediately to the position or equipment which has been approved or to an otherwise
+legal position or equipment.
+(d) Should a protest be carried beyond the Jury, the original protest will be endorsed by the Jury Chairman to show
+the action he/she has taken and will be forwarded to the National Association or WA1500.
+(e) World, Continental or National Records may not be established by use of scores fired in special positions or
+with special equipment as may be authorized according to this rule.
+(f) Two types of authorizations are issued: temporary and permanent. Permanent authorizations are issued to
+competitors who are permanently handicapped.
+13.2 Temporary Disability: Substitute Positions
+Any shooter who has a temporary physical disability which prevents the shooter from using a specified position as
+defined in these Rules, may assume a more difficult
+substitute position as follows:
+(a) The substitute position to be used at 25 yards/meters will be Standing Without Support
+(b) The substitute position to be used at 50 yards/meters will be Standing Weak Hand Barricade, unless the
+shooter is unable to shoot with the weak hand in which case the shooter will shoot from the sitting position.
+Any substitute position must conform to the rule which defines it. The Match Director must be informed of the
+substitute position and may require that the substitute position be demonstrated so that the Match Director may be
+certain that it meets the definition of the appropriate rule.
+13.3 Special Disability
+In special cases of a disability the shooter may show to an authorized member of WA1500 how he will perform the
+requested parts of the match.
+When an approval is given a certificate must be issued and showed to the Match Director and the Chief Range
+Officer. The shooters aside are to be informed.
+14. SCORING AND MARKING
+14.1 When to Score
+Targets are scored at completion of each stage or match as indicated by tournament sponsors.
+14.2 Where to Score
+Targets may be scored on the target frames, behind the firing line or in the Statistical Office. The scorer must be at
+the target when scoring.
+14.3 Target and Scorecards
+Targets constitute the scorecard until the score has been recorded on the scorecard and accepted by the
+competitor (for competitor’s duties in scoring see Rule 14.16). Targets remain the property of the tournament
+sponsor.
+14.4 How to Score
+A shot hole, the leaded edge of which meets the outside of the bulls-eye or scoring rings of a target, is given the
+higher value. A scoring gauge will be used to determine the value of close shots. The higher value will be allowed
+in those cases where the flange on the gauge touches the scoring ring. No scoring gauge will be used unless the
+diameter of the scoring flange is within these limits:
+.32 Caliber, .310"–.314" 10mm/.40 Caliber, .397"–.401" 9mm, .355"–.359" .44 Caliber, .426"–.430" .38 Caliber,
+.355"–.359" .45 Caliber, .450"–.454"
+(a) In case of keyhole or tipped shots the higher value is awarded if the leaded edge of the bullet hole touches the
+scoring ring of higher value even though the hole is elongated to the bullet’s length rather than being a circle of the
+bullet’s diameter.
+(b) In case of skid shots, the higher value is awarded if the leaded edge of the bullet hole touches the scoring ring
+of higher value, except the value of a skid shot may not be more than one ring higher than the original point of
+26
+Rulebook WA 1500 - Issue 2026-01-01
+bullet contact with the target. The target shall be defined as the entire card or paper on which the scoring rings are
+printed but shall not include the backing. When the original point of bullet contact is outside the target card it will be
+scored as a miss.
+When the original point of bullet contact is on the target card but outside the scoring rings and the leaded edge of
+the bullet touches a scoring ring it will be given the value of the lowest scoring ring.
+(c) When a bullet enters a target from the backside it will be scored as a miss.
+14.5 Authorized use of Plug Type Scoring Gauge
+The use of the plug type gauge will be restricted to use by authorized range operating personnel who may include
+the Range Officers, Statistical Officer, Match Director or Jury as appropriate to the type of tournament concerned.
+No competitor will use scoring plugs of any kind on a target at any time. Where targets are scored on the range,
+only the above designated officials may uses plugs to check values and determine the outcome of challenges.
+However, competitors acting as scorers may use official WA1500 overlays in the performance of their duties. The
+tournament program should state in the Match Conditions Section by whom and under what circumstances plug-
+type scoring gauges may be used.
+14.6 Removal of Plug Type Scoring Gauge
+(a) The plug type scoring gauge, if used, will remain in the shot hole until the shot value is agreed upon by the
+competitor and the scorer, or until removed by the Jury after a challenge. If the plug type scoring gauge is removed
+prior to an agreement of shot value, the shot hole may not be re-plugged and must be taken to the Jury for final
+decision.
+(b) Only the Jury may use a plug type scoring gauge to determine if a shot hole is a double.
+14.7 Misses
+Hits outside the scoring rings are scored as misses (except as provided in Rule 14.4 (b)). Any bullet which does not
+pass through the target and backer will be scored as a miss.
+14.8 Early or late Shots
+If any shots are fired at the target before the starting signal to commence firing or after the signal to cease firing,
+the shots of highest value equal to the number fired in error will be scored as misses.
+Any late shots must be called by the RO and determined to the shooter – note on target and range report.
+14.9 All Shots Count
+All shots fired by a competitor after he/she has taken his/her position at the firing point will be counted in his/her
+score, even if accidentally discharged. If a warm up is offered the match will be scored with the first round fired in
+the warmup.
+14.10 Hits on wrong Target
+Hits on the wrong target are scored as misses.
+14.11 Ricochets
+A hole made by a ricochet bullet does not count as a hit but will be scored as a miss. It must be noted that a bullet
+which keyholes is not necessarily a ricochet.
+14.12 Visible Hits and Close Groups
+Generally only those hits which are visible, will be scored. An exception will be made in the case where the
+groupings of 3 or more shots are so close that it is possible for a required shot or shots to have gone through the
+enlarged hole without leaving a mark and there has been no evidence that a shot or shots have gone elsewhere
+than through the assigned target. In such case, the shooter will be given the benefit of the doubt and scored hits for
+the non-visible shots, on the assumption they passed through the enlarged hole. If such assumption should place a
+non-visible hit in 2 scoring rings, it shall be scored in the higher valued ring.
+14.13 Excessive Hits
+If more than the required number of hits appear on the target, any shot which can be identified by the bullet hole as
+having been fired by some competitor, other than the competitor assigned to that target or as having been fired in a
+27
+Rulebook WA 1500 - Issue 2026-01-01
+previous string, will be disregarded and will not be scored. If more than the required number of hits then remain on
+the target a completely new score may be fired in accordance with Rule 9.10 (b), except:
+(a) If all hits are equal value the score will be recorded as the required number of hits of that value.
+(b) If the competitor wishes to accept a score equal to the required number of hits of lowest value, he/she shall be
+allowed to do so.
+(c) If a competitor fires fewer than the prescribed number of shots through his/her own fault, and there should be
+more hits on the target than the shots fired, he/she will be scored the number of shots of highest value equal to the
+number he/she fired and given a miss for each unfired cartridge.
+14.14 Target Scoring
+Targets may be scored and changed as determined by the tournament sponsor and specified in the program
+provided WA1500 Rules are not violated. After firing the required number of strings or shots, upon command of the
+Range Officer competitors may go forward and examine their targets but may not handle or touch them.
+(a) When targets are scored before removal from the frame, the scorer records the hits, has the score accepted by
+the competitor or the challenge process is completed. Each target is then repaired or replaced by a new target.
+(b) When targets are scored after removal from target frames, they are removed by the target detail or the scorer (if
+a target detail is not provided) on the command “Change Targets” and delivered to the Statistical Office for official
+scoring or delivered by the scorer to the designated location where scoring is being carried out.
+(c) Targets intentionally altered or marked to benefit a shooter over another competitor will not be scored.
+14.15 Scorer’s Duties
+When targets are scored before removal from the frame or at a designated location away from the firing line, the
+scorer will:
+(a) Evaluate the hits on the “legend” of the target (in the upper right corner of the target) until he/she completely
+evaluates the target, determines and enters the shot values, and
+(b) Record the proper number of hits of each value in the space provided on the scorecard, and
+(c) At the conclusion of scoring, the scorer will:
+(1) Enter the total score.
+(2) Sign the card.
+(3) Have the competitor (or Team Captain in Team Matches) sign the card.
+(4) Deliver the scorecard to the Statistical Office via the established means.
+14.16 Competitor’s Duties in Scoring
+After the scorecard has been completed and signed by the scorer the competitor will:
+(a) Review the evaluation of the shots on the target and compare the recorded hits on the scorecard with the target;
+and
+(b) Review the scorecard for complete entries and accuracy of the hits recorded, making sure that they are of the
+correct value and that the required number of hits for the match are listed; and
+(c) Sign the scorecard as competitor if the hits and shot values are properly evaluated and recorded,
+acknowledging acceptance of the score as it appears on the scorecard; or
+(d) Write “challenged” in place of his/her signature if a shot(s) value is questionable or if there is another reason to
+“challenge” as provided in Rule 17.1; and
+(e) After the challenge procedure is completed turn in the scorecard signed by required Match Officials and with the
+competitor’s signature as well.
+14.17 Scorecards
+Scorecards will be prepared by the Statistical Office and delivered to the competitor who will turn the scorecard
+over to the scorer at the appropriate time. At the conclusion of each relay Range Officers will collect the completed
+scorecards and deliver them to the Statistical Office.
+14.18 Erasures on Scorecards
+Erasures on scorecards are not permitted.
+If correction is necessary, it must be made and initialed by the Scorer or Range Officer. To make corrections, the
+Scorer or Range Officer draws a line, or lines, through the incorrect score and places the correct score above.
+28
+Rulebook WA 1500 - Issue 2026-01-01
+15. Penalties
+15.1 Early or Late shots
+By using turning targets early or late shots may be scored as a miss.
+By using fixed targets early or late shots need to be deducted from the shooters target.
+To do so, shots of highest value equal to the number fired in error are scored as misses.
+15.2 Wrong positions
+Each shot fired from a wrong position need to be deducted from the shooters target.
+To do so, shots of highest value equal to the number fired in error are scored as misses.
+15.3 Fault Lines
+target.
+Each shot fired whilst the competitor is in breach of the fault line rule needs to be deducted from the shooters
+To do so, shots of highest value equal to the number fired in error are scored as misses.
+15.4 Recording Irregularities and Penalties
+The Range Officer is responsible for recording all:
+(a) Late or early shots
+(b) Position faults
+(c) Warnings, and
+(d) Penalties
+Irregularities and penalties must be recorded on both the applicable target/s and on a Range Report forwarded to
+the Classification Office.
+15.5 Not to obey the Responsibilities of Shooters
+Corresponding to rules chapter 14. Scoring and Marking will be fined by the jury with:
+- disqualification from the match
+- disqualification from the tournament
+If the breach of rules emerged after the end of competition a report to the Board of Directors should be done. The
+board may discuss about an exclusion from WA1500 sanctioned competitions up to 2 years and forward the proposal
+to the national body. A sanction will be done finally by the national body in own ruling.
+16. DECITION OF TIES
+16.1 Match
+The term “match” as used in this section refers to all individual, team and aggregate matches.
+16.2 Value of “X”
+In all matches where the X is scored an X is a hit of highest value.
+16.3 Team Matches
+Ties in team matches will be ranked in the following order:
+(a) by considering team score as though it were a single score fired by an individual. The same precedent applies as
+that indicated in Rule 16.4
+(b) by highest individual aggregate score.
+(c) by second highest individual aggregate score, etc.
+16.4 Breaking Ties
+When 2 or more competitors or teams have the same numerical score, tie scores will be ranked in the following order:
+INDIVIDUAL AND TEAM MATCHES
+(a) By the greatest number of X`s in that match.
+(b) By the fewest misses in that match.
+(c) By the fewest number of shots of the lowest value in that match.
+(d) By the fewest number o shots of the lower value in that match.
+29
+Rulebook WA 1500 - Issue 2026-01-01
+(e) In a multi-stage match where targets are scored separately, follow the procedures (a)-(d) on the last fired target;
+by using reduced targets the last two fired targets.
+(f) Individual competitor ties which cannot be broken will be resolved by th score of the next individual fired match or
+matches as necessary. For example, match #1 tie will be broken by match #2 score, etc.
+(g) The individuals aggregate score will be used to break the unbreakable individual competitor tie which cannot be
+broken in the last fired individual match included within the individual aggregate. Tie scores in an additional or
+supplemental match (such as the Standard Revolver 4” Match, the Distinguished Match or Standard Revolver 2,75”
+Match etc.) that cannot be broken by (a) through (e) will be broken by a shoot off over the Standing Position Course
+Without Support at 25 Yards (Match #4).
+(h) All scores tied numerically and tied with X`s for places below the last award shall be listed with equal rank in
+alphabetical order using the competitor`s family name.
+AGGREGATE MATCHES
+(a) Will be broken by using the score of the match outlined in advance by the Match Sponsor
+included in that aggregate.
+(b) If still a tie, use procedures listed under “Individual and Team Matches” beginning with (a).
+(c) If still a tie, use the score of the next match outlined in advance by the Match Sponsor
+included in that aggregate.
+17. CHALLENGES AND PROTESTS
+17.1 Challenges
+When a competitor feels that a shot fired by himself/herself or by another competitor has been improperly
+evaluated or scored, he/she may issue a challenge. Such challenge must be made immediately upon
+announcement of the score. Re-plugging or re-gauging is permissible. No challenge will be accepted after the
+target has been handled by the shooter or removed from the range.
+(a) A challenge fee not to exceed 10 euro may be charged to all competitors making challenges. The challenge fee
+will be collected before making the first recheck of the challenged score. If the competitor’s challenge is sustained
+at any point along the line of re-checks, the challenge fee will be returned. If the challenge is lost, the challenge fee
+will be included in the general revenue of the tournament. The decision of the Match Director, Jury or Official
+Referee will be final in WA1500 competition.
+(b) When targets are scored on target line frames or at a prescribed location behind the firing line and scoring of a
+shot is challenged the Range Officer will immediately call the Match Director, Jury or Official Referee who will score
+the target. If necessary, to avoid delaying the match, the challenged target will be replaced with a clean target and
+the match will proceed. Match Director, Jury or Official Referee will score the targets as soon as possible and notify
+the competitor.
+(c) When targets are scored in the Statistical Office, a recheck will be made by the Chief Statistical Officer
+(provided he/she has not previously scored or checked the target) and the Match Director, Jury or Official Referee,
+in that order.
+(d) Bulletin board challenges (score discrepancy) can be made by the competitor during the challenge period.
+(e) The Match Director may at his/her discretion recheck any competitor’s target by an administrative challenge.
+Such challenge must be made within the posted challenge period and checked by the Jury.
+For further information on the Statistical Office operation, see Section 11.
+17.2 Protests
+A competitor may formally protest:
+(a) Any injustice which the competitor feels has been done him/her except the evaluation of a target, which may be
+challenged as outlined in Rule 17.1.
+(b) The conditions under which another competitor has been permitted to fire.
+(c) The equipment which another competitor has been permitted to use.
+17.3 How to Protest
+A protest must be initiated immediately upon the occurrence of the protested incident. Failure to comply with the
+following procedure will automatically void the protest:
+(a) State the complaint orally to the Chief Range or Chief Statistical Officer. If not satisfied with his/her decision
+then,
+30
+Rulebook WA 1500 - Issue 2026-01-01
+(b) State the complaint orally to the Officials, Jury Chairman or Official Referee. If not satisfied with his/her decision
+then,
+(c) File a formal protest in writing with the Officials, Jury Chairman or Official Referee stating all the facts in the
+case. Such written protest must be filed within 12 hours of the occurrence of the protested incident.
+(d) The Officials, Jury Chairman or Official Referee will then forward the protest with a complete statement of facts
+within 48 hours of receipt thereof to the national associations or the WA1500.
+17.4 Challenges and Protests in Team Matches
+Must be made by the Team Captain. Team members who believe they have reason to challenge or protest will
+state the facts to their Team Captain, who will make the official challenge or protest he/she feels such action to be
+justified.
+18. WA1500 RECORDS
+Note: For records to be recognized promptly, WA1500 Record Reporting Forms must be submitted to WA1500 by
+the Statistical Officer of the tournament in which they were fired, after being certified by the Jury. World Record
+Reporting Forms are mailed to sponsors of WA1500 Registered Tournaments by WA1500 Executive Committee.
+18.1 Where Scores for World Records can be fired
+Scores to be recognized as World Records must be fired in WA1500 or national registered competition as defined
+in Rule 1.6, paragraphs (a), (b), (c) and (d). World Records must be approved by the WA1500 before being
+declared official. Scores fired during re-entry matches are not allowed.
+18.2 Scores to be used
+Scores must be complete scores for an entire scheduled match. Stage scores or scores for only part of a match will
+not be used for records.
+18.3 Scores for World Individual Records
+Such scores must be fired in individual matches. No score fired in a team match will be considered for recognition
+of an individual record.
+18.4 Scores for World Team Records
+Such scores must be fired in team matches where team entry and designation of individual team members is made
+prior to the start of that team match. No combination of individual match scores will be considered for recognition as
+a National Team Record.
+All members of the team must be members of the same shooting federation or the same club. World Records will
+be recognized only when the competitor has entered such match.
+18.5 Courses of Fire for which World Records are recognized
+World Records will be maintained for individual scores over the course of fire stipulated in Section 7. Separate
+records will be maintained for scores fired with revolvers and semi-automatic pistols. Two- and Four-man team
+records will be maintained for the WA 1500 – 60 Shot course only, examined from the WA 1500 – 150 Shot Course
+or in a Team Match as outline in Rule 12. World Records will be recognized for scores fired in both Revolver and
+Semi-Automatic Pistol.
+18.6 Co-holder Records
+Tie breaking rules beyond the use of numerical scores including X count will not be employed when establishing
+world Records. Co-holder status will be accorded to individuals or teams when their score equals a National
+Record.
+19. COMPETITOR’S DUTIES AND RESPONSIBILITIES
+19.1 Discipline
+It is the duty of each competitor to sincerely cooperate with tournament officials in the effort to conduct a safe,
+efficient tournament. Competitors are expected to promptly call to the attention of proper officials any infraction of
+rules of safety or good sportsmanship. Failure of a competitor to cooperate in such matters or to give testimony
+when called upon to do so in any case arising out of infractions of these Rules may result in the said competitor
+31
+Rulebook WA 1500 - Issue 2026-01-01
+being considered as an accessory to the offense (see Rule 9.19).
+19.2 Knowledge of Program
+It is the competitor’s responsibility to be familiar with the program. Officials cannot be held responsible for a
+competitor’s failure to obtain and familiarize himself with the program.
+19.3 Eligibility
+proper classification.
+It is the competitor’s duty to enter only those events for which he/she is eligible and to enter himself/herself in the
+19.4 Competitors will Score
+Competitors will act as scorers when required to do so by the Match Director, except that no competitors will score
+their own targets. Also see Rule 14.15.
+19.5 Competitors from same Club
+When competitors scoring is used, no competitor may score the targets of a competitor from their same club.
+19.6 Classification
+It is the competitor’s duty to know his current classification when using a classification system.
+Competitors may check their classification for the revolver, semi-automatic pistol and Optical Sight 1500 on website
+of WA 1500. Except as otherwise provided in these Rules, competitors may not use a classification from one class
+for another class.
+19.7 Individual Entries
+In individual matches, it is the duty of the competitor to make his/her own entries on the forms and in the manner
+prescribed for that tournament. Errors due to illegibility or improper filling out of forms are solely the competitor’s
+responsibility. WA1500 members should use the same name spelling and address in all entries. The Statistical
+Office is not required to accept corrections after the entry closing time.
+19.8 Squadding Tickets
+It is the competitor’s duty to secure his/her squadding tickets for each match (or to consult the squadding bulletin)
+in ample time to permit reporting at the proper time and place to fire each match. It is not the duty of officials to
+page competitors to get them to the firing line. Competitors upon receipt of squadding tickets should inspect them
+for correctness of the competitor’s number and noninterference in squadding assignments. Errors should be
+reported immediately to the Statistical Officer.
+19.9 Reporting at Firing Point
+Competitors must report at their assigned firing points immediately when the relay is called by the Range Officer.
+The proper firearm and ammunition for that particular match must be ready and in safe firing condition. Time will
+not be allowed for firearm repairs, sight blacking, sight adjustments or search for missing equipment after a relay
+has been called to the firing line.
+19.10 Timing
+Time for the firing of a string (within the Official time limit) is the competitor’s responsibility. Range Officers will not
+announce the time during the firing.
+19.11 Loading
+No competitor will load a firearm except at the firing point and after the command “LOAD” has been given by the
+Range Officer.
+19.12 Cease Firing
+Competitors must immediately obey this command by unloading the firearm whether or not they have finished their
+string. Even though pressure has been applied to the trigger, pressure must be released so that the shot will not be
+fired.
+32
+Rulebook WA 1500 - Issue 2026-01-01
+19.13 Checking Scores
+It is the duty of competitors to check their scores as written on their scorecard and to sign their scorecard at the
+conclusion a match. When scoring is done in the Statistical Office competitors must promptly check the Preliminary
+Bulletin and call attention to errors within the time specified at that tournament. Failure to check scores within the
+time limit forfeits the right to challenge.
+19.14 Clearing the Firing Point
+It is the competitor’s duty to leave the firing point promptly at the conclusion of the relay. When leaving the firing
+point, firearm must be unloaded and holstered or handled at the order of the Range Officer.
+19.15 Checking Bulletin Board
+It is the duty of all individual competitors and Team Captains to check the Bulletin Board between each match.
+The Statistical Officer must be immediately notified of apparent errors. Official Bulletins must be checked and the
+Statistical Officer notified of any discrepancies between the Preliminary and Official Bulletins. Match Director’s
+Bulletins are on the Bulletin Board and have the same effect as conditions printed in the tournament program. It is
+the duty of competitors to familiarize themselves with all such Match Directors’ Bulletins.
+19.16 Scorecards must be Signed
+At the conclusion of scoring the scorer will add the value of the shots, place the total on the scorecard and sign the
+card. The competitor checks the value of individual shots and signs the card. If a competitor or Team Captain
+leaves the firing line without signing the scorecard, no protest will be allowed. If the competitor or Team Captain
+desires to challenge, the word “challenge” is written on the scorecard in place of the Team Captain’s signature.
+Team Captains verify and sign scorecards in team matches.
+19.17 Responsibility
+It shall be the competitor’s responsibility:
+(a) That all equipment meets all Rules and match specifications in any match in which that equipment is to be used.
+(b) That the competitor’s position conforms to the Rules.
+(c) That the competitor has full knowledge of the Rules under which the match is fired.
+(d) To comply with any warning given by a Tournament Official or the Referee, of a minor infraction, and to accept
+a disqualification ordered for a deliberate violation of the Rules.
+(e) To ensure that his/her target is not altered intentionally in any way.
+20. WA1500 PRECISION PISTOL COMPETITION CLASSIFICATION
+20.1 Classified Competitors
+Are all individuals who are officially classified by the WA 1500.
+Competitors may verify their classification Revolver, Semi-automatic pistol and Optical Sight 1500 on WA 1500
+website.
+20.2 Unclassified Competitor
+Is a competitor who does not have a current WA1500 precision pistol competition classification. Such competitor
+shall compete in his first tournament in Master or Unclassified class decided by the national body.
+Once a competitor has fired in his/her first tournament, he/she is no longer considered Unclassified. If a shooter
+has 1 classification e.g. for Pistol 1500, that classification shall be used for all his/her matches listed in Rule 3.1 –
+3.13.
+After the first match Revolver 1500 (Rule 3.1) or Optical Sight 1500 (Rule 3.3) the classifications will be separated.
+20.3 Classification
+Precision Pistol Competition Classifications are only established for those individual WA1500 members who are
+eligible under Section 2.
+Competitors may verify their classification on WA1500 website.
+33
+Rulebook WA 1500 - Issue 2026-01-01
+20.4 Matches Used for Individual Classification
+Scores to be used for Revolver, Semi-automatic pistol and Optical Sight 1500 classifications and reclassification
+will be those fired in individual matches in both indoor and outdoor WA1500 competition as defined in Rule 1.6.
+20.5 Compilation of Scores for Classification Average
+Scores fired in complete matches over courses listed in Section 7 will be used to establish a competitor’s
+classification. Competitors may verify their classification on WA1500 Website.
+20.6 Lack of Classification Evidence
+It is the competitor’s responsibility to verify the WA1500 Official Classification and to present classification evidence
+when required. A competitor will enter a tournament under his/her correct classification and fire the entire
+tournament in that class. Should it be discovered during a tournament that a competitor has entered in a class
+lower than his/her current rating, the tournament records will be corrected to show the correct classification for the
+entire tournament.
+This rule applies to all classification.
+20.7 Obsolete Classifications and Scores
+All classifications and scores except High Master and Master shall become obsolete if the competitor does not fire
+in WA1500 Precision Pistol Competition at least once during 3 successive calendar years. High Master and Master
+classifications and scores shall become obsolete if the competitor does not fire in WA1500 Precision Pistol
+Competition at least once during 5 successive calendar years.
+20.8 Appeals
+Any competitor having reason to believe he/she is improperly classified may file an appeal with the WA1500 stating
+all essential facts.
+20.9 Protests
+Any person who believes that another competitor has been improperly classified may file a protest with the
+WA1500 stating all essential facts.
+20.10 Team Classification
+Teams are classified by computing the “team average” based on the classification of each firing member of the
+team. To compute this “team average” the key in Table No. 1 for the different classes will be used and the team
+total divided by the number of firing members of the team. Any fractional figure in the “team average” of 1/2 or more
+will place the team in the next higher class. The “team average” will establish classification of the team as a unit but
+will not affect in any way the individual classification of team members. This table will be used to classify both
+revolver and semi-automatic pistol teams.
+TABLE NO. 1 TEAM
+Class Key
+High Master 5
+Master 4
+Expert 3
+Sharpshooter 2
+Marksman 1
+20.11 Reporting Scores
+WA1500 competition (see Rule 1.6) sponsors will report to the WA1500 all individual scores fired over the courses
+stated in Section 7. Scores will be reported as aggregate totals for all matches completed by a competitor. Scores
+will be reported by each sponsor as soon as that tournament is completed.
+20.12 Individual Classification
+The following table will be used to establish a competitors Revolver and Semi-Automatic Pistol Classifications:
+34
+Rulebook WA 1500 - Issue 2026-01-01
+TABLE NO. 2 INDIVIDUAL
+Class Score
+High Master 1476 to 1500
+Master 1440 to 1475
+Expert 1379 to 1439
+1290 to 1378
+0 to 1289
+Sharpshooter Marksman 20.13 Establishing Classification
+A competitor will be officially classified by the WA1500 when scores for 300 shots have been reported. The
+competitor may verify his/her Official WA1500 Classification on the Website of WA 1500.
+20.14 Reclassification
+A competitor who has been classified by the WA1500 in either the Revolver or Semi-Automatic Pistol discipline will
+be reclassified as follows:
+(a) A record of all completed (see Rule 19.9) WA1500 competition (except Postal Matches) scores fired by a
+classified competitor will be maintained in the WA1500 database.
+(b) When a tournament of at least 150 shots is posted, a competitor will be checked for classification. If two scores
+are received which are above the competitor’s classification, the competitor will be placed in the classification
+corresponding to the lower of these two scores. Scores will not be averaged. If, for example, an Expert score is
+posted for a competitor now classified as a Marksman, that score is flagged. If a subsequent Sharpshooter score is
+received, the competitor will be reclassified as a Sharpshooter. Since the Expert score is still higher than his/her
+new classification, it will require only one score of Expert or above to reclassify him/her as Expert.
+(c) A competitor who believes his/her classification is too high may file a request with the WA1500 Administrative
+Staff that his/her classification be lowered. Such competitor must remain in the class concerned until at least 450
+shots fired subsequent to his/her last previous classification or reclassification are posted to his/her classification
+record. When the average of such shots places the competitor in a lower class he/she will be reclassified
+accordingly. A competitor who has been so classified downward and who by scores fired in WA1500 competition
+has again earned his/her former classification, which that competitor was allowed to vacate, then that classification
+shall become final, and the competitor shall retain the earned classification until reclassified into a higher class.
+35
