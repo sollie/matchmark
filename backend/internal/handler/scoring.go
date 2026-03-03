@@ -218,7 +218,9 @@ func (h *ScoringHandler) UnlockStage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.scoringSvc.UnlockStage(r.Context(), compID, lane, stageNum); err != nil {
+	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
+
+	if err := h.scoringSvc.UnlockStage(r.Context(), compID, lane, stageNum, isAdmin); err != nil {
 		switch {
 		case errors.Is(err, service.ErrCompetitionNotFound):
 			writeError(w, http.StatusNotFound, "competition not found")
@@ -226,6 +228,8 @@ func (h *ScoringHandler) UnlockStage(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "no shooter on that lane")
 		case errors.Is(err, service.ErrShooterNotFound):
 			writeError(w, http.StatusNotFound, "stage not found")
+		case errors.Is(err, service.ErrNotAssignedToLane):
+			writeError(w, http.StatusForbidden, "admin access required")
 		default:
 			writeError(w, http.StatusInternalServerError, "failed to unlock stage")
 		}
