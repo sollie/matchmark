@@ -1,0 +1,33 @@
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
+:root {
+	--bg:           #1a1a2e;
+	--surface:      #16213e;
+	--surface-active: #0f3460;
+	--border:       #2a2a4a;
+	--text:         #e2e8f0;
+	--muted:        #8892a4;
+	--accent:       #f0c040;
+}
+
+html, body {
+	margin: 0;
+	padding: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family: system-ui, -apple-system, sans-serif;
+	font-size: 16px;
+	line-height: 1.5;
+	-webkit-tap-highlight-color: transparent;
+}
+
+button {
+	color: var(--text);
+	font-family: inherit;
+}
+
+input, select, textarea {
+	font-family: inherit;
+}

@@ -7,6 +7,7 @@
 	import { restoreSession } from '$lib/api/client';
 	import { installIOSFallback } from '$lib/sync/queue';
 	import favicon from '$lib/assets/favicon.svg';
+	import '../app.css';
 
 	let { children } = $props();
 

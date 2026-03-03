@@ -54,7 +54,10 @@ See `docs/plan/` for the full specification:
   ```
   npm run check
   npm run build
+  npm audit
   ```
+- Fix all high/critical findings reported by `npm audit` before considering the task done.
+  Low-severity findings that have no available fix may be noted and left with an `overrides` pin.
 
 ### Shell scripts
 
