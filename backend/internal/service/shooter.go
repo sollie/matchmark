@@ -64,6 +64,13 @@ func (s *ShooterService) Create(ctx context.Context, p CreateShooterParams) (*mo
 		return nil, fmt.Errorf("get competition: %w", err)
 	}
 
+	if p.Name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	if p.WAID == "" {
+		return nil, fmt.Errorf("wa_id is required")
+	}
+
 	if p.LaneNumber < 1 || p.LaneNumber > comp.LanesTotal {
 		return nil, ErrLaneOutOfRange
 	}
@@ -134,9 +141,15 @@ func (s *ShooterService) Update(ctx context.Context, competitionID, shooterID in
 	weaponClass := current.WeaponClass
 
 	if p.Name != nil {
+		if *p.Name == "" {
+			return nil, fmt.Errorf("name must not be empty")
+		}
 		name = *p.Name
 	}
 	if p.WAID != nil {
+		if *p.WAID == "" {
+			return nil, fmt.Errorf("wa_id must not be empty")
+		}
 		waID = *p.WAID
 	}
 	if p.Club != nil {

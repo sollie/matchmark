@@ -7,8 +7,16 @@ import { openSyncQueue } from '$lib/db/idb';
 
 declare const self: ServiceWorkerGlobalScope;
 
+let accessToken: string | null = null;
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+
+self.addEventListener('message', (e) => {
+	if (e.data?.type === 'SET_ACCESS_TOKEN') {
+		accessToken = e.data.token ?? null;
+	}
+});
 
 cleanupOutdatedCaches();
 
@@ -30,11 +38,15 @@ async function replayQueue(): Promise<void> {
 	const items = await db.getAll('sync_queue');
 	for (const item of items) {
 		try {
+			const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+			if (accessToken) {
+				headers['Authorization'] = `Bearer ${accessToken}`;
+			}
 			const res = await fetch(
 				`/api/competitions/${item.competitionId}/lanes/${item.lane}/stage/${item.stage}/hits`,
 				{
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+					headers,
 					body: JSON.stringify({ hits: item.hits })
 				}
 			);

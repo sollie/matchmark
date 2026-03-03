@@ -2,8 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 )
+
+const maxBodyBytes = 1 << 20
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -16,5 +19,14 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 func decodeJSON(r *http.Request, v any) error {
-	return json.NewDecoder(r.Body).Decode(v)
+	r.Body = http.MaxBytesReader(nil, r.Body, maxBodyBytes)
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(v); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			return errors.New("request body too large")
+		}
+		return err
+	}
+	return nil
 }

@@ -74,6 +74,10 @@ func VerifyPassword(password, encoded string) error {
 		}
 	}
 
+	if p > 255 {
+		return ErrInvalidHash
+	}
+
 	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
 	if err != nil {
 		return ErrInvalidHash

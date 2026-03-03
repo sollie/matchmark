@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sollie/matchmark/internal/auth"
 	"github.com/sollie/matchmark/internal/model"
 	"github.com/sollie/matchmark/internal/repository"
@@ -18,12 +20,13 @@ var (
 )
 
 type AuthService struct {
+	db        *sql.DB
 	users     *repository.UserRepository
 	jwtSecret string
 }
 
-func NewAuthService(users *repository.UserRepository, jwtSecret string) *AuthService {
-	return &AuthService{users: users, jwtSecret: jwtSecret}
+func NewAuthService(users *repository.UserRepository, db *sql.DB, jwtSecret string) *AuthService {
+	return &AuthService{db: db, users: users, jwtSecret: jwtSecret}
 }
 
 type LoginResult struct {
@@ -56,7 +59,8 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
-	if err := s.users.CreateRefreshToken(ctx, user.ID, hashedRefresh, expiresAt); err != nil {
+	familyID := uuid.NewString()
+	if err := s.users.CreateRefreshToken(ctx, user.ID, hashedRefresh, familyID, expiresAt); err != nil {
 		return nil, fmt.Errorf("store refresh token: %w", err)
 	}
 
@@ -99,17 +103,13 @@ func (s *AuthService) Refresh(ctx context.Context, rawRefreshToken string) (*Ref
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
-	if err := s.users.DeleteRefreshToken(ctx, hashed); err != nil {
-		return nil, fmt.Errorf("delete old refresh token: %w", err)
-	}
-
 	newRaw, newHashed, newExpiry, err := auth.GenerateRefreshToken()
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
-	if err := s.users.CreateRefreshToken(ctx, user.ID, newHashed, newExpiry); err != nil {
-		return nil, fmt.Errorf("store refresh token: %w", err)
+	if err := s.rotateRefreshToken(ctx, hashed, rt.UserID, rt.FamilyID, newHashed, newExpiry); err != nil {
+		return nil, fmt.Errorf("rotate refresh token: %w", err)
 	}
 
 	accessToken, err := auth.SignAccessToken(s.jwtSecret, user.ID, user.Username, user.Role)
@@ -122,6 +122,38 @@ func (s *AuthService) Refresh(ctx context.Context, rawRefreshToken string) (*Ref
 		RefreshToken: newRaw,
 		ExpiresIn:    3600,
 	}, nil
+}
+
+func (s *AuthService) rotateRefreshToken(ctx context.Context, oldHash string, userID int64, familyID, newHash string, expiresAt time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM refresh_tokens WHERE token_hash = ?`, oldHash); err != nil {
+		return fmt.Errorf("delete old refresh token: %w", err)
+	}
+
+	var familyCount int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM refresh_tokens WHERE family_id = ?`, familyID).Scan(&familyCount); err != nil {
+		return fmt.Errorf("check family: %w", err)
+	}
+	if familyCount > 0 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM refresh_tokens WHERE family_id = ?`, familyID); err != nil {
+			return fmt.Errorf("revoke token family: %w", err)
+		}
+		return fmt.Errorf("%w: token reuse detected", ErrInvalidToken)
+	}
+
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at) VALUES (?, ?, ?, ?)`,
+		userID, newHash, familyID, expiresAt.UTC().Format(time.RFC3339),
+	); err != nil {
+		return fmt.Errorf("insert new refresh token: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 func (s *AuthService) Logout(ctx context.Context, rawRefreshToken string) error {

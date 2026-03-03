@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/sollie/matchmark/internal/auth"
 	"github.com/sollie/matchmark/internal/model"
@@ -60,15 +61,18 @@ func (h *AssignmentHandler) ReleaseAssignment(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	var body struct {
-		ShooterID int64 `json:"shooter_id"`
+	shooterIDStr := r.URL.Query().Get("shooter_id")
+	if shooterIDStr == "" {
+		writeError(w, http.StatusBadRequest, "shooter_id query parameter is required")
+		return
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	shooterID, err := strconv.ParseInt(shooterIDStr, 10, 64)
+	if err != nil || shooterID < 1 {
+		writeError(w, http.StatusBadRequest, "invalid shooter_id")
 		return
 	}
 
-	if err := h.assignmentSvc.ReleaseAssignment(r.Context(), compID, body.ShooterID); err != nil {
+	if err := h.assignmentSvc.ReleaseAssignment(r.Context(), compID, shooterID); err != nil {
 		switch {
 		case errors.Is(err, service.ErrCompetitionNotFound):
 			writeError(w, http.StatusNotFound, "competition not found")

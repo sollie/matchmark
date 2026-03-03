@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS sse_tickets (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket     TEXT    NOT NULL UNIQUE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT    NOT NULL,
+    used       INTEGER NOT NULL DEFAULT 0
+);
