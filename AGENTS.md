@@ -32,6 +32,7 @@ See `docs/plan/` for the full specification:
 ### Go (`backend/`)
 
 - Use Go 1.26+.
+- Module path: `github.com/sollie/matchmark`.
 - Architecture: `handler` → `service` → `repository`. No business logic in handlers or repositories.
 - SQLite via `modernc.org/sqlite` (pure Go, `database/sql` compatible). `CGO_ENABLED=0` always.
 - JWT via `github.com/golang-jwt/jwt/v5`. Passwords hashed with argon2id (`golang.org/x/crypto`).
