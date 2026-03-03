@@ -12,7 +12,11 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	_ "modernc.org/sqlite"
 
+	"github.com/sollie/matchmark/internal/auth"
 	"github.com/sollie/matchmark/internal/db"
+	"github.com/sollie/matchmark/internal/handler"
+	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/service"
 )
 
 func main() {
@@ -39,6 +43,12 @@ func main() {
 		log.Fatalf("seed: %v", err)
 	}
 
+	userRepo := repository.NewUserRepository(database)
+	authSvc := service.NewAuthService(userRepo, cfg.jwtSecret)
+	userSvc := service.NewUserService(userRepo)
+	authH := handler.NewAuthHandler(authSvc)
+	userH := handler.NewUserHandler(userSvc)
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -46,6 +56,29 @@ func main() {
 
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
+	})
+
+	r.Route("/api", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/login", authH.Login)
+			r.Post("/refresh", authH.Refresh)
+			r.With(auth.RequireAuth(cfg.jwtSecret)).Post("/logout", authH.Logout)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireAuth(cfg.jwtSecret))
+
+			r.Get("/users/me", userH.Me)
+
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireAdmin)
+				r.Get("/users", userH.List)
+				r.Post("/users", userH.Create)
+				r.Put("/users/{id}", userH.Update)
+				r.Delete("/users/{id}", userH.Delete)
+				r.Post("/users/{id}/reset-password", userH.ResetPassword)
+			})
+		})
 	})
 
 	log.Printf("server listening on :8080")
