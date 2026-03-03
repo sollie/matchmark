@@ -1,0 +1,13 @@
+services:
+  backend:
+    environment:
+      FRONTEND_ORIGIN: ""
+
+  caddy:
+    environment:
+      DOMAIN: ""
+    ports:
+      - "80:80"
+    volumes:
+      - ./caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - frontend_dist:/srv/frontend:ro
