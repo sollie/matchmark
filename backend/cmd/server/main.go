@@ -23,6 +23,8 @@ import (
 	"github.com/sollie/matchmark/internal/service"
 )
 
+var version = "dev"
+
 func main() {
 	cfg, err := loadConfig()
 	if err != nil {
@@ -155,7 +157,7 @@ func main() {
 		r.Get("/admin/monitor", monitorH.Stream)
 	})
 
-	log.Printf("server listening on :8080")
+	log.Printf("matchmark %s listening on :8080", version)
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatalf("listen: %v", err)
 	}

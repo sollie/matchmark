@@ -10,4 +10,3 @@ services:
       - "80:80"
     volumes:
       - ./caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
-      - frontend_dist:/srv/frontend:ro
