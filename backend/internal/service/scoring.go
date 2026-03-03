@@ -167,7 +167,8 @@ type SubmitHitsResult struct {
 }
 
 func (s *ScoringService) SubmitHits(ctx context.Context, competitionID int64, lane, stageNumber int, rings []string, callerID int64, isAdmin bool) (*SubmitHitsResult, error) {
-	if _, err := s.competitions.GetByID(ctx, competitionID); err != nil {
+	comp, err := s.competitions.GetByID(ctx, competitionID)
+	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrCompetitionNotFound
 		}
@@ -198,7 +199,7 @@ func (s *ScoringService) SubmitHits(ctx context.Context, competitionID int64, la
 			}
 			return nil, fmt.Errorf("get assignment: %w", err)
 		}
-		if assignment.LaneNumber != lane {
+		if GetScoreLane(assignment.LaneNumber, comp.LanesTotal) != lane {
 			return nil, ErrNotAssignedToLane
 		}
 
@@ -245,7 +246,8 @@ func (s *ScoringService) SubmitHits(ctx context.Context, competitionID int64, la
 }
 
 func (s *ScoringService) LockStage(ctx context.Context, competitionID int64, lane, stageNumber int, callerID int64, isAdmin bool) error {
-	if _, err := s.competitions.GetByID(ctx, competitionID); err != nil {
+	comp, err := s.competitions.GetByID(ctx, competitionID)
+	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return ErrCompetitionNotFound
 		}
@@ -276,7 +278,7 @@ func (s *ScoringService) LockStage(ctx context.Context, competitionID int64, lan
 			}
 			return fmt.Errorf("get assignment: %w", err)
 		}
-		if assignment.LaneNumber != lane {
+		if GetScoreLane(assignment.LaneNumber, comp.LanesTotal) != lane {
 			return ErrNotAssignedToLane
 		}
 	}
@@ -292,7 +294,10 @@ func (s *ScoringService) LockStage(ctx context.Context, competitionID int64, lan
 	return nil
 }
 
-func (s *ScoringService) UnlockStage(ctx context.Context, competitionID int64, lane, stageNumber int) error {
+func (s *ScoringService) UnlockStage(ctx context.Context, competitionID int64, lane, stageNumber int, isAdmin bool) error {
+	if !isAdmin {
+		return ErrNotAssignedToLane
+	}
 	if _, err := s.competitions.GetByID(ctx, competitionID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return ErrCompetitionNotFound
