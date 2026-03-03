@@ -102,7 +102,10 @@
 	let sseBackoff = 1000;
 
 	async function connectSSE() {
-		const ticketRes = await apiFetch('/api/admin/sse-ticket', { method: 'POST' });
+		const ticketRes = await apiFetch('/api/admin/sse-ticket', {
+			method: 'POST',
+			body: JSON.stringify({ competition_id: compId })
+		});
 		if (!ticketRes.ok) {
 			sseError = 'Failed to obtain monitor ticket';
 			return;
