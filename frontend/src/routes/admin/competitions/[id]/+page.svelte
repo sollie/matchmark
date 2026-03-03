@@ -4,7 +4,6 @@
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 	import { apiFetch } from '$lib/api/client';
-	import { auth } from '$lib/stores/auth';
 
 	const RING_KEYS = ['X', '10', '9', '8', '7', '0'];
 	const RING_VALUES: Record<string, number> = { X: 10, '10': 10, '9': 9, '8': 8, '7': 7, '0': 0, M: 0 };
@@ -102,10 +101,14 @@
 	let sse: EventSource | null = null;
 	let sseBackoff = 1000;
 
-	function connectSSE() {
-		const token = get(auth).accessToken;
-		if (!token) return;
-		sse = new EventSource(`/api/admin/monitor?competition_id=${compId}`);
+	async function connectSSE() {
+		const ticketRes = await apiFetch('/api/admin/sse-ticket', { method: 'POST' });
+		if (!ticketRes.ok) {
+			sseError = 'Failed to obtain monitor ticket';
+			return;
+		}
+		const { ticket } = await ticketRes.json() as { ticket: string };
+		sse = new EventSource(`/api/admin/monitor?ticket=${encodeURIComponent(ticket)}&competition_id=${compId}`);
 		sse.onmessage = (e) => {
 			try {
 				monitor = JSON.parse(e.data) as MonitorEvent;

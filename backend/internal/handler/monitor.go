@@ -13,13 +13,28 @@ import (
 
 type MonitorHandler struct {
 	monitorSvc *service.MonitorService
+	ticketSvc  *service.SSETicketService
 }
 
-func NewMonitorHandler(monitorSvc *service.MonitorService) *MonitorHandler {
-	return &MonitorHandler{monitorSvc: monitorSvc}
+func NewMonitorHandler(monitorSvc *service.MonitorService, ticketSvc *service.SSETicketService) *MonitorHandler {
+	return &MonitorHandler{monitorSvc: monitorSvc, ticketSvc: ticketSvc}
 }
 
 func (h *MonitorHandler) Stream(w http.ResponseWriter, r *http.Request) {
+	ticket := r.URL.Query().Get("ticket")
+	if ticket == "" {
+		writeError(w, http.StatusUnauthorized, "missing ticket")
+		return
+	}
+	if _, err := h.ticketSvc.Consume(r.Context(), ticket); err != nil {
+		if errors.Is(err, service.ErrInvalidTicket) {
+			writeError(w, http.StatusUnauthorized, "invalid or expired ticket")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "ticket validation failed")
+		return
+	}
+
 	idStr := r.URL.Query().Get("competition_id")
 	if idStr == "" {
 		writeError(w, http.StatusBadRequest, "competition_id query parameter is required")

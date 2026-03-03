@@ -7,9 +7,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"golang.org/x/time/rate"
 	_ "modernc.org/sqlite"
 
 	"github.com/sollie/matchmark/internal/auth"
@@ -52,7 +55,7 @@ func main() {
 	assignmentRepo := repository.NewAssignmentRepository(database)
 	exportRepo := repository.NewExportRepository(database)
 
-	authSvc := service.NewAuthService(userRepo, cfg.jwtSecret)
+	authSvc := service.NewAuthService(userRepo, database, cfg.jwtSecret)
 	userSvc := service.NewUserService(userRepo)
 	competitionSvc := service.NewCompetitionService(competitionRepo)
 	shooterSvc := service.NewShooterService(shooterRepo, stageRepo, competitionRepo)
@@ -61,6 +64,7 @@ func main() {
 	monitorSvc := service.NewMonitorService(database, competitionSvc)
 	exportSvc := service.NewExportService(exportRepo, competitionRepo)
 	spectatorSvc := service.NewSpectatorService(database)
+	sseTicketSvc := service.NewSSETicketService(database)
 
 	authH := handler.NewAuthHandler(authSvc)
 	userH := handler.NewUserHandler(userSvc)
@@ -68,9 +72,10 @@ func main() {
 	shooterH := handler.NewShooterHandler(shooterSvc)
 	scoringH := handler.NewScoringHandler(scoringSvc)
 	assignmentH := handler.NewAssignmentHandler(assignmentSvc)
-	monitorH := handler.NewMonitorHandler(monitorSvc)
+	monitorH := handler.NewMonitorHandler(monitorSvc, sseTicketSvc)
 	exportH := handler.NewExportHandler(exportSvc)
 	spectatorH := handler.NewSpectatorHandler(spectatorSvc)
+	sseTicketH := handler.NewSSETicketHandler(sseTicketSvc)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -81,6 +86,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	authRateLimiter := newIPRateLimiter(5, 10)
+
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/spectator", func(r chi.Router) {
 			r.Get("/competitions", spectatorH.ListCompetitions)
@@ -88,8 +95,8 @@ func main() {
 		})
 
 		r.Route("/auth", func(r chi.Router) {
-			r.Post("/login", authH.Login)
-			r.Post("/refresh", authH.Refresh)
+			r.With(authRateLimiter).Post("/login", authH.Login)
+			r.With(authRateLimiter).Post("/refresh", authH.Refresh)
 			r.With(auth.RequireAuth(cfg.jwtSecret)).Post("/logout", authH.Logout)
 		})
 
@@ -136,14 +143,74 @@ func main() {
 				r.Get("/competitions/{id}/export/csv", exportH.ExportCSV)
 				r.Get("/competitions/{id}/export/pdf", exportH.ExportPDF)
 
-				r.Get("/admin/monitor", monitorH.Stream)
+				r.Post("/admin/sse-ticket", sseTicketH.Issue)
 			})
 		})
+
+		r.Get("/admin/monitor", monitorH.Stream)
 	})
 
 	log.Printf("server listening on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatalf("listen: %v", err)
+	}
+}
+
+type ipLimiterEntry struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+type ipRateLimiter struct {
+	mu      sync.Mutex
+	entries map[string]*ipLimiterEntry
+	r       rate.Limit
+	burst   int
+}
+
+func newIPRateLimiter(r rate.Limit, burst int) func(http.Handler) http.Handler {
+	l := &ipRateLimiter{
+		entries: make(map[string]*ipLimiterEntry),
+		r:       r,
+		burst:   burst,
+	}
+	go l.cleanup()
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			limiter := l.getLimiter(r.RemoteAddr)
+			if !limiter.Allow() {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(`{"error":"too many requests"}`))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func (l *ipRateLimiter) getLimiter(ip string) *rate.Limiter {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.entries[ip]
+	if !ok {
+		entry = &ipLimiterEntry{limiter: rate.NewLimiter(l.r, l.burst)}
+		l.entries[ip] = entry
+	}
+	entry.lastSeen = time.Now()
+	return entry.limiter
+}
+
+func (l *ipRateLimiter) cleanup() {
+	for {
+		time.Sleep(10 * time.Minute)
+		l.mu.Lock()
+		for ip, entry := range l.entries {
+			if time.Since(entry.lastSeen) > 30*time.Minute {
+				delete(l.entries, ip)
+			}
+		}
+		l.mu.Unlock()
 	}
 }
 

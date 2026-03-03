@@ -1,14 +1,24 @@
 import { get } from 'svelte/store';
 import { auth } from '$lib/stores/auth';
 import { goto } from '$app/navigation';
+import { openSyncQueue } from '$lib/db/idb';
 
 const REFRESH_KEY = 'mm_refresh_token';
 let proactiveTimer: ReturnType<typeof setTimeout> | null = null;
+let refreshPromise: Promise<void> | null = null;
+
+function postTokenToSW(token: string | null): void {
+	if (!('serviceWorker' in navigator)) return;
+	navigator.serviceWorker.ready.then((reg) => {
+		reg.active?.postMessage({ type: 'SET_ACCESS_TOKEN', token });
+	}).catch(() => undefined);
+}
 
 export function setTokens(accessToken: string, refreshToken: string, expiresAt: number, user: { id: number; username: string; role: 'user' | 'admin' }) {
 	auth.set({ accessToken, user, expiresAt });
 	localStorage.setItem(REFRESH_KEY, refreshToken);
 	scheduleProactiveRefresh(expiresAt);
+	postTokenToSW(accessToken);
 }
 
 export function clearTokens() {
@@ -17,6 +27,11 @@ export function clearTokens() {
 	if (proactiveTimer !== null) {
 		clearTimeout(proactiveTimer);
 		proactiveTimer = null;
+	}
+	postTokenToSW(null);
+	openSyncQueue().then((db) => db.clear('sync_queue')).catch(() => undefined);
+	if ('caches' in window) {
+		caches.delete('api-competitions').catch(() => undefined);
 	}
 }
 
@@ -34,16 +49,24 @@ function scheduleProactiveRefresh(expiresAt: number) {
 }
 
 export async function silentRefresh(): Promise<void> {
-	const refreshToken = localStorage.getItem(REFRESH_KEY);
-	if (!refreshToken) throw new Error('no refresh token');
-	const res = await fetch('/api/auth/refresh', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ refresh_token: refreshToken })
-	});
-	if (!res.ok) throw new Error('refresh failed');
-	const data = await res.json();
-	setTokens(data.access_token, data.refresh_token, Date.now() + data.expires_in * 1000, data.user);
+	if (refreshPromise) return refreshPromise;
+	refreshPromise = (async () => {
+		const refreshToken = localStorage.getItem(REFRESH_KEY);
+		if (!refreshToken) throw new Error('no refresh token');
+		const res = await fetch('/api/auth/refresh', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ refresh_token: refreshToken })
+		});
+		if (!res.ok) throw new Error('refresh failed');
+		const data = await res.json();
+		setTokens(data.access_token, data.refresh_token, Date.now() + data.expires_in * 1000, data.user);
+	})();
+	try {
+		await refreshPromise;
+	} finally {
+		refreshPromise = null;
+	}
 }
 
 export async function restoreSession(): Promise<void> {

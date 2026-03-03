@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/sollie/matchmark/internal/model"
 	"github.com/sollie/matchmark/internal/repository"
@@ -66,6 +67,9 @@ func (s *CompetitionService) Create(ctx context.Context, p CreateCompetitionPara
 	if p.Date == "" {
 		return nil, fmt.Errorf("date is required")
 	}
+	if _, err := time.Parse("2006-01-02", p.Date); err != nil {
+		return nil, fmt.Errorf("date must be in YYYY-MM-DD format")
+	}
 	if p.LanesTotal < 1 {
 		return nil, fmt.Errorf("lanes_total must be at least 1")
 	}
@@ -99,6 +103,9 @@ func (s *CompetitionService) Update(ctx context.Context, id int64, p UpdateCompe
 		name = *p.Name
 	}
 	if p.Date != nil {
+		if _, err := time.Parse("2006-01-02", *p.Date); err != nil {
+			return nil, fmt.Errorf("date must be in YYYY-MM-DD format")
+		}
 		date = *p.Date
 	}
 	if p.LanesTotal != nil {

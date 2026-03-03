@@ -119,10 +119,10 @@ func (r *UserRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *UserRepository) CreateRefreshToken(ctx context.Context, userID int64, tokenHash string, expiresAt time.Time) error {
+func (r *UserRepository) CreateRefreshToken(ctx context.Context, userID int64, tokenHash, familyID string, expiresAt time.Time) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
-		userID, tokenHash, expiresAt.UTC().Format(time.RFC3339),
+		`INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at) VALUES (?, ?, ?, ?)`,
+		userID, tokenHash, familyID, expiresAt.UTC().Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("create refresh token: %w", err)
@@ -132,17 +132,28 @@ func (r *UserRepository) CreateRefreshToken(ctx context.Context, userID int64, t
 
 func (r *UserRepository) GetRefreshToken(ctx context.Context, tokenHash string) (*model.RefreshToken, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, user_id, token_hash, expires_at, created_at FROM refresh_tokens WHERE token_hash = ?`,
+		`SELECT id, user_id, token_hash, family_id, expires_at, created_at FROM refresh_tokens WHERE token_hash = ?`,
 		tokenHash,
 	)
 	var rt model.RefreshToken
-	if err := row.Scan(&rt.ID, &rt.UserID, &rt.TokenHash, &rt.ExpiresAt, &rt.CreatedAt); err != nil {
+	if err := row.Scan(&rt.ID, &rt.UserID, &rt.TokenHash, &rt.FamilyID, &rt.ExpiresAt, &rt.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("get refresh token: %w", err)
 	}
 	return &rt, nil
+}
+
+func (r *UserRepository) DeleteRefreshTokenFamily(ctx context.Context, familyID string) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM refresh_tokens WHERE family_id = ?`,
+		familyID,
+	)
+	if err != nil {
+		return fmt.Errorf("delete refresh token family: %w", err)
+	}
+	return nil
 }
 
 func (r *UserRepository) DeleteRefreshToken(ctx context.Context, tokenHash string) error {
