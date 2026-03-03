@@ -70,12 +70,26 @@ type StageDetail struct {
 	CumulativeXCount int
 }
 
-func (s *ScoringService) GetStageDetail(ctx context.Context, competitionID int64, lane, stageNumber int) (*StageDetail, error) {
-	if _, err := s.competitions.GetByID(ctx, competitionID); err != nil {
+func (s *ScoringService) GetStageDetail(ctx context.Context, competitionID int64, lane, stageNumber int, callerID int64, isAdmin bool) (*StageDetail, error) {
+	comp, err := s.competitions.GetByID(ctx, competitionID)
+	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrCompetitionNotFound
 		}
 		return nil, fmt.Errorf("get competition: %w", err)
+	}
+
+	if !isAdmin {
+		assignment, err := s.assignments.GetByUser(ctx, competitionID, callerID)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return nil, ErrNotAssignedToLane
+			}
+			return nil, fmt.Errorf("get assignment: %w", err)
+		}
+		if GetScoreLane(assignment.LaneNumber, comp.LanesTotal) != lane {
+			return nil, ErrNotAssignedToLane
+		}
 	}
 
 	targetShooter, err := s.shooters.GetByLane(ctx, competitionID, lane)

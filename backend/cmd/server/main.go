@@ -112,7 +112,6 @@ func main() {
 
 			r.Post("/competitions/{id}/assign", assignmentH.SelectShooter)
 			r.Get("/competitions/{id}/assign", assignmentH.GetMyAssignment)
-			r.Get("/competitions/{id}/assignments", assignmentH.ListAssignments)
 
 			r.Route("/competitions/{id}/lanes/{lane}/stage/{stage}", func(r chi.Router) {
 				r.Get("/", scoringH.GetStage)
@@ -136,6 +135,7 @@ func main() {
 				r.Delete("/competitions/{id}/shooters/{sid}", shooterH.Delete)
 
 				r.Delete("/competitions/{id}/assign", assignmentH.ReleaseAssignment)
+				r.Get("/competitions/{id}/assignments", assignmentH.ListAssignments)
 
 				r.Post("/competitions/{id}/lanes/{lane}/stage/{stage}/unlock", scoringH.UnlockStage)
 
