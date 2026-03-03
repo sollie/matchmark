@@ -43,7 +43,10 @@ func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detail, err := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum)
+	callerID := auth.UserIDFromContext(r.Context())
+	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
+
+	detail, err := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, callerID, isAdmin)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrCompetitionNotFound):
@@ -52,6 +55,8 @@ func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "no shooter on that lane")
 		case errors.Is(err, service.ErrShooterNotFound):
 			writeError(w, http.StatusNotFound, "stage not found")
+		case errors.Is(err, service.ErrNotAssignedToLane):
+			writeError(w, http.StatusForbidden, "you are not assigned to score this lane")
 		default:
 			writeError(w, http.StatusInternalServerError, "failed to get stage")
 		}
