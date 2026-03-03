@@ -50,6 +50,7 @@ func main() {
 	hitRepo := repository.NewHitRepository(database)
 	lockRepo := repository.NewLockRepository(database)
 	assignmentRepo := repository.NewAssignmentRepository(database)
+	exportRepo := repository.NewExportRepository(database)
 
 	authSvc := service.NewAuthService(userRepo, cfg.jwtSecret)
 	userSvc := service.NewUserService(userRepo)
@@ -57,6 +58,8 @@ func main() {
 	shooterSvc := service.NewShooterService(shooterRepo, stageRepo, competitionRepo)
 	scoringSvc := service.NewScoringService(competitionRepo, shooterRepo, stageRepo, hitRepo, lockRepo, assignmentRepo)
 	assignmentSvc := service.NewAssignmentService(assignmentRepo, competitionRepo, shooterRepo)
+	monitorSvc := service.NewMonitorService(database, competitionSvc)
+	exportSvc := service.NewExportService(exportRepo, competitionRepo)
 
 	authH := handler.NewAuthHandler(authSvc)
 	userH := handler.NewUserHandler(userSvc)
@@ -64,6 +67,8 @@ func main() {
 	shooterH := handler.NewShooterHandler(shooterSvc)
 	scoringH := handler.NewScoringHandler(scoringSvc)
 	assignmentH := handler.NewAssignmentHandler(assignmentSvc)
+	monitorH := handler.NewMonitorHandler(monitorSvc)
+	exportH := handler.NewExportHandler(exportSvc)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -119,6 +124,12 @@ func main() {
 				r.Delete("/competitions/{id}/assign", assignmentH.ReleaseAssignment)
 
 				r.Post("/competitions/{id}/lanes/{lane}/stage/{stage}/unlock", scoringH.UnlockStage)
+
+				r.Get("/competitions/{id}/export/json", exportH.ExportJSON)
+				r.Get("/competitions/{id}/export/csv", exportH.ExportCSV)
+				r.Get("/competitions/{id}/export/pdf", exportH.ExportPDF)
+
+				r.Get("/admin/monitor", monitorH.Stream)
 			})
 		})
 	})
