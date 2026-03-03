@@ -17,12 +17,13 @@ type RefreshToken struct {
 }
 
 type Competition struct {
-	ID         int64  `json:"id"`
-	Name       string `json:"name"`
-	Date       string `json:"date"`
-	LanesTotal int    `json:"lanes_total"`
-	Status     string `json:"status"`
-	CreatedAt  string `json:"created_at"`
+	ID               int64  `json:"id"`
+	Name             string `json:"name"`
+	Date             string `json:"date"`
+	LanesTotal       int    `json:"lanes_total"`
+	Status           string `json:"status"`
+	SpectatorEnabled bool   `json:"spectator_enabled"`
+	CreatedAt        string `json:"created_at"`
 }
 
 type Shooter struct {

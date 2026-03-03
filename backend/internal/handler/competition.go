@@ -1,0 +1,281 @@
+package handler
+
+import (
+	"errors"
+	"net/http"
+	"strings"
+
+	"github.com/sollie/matchmark/internal/model"
+	"github.com/sollie/matchmark/internal/service"
+)
+
+type CompetitionHandler struct {
+	competitionSvc *service.CompetitionService
+}
+
+func NewCompetitionHandler(competitionSvc *service.CompetitionService) *CompetitionHandler {
+	return &CompetitionHandler{competitionSvc: competitionSvc}
+}
+
+func (h *CompetitionHandler) List(w http.ResponseWriter, r *http.Request) {
+	status := strings.ToLower(r.URL.Query().Get("status"))
+	competitions, err := h.competitionSvc.List(r.Context(), status)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidStatus) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to list competitions")
+		return
+	}
+	if competitions == nil {
+		competitions = []model.Competition{}
+	}
+	writeJSON(w, http.StatusOK, competitions)
+}
+
+func (h *CompetitionHandler) Get(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDParam(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid competition id")
+		return
+	}
+	c, err := h.competitionSvc.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, service.ErrCompetitionNotFound) {
+			writeError(w, http.StatusNotFound, "competition not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to get competition")
+		return
+	}
+	writeJSON(w, http.StatusOK, c)
+}
+
+func (h *CompetitionHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name             string `json:"name"`
+		Date             string `json:"date"`
+		LanesTotal       int    `json:"lanes_total"`
+		SpectatorEnabled bool   `json:"spectator_enabled"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	c, err := h.competitionSvc.Create(r.Context(), service.CreateCompetitionParams{
+		Name:             body.Name,
+		Date:             body.Date,
+		LanesTotal:       body.LanesTotal,
+		SpectatorEnabled: body.SpectatorEnabled,
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, c)
+}
+
+func (h *CompetitionHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDParam(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid competition id")
+		return
+	}
+
+	var body struct {
+		Name             *string `json:"name"`
+		Date             *string `json:"date"`
+		LanesTotal       *int    `json:"lanes_total"`
+		Status           *string `json:"status"`
+		SpectatorEnabled *bool   `json:"spectator_enabled"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	c, err := h.competitionSvc.Update(r.Context(), id, service.UpdateCompetitionParams{
+		Name:             body.Name,
+		Date:             body.Date,
+		LanesTotal:       body.LanesTotal,
+		Status:           body.Status,
+		SpectatorEnabled: body.SpectatorEnabled,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCompetitionNotFound):
+			writeError(w, http.StatusNotFound, "competition not found")
+		case errors.Is(err, service.ErrInvalidStatus), errors.Is(err, service.ErrInvalidStatusTransition):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to update competition")
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, c)
+}
+
+func competitionIDFromChi(r *http.Request) (int64, error) {
+	return parseIDParam(r, "id")
+}
+
+func shooterIDFromChi(r *http.Request) (int64, error) {
+	return parseIDParam(r, "sid")
+}
+
+type ShooterHandler struct {
+	shooterSvc *service.ShooterService
+}
+
+func NewShooterHandler(shooterSvc *service.ShooterService) *ShooterHandler {
+	return &ShooterHandler{shooterSvc: shooterSvc}
+}
+
+func (h *ShooterHandler) List(w http.ResponseWriter, r *http.Request) {
+	compID, err := competitionIDFromChi(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid competition id")
+		return
+	}
+	shooters, err := h.shooterSvc.ListByCompetition(r.Context(), compID)
+	if err != nil {
+		if errors.Is(err, service.ErrCompetitionNotFound) {
+			writeError(w, http.StatusNotFound, "competition not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to list shooters")
+		return
+	}
+	if shooters == nil {
+		shooters = []model.Shooter{}
+	}
+	writeJSON(w, http.StatusOK, shooters)
+}
+
+func (h *ShooterHandler) Create(w http.ResponseWriter, r *http.Request) {
+	compID, err := competitionIDFromChi(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid competition id")
+		return
+	}
+
+	var body struct {
+		Name        string  `json:"name"`
+		WAID        string  `json:"wa_id"`
+		Club        *string `json:"club"`
+		LaneNumber  int     `json:"lane_number"`
+		Discipline  string  `json:"discipline"`
+		WeaponClass string  `json:"weapon_class"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	shooter, err := h.shooterSvc.Create(r.Context(), service.CreateShooterParams{
+		CompetitionID: compID,
+		Name:          body.Name,
+		WAID:          body.WAID,
+		Club:          body.Club,
+		LaneNumber:    body.LaneNumber,
+		Discipline:    body.Discipline,
+		WeaponClass:   body.WeaponClass,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCompetitionNotFound):
+			writeError(w, http.StatusNotFound, "competition not found")
+		case errors.Is(err, service.ErrLaneOutOfRange):
+			writeError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrLaneTaken):
+			writeError(w, http.StatusConflict, err.Error())
+		case errors.Is(err, service.ErrInvalidWeaponClass):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to create shooter")
+		}
+		return
+	}
+	writeJSON(w, http.StatusCreated, shooter)
+}
+
+func (h *ShooterHandler) Update(w http.ResponseWriter, r *http.Request) {
+	compID, err := competitionIDFromChi(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid competition id")
+		return
+	}
+	shooterID, err := shooterIDFromChi(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid shooter id")
+		return
+	}
+
+	var body struct {
+		Name        *string `json:"name"`
+		WAID        *string `json:"wa_id"`
+		Club        *string `json:"club"`
+		LaneNumber  *int    `json:"lane_number"`
+		Discipline  *string `json:"discipline"`
+		WeaponClass *string `json:"weapon_class"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	shooter, err := h.shooterSvc.Update(r.Context(), compID, shooterID, service.UpdateShooterParams{
+		Name:        body.Name,
+		WAID:        body.WAID,
+		Club:        body.Club,
+		LaneNumber:  body.LaneNumber,
+		Discipline:  body.Discipline,
+		WeaponClass: body.WeaponClass,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrCompetitionNotFound):
+			writeError(w, http.StatusNotFound, "competition not found")
+		case errors.Is(err, service.ErrShooterNotFound):
+			writeError(w, http.StatusNotFound, "shooter not found")
+		case errors.Is(err, service.ErrLaneOutOfRange):
+			writeError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrLaneTaken):
+			writeError(w, http.StatusConflict, err.Error())
+		case errors.Is(err, service.ErrInvalidWeaponClass):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to update shooter")
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, shooter)
+}
+
+func (h *ShooterHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	compID, err := competitionIDFromChi(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid competition id")
+		return
+	}
+	shooterID, err := shooterIDFromChi(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid shooter id")
+		return
+	}
+
+	if err := h.shooterSvc.Delete(r.Context(), compID, shooterID); err != nil {
+		switch {
+		case errors.Is(err, service.ErrCompetitionNotFound):
+			writeError(w, http.StatusNotFound, "competition not found")
+		case errors.Is(err, service.ErrShooterNotFound):
+			writeError(w, http.StatusNotFound, "shooter not found")
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to delete shooter")
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

@@ -37,7 +37,7 @@ After every shell script change: run `shellcheck`.
 ## Phase 4 — Competition & Shooter API
 
 - [ ] `internal/repository/competition.go`, `shooter.go`, `stage.go`
-- [ ] `internal/service/competition.go`: CRUD, status transitions
+- [ ] `internal/service/competition.go`: CRUD, status transitions, spectator_enabled flag
 - [ ] `internal/service/shooter.go`: add/edit/delete shooter; eagerly create stage
       rows using rulebook data; validate weapon class + lane uniqueness
 - [ ] `internal/handler/competition.go`: GET/POST/PUT /api/competitions[/{id}]
@@ -151,3 +151,26 @@ After every shell script change: run `shellcheck`.
 - Audit log (who changed what, when)
 - Multi-language UI
 - Re-entry and aggregate match types
+
+## Phase 13 — Spectator Live View
+
+Backend:
+- [ ] Write `002_spectator.sql`: `ALTER TABLE competitions ADD COLUMN spectator_enabled INTEGER NOT NULL DEFAULT 0`
+- [ ] Update `internal/model/model.go`: add `SpectatorEnabled bool` to Competition struct
+- [ ] Update `internal/repository/competition.go`: include `spectator_enabled` in all
+      queries; support filtering by `spectator_enabled=1` in spectator list query
+- [ ] Update `internal/service/competition.go`: accept `spectator_enabled` in create/update
+- [ ] `internal/service/spectator.go`: `GetActiveSpectatorCompetitions()`,
+      `GetSpectatorSnapshot(competitionID)` — returns 404-sentinel if not found or flag off
+- [ ] `internal/handler/spectator.go`:
+      `GET /api/spectator/competitions` (no auth)
+      `GET /api/spectator/competitions/{id}/live` (SSE, no auth; 3s interval; clean disconnect)
+- [ ] Wire new routes in `main.go` outside the `RequireAuth` group
+- [ ] `golangci-lint run ./...` + `trivy fs --scanners vuln,secret .`; fix all findings
+
+Frontend:
+- [ ] `/live` route: fetch spectator competition list; display as selectable cards; no auth guard
+- [ ] `/live/[id]` route: SSE scoreboard; live ranked table; dynamic per-stage columns;
+      auto-reconnect with exponential backoff; 404 error state
+- [ ] Exclude `/live` and `/live/[id]` from auth guard in `+layout.svelte`
+- [ ] `npm run check && npm run build`; fix all findings
