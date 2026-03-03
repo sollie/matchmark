@@ -67,8 +67,17 @@ func (s *ShooterService) Create(ctx context.Context, p CreateShooterParams) (*mo
 	if p.Name == "" {
 		return nil, fmt.Errorf("name is required")
 	}
+	if len(p.Name) > 100 {
+		return nil, fmt.Errorf("name must not exceed 100 characters")
+	}
 	if p.WAID == "" {
 		return nil, fmt.Errorf("wa_id is required")
+	}
+	if len(p.WAID) > 20 {
+		return nil, fmt.Errorf("wa_id must not exceed 20 characters")
+	}
+	if p.Club != nil && len(*p.Club) > 100 {
+		return nil, fmt.Errorf("club must not exceed 100 characters")
 	}
 
 	if p.LaneNumber < 1 || p.LaneNumber > comp.LanesTotal {
@@ -144,15 +153,24 @@ func (s *ShooterService) Update(ctx context.Context, competitionID, shooterID in
 		if *p.Name == "" {
 			return nil, fmt.Errorf("name must not be empty")
 		}
+		if len(*p.Name) > 100 {
+			return nil, fmt.Errorf("name must not exceed 100 characters")
+		}
 		name = *p.Name
 	}
 	if p.WAID != nil {
 		if *p.WAID == "" {
 			return nil, fmt.Errorf("wa_id must not be empty")
 		}
+		if len(*p.WAID) > 20 {
+			return nil, fmt.Errorf("wa_id must not exceed 20 characters")
+		}
 		waID = *p.WAID
 	}
 	if p.Club != nil {
+		if len(*p.Club) > 100 {
+			return nil, fmt.Errorf("club must not exceed 100 characters")
+		}
 		club = p.Club
 	}
 	if p.LaneNumber != nil {

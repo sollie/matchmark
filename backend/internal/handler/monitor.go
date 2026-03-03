@@ -26,7 +26,8 @@ func (h *MonitorHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "missing ticket")
 		return
 	}
-	if _, err := h.ticketSvc.Consume(r.Context(), ticket); err != nil {
+	_, ticketCompID, err := h.ticketSvc.Consume(r.Context(), ticket)
+	if err != nil {
 		if errors.Is(err, service.ErrInvalidTicket) {
 			writeError(w, http.StatusUnauthorized, "invalid or expired ticket")
 			return
@@ -43,6 +44,10 @@ func (h *MonitorHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	competitionID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || competitionID < 1 {
 		writeError(w, http.StatusBadRequest, "invalid competition_id")
+		return
+	}
+	if competitionID != ticketCompID {
+		writeError(w, http.StatusForbidden, "ticket not valid for this competition")
 		return
 	}
 
