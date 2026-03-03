@@ -125,14 +125,44 @@ DELETE /api/competitions/{id}/shooters/{sid}    (admin)
      Response: 204 (cascades: stages → hits, stage_locks)
 ```
 
+### Scorer Assignments
+
+```
+POST /api/competitions/{id}/assign
+     Auth: authenticated user (scorer)
+     Body: { "shooter_id": int }
+     Effect: claims shooter for this user within the competition.
+             Fails with 409 if the shooter is already claimed by another user,
+             or if this user already has an assignment in the competition.
+     Response: 200 {
+       "id", "competition_id", "shooter_id", "user_id",
+       "username", "shooter_name", "lane_number", "assigned_at"
+     }
+
+GET /api/competitions/{id}/assign
+    Auth: authenticated user
+    Effect: returns the caller's current assignment, for auto-restore on re-login.
+    Response: 200 { same shape as POST response }
+              404 if no assignment found
+
+GET /api/competitions/{id}/assignments
+    Auth: authenticated user
+    Response: [ { "id", "competition_id", "shooter_id", "user_id",
+                  "username", "shooter_name", "lane_number", "assigned_at" } ]
+    Purpose: allows UI and admin monitor to show which scorer is locked to which lane.
+
+DELETE /api/competitions/{id}/assign
+       Auth: admin only
+       Body: { "shooter_id": int }
+       Effect: releases the assignment for the given shooter so another user can claim it.
+       Response: 204
+```
+
 ### Scoring
 
 ```
 GET /api/competitions/{id}/lanes/{lane}/stage/{stage}
-    Auth: authenticated user (scorers see their assigned score lane;
-          admins can view any lane)
-    Score lane derivation:
-      scoreLane = userLane - 1; if userLane == 1 then scoreLane = lanes_total
+    Auth: authenticated user (any role may read any lane)
     Response: {
       "stage_number":    int,
       "expected_shots":  int,
@@ -152,10 +182,12 @@ GET /api/competitions/{id}/lanes/{lane}/stage/{stage}
     }
 
 POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/hits
-     Auth: scorer for that lane (computed) OR admin
+     Auth: scorer assigned to that lane OR admin
      Body: { "hits": [ "X"|"10"|"9"|"8"|"7"|"0"|"M", ... ] }
-     Rules (scorer): stage must not be locked; len(hits) must == expected_shots
-     Rules (admin):  no lock check; len(hits) must == expected_shots
+     Rules (scorer): must have a scorer_assignment for this competition whose
+                     lane_number matches the requested lane;
+                     stage must not be locked; len(hits) must == expected_shots
+     Rules (admin):  no assignment or lock check; len(hits) must == expected_shots
      Effect: deletes all existing hits for this stage, inserts new ones (transaction)
      Response: 200 {
        "hits":        [ { "ring", "points" } ],
@@ -164,7 +196,7 @@ POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/hits
      }
 
 POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/lock
-     Auth: scorer for that lane only
+     Auth: scorer assigned to that lane
      Effect: sets stage_locks.locked=1 for (stage_id, user_id);
              sets stages.fully_locked=1 (one scorer per lane invariant)
      Response: 200 { "fully_locked": true }
@@ -289,11 +321,14 @@ Router
 ```
 
 ### Score Lane Authorization
-- The `lane` path parameter in scoring endpoints refers to the **shooter's lane**
-- The backend derives the scorer's identity from the JWT, then computes which
-  lane that scorer is authorized to score:
-  `scoreLane = userLane - 1; if userLane == 1 → scoreLane = lanes_total`
-- If the requested `lane` != `scoreLane` for a non-admin request → 403
+- The `lane` path parameter in scoring endpoints refers to the **shooter's lane**.
+- Any authenticated user may read (GET) any lane — no lane restriction on reads.
+- To submit hits or lock a stage, a non-admin caller must have a row in
+  `scorer_assignments` for the competition whose `lane_number` matches the requested lane.
+  If not found or mismatched → 403.
+- Admins bypass the assignment check entirely and may write to any lane.
+- Lane assignment is done by the scorer selecting their name from the competition's
+  shooter list; the server enforces uniqueness (one shooter per user, one user per shooter).
 
 ## PDF Export Layout
 

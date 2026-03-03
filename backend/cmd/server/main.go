@@ -47,16 +47,23 @@ func main() {
 	competitionRepo := repository.NewCompetitionRepository(database)
 	shooterRepo := repository.NewShooterRepository(database)
 	stageRepo := repository.NewStageRepository(database)
+	hitRepo := repository.NewHitRepository(database)
+	lockRepo := repository.NewLockRepository(database)
+	assignmentRepo := repository.NewAssignmentRepository(database)
 
 	authSvc := service.NewAuthService(userRepo, cfg.jwtSecret)
 	userSvc := service.NewUserService(userRepo)
 	competitionSvc := service.NewCompetitionService(competitionRepo)
 	shooterSvc := service.NewShooterService(shooterRepo, stageRepo, competitionRepo)
+	scoringSvc := service.NewScoringService(competitionRepo, shooterRepo, stageRepo, hitRepo, lockRepo, assignmentRepo)
+	assignmentSvc := service.NewAssignmentService(assignmentRepo, competitionRepo, shooterRepo)
 
 	authH := handler.NewAuthHandler(authSvc)
 	userH := handler.NewUserHandler(userSvc)
 	competitionH := handler.NewCompetitionHandler(competitionSvc)
 	shooterH := handler.NewShooterHandler(shooterSvc)
+	scoringH := handler.NewScoringHandler(scoringSvc)
+	assignmentH := handler.NewAssignmentHandler(assignmentSvc)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -84,6 +91,16 @@ func main() {
 
 			r.Get("/competitions/{id}/shooters", shooterH.List)
 
+			r.Post("/competitions/{id}/assign", assignmentH.SelectShooter)
+			r.Get("/competitions/{id}/assign", assignmentH.GetMyAssignment)
+			r.Get("/competitions/{id}/assignments", assignmentH.ListAssignments)
+
+			r.Route("/competitions/{id}/lanes/{lane}/stage/{stage}", func(r chi.Router) {
+				r.Get("/", scoringH.GetStage)
+				r.Post("/hits", scoringH.SubmitHits)
+				r.Post("/lock", scoringH.LockStage)
+			})
+
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireAdmin)
 				r.Get("/users", userH.List)
@@ -98,6 +115,10 @@ func main() {
 				r.Post("/competitions/{id}/shooters", shooterH.Create)
 				r.Put("/competitions/{id}/shooters/{sid}", shooterH.Update)
 				r.Delete("/competitions/{id}/shooters/{sid}", shooterH.Delete)
+
+				r.Delete("/competitions/{id}/assign", assignmentH.ReleaseAssignment)
+
+				r.Post("/competitions/{id}/lanes/{lane}/stage/{stage}/unlock", scoringH.UnlockStage)
 			})
 		})
 	})

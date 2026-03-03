@@ -46,19 +46,29 @@ After every shell script change: run `shellcheck`.
 
 ## Phase 5 — Scoring API
 
-- [ ] `internal/repository/hit.go`, `lock.go`
+- [ ] `internal/repository/hit.go`, `lock.go`, `assignment.go`
 - [ ] `internal/service/scoring.go`:
-  - `GetScoreLane(ownLane, lanesTotal int) int`
-  - `GetStageDetail(...)`: resolve score lane, fetch stage + hits + lock state
-  - `SubmitHits(...)`: validate ring values + count, replace hits in transaction,
-    enforce lock check for scorers, bypass for admin
-  - `LockStage(...)`: set locked=1, set fully_locked=1
+  - `GetStageDetail(...)`: fetch stage + hits + lock state (any authenticated user can read)
+  - `SubmitHits(...)`: validate ring values + count, replace hits in transaction;
+    non-admin must have a `scorer_assignment` whose `lane_number` matches the requested lane
+    and stage must not be locked; admin bypasses both checks
+  - `LockStage(...)`: non-admin must be assigned to that lane; set locked=1, fully_locked=1
   - `UnlockStage(...)`: admin only, reset both
+- [ ] `internal/service/assignment.go`:
+  - `SelectShooter(...)`: claim a shooter; enforce uniqueness per competition
+  - `ReleaseAssignment(...)`: admin releases a shooter so another user can claim it
+  - `GetMyAssignment(...)`: return caller's current assignment for session restore
+  - `ListAssignments(...)`: return all assignments for a competition
 - [ ] `internal/handler/scoring.go`:
   - GET  /api/competitions/{id}/lanes/{lane}/stage/{stage}
   - POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/hits
   - POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/lock
-  - POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/unlock
+  - POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/unlock  (admin)
+- [ ] `internal/handler/assignment.go`:
+  - POST   /api/competitions/{id}/assign
+  - GET    /api/competitions/{id}/assign
+  - GET    /api/competitions/{id}/assignments
+  - DELETE /api/competitions/{id}/assign  (admin)
 
 ## Phase 6 — Admin Monitoring (SSE)
 
@@ -96,8 +106,11 @@ After every shell script change: run `shellcheck`.
 ## Phase 9 — Scorer UI
 
 - [ ] `/login` page: username + password form; store tokens on success
-- [ ] `/score/select` page: list active competitions; lane number input; derive and
-      display score lane; navigate to `/score/stage` on confirm
+- [ ] `/score/select` page:
+  - List active competitions
+  - If caller already has an assignment (GET /assign), restore and navigate directly to stage
+  - Otherwise: show the competition's shooter list; scorer taps their own name to claim it
+    (POST /assign); on success navigate to `/score/stage`
 - [ ] `/score/stage` page:
   - Stage progress dots
   - Shooter name + stage info header
