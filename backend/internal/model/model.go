@@ -60,3 +60,14 @@ type StageLock struct {
 	Locked     bool    `json:"locked"`
 	LockedTime *string `json:"locked_time"`
 }
+
+type ScorerAssignment struct {
+	ID            int64  `json:"id"`
+	CompetitionID int64  `json:"competition_id"`
+	ShooterID     int64  `json:"shooter_id"`
+	UserID        int64  `json:"user_id"`
+	Username      string `json:"username"`
+	ShooterName   string `json:"shooter_name"`
+	LaneNumber    int    `json:"lane_number"`
+	AssignedAt    string `json:"assigned_at"`
+}
