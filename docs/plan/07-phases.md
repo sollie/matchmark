@@ -152,10 +152,23 @@ After every shell script change: run `shellcheck`.
 - [ ] Run `golangci-lint run ./...` in `backend/`; fix all findings
 - [ ] Run `trivy fs --scanners vuln,secret .` from repo root; address findings
 - [ ] Manual PWA install test on Android (Chrome) and iOS (Safari)
+      Steps: deploy stack (`docker compose up`), open the URL in Chrome (Android) and
+      Safari (iOS), accept the "Add to Home Screen" prompt, verify standalone mode
+      launches with correct icon and no browser chrome.
 - [ ] Offline scoring test: disable network mid-stage, complete stage, re-enable,
       verify sync queue replays correctly
+      Steps: open `/score/stage` as a scorer, enable airplane mode, enter all hits for
+      a stage and tap Submit — confirm the offline banner appears and hits are written to
+      IndexedDB. Re-enable network and verify the sync queue drains and hits appear in
+      the admin monitor.
 - [ ] Admin SSE monitor test: verify reconnect after server restart
+      Steps: open `/admin/competitions/[id]` as admin with an active competition, restart
+      the backend container (`docker compose restart backend`), verify the monitor table
+      reconnects automatically within ~30 s without a page reload.
 - [ ] Export test: generate PDF/CSV/JSON for a completed competition; verify layout
+      Steps: finish a competition with scored shooters, open `/admin/competitions/[id]/export`,
+      download all three formats. Verify PDF has correct stage groupings (1500: Match 1–5;
+      60/48: Subtotal 1–2 + Grand Total), all labels in English, and totals match CSV/JSON.
 
 ## Future Work (out of scope v1)
 
