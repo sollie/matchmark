@@ -60,6 +60,7 @@ func main() {
 	assignmentSvc := service.NewAssignmentService(assignmentRepo, competitionRepo, shooterRepo)
 	monitorSvc := service.NewMonitorService(database, competitionSvc)
 	exportSvc := service.NewExportService(exportRepo, competitionRepo)
+	spectatorSvc := service.NewSpectatorService(database)
 
 	authH := handler.NewAuthHandler(authSvc)
 	userH := handler.NewUserHandler(userSvc)
@@ -69,6 +70,7 @@ func main() {
 	assignmentH := handler.NewAssignmentHandler(assignmentSvc)
 	monitorH := handler.NewMonitorHandler(monitorSvc)
 	exportH := handler.NewExportHandler(exportSvc)
+	spectatorH := handler.NewSpectatorHandler(spectatorSvc)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -80,6 +82,11 @@ func main() {
 	})
 
 	r.Route("/api", func(r chi.Router) {
+		r.Route("/spectator", func(r chi.Router) {
+			r.Get("/competitions", spectatorH.ListCompetitions)
+			r.Get("/competitions/{id}/live", spectatorH.Stream)
+		})
+
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/login", authH.Login)
 			r.Post("/refresh", authH.Refresh)
