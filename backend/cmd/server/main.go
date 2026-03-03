@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -78,17 +79,21 @@ func main() {
 	sseTicketH := handler.NewSSETicketHandler(sseTicketSvc)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
+	r.Use(newStructuredLogger())
 
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
 	authRateLimiter := newIPRateLimiter(5, 10)
+	apiRateLimiter := newIPRateLimiter(60, 120)
+	corsMiddleware := newCORSMiddleware(cfg.frontendOrigin)
 
 	r.Route("/api", func(r chi.Router) {
+		r.Use(apiRateLimiter)
+		r.Use(corsMiddleware)
 		r.Route("/spectator", func(r chi.Router) {
 			r.Get("/competitions", spectatorH.ListCompetitions)
 			r.Get("/competitions/{id}/live", spectatorH.Stream)
@@ -214,10 +219,53 @@ func (l *ipRateLimiter) cleanup() {
 	}
 }
 
+func newStructuredLogger() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			next.ServeHTTP(ww, r)
+			slog.Info("request",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", ww.Status(),
+				"latency_ms", time.Since(start).Milliseconds(),
+				"remote", r.RemoteAddr,
+			)
+		})
+	}
+}
+
+func newCORSMiddleware(allowedOrigin string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			if allowedOrigin != "" && origin != "" {
+				if origin == allowedOrigin {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+					w.Header().Set("Vary", "Origin")
+				}
+			}
+			if r.Method == http.MethodOptions {
+				if allowedOrigin != "" && origin == allowedOrigin {
+					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+					w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+					w.Header().Set("Access-Control-Max-Age", "86400")
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 type config struct {
-	dbPath        string
-	jwtSecret     string
-	adminPassword string
+	dbPath         string
+	jwtSecret      string
+	adminPassword  string
+	frontendOrigin string
 }
 
 func loadConfig() (config, error) {
@@ -247,8 +295,9 @@ func loadConfig() (config, error) {
 	}
 
 	return config{
-		dbPath:        dbPath,
-		jwtSecret:     jwtSecret,
-		adminPassword: adminPassword,
+		dbPath:         dbPath,
+		jwtSecret:      jwtSecret,
+		adminPassword:  adminPassword,
+		frontendOrigin: os.Getenv("FRONTEND_ORIGIN"),
 	}, nil
 }
