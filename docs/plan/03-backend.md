@@ -81,18 +81,20 @@ POST   /api/users/{id}/reset-password
 ```
 GET  /api/competitions
      Query:    ?status=draft|active|finished  (omit for all; scorers only see active)
-     Response: [ { "id", "name", "date", "lanes_total", "status" } ]
+     Response: [ { "id", "name", "date", "lanes_total", "status", "spectator_enabled" } ]
 
 POST /api/competitions                          (admin)
-     Body:     { "name": string, "date": "YYYY-MM-DD", "lanes_total": int }
-     Response: 201 { "id", "name", "date", "lanes_total", "status": "draft" }
+     Body:     { "name": string, "date": "YYYY-MM-DD", "lanes_total": int,
+                 "spectator_enabled"?: bool }
+     Response: 201 { "id", "name", "date", "lanes_total", "status": "draft",
+                     "spectator_enabled" }
 
 GET  /api/competitions/{id}
-     Response: { "id", "name", "date", "lanes_total", "status" }
+     Response: { "id", "name", "date", "lanes_total", "status", "spectator_enabled" }
 
 PUT  /api/competitions/{id}                     (admin)
-     Body:     { "name"?, "date"?, "lanes_total"?, "status"? }
-     Response: 200 { "id", "name", "date", "lanes_total", "status" }
+     Body:     { "name"?, "date"?, "lanes_total"?, "status"?, "spectator_enabled"? }
+     Response: 200 { "id", "name", "date", "lanes_total", "status", "spectator_enabled" }
 ```
 
 ### Shooters / Lanes
@@ -195,6 +197,38 @@ GET /api/admin/monitor?competition_id={id}
           "scorer_locked":      bool,
           "cumulative_score":   int,
           "x_count":            int
+        }
+      ]
+    }
+```
+
+### Spectator (public — no auth required)
+
+```
+GET /api/spectator/competitions
+    Response: [ { "id", "name", "date", "status" } ]
+    Returns only competitions where spectator_enabled = 1 AND status = 'active'
+
+GET /api/spectator/competitions/{id}/live
+    Content-Type: text/event-stream
+    Auth: none
+    Returns 404 if competition not found or spectator_enabled = 0
+    Emits every 3 seconds:
+    data: {
+      "competition_id":   int,
+      "competition_name": string,
+      "lanes": [
+        {
+          "lane_number":        int,
+          "shooter_name":       string,
+          "club":               string | null,
+          "discipline":         string,
+          "weapon_class":       string,
+          "cumulative_score":   int,
+          "cumulative_x_count": int,
+          "stages": [
+            { "stage_number": int, "score": int, "x_count": int, "locked": bool }
+          ]
         }
       ]
     }

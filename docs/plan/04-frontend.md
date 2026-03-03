@@ -16,6 +16,8 @@
 | Route | Access | Purpose |
 |-------|--------|---------|
 | `/login` | public | Username + password login |
+| `/live` | public | List active competitions with spectator mode enabled; select one |
+| `/live/[id]` | public | SSE-driven live ranked scoreboard for selected competition |
 | `/` | auth | Redirect: admin → `/admin`, user → `/score/select` |
 | `/score/select` | user | Pick active competition + own lane number |
 | `/score/stage` | user | Scoring keypad — one stage at a time |
@@ -195,3 +197,26 @@ VitePWA({
 - Same keypad UI as scorer view but without lock enforcement
 - Admin can modify any stage regardless of lock status
 - Submits to `POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/hits`
+
+## Spectator Live View
+
+### `/live` — Competition Selector
+
+- Fetches `GET /api/spectator/competitions` (no auth required)
+- Displays a card per competition: name and date
+- Clicking a card navigates to `/live/[id]`
+- No auth guard; accessible without an account
+
+### `/live/[id]` — Live Scoreboard
+
+- Opens SSE connection to `GET /api/spectator/competitions/{id}/live` (no auth)
+- Auto-reconnects on disconnect (exponential backoff, max 30s — same pattern as admin monitor)
+- Shows "Competition not found or not available for public viewing" if SSE returns 404
+- Table sorted by cumulative score descending (live ranking); rank updates in real time
+
+#### Scoreboard columns:
+Rank | Lane | Name | Club | Discipline | Weapon Class | Stage 1 … Stage N | Total | X
+
+- Stage columns are dynamic based on `total_stages` from first SSE event
+- Stage cells fill in as scores arrive; stages not yet completed shown as grey/empty
+- Both routes excluded from auth guard in `+layout.svelte`

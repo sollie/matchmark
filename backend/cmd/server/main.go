@@ -44,10 +44,19 @@ func main() {
 	}
 
 	userRepo := repository.NewUserRepository(database)
+	competitionRepo := repository.NewCompetitionRepository(database)
+	shooterRepo := repository.NewShooterRepository(database)
+	stageRepo := repository.NewStageRepository(database)
+
 	authSvc := service.NewAuthService(userRepo, cfg.jwtSecret)
 	userSvc := service.NewUserService(userRepo)
+	competitionSvc := service.NewCompetitionService(competitionRepo)
+	shooterSvc := service.NewShooterService(shooterRepo, stageRepo, competitionRepo)
+
 	authH := handler.NewAuthHandler(authSvc)
 	userH := handler.NewUserHandler(userSvc)
+	competitionH := handler.NewCompetitionHandler(competitionSvc)
+	shooterH := handler.NewShooterHandler(shooterSvc)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -70,6 +79,11 @@ func main() {
 
 			r.Get("/users/me", userH.Me)
 
+			r.Get("/competitions", competitionH.List)
+			r.Get("/competitions/{id}", competitionH.Get)
+
+			r.Get("/competitions/{id}/shooters", shooterH.List)
+
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireAdmin)
 				r.Get("/users", userH.List)
@@ -77,6 +91,13 @@ func main() {
 				r.Put("/users/{id}", userH.Update)
 				r.Delete("/users/{id}", userH.Delete)
 				r.Post("/users/{id}/reset-password", userH.ResetPassword)
+
+				r.Post("/competitions", competitionH.Create)
+				r.Put("/competitions/{id}", competitionH.Update)
+
+				r.Post("/competitions/{id}/shooters", shooterH.Create)
+				r.Put("/competitions/{id}/shooters/{sid}", shooterH.Update)
+				r.Delete("/competitions/{id}/shooters/{sid}", shooterH.Delete)
 			})
 		})
 	})
