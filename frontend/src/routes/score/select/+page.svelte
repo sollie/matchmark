@@ -40,7 +40,8 @@
 		locked_by_scorer: boolean;
 		fully_locked: boolean;
 		stage_score: number;
-		x_count: number;
+		stage_x_count: number;
+		total_stages: number;
 	}
 
 	let competitions = $state<Competition[]>([]);
@@ -71,7 +72,7 @@
 						lockedByScorer: d.locked_by_scorer,
 						fullyLocked: d.fully_locked,
 						stageScore: d.stage_score,
-						xCount: d.x_count,
+						xCount: d.stage_x_count,
 						synced: true
 					});
 				}
@@ -117,10 +118,6 @@
 
 			const stageRes = await apiFetch(`/api/competitions/${comp.id}/lanes/${sl}/stage/1`);
 			if (stageRes.ok) {
-				const d: StageDetail = await stageRes.json();
-				const totalStages = d.expected_shots > 0 ? undefined : 1;
-				void totalStages;
-				session.update((s) => ({ ...s, totalStages: null }));
 				await navigateToStage(comp.id, sl);
 			}
 			return;
@@ -171,9 +168,7 @@
 		if (!stageRes.ok) { goto('/score/stage'); return; }
 		const first: StageDetail = await stageRes.json();
 
-		const rulebook: Record<string, number> = { '1500': 10, '60': 4, '48': 4 };
-		let discipline = selectedComp?.discipline ?? '';
-		const totalStages = rulebook[discipline] ?? 10;
+		const totalStages = first.total_stages;
 
 		session.update((s) => ({ ...s, totalStages }));
 		const stages = await loadStages(compId, lane, totalStages);
@@ -186,7 +181,6 @@
 		currentStage = Math.min(currentStage, totalStages);
 
 		scoring.set({ currentStage, stages });
-		void first;
 		goto('/score/stage');
 	}
 </script>

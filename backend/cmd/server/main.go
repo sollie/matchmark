@@ -25,6 +25,17 @@ import (
 
 var version = "dev"
 
+const (
+	authRateLimit              rate.Limit = 5
+	authRateBurst                         = 10
+	apiRateLimit               rate.Limit = 60
+	apiRateBurst                          = 120
+	rateLimiterCleanupInterval            = 10 * time.Minute
+	rateLimiterEntryTTL                   = 30 * time.Minute
+	corsMaxAge                            = "86400"
+	minJWTSecretLen                       = 32
+)
+
 func main() {
 	cfg, err := loadConfig()
 	if err != nil {
@@ -89,8 +100,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	authRateLimiter := newIPRateLimiter(5, 10)
-	apiRateLimiter := newIPRateLimiter(60, 120)
+	authRateLimiter := newIPRateLimiter(authRateLimit, authRateBurst)
+	apiRateLimiter := newIPRateLimiter(apiRateLimit, apiRateBurst)
 	corsMiddleware := newCORSMiddleware(cfg.frontendOrigin)
 
 	r.Route("/api", func(r chi.Router) {
@@ -213,10 +224,10 @@ func (l *ipRateLimiter) getLimiter(ip string) *rate.Limiter {
 
 func (l *ipRateLimiter) cleanup() {
 	for {
-		time.Sleep(10 * time.Minute)
+		time.Sleep(rateLimiterCleanupInterval)
 		l.mu.Lock()
 		for ip, entry := range l.entries {
-			if time.Since(entry.lastSeen) > 30*time.Minute {
+			if time.Since(entry.lastSeen) > rateLimiterEntryTTL {
 				delete(l.entries, ip)
 			}
 		}
@@ -256,7 +267,7 @@ func newCORSMiddleware(allowedOrigin string) func(http.Handler) http.Handler {
 				if allowedOrigin != "" && origin == allowedOrigin {
 					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 					w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-					w.Header().Set("Access-Control-Max-Age", "86400")
+					w.Header().Set("Access-Control-Max-Age", corsMaxAge)
 				}
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -282,12 +293,12 @@ func loadConfig() (config, error) {
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if len(jwtSecret) < 32 {
+	if len(jwtSecret) < minJWTSecretLen {
 		errs = append(errs, errors.New("JWT_SECRET must be at least 32 characters"))
 	}
 
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
-	if len(adminPassword) < 16 {
+	if len(adminPassword) < auth.MinPasswordLen {
 		errs = append(errs, errors.New("ADMIN_PASSWORD must be at least 16 characters"))
 	}
 

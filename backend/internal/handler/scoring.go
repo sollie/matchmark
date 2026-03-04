@@ -121,6 +121,10 @@ func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	if len(body.Hits) > 200 {
+		writeError(w, http.StatusBadRequest, "too many hits")
+		return
+	}
 
 	callerID := auth.UserIDFromContext(r.Context())
 	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
@@ -155,9 +159,9 @@ func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
 		hits[i] = hitResp{Ring: h.Ring, Points: h.Points}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"hits":        hits,
-		"stage_score": result.StageScore,
-		"x_count":     result.XCount,
+		"hits":          hits,
+		"stage_score":   result.StageScore,
+		"stage_x_count": result.XCount,
 	})
 }
 
@@ -233,6 +237,10 @@ func (h *ScoringHandler) IssueStageTicket(w http.ResponseWriter, r *http.Request
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.Lane < 1 || body.Stage < 1 {
+		writeError(w, http.StatusBadRequest, "lane and stage must be positive")
 		return
 	}
 

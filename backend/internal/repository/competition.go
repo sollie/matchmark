@@ -79,30 +79,6 @@ func (r *CompetitionRepository) List(ctx context.Context, status string) (_ []mo
 	return out, rows.Err()
 }
 
-func (r *CompetitionRepository) ListActiveSpectator(ctx context.Context) (_ []model.Competition, retErr error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+competitionCols+` FROM competitions WHERE status = 'active' AND spectator_enabled = 1 ORDER BY id`,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("list spectator competitions: %w", err)
-	}
-	defer func() {
-		if cerr := rows.Close(); cerr != nil && retErr == nil {
-			retErr = cerr
-		}
-	}()
-
-	var out []model.Competition
-	for rows.Next() {
-		c, err := scanCompetitionRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, c)
-	}
-	return out, rows.Err()
-}
-
 func (r *CompetitionRepository) Create(ctx context.Context, name, date string, lanesTotal int, spectatorEnabled bool) (*model.Competition, error) {
 	se := 0
 	if spectatorEnabled {

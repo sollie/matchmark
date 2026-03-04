@@ -27,9 +27,10 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"id":       user.ID,
-		"username": user.Username,
-		"role":     user.Role,
+		"id":         user.ID,
+		"username":   user.Username,
+		"role":       user.Role,
+		"created_at": user.CreatedAt,
 	})
 }
 
@@ -77,6 +78,8 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, service.ErrInvalidRole):
 			writeError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, auth.ErrPasswordTooShort):
+			writeError(w, http.StatusBadRequest, err.Error())
 		case repository.IsUniqueConstraintErr(err):
 			writeError(w, http.StatusConflict, "username already taken")
 		default:
@@ -86,9 +89,10 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{
-		"id":       user.ID,
-		"username": user.Username,
-		"role":     user.Role,
+		"id":         user.ID,
+		"username":   user.Username,
+		"role":       user.Role,
+		"created_at": user.CreatedAt,
 	})
 }
 
@@ -127,9 +131,10 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"id":       user.ID,
-		"username": user.Username,
-		"role":     user.Role,
+		"id":         user.ID,
+		"username":   user.Username,
+		"role":       user.Role,
+		"created_at": user.CreatedAt,
 	})
 }
 
@@ -179,6 +184,8 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, service.ErrUserNotFound):
 			writeError(w, http.StatusNotFound, "user not found")
+		case errors.Is(err, auth.ErrPasswordTooShort):
+			writeError(w, http.StatusBadRequest, err.Error())
 		default:
 			writeError(w, http.StatusInternalServerError, "failed to reset password")
 		}

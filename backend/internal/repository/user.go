@@ -145,17 +145,6 @@ func (r *UserRepository) GetRefreshToken(ctx context.Context, tokenHash string) 
 	return &rt, nil
 }
 
-func (r *UserRepository) DeleteRefreshTokenFamily(ctx context.Context, familyID string) error {
-	_, err := r.db.ExecContext(ctx,
-		`DELETE FROM refresh_tokens WHERE family_id = ?`,
-		familyID,
-	)
-	if err != nil {
-		return fmt.Errorf("delete refresh token family: %w", err)
-	}
-	return nil
-}
-
 func (r *UserRepository) DeleteRefreshToken(ctx context.Context, tokenHash string) error {
 	_, err := r.db.ExecContext(ctx,
 		`DELETE FROM refresh_tokens WHERE token_hash = ?`,
@@ -163,17 +152,6 @@ func (r *UserRepository) DeleteRefreshToken(ctx context.Context, tokenHash strin
 	)
 	if err != nil {
 		return fmt.Errorf("delete refresh token: %w", err)
-	}
-	return nil
-}
-
-func (r *UserRepository) DeleteAllRefreshTokensForUser(ctx context.Context, userID int64) error {
-	_, err := r.db.ExecContext(ctx,
-		`DELETE FROM refresh_tokens WHERE user_id = ?`,
-		userID,
-	)
-	if err != nil {
-		return fmt.Errorf("delete refresh tokens for user: %w", err)
 	}
 	return nil
 }
