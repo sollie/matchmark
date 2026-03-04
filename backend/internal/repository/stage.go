@@ -53,30 +53,3 @@ func (r *StageRepository) GetByShooterAndNumber(ctx context.Context, shooterID i
 	s.FullyLocked = locked == 1
 	return &s, nil
 }
-
-func (r *StageRepository) ListByShooter(ctx context.Context, shooterID int64) (_ []model.Stage, retErr error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, shooter_id, stage_number, expected_shots, fully_locked FROM stages WHERE shooter_id = ? ORDER BY stage_number`,
-		shooterID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("list stages: %w", err)
-	}
-	defer func() {
-		if cerr := rows.Close(); cerr != nil && retErr == nil {
-			retErr = cerr
-		}
-	}()
-
-	var out []model.Stage
-	for rows.Next() {
-		var s model.Stage
-		var locked int
-		if err := rows.Scan(&s.ID, &s.ShooterID, &s.StageNumber, &s.ExpectedShots, &locked); err != nil {
-			return nil, fmt.Errorf("scan stage: %w", err)
-		}
-		s.FullyLocked = locked == 1
-		out = append(out, s)
-	}
-	return out, rows.Err()
-}

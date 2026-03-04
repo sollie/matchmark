@@ -118,16 +118,6 @@ func CourseOfFire(discipline, weaponClass string) (Course, error) {
 	return Course{}, fmt.Errorf("unknown discipline %q", discipline)
 }
 
-func WeaponClassesForDiscipline(discipline string) ([]string, error) {
-	classes, ok := weaponClasses[discipline]
-	if !ok {
-		return nil, fmt.Errorf("unknown discipline %q", discipline)
-	}
-	out := make([]string, len(classes))
-	copy(out, classes)
-	return out, nil
-}
-
 func RingPoints(ring string) (int, error) {
 	switch ring {
 	case "X", "10":
@@ -142,8 +132,4 @@ func RingPoints(ring string) (int, error) {
 		return 0, nil
 	}
 	return 0, fmt.Errorf("invalid ring value %q", ring)
-}
-
-func IsXCount(ring string) bool {
-	return ring == "X"
 }

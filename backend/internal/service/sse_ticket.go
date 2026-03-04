@@ -12,6 +12,12 @@ import (
 
 var ErrInvalidTicket = errors.New("invalid or expired SSE ticket")
 
+const (
+	ticketCleanupInterval = 5 * time.Minute
+	ticketTTL             = 30 * time.Second
+	ticketEntropyBytes    = 24
+)
+
 type SSETicketService struct {
 	db *sql.DB
 }
@@ -24,7 +30,7 @@ func NewSSETicketService(db *sql.DB) *SSETicketService {
 
 func (s *SSETicketService) startCleanup() {
 	for {
-		time.Sleep(5 * time.Minute)
+		time.Sleep(ticketCleanupInterval)
 		now := time.Now().UTC().Format(time.RFC3339)
 		_, _ = s.db.Exec(
 			`DELETE FROM sse_tickets WHERE expires_at < ? OR used = 1`,
@@ -34,12 +40,12 @@ func (s *SSETicketService) startCleanup() {
 }
 
 func (s *SSETicketService) Issue(ctx context.Context, userID, competitionID int64) (string, error) {
-	raw := make([]byte, 24)
+	raw := make([]byte, ticketEntropyBytes)
 	if _, err := rand.Read(raw); err != nil {
 		return "", fmt.Errorf("generate ticket: %w", err)
 	}
 	ticket := base64.RawURLEncoding.EncodeToString(raw)
-	expiresAt := time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339)
+	expiresAt := time.Now().Add(ticketTTL).UTC().Format(time.RFC3339)
 
 	if _, err := s.db.ExecContext(ctx,
 		`INSERT INTO sse_tickets (ticket, user_id, competition_id, expires_at) VALUES (?, ?, ?, ?)`,
@@ -51,12 +57,12 @@ func (s *SSETicketService) Issue(ctx context.Context, userID, competitionID int6
 }
 
 func (s *SSETicketService) IssueForStage(ctx context.Context, userID, competitionID int64, lane, stageNumber int) (string, error) {
-	raw := make([]byte, 24)
+	raw := make([]byte, ticketEntropyBytes)
 	if _, err := rand.Read(raw); err != nil {
 		return "", fmt.Errorf("generate ticket: %w", err)
 	}
 	ticket := base64.RawURLEncoding.EncodeToString(raw)
-	expiresAt := time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339)
+	expiresAt := time.Now().Add(ticketTTL).UTC().Format(time.RFC3339)
 
 	if _, err := s.db.ExecContext(ctx,
 		`INSERT INTO sse_tickets (ticket, user_id, competition_id, lane, stage_number, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,

@@ -7,6 +7,8 @@ import { openSyncQueue } from '$lib/db/idb';
 
 declare const self: ServiceWorkerGlobalScope;
 
+const MAX_RETRIES = 3;
+
 let accessToken: string | null = null;
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -54,14 +56,14 @@ async function replayQueue(): Promise<void> {
 				await db.delete('sync_queue', item.id);
 			} else {
 				item.retries += 1;
-				if (item.retries >= 3) {
+				if (item.retries >= MAX_RETRIES) {
 					item.errored = true;
 				}
 				await db.put('sync_queue', item);
 			}
 		} catch {
 			item.retries += 1;
-			if (item.retries >= 3) {
+			if (item.retries >= MAX_RETRIES) {
 				item.errored = true;
 			}
 			await db.put('sync_queue', item);

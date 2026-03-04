@@ -50,6 +50,7 @@
 		fully_locked: boolean;
 		stage_score: number;
 		stage_x_count: number;
+		total_stages: number;
 	}
 
 	interface Shooter {
@@ -137,9 +138,12 @@
 		selectedLane = lane;
 		panelLoading = true;
 		panelStages = [];
-		const totalStages = lane.discipline === '1500' ? 10 : 4;
-		const results: StageDetail[] = [];
-		for (let s = 1; s <= totalStages; s++) {
+		const firstRes = await apiFetch(`/api/competitions/${compId}/lanes/${lane.lane_number}/stage/1`);
+		if (!firstRes.ok) { panelLoading = false; return; }
+		const first: StageDetail = await firstRes.json();
+		const totalStages = first.total_stages;
+		const results: StageDetail[] = [first];
+		for (let s = 2; s <= totalStages; s++) {
 			const res = await apiFetch(`/api/competitions/${compId}/lanes/${lane.lane_number}/stage/${s}`);
 			if (res.ok) results.push(await res.json());
 		}

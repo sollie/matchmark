@@ -19,6 +19,8 @@ var (
 	ErrInvalidToken       = errors.New("invalid refresh token")
 )
 
+const accessTokenTTLSeconds = 3600
+
 type AuthService struct {
 	db        *sql.DB
 	users     *repository.UserRepository
@@ -67,7 +69,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	return &LoginResult{
 		AccessToken:  accessToken,
 		RefreshToken: rawRefresh,
-		ExpiresIn:    3600,
+		ExpiresIn:    accessTokenTTLSeconds,
 		User:         user,
 	}, nil
 }
@@ -94,7 +96,9 @@ func (s *AuthService) Refresh(ctx context.Context, rawRefreshToken string) (*Ref
 		return nil, fmt.Errorf("parse expiry: %w", err)
 	}
 	if time.Now().After(expiry) {
-		_ = s.users.DeleteRefreshToken(ctx, hashed)
+		if err := s.users.DeleteRefreshToken(ctx, hashed); err != nil {
+			return nil, fmt.Errorf("delete expired token: %w", err)
+		}
 		return nil, ErrTokenExpired
 	}
 
@@ -120,7 +124,7 @@ func (s *AuthService) Refresh(ctx context.Context, rawRefreshToken string) (*Ref
 	return &RefreshResult{
 		AccessToken:  accessToken,
 		RefreshToken: newRaw,
-		ExpiresIn:    3600,
+		ExpiresIn:    accessTokenTTLSeconds,
 	}, nil
 }
 

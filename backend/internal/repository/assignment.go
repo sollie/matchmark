@@ -70,14 +70,6 @@ func (r *AssignmentRepository) DeleteByShooter(ctx context.Context, competitionI
 	return err
 }
 
-func (r *AssignmentRepository) DeleteByUser(ctx context.Context, competitionID, userID int64) error {
-	_, err := r.db.ExecContext(ctx,
-		`DELETE FROM scorer_assignments WHERE competition_id = ? AND user_id = ?`,
-		competitionID, userID,
-	)
-	return err
-}
-
 func (r *AssignmentRepository) ListByCompetition(ctx context.Context, competitionID int64) (_ []model.ScorerAssignment, retErr error) {
 	rows, err := r.db.QueryContext(ctx,
 		assignmentJoin+` WHERE sa.competition_id = ? ORDER BY s.lane_number`,

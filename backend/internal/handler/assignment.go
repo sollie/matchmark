@@ -32,6 +32,10 @@ func (h *AssignmentHandler) SelectShooter(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	if body.ShooterID < 1 {
+		writeError(w, http.StatusBadRequest, "shooter_id must be positive")
+		return
+	}
 
 	callerID := auth.UserIDFromContext(r.Context())
 

@@ -18,15 +18,15 @@ const (
 	argon2Threads  = 4
 	argon2KeyLen   = 32
 	saltLen        = 16
-	minPasswordLen = 16
+	MinPasswordLen = 16
 )
 
-var ErrPasswordTooShort = fmt.Errorf("password must be at least %d characters", minPasswordLen)
+var ErrPasswordTooShort = fmt.Errorf("password must be at least %d characters", MinPasswordLen)
 var ErrInvalidHash = errors.New("invalid password hash format")
 var ErrPasswordMismatch = errors.New("password does not match")
 
 func HashPassword(password string) (string, error) {
-	if len(password) < minPasswordLen {
+	if len(password) < MinPasswordLen {
 		return "", ErrPasswordTooShort
 	}
 

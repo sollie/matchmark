@@ -9,9 +9,8 @@ import (
 type contextKey string
 
 const (
-	contextKeyUserID   contextKey = "userID"
-	contextKeyUsername contextKey = "username"
-	contextKeyRole     contextKey = "role"
+	contextKeyUserID contextKey = "userID"
+	contextKeyRole   contextKey = "role"
 )
 
 func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
@@ -35,7 +34,6 @@ func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), contextKeyUserID, claims.UserID)
-			ctx = context.WithValue(ctx, contextKeyUsername, claims.Username)
 			ctx = context.WithValue(ctx, contextKeyRole, claims.Role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -58,11 +56,6 @@ func RequireAdmin(next http.Handler) http.Handler {
 func UserIDFromContext(ctx context.Context) int64 {
 	id, _ := ctx.Value(contextKeyUserID).(int64)
 	return id
-}
-
-func UsernameFromContext(ctx context.Context) string {
-	name, _ := ctx.Value(contextKeyUsername).(string)
-	return name
 }
 
 func RoleFromContext(ctx context.Context) string {
