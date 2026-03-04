@@ -186,7 +186,8 @@ POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/hits
      Body: { "hits": [ "X"|"10"|"9"|"8"|"7"|"0"|"M", ... ] }
      Rules (scorer): must have a scorer_assignment for this competition whose
                      lane_number matches the requested lane;
-                     stage must not be locked; len(hits) must == expected_shots
+                     stage must not be locked; len(hits) must == expected_shots;
+                     if competition has only one lane → 403 "admin scoring required"
      Rules (admin):  no assignment or lock check; len(hits) must == expected_shots
      Effect: deletes all existing hits for this stage, inserts new ones (transaction)
      Response: 200 {
@@ -197,6 +198,7 @@ POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/hits
 
 POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/lock
      Auth: scorer assigned to that lane
+     Rules (scorer): if competition has only one lane → 403 "admin scoring required"
      Effect: sets stage_locks.locked=1 for (stage_id, user_id);
              sets stages.fully_locked=1 (one scorer per lane invariant)
      Response: 200 { "fully_locked": true }
@@ -210,8 +212,16 @@ POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/unlock
 ### Admin Monitoring (SSE)
 
 ```
-GET /api/admin/monitor?competition_id={id}
-    Auth: admin
+POST /api/admin/sse-ticket
+     Auth: admin
+     Body: { "competition_id": int }
+     Response: 200 { "ticket": string }
+     Purpose: issues a short-lived single-use token so the browser can authenticate
+              the subsequent EventSource connection (browsers cannot set Authorization
+              headers on EventSource). Ticket expires after ~30s and is consumed on use.
+
+GET /api/admin/monitor?competition_id={id}&ticket={ticket}
+    Auth: admin (ticket validated on first connect; standard JWT used for reconnects)
     Content-Type: text/event-stream
     Emits every 3 seconds:
     data: {

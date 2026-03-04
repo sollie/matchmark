@@ -28,15 +28,17 @@
 | Service | Image | Role |
 |---------|-------|------|
 | `backend` | custom Go build | REST API, business logic, SQLite |
-| `frontend` | custom Node build | Builds SvelteKit; copies static output to shared volume then exits |
-| `caddy` | `caddy:2-alpine` | TLS (Let's Encrypt), static file server, reverse proxy |
+| `caddy` | custom multi-stage build (Node → caddy) | Builds SvelteKit, then serves static files + TLS + reverse proxy |
+
+The `caddy/Dockerfile` is a multi-stage build: stage 1 (Node) builds the SvelteKit app;
+stage 2 copies the output into a `caddy` image. No separate frontend service or shared
+volume is needed.
 
 ## Named Volumes
 
 | Volume | Used by | Contents |
 |--------|---------|----------|
 | `db_data` | backend | `matchmark.db` |
-| `frontend_dist` | frontend (write), caddy (read) | Compiled SvelteKit output |
 | `caddy_data` | caddy | ACME certs, Caddy state |
 | `caddy_config` | caddy | Caddy runtime config |
 
@@ -56,7 +58,12 @@ matchmark/
 │   │   │   ├── migrate.go           # embedded SQL migration runner
 │   │   │   ├── seed.go              # admin user seed (reads ADMIN_PASSWORD env)
 │   │   │   └── migrations/
-│   │   │       └── 001_init.sql     # full schema (see 02-database.md)
+│   │   │       ├── 001_init.sql     # full schema (see 02-database.md)
+│   │   │       ├── 002_spectator.sql        # spectator_enabled column
+│   │   │       ├── 003_scorer_assignments.sql
+│   │   │       ├── 004_sse_tickets.sql      # SSE auth ticket table
+│   │   │       ├── 005_refresh_token_family.sql  # token family tracking
+│   │   │       └── 006_sse_ticket_competition.sql
 │   │   ├── model/
 │   │   │   └── model.go             # shared Go structs
 │   │   ├── rulebook/
@@ -68,21 +75,32 @@ matchmark/
 │   │   │   ├── shooter.go
 │   │   │   ├── stage.go
 │   │   │   ├── hit.go
-│   │   │   └── lock.go
+│   │   │   ├── lock.go
+│   │   │   ├── assignment.go
+│   │   │   └── export.go
 │   │   ├── service/
 │   │   │   ├── auth.go
 │   │   │   ├── competition.go
 │   │   │   ├── shooter.go
 │   │   │   ├── scoring.go           # hit submission, lane derivation, lock logic
-│   │   │   └── monitor.go           # SSE data aggregation
+│   │   │   ├── assignment.go        # scorer ↔ shooter claim/release
+│   │   │   ├── monitor.go           # SSE data aggregation
+│   │   │   ├── spectator.go         # public spectator snapshots
+│   │   │   ├── sse_ticket.go        # short-lived SSE auth tickets
+│   │   │   ├── export.go
+│   │   │   └── user.go
 │   │   ├── handler/
 │   │   │   ├── auth.go
 │   │   │   ├── user.go
 │   │   │   ├── competition.go
 │   │   │   ├── shooter.go
 │   │   │   ├── scoring.go
+│   │   │   ├── assignment.go
 │   │   │   ├── monitor.go           # SSE endpoint
-│   │   │   └── export.go
+│   │   │   ├── spectator.go
+│   │   │   ├── sse_ticket.go        # POST /api/admin/sse-ticket
+│   │   │   ├── export.go
+│   │   │   └── helpers.go
 │   │   └── export/
 │   │       ├── pdf.go               # gofpdf scorecard layout
 │   │       ├── csv.go
@@ -112,6 +130,10 @@ matchmark/
 │   │   │   ├── +layout.svelte       # auth guard + nav
 │   │   │   ├── login/
 │   │   │   │   └── +page.svelte
+│   │   │   ├── live/
+│   │   │   │   ├── +page.svelte     # spectator competition list
+│   │   │   │   └── [id]/
+│   │   │   │       └── +page.svelte # live SSE scoreboard (public)
 │   │   │   ├── score/
 │   │   │   │   ├── select/
 │   │   │   │   │   └── +page.svelte # pick competition + own lane
@@ -138,12 +160,23 @@ matchmark/
 │   │   └── icons/                   # PWA icons (192×192, 512×512, maskable)
 │   ├── svelte.config.js
 │   ├── vite.config.ts
-│   ├── package.json
-│   └── Dockerfile
+│   └── package.json
 ├── caddy/
-│   └── Caddyfile
-├── docker-compose.yml
-├── .env.example
+│   ├── Caddyfile                    # production config ({$DOMAIN})
+│   ├── Caddyfile.dev                # local Docker dev (HTTP only)
+│   ├── Caddyfile.local              # local non-Docker dev (localhost TLS via Caddy CA)
+│   └── Dockerfile                   # multi-stage: Node build → caddy image
+├── .github/
+│   ├── CODEOWNERS
+│   ├── dependabot.yml
+│   └── workflows/
+│       ├── ci.yml                   # lint + build on every push/PR
+│       ├── codeql.yml               # static analysis
+│       └── release.yml              # cross-compile + GitHub release on tag
+├── docker-compose.yml               # production: backend + caddy
+├── docker-compose.dev.yml           # local Docker dev override
+├── .env.example                     # documents all required env vars
+├── README.md
 ├── AGENTS.md
 └── docs/
     └── plan/                        # this directory
