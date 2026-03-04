@@ -30,20 +30,31 @@ func parseStageParam(r *http.Request) (int, error) {
 	return strconv.Atoi(chi.URLParam(r, "stage"))
 }
 
-func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
+type hitResp struct {
+	Ring   string `json:"ring"`
+	Points int    `json:"points"`
+}
+
+func parseScoringParams(r *http.Request) (int64, int, int, error) {
 	compID, err := parseIDParam(r, "id")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid competition id")
-		return
+		return 0, 0, 0, err
 	}
 	lane, err := parseLaneParam(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid lane")
-		return
+		return 0, 0, 0, err
 	}
-	stageNum, err := parseStageParam(r)
+	stage, err := parseStageParam(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid stage")
+		return 0, 0, 0, err
+	}
+	return compID, lane, stage, nil
+}
+
+func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
+	compID, lane, stageNum, err := parseScoringParams(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid path parameters")
 		return
 	}
 
@@ -72,10 +83,6 @@ func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 		WAID string  `json:"wa_id"`
 		Club *string `json:"club"`
 	}
-	type hitResp struct {
-		Ring   string `json:"ring"`
-		Points int    `json:"points"`
-	}
 	hits := make([]hitResp, len(detail.Hits))
 	for i, h := range detail.Hits {
 		hits[i] = hitResp{Ring: h.Ring, Points: h.Points}
@@ -101,19 +108,9 @@ func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
-	compID, err := parseIDParam(r, "id")
+	compID, lane, stageNum, err := parseScoringParams(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid competition id")
-		return
-	}
-	lane, err := parseLaneParam(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid lane")
-		return
-	}
-	stageNum, err := parseStageParam(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid stage")
+		writeError(w, http.StatusBadRequest, "invalid path parameters")
 		return
 	}
 
@@ -153,10 +150,6 @@ func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type hitResp struct {
-		Ring   string `json:"ring"`
-		Points int    `json:"points"`
-	}
 	hits := make([]hitResp, len(result.Hits))
 	for i, h := range result.Hits {
 		hits[i] = hitResp{Ring: h.Ring, Points: h.Points}
@@ -169,19 +162,9 @@ func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ScoringHandler) LockStage(w http.ResponseWriter, r *http.Request) {
-	compID, err := parseIDParam(r, "id")
+	compID, lane, stageNum, err := parseScoringParams(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid competition id")
-		return
-	}
-	lane, err := parseLaneParam(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid lane")
-		return
-	}
-	stageNum, err := parseStageParam(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid stage")
+		writeError(w, http.StatusBadRequest, "invalid path parameters")
 		return
 	}
 
@@ -210,19 +193,9 @@ func (h *ScoringHandler) LockStage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ScoringHandler) UnlockStage(w http.ResponseWriter, r *http.Request) {
-	compID, err := parseIDParam(r, "id")
+	compID, lane, stageNum, err := parseScoringParams(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid competition id")
-		return
-	}
-	lane, err := parseLaneParam(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid lane")
-		return
-	}
-	stageNum, err := parseStageParam(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid stage")
+		writeError(w, http.StatusBadRequest, "invalid path parameters")
 		return
 	}
 
@@ -275,19 +248,9 @@ func (h *ScoringHandler) IssueStageTicket(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ScoringHandler) StreamStage(w http.ResponseWriter, r *http.Request) {
-	compID, err := parseIDParam(r, "id")
+	compID, lane, stageNum, err := parseScoringParams(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid competition id")
-		return
-	}
-	lane, err := parseLaneParam(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid lane")
-		return
-	}
-	stageNum, err := parseStageParam(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid stage")
+		writeError(w, http.StatusBadRequest, "invalid path parameters")
 		return
 	}
 
@@ -317,11 +280,6 @@ func (h *ScoringHandler) StreamStage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
-
-	type hitResp struct {
-		Ring   string `json:"ring"`
-		Points int    `json:"points"`
-	}
 
 	emit := func() bool {
 		detail, err := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, userID, false)

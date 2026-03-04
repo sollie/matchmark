@@ -90,7 +90,7 @@ func (s *ShooterService) Create(ctx context.Context, p CreateShooterParams) (*mo
 
 	shooter, err := s.shooters.Create(ctx, p.CompetitionID, p.Name, p.WAID, p.Club, p.LaneNumber, p.Discipline, p.WeaponClass)
 	if err != nil {
-		if isUniqueErr(err) {
+		if repository.IsUniqueConstraintErr(err) {
 			return nil, ErrLaneTaken
 		}
 		return nil, fmt.Errorf("create shooter: %w", err)
@@ -192,7 +192,7 @@ func (s *ShooterService) Update(ctx context.Context, competitionID, shooterID in
 
 	updated, err := s.shooters.Update(ctx, shooterID, name, waID, club, lane, discipline, weaponClass)
 	if err != nil {
-		if isUniqueErr(err) {
+		if repository.IsUniqueConstraintErr(err) {
 			return nil, ErrLaneTaken
 		}
 		if errors.Is(err, repository.ErrNotFound) {
@@ -217,19 +217,4 @@ func (s *ShooterService) Delete(ctx context.Context, competitionID, shooterID in
 		return fmt.Errorf("delete shooter: %w", err)
 	}
 	return nil
-}
-
-func isUniqueErr(err error) bool {
-	return err != nil && containsSubstr(err.Error(), "UNIQUE constraint failed")
-}
-
-func containsSubstr(s, sub string) bool {
-	return len(s) >= len(sub) && func() bool {
-		for i := range s {
-			if i+len(sub) <= len(s) && s[i:i+len(sub)] == sub {
-				return true
-			}
-		}
-		return false
-	}()
 }
