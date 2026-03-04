@@ -8,7 +8,7 @@ MatchMark is a WA1500/PPC competition scoring system consisting of:
 - `frontend/` — SvelteKit PWA (TypeScript, `@vite-pwa/sveltekit`, adapter-static)
 - `backend/` — Go REST API (`chi`, `modernc.org/sqlite`, JWT auth)
 - `caddy/Caddyfile` — TLS termination + reverse proxy + static file server
-- `docker-compose.yml` — orchestrates all three services
+- `docker-compose.yml` — orchestrates backend and caddy services
 
 See `docs/plan/` for the full specification:
 - `00-index.md` — plan file index
@@ -99,6 +99,15 @@ That package is the single source of truth for:
 ## Docker
 
 - `backend/Dockerfile`: multi-stage Go build, `CGO_ENABLED=0`, final image `alpine`.
-- `frontend/Dockerfile`: Node build stage, copies output to `/srv/frontend`, then exits.
-- `caddy` uses the stock `caddy:2-alpine` image with a mounted Caddyfile.
-- Dockerfiles live in `backend/` and `frontend/`. `docker-compose.yml` lives in the repo root.
+- `caddy/Dockerfile`: multi-stage build — Node stage builds SvelteKit, caddy stage copies the output into the final image. No separate frontend service or shared volume needed.
+- `docker-compose.yml` lives in the repo root.
+
+## Documentation
+
+- Keep `docs/plan/` and `README.md` accurate and up to date at all times.
+- After any change that affects architecture, API contracts, design decisions, Docker
+  setup, or the repository layout, update the relevant plan file(s) in the same task.
+- After any change that affects how to run, build, or deploy the project locally or in
+  production, update `README.md` in the same task.
+- Mark completed items in `docs/plan/07-phases.md` with `[x]` as soon as they are done.
+- Never leave the plan or README describing a state that no longer matches the codebase.
