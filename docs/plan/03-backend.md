@@ -209,6 +209,31 @@ POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/unlock
      Response: 200 { "fully_locked": false }
 ```
 
+### Scorer Stage Review (SSE)
+
+```
+POST /api/competitions/{id}/score-sse-ticket
+     Auth: authenticated user (scorer)
+     Body: { "lane": int, "stage": int }
+     Response: 200 { "ticket": string }
+     Purpose: issues a short-lived single-use token so the browser can authenticate
+              the subsequent EventSource connection for the post-lock stage review.
+              Ticket expires after ~30s and is consumed on first connection.
+
+GET /api/competitions/{id}/lanes/{lane}/stage/{stage}/stream?ticket={ticket}
+    Auth: ticket validated on connect (no Authorization header required)
+    Content-Type: text/event-stream
+    Emits every 3 seconds until fully_locked == true, then closes:
+    data: {
+      "stage_score":   int,
+      "stage_x_count": int,
+      "hits":          [ { "ring": string, "points": int } ],
+      "fully_locked":  bool
+    }
+    401 if ticket missing, invalid, or expired.
+    Stream closes automatically once fully_locked becomes true (final frame emitted).
+```
+
 ### Admin Monitoring (SSE)
 
 ```
