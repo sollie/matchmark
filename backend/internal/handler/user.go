@@ -4,10 +4,10 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sollie/matchmark/internal/auth"
+	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/service"
 )
 
@@ -77,7 +77,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, service.ErrInvalidRole):
 			writeError(w, http.StatusBadRequest, err.Error())
-		case isUniqueConstraint(err):
+		case repository.IsUniqueConstraintErr(err):
 			writeError(w, http.StatusConflict, "username already taken")
 		default:
 			writeError(w, http.StatusInternalServerError, "failed to create user")
@@ -118,7 +118,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "user not found")
 		case errors.Is(err, service.ErrInvalidRole):
 			writeError(w, http.StatusBadRequest, err.Error())
-		case isUniqueConstraint(err):
+		case repository.IsUniqueConstraintErr(err):
 			writeError(w, http.StatusConflict, "username already taken")
 		default:
 			writeError(w, http.StatusInternalServerError, "failed to update user")
@@ -190,8 +190,4 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 func parseIDParam(r *http.Request, param string) (int64, error) {
 	return strconv.ParseInt(chi.URLParam(r, param), 10, 64)
-}
-
-func isUniqueConstraint(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }

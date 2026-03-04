@@ -117,14 +117,6 @@ func (h *CompetitionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, c)
 }
 
-func competitionIDFromChi(r *http.Request) (int64, error) {
-	return parseIDParam(r, "id")
-}
-
-func shooterIDFromChi(r *http.Request) (int64, error) {
-	return parseIDParam(r, "sid")
-}
-
 type ShooterHandler struct {
 	shooterSvc *service.ShooterService
 }
@@ -134,7 +126,7 @@ func NewShooterHandler(shooterSvc *service.ShooterService) *ShooterHandler {
 }
 
 func (h *ShooterHandler) List(w http.ResponseWriter, r *http.Request) {
-	compID, err := competitionIDFromChi(r)
+	compID, err := parseIDParam(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
@@ -155,7 +147,7 @@ func (h *ShooterHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ShooterHandler) Create(w http.ResponseWriter, r *http.Request) {
-	compID, err := competitionIDFromChi(r)
+	compID, err := parseIDParam(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
@@ -202,12 +194,12 @@ func (h *ShooterHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ShooterHandler) Update(w http.ResponseWriter, r *http.Request) {
-	compID, err := competitionIDFromChi(r)
+	compID, err := parseIDParam(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
 	}
-	shooterID, err := shooterIDFromChi(r)
+	shooterID, err := parseIDParam(r, "sid")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid shooter id")
 		return
@@ -255,12 +247,12 @@ func (h *ShooterHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ShooterHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	compID, err := competitionIDFromChi(r)
+	compID, err := parseIDParam(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
 	}
-	shooterID, err := shooterIDFromChi(r)
+	shooterID, err := parseIDParam(r, "sid")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid shooter id")
 		return
