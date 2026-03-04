@@ -13,11 +13,14 @@
 | Access token TTL | 1 hour | Covers a typical slow competition session; short enough to limit exposure |
 | Refresh token TTL | 7 days | Allows multi-day competition events without re-login; rotated on every use |
 | Refresh token storage | DB (hashed) | Enables server-side revocation (logout, admin force-logout) |
+| Refresh token families | `family_id` column on `refresh_tokens` | Detects token replay: if an already-consumed token from a family is presented, the entire family is revoked |
 | PDF export | `github.com/go-pdf/fpdf` | Pure Go, no CGO, mature, sufficient layout control for scorecard format |
 | Admin monitoring | SSE (Server-Sent Events) | Simpler than WebSocket for a unidirectional push use-case; automatic reconnect built into browser EventSource |
+| SSE authentication | Short-lived ticket (`sse_tickets` table) | Browsers cannot set custom headers on `EventSource` connections; an admin POSTs to get a single-use ticket, then passes it as a `?ticket=` query parameter on the SSE URL |
 | SSE poll interval | 3 seconds | Frequent enough for live feel; low enough not to strain SQLite under concurrent reads |
 | Offline storage | IndexedDB + Background Sync API | Survives app kills, page reloads, connection drops; Background Sync defers replay to service worker |
 | iOS offline fallback | `visibilitychange` replay | Background Sync not available on iOS; foreground event covers the common case |
+| Docker service count | 2 services (backend + caddy) | The `caddy/Dockerfile` is a multi-stage build: Node builds the SvelteKit app in stage 1, caddy copies the output in stage 2. Eliminates the need for a separate frontend service and a shared `frontend_dist` named volume, simplifying orchestration. |
 
 ## Domain Configuration
 
@@ -88,3 +91,10 @@ window of token theft and ensures that a logged-out session cannot be reactivate
 ### Admin password minimum 16 characters
 Enforced at seed time and on every password set/reset via the service layer. Future
 work: 2FA / passkeys (not in scope v1).
+
+### Single-lane competitions require admin scoring
+`GetScoreLane(1, 1)` returns `1` — a one-lane competition causes the scorer to score
+themselves (lane 1 wraps to lane 1). To prevent accidental self-scoring, `SubmitHits`
+and `LockStage` return `ErrSingleLaneAdminOnly` when `comp.LanesTotal == 1` and the
+caller is not an admin. The frontend surfaces this as a non-dismissible red banner
+with blocked keypad interaction. Read access (`GetStageDetail`) is not restricted.
