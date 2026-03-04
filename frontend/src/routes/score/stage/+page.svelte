@@ -19,6 +19,7 @@
 	let readonly = $derived(!stage || stage.fullyLocked || sc.currentStage !== sc.currentStage);
 	let isActive = $derived((s: StageState) => s.stageNumber === sc.currentStage);
 	let syncError = $state(false);
+	let adminOnly = $state(false);
 
 	onMount(async () => {
 		const s = get(session);
@@ -27,6 +28,7 @@
 	});
 
 	function addHit(ring: string) {
+		if (adminOnly) return;
 		if (!stage || stage.fullyLocked) return;
 		if (stage.hits.length >= stage.expectedShots) return;
 		scoring.update((sc) => {
@@ -43,6 +45,7 @@
 	}
 
 	function undo() {
+		if (adminOnly) return;
 		if (!stage || stage.fullyLocked || stage.hits.length === 0) return;
 		scoring.update((sc) => {
 			const stages = [...sc.stages];
@@ -58,6 +61,7 @@
 	}
 
 	async function lockStage() {
+		if (adminOnly) return;
 		const s = get(session);
 		const st = get(scoring);
 		const cur = st.stages[st.currentStage - 1];
@@ -69,7 +73,15 @@
 			`/api/competitions/${s.competitionId}/lanes/${s.scoreLane}/stage/${cur.stageNumber}/lock`,
 			{ method: 'POST' }
 		);
-		if (!res.ok) return;
+		if (!res.ok) {
+			if (res.status === 403) {
+				const body = await res.json().catch(() => ({}));
+				if (body?.error === 'admin scoring required') {
+					adminOnly = true;
+				}
+			}
+			return;
+		}
 
 		scoring.update((sc) => {
 			const stages = [...sc.stages];
@@ -98,6 +110,13 @@
 					stages[idx] = { ...stages[idx], synced: true };
 					return { ...sc, stages };
 				});
+			} else if (res.status === 403) {
+				const body = await res.json().catch(() => ({}));
+				if (body?.error === 'admin scoring required') {
+					adminOnly = true;
+					return;
+				}
+				throw new Error('submit failed');
 			} else {
 				throw new Error('submit failed');
 			}
@@ -147,6 +166,10 @@
 		<div class="sync-banner">Offline — hits saved locally, will sync when reconnected</div>
 	{/if}
 
+	{#if adminOnly}
+		<div class="admin-banner">Admin scoring required — This competition has only one lane. Contact an admin to record scores.</div>
+	{/if}
+
 	<section class="progress-dots">
 		{#each sc.stages as st (st.stageNumber)}
 			<span
@@ -175,7 +198,7 @@
 			<p>Score: <strong>{stage.stageScore}</strong> &nbsp; X: <strong>{stage.xCount}</strong></p>
 		</section>
 
-		<section class="keypad" class:readonly={stage.fullyLocked}>
+		<section class="keypad" class:readonly={stage.fullyLocked || adminOnly}>
 			<div class="ring-grid">
 				{#each RING_KEYS as ring (ring)}
 					<button
@@ -227,6 +250,16 @@
 		background: rgba(234, 179, 8, 0.2);
 		border: 1px solid rgba(234, 179, 8, 0.5);
 		color: #fde047;
+		padding: 0.5rem 0.875rem;
+		border-radius: 6px;
+		font-size: 0.8125rem;
+		text-align: center;
+	}
+
+	.admin-banner {
+		background: rgba(239, 68, 68, 0.15);
+		border: 1px solid rgba(239, 68, 68, 0.5);
+		color: #fca5a5;
 		padding: 0.5rem 0.875rem;
 		border-radius: 6px;
 		font-size: 0.8125rem;
