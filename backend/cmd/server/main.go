@@ -73,7 +73,7 @@ func main() {
 	userH := handler.NewUserHandler(userSvc)
 	competitionH := handler.NewCompetitionHandler(competitionSvc)
 	shooterH := handler.NewShooterHandler(shooterSvc)
-	scoringH := handler.NewScoringHandler(scoringSvc)
+	scoringH := handler.NewScoringHandler(scoringSvc, sseTicketSvc)
 	assignmentH := handler.NewAssignmentHandler(assignmentSvc)
 	monitorH := handler.NewMonitorHandler(monitorSvc, sseTicketSvc)
 	exportH := handler.NewExportHandler(exportSvc)
@@ -126,6 +126,8 @@ func main() {
 				r.Post("/lock", scoringH.LockStage)
 			})
 
+			r.Post("/competitions/{id}/score-sse-ticket", scoringH.IssueStageTicket)
+
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireAdmin)
 				r.Get("/users", userH.List)
@@ -155,6 +157,7 @@ func main() {
 		})
 
 		r.Get("/admin/monitor", monitorH.Stream)
+		r.Get("/competitions/{id}/lanes/{lane}/stage/{stage}/stream", scoringH.StreamStage)
 	})
 
 	log.Printf("matchmark %s listening on :8080", version)

@@ -140,9 +140,28 @@ Flow:
 - Only the current stage is interactive; previous stages are read-only (greyed keypad)
 - `Undo` removes the last entered hit from the local array
 - `Next Stage` disabled if current stage not locked and has unsaved hits
+- `Next Stage` also disabled while the post-lock review modal is open and pending
 - `Lock Stage` button disabled until `hits.length === expectedShots`
-- After locking, stage becomes read-only; `Next Stage` becomes available
+- After locking, stage becomes read-only; a post-lock review modal appears (see below)
 - `Previous Stage` always enabled; shows previous stage in read-only mode
+
+### Post-Lock Stage Review Modal
+
+After a scorer locks a stage, a full-screen overlay appears showing their **own lane's score**
+(i.e. the score recorded by the adjacent scorer). The modal stays open until the scorer taps
+"Next →" — which is blocked until the adjacent scorer has also locked that stage.
+
+**Flow:**
+1. Scorer taps "Lock Stage" → stage is locked on the server → modal opens
+2. Frontend issues `POST /api/competitions/{id}/score-sse-ticket` with `{ lane: ownLane, stage }` → receives `{ ticket }`
+3. Opens `EventSource` at `/api/competitions/{id}/lanes/{ownLane}/stage/{stageNum}/stream?ticket={ticket}`
+4. SSE stream emits updates every 3s; once `fully_locked === true` the stream closes automatically
+5. Modal shows a spinner ("Waiting for your scorer to finish…") until `fully_locked` becomes true
+6. Once resolved: displays score, X count, and hit sequence; "To protest this score, contact the match director."
+7. Scorer taps "Next →" → modal resets; if all stages are fully locked → navigate to `/score/summary`
+
+**Error state:** if ticket request or SSE connection fails, modal shows an error message
+("Could not retrieve your score. Contact the match director.") and "Next →" is re-enabled.
 
 ### Colour / Accessibility
 - Dark background (`#1a1a2e`) with high-contrast white/yellow text

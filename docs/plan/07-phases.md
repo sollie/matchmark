@@ -136,6 +136,24 @@ After every shell script change: run `shellcheck`.
     `"admin scoring required"` (single-lane competition)
 - [x] `/score/summary` page: read-only per-stage breakdown; total score and X count
 
+## Phase 9b — Post-Lock Stage Review
+
+- [x] `backend/internal/db/migrations/007_sse_ticket_lane_stage.sql`: adds `lane INTEGER NOT NULL DEFAULT 0`
+      and `stage_number INTEGER NOT NULL DEFAULT 0` columns to `sse_tickets`
+- [x] `internal/service/sse_ticket.go`: `IssueForStage(ctx, userID, competitionID, lane, stageNumber)`
+      and `ConsumeForStage(ctx, ticket, competitionID, lane, stageNumber)` — validate all four columns
+- [x] `internal/handler/scoring.go`: added `ticketSvc *service.SSETicketService` to `ScoringHandler`;
+      `IssueStageTicket` — `POST /api/competitions/{id}/score-sse-ticket`;
+      `StreamStage` — `GET /api/competitions/{id}/lanes/{lane}/stage/{stage}/stream`
+      (ticket-authenticated, streams until `fully_locked == true` then closes)
+- [x] `cmd/server/main.go`: pass `sseTicketSvc` to `NewScoringHandler`; register both new routes
+      (`IssueStageTicket` inside `RequireAuth`, `StreamStage` outside)
+- [x] `/score/stage` page: post-lock review modal — spinner while adjacent scorer is pending,
+      score/X/hits display once both sides locked, "Next →" blocked while pending,
+      `goto('/score/summary')` moved from `lockStage()` into `nextStage()` so modal always shows
+- [x] `golangci-lint run ./...` + `trivy fs --scanners vuln,secret .` — 0 findings
+- [x] `npm run check && npm run build && npm audit` — 0 errors, 0 vulnerabilities
+
 ## Phase 10 — Admin UI
 
 - [x] `/admin` dashboard: links to users, competitions; active competition count

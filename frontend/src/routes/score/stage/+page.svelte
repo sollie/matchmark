@@ -21,6 +21,15 @@
 	let syncError = $state(false);
 	let adminOnly = $state(false);
 
+	let reviewOpen        = $state(false);
+	let reviewPending     = $state(false);
+	let reviewScore: number | null = $state(null);
+	let reviewXCount: number | null = $state(null);
+	let reviewHits: string[] = $state([]);
+	let reviewStage: number = $state(0);
+	let reviewError       = $state(false);
+	let reviewES: EventSource | null = null;
+
 	onMount(async () => {
 		const s = get(session);
 		if (!s.competitionId || !s.scoreLane) { goto('/score/select'); return; }
@@ -65,7 +74,7 @@
 		const s = get(session);
 		const st = get(scoring);
 		const cur = st.stages[st.currentStage - 1];
-		if (!cur || !s.competitionId || !s.scoreLane) return;
+		if (!cur || !s.competitionId || !s.scoreLane || !s.ownLane) return;
 
 		await submitHits(s.competitionId, s.scoreLane, cur);
 
@@ -90,10 +99,49 @@
 			return { ...sc, stages };
 		});
 
-		const totalStages = get(session).totalStages ?? sc.stages.length;
-		if (st.currentStage >= totalStages) {
-			goto('/score/summary');
+		reviewStage = cur.stageNumber;
+		reviewPending = true;
+		reviewOpen = true;
+		reviewError = false;
+		reviewScore = null;
+		reviewXCount = null;
+		reviewHits = [];
+
+		const ticketRes = await apiFetch(
+			`/api/competitions/${s.competitionId}/score-sse-ticket`,
+			{ method: 'POST', body: JSON.stringify({ lane: s.ownLane, stage: cur.stageNumber }) }
+		);
+		if (!ticketRes.ok) {
+			reviewPending = false;
+			reviewError = true;
+			return;
 		}
+		const { ticket } = await ticketRes.json();
+
+		const es = new EventSource(
+			`/api/competitions/${s.competitionId}/lanes/${s.ownLane}/stage/${cur.stageNumber}/stream?ticket=${ticket}`
+		);
+		reviewES = es;
+
+		es.onmessage = (e) => {
+			let data: { stage_score: number; stage_x_count: number; hits: { ring: string }[]; fully_locked: boolean };
+			try { data = JSON.parse(e.data); } catch { return; }
+			reviewScore = data.stage_score;
+			reviewXCount = data.stage_x_count;
+			reviewHits = data.hits.map((h) => h.ring);
+			if (data.fully_locked === true) {
+				reviewPending = false;
+				es.close();
+				reviewES = null;
+			}
+		};
+
+		es.onerror = () => {
+			reviewPending = false;
+			reviewError = true;
+			es.close();
+			reviewES = null;
+		};
 	}
 
 	async function submitHits(compId: number, lane: number, st: StageState) {
@@ -134,6 +182,18 @@
 	}
 
 	async function nextStage() {
+		if (reviewES) {
+			reviewES.close();
+			reviewES = null;
+		}
+		reviewOpen = false;
+		reviewPending = false;
+		reviewError = false;
+		reviewScore = null;
+		reviewXCount = null;
+		reviewHits = [];
+		reviewStage = 0;
+
 		const s = get(session);
 		const st = get(scoring);
 		const cur = st.stages[st.currentStage - 1];
@@ -142,6 +202,10 @@
 			await submitHits(s.competitionId, s.scoreLane, cur);
 		}
 		const totalStages = s.totalStages ?? st.stages.length;
+		if (st.stages.every((st) => st.fullyLocked)) {
+			goto('/score/summary');
+			return;
+		}
 		if (st.currentStage < totalStages) {
 			scoring.update((sc) => ({ ...sc, currentStage: sc.currentStage + 1 }));
 		}
@@ -150,7 +214,10 @@
 	function canNext(): boolean {
 		const st = sc.stages[sc.currentStage - 1];
 		if (!st) return false;
-		if (st.fullyLocked) return true;
+		if (st.fullyLocked) {
+			if (reviewOpen && reviewStage === st.stageNumber && reviewPending) return false;
+			return true;
+		}
 		return st.hits.length === 0;
 	}
 
@@ -234,6 +301,26 @@
 		</section>
 	{:else}
 		<p class="muted">Loading stage…</p>
+	{/if}
+
+	{#if reviewOpen && stage && reviewStage === stage.stageNumber}
+		<div class="review-overlay">
+			<div class="review-card">
+				<h2>Stage {reviewStage} — Your Score</h2>
+				{#if reviewError}
+					<p class="review-error">Could not retrieve your score. Contact the match director.</p>
+				{:else if reviewPending}
+					<div class="review-pending">
+						<span class="review-spinner" aria-label="Waiting"></span>
+						<p>Waiting for your scorer to finish…</p>
+					</div>
+				{:else}
+					<p class="review-result">Score: <strong>{reviewScore}</strong> &nbsp; X: <strong>{reviewXCount}</strong></p>
+					<p class="review-hits">{reviewHits.join(' · ')}</p>
+					<p class="review-protest">To protest this score, contact the match director.</p>
+				{/if}
+			</div>
+		</div>
 	{/if}
 </main>
 
@@ -435,5 +522,90 @@
 	.muted {
 		color: var(--muted);
 		text-align: center;
+	}
+
+	.review-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 100;
+		background: rgba(0, 0, 0, 0.75);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1rem;
+	}
+
+	.review-card {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		padding: 1.5rem;
+		width: 100%;
+		max-width: 380px;
+		text-align: center;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.review-card h2 {
+		margin: 0;
+		font-size: 1.125rem;
+		font-weight: 700;
+	}
+
+	.review-result strong {
+		font-size: 2rem;
+		color: var(--accent);
+	}
+
+	.review-result {
+		margin: 0;
+		font-size: 1rem;
+	}
+
+	.review-hits {
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--muted);
+		letter-spacing: 0.05em;
+	}
+
+	.review-protest {
+		margin: 0;
+		font-size: 0.8125rem;
+		color: var(--muted);
+	}
+
+	.review-error {
+		margin: 0;
+		color: #fca5a5;
+	}
+
+	.review-pending {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.review-pending p {
+		margin: 0;
+		color: var(--muted);
+		font-size: 0.9rem;
+	}
+
+	.review-spinner {
+		display: block;
+		width: 36px;
+		height: 36px;
+		border: 3px solid var(--border);
+		border-top-color: var(--accent);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 </style>
