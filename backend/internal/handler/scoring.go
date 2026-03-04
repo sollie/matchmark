@@ -135,6 +135,8 @@ func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "stage not found")
 		case errors.Is(err, service.ErrStageLocked):
 			writeError(w, http.StatusConflict, err.Error())
+		case errors.Is(err, service.ErrSingleLaneAdminOnly):
+			writeError(w, http.StatusForbidden, "admin scoring required")
 		case errors.Is(err, service.ErrNotAssignedToLane):
 			writeError(w, http.StatusForbidden, err.Error())
 		case errors.Is(err, service.ErrWrongShotCount):
@@ -190,6 +192,8 @@ func (h *ScoringHandler) LockStage(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "no shooter on that lane")
 		case errors.Is(err, service.ErrShooterNotFound):
 			writeError(w, http.StatusNotFound, "stage not found")
+		case errors.Is(err, service.ErrSingleLaneAdminOnly):
+			writeError(w, http.StatusForbidden, "admin scoring required")
 		case errors.Is(err, service.ErrNotAssignedToLane):
 			writeError(w, http.StatusForbidden, err.Error())
 		default:

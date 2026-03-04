@@ -11,11 +11,12 @@ import (
 )
 
 var (
-	ErrStageLocked       = errors.New("stage is locked")
-	ErrStageLaneNotFound = errors.New("no shooter on that lane")
-	ErrWrongShotCount    = errors.New("hit count does not match expected shots")
-	ErrInvalidRing       = errors.New("invalid ring value")
-	ErrNotAssignedToLane = errors.New("you are not assigned to score this lane")
+	ErrStageLocked         = errors.New("stage is locked")
+	ErrStageLaneNotFound   = errors.New("no shooter on that lane")
+	ErrWrongShotCount      = errors.New("hit count does not match expected shots")
+	ErrInvalidRing         = errors.New("invalid ring value")
+	ErrNotAssignedToLane   = errors.New("you are not assigned to score this lane")
+	ErrSingleLaneAdminOnly = errors.New("single-lane competition: only admins may score")
 )
 
 type ScoringService struct {
@@ -192,6 +193,9 @@ func (s *ScoringService) SubmitHits(ctx context.Context, competitionID int64, la
 	}
 
 	if !isAdmin {
+		if comp.LanesTotal == 1 {
+			return nil, ErrSingleLaneAdminOnly
+		}
 		assignment, err := s.assignments.GetByUser(ctx, competitionID, callerID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
@@ -271,6 +275,9 @@ func (s *ScoringService) LockStage(ctx context.Context, competitionID int64, lan
 	}
 
 	if !isAdmin {
+		if comp.LanesTotal == 1 {
+			return ErrSingleLaneAdminOnly
+		}
 		assignment, err := s.assignments.GetByUser(ctx, competitionID, callerID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
