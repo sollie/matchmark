@@ -71,6 +71,10 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "username, password, and role are required")
 		return
 	}
+	if len(body.Username) > maxUsernameLen {
+		writeError(w, http.StatusBadRequest, "username too long")
+		return
+	}
 
 	user, err := h.userSvc.Create(r.Context(), body.Username, body.Password, body.Role)
 	if err != nil {
@@ -103,6 +107,10 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.Username != nil && len(*body.Username) > maxUsernameLen {
+		writeError(w, http.StatusBadRequest, "username too long")
 		return
 	}
 
