@@ -24,7 +24,6 @@
 			const data = await res.json();
 			setTokens(
 				data.access_token,
-				data.refresh_token,
 				Date.now() + data.expires_in * 1000,
 				data.user
 			);

@@ -3,9 +3,12 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/sollie/matchmark/internal/service"
 )
+
+const refreshCookieName = "mm_rt"
 
 type AuthHandler struct {
 	authSvc *service.AuthService
@@ -22,16 +25,26 @@ type loginUserResp struct {
 }
 
 type loginResp struct {
-	AccessToken  string        `json:"access_token"`
-	RefreshToken string        `json:"refresh_token"`
-	ExpiresIn    int           `json:"expires_in"`
-	User         loginUserResp `json:"user"`
+	AccessToken string        `json:"access_token"`
+	ExpiresIn   int           `json:"expires_in"`
+	User        loginUserResp `json:"user"`
 }
 
 type refreshResp struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"`
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+}
+
+func setRefreshCookie(w http.ResponseWriter, token string, maxAge int) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     refreshCookieName,
+		Value:    token,
+		Path:     "/api/auth",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   maxAge,
+	})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -58,10 +71,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setRefreshCookie(w, result.RefreshToken, result.ExpiresIn)
 	writeJSON(w, http.StatusOK, loginResp{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		ExpiresIn:    result.ExpiresIn,
+		AccessToken: result.AccessToken,
+		ExpiresIn:   result.ExpiresIn,
 		User: loginUserResp{
 			ID:       result.User.ID,
 			Username: result.User.Username,
@@ -71,21 +84,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		RefreshToken string `json:"refresh_token"`
-	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-	if body.RefreshToken == "" {
-		writeError(w, http.StatusBadRequest, "refresh_token is required")
+	cookie, err := r.Cookie(refreshCookieName)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "missing refresh token")
 		return
 	}
 
-	result, err := h.authSvc.Refresh(r.Context(), body.RefreshToken)
+	result, err := h.authSvc.Refresh(r.Context(), cookie.Value)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidToken) || errors.Is(err, service.ErrTokenExpired) {
+			setRefreshCookie(w, "", -1)
 			writeError(w, http.StatusUnauthorized, "invalid or expired refresh token")
 			return
 		}
@@ -93,30 +101,34 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setRefreshCookie(w, result.RefreshToken, result.ExpiresIn)
 	writeJSON(w, http.StatusOK, refreshResp{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		ExpiresIn:    result.ExpiresIn,
+		AccessToken: result.AccessToken,
+		ExpiresIn:   result.ExpiresIn,
 	})
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		RefreshToken string `json:"refresh_token"`
-	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-	if body.RefreshToken == "" {
-		writeError(w, http.StatusBadRequest, "refresh_token is required")
+	cookie, err := r.Cookie(refreshCookieName)
+	if err != nil {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	if err := h.authSvc.Logout(r.Context(), body.RefreshToken); err != nil {
+	if err := h.authSvc.Logout(r.Context(), cookie.Value); err != nil {
 		writeError(w, http.StatusInternalServerError, "logout failed")
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     refreshCookieName,
+		Value:    "",
+		Path:     "/api/auth",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+	})
 	w.WriteHeader(http.StatusNoContent)
 }
