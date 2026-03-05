@@ -15,7 +15,7 @@
 		}
 		isAdmin = true;
 		return auth.subscribe((s) => {
-			if (s.accessToken && s.user?.role !== 'admin') {
+			if (!s.accessToken || s.user?.role !== 'admin') {
 				goto('/login');
 			}
 		});
