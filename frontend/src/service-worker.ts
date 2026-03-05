@@ -15,6 +15,7 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('message', (e) => {
+	if (e.origin !== self.location.origin) return;
 	if (e.data?.type === 'SET_ACCESS_TOKEN') {
 		accessToken = e.data.token ?? null;
 	}
