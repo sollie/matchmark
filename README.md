@@ -84,6 +84,33 @@ Optional variables:
 |----------|-------------|
 | `FRONTEND_ORIGIN` | Restrict CORS to this origin (e.g. `https://scores.example.com`). Leave empty when the frontend is served from the same origin as the API (normal Caddy setup). |
 
+## Local Security Scanning
+
+### CodeQL
+
+Requires the [CodeQL CLI](https://docs.github.com/en/code-security/codeql-cli/getting-started-with-the-codeql-cli/setting-up-the-codeql-cli). On macOS:
+
+```sh
+brew install codeql
+```
+
+Run both the Go and JavaScript/TypeScript scans from the repo root:
+
+```sh
+./scripts/codeql-local.sh
+```
+
+The script downloads the required query packs on first run (cached under `~/.codeql/packages` for subsequent runs), creates CodeQL databases for `backend/` (Go) and `frontend/` (JavaScript/TypeScript), analyzes them with the `security-and-quality` query suite, and prints a summary table to the console. It exits non-zero if any findings are present.
+
+Output files written to the repo root (gitignored):
+
+| File | Description |
+|------|-------------|
+| `results-go.sarif` / `results-js.sarif` | Full SARIF — open in the VS Code SARIF Viewer or upload to the GitHub Security tab |
+| `results-go.csv` / `results-js.csv` | CSV with columns: name, description, severity, message, path, start\_line, start\_col, end\_line, end\_col |
+
+SARIF files can be viewed with the [SARIF Viewer](https://marketplace.visualstudio.com/items?itemName=MS-SarifVSCode.sarif-viewer) extension in VS Code, or uploaded to the GitHub Security tab.
+
 ## Documentation
 
 See [`docs/plan/00-index.md`](docs/plan/00-index.md) for the full specification index.

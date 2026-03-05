@@ -27,6 +27,14 @@ frontend/.env.*
 caddy/data/
 caddy/config/
 
+# —— CodeQL ——————————————————————————————————————————————————
+codeql-db-go/
+codeql-db-js/
+results-go.sarif
+results-go.csv
+results-js.sarif
+results-js.csv
+
 # —— OS / editor ——————————————————————————————————————————————
 .DS_Store
 Thumbs.db
