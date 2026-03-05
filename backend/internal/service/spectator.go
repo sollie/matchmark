@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
-var ErrSpectatorNotAvailable = fmt.Errorf("competition not found or not available for public viewing")
+var ErrSpectatorNotAvailable = errors.New("competition not found or not available for public viewing")
 
 type SpectatorCompetition struct {
 	ID     int64  `json:"id"`
@@ -78,7 +79,10 @@ func (s *SpectatorService) GetSnapshot(ctx context.Context, competitionID int64)
 		competitionID,
 	).Scan(&name, &enabled, &active)
 	if err != nil {
-		return nil, ErrSpectatorNotAvailable
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrSpectatorNotAvailable
+		}
+		return nil, fmt.Errorf("get competition: %w", err)
 	}
 	if enabled == 0 || active == 0 {
 		return nil, ErrSpectatorNotAvailable
@@ -131,11 +135,45 @@ func (s *SpectatorService) GetSnapshot(ctx context.Context, competitionID int64)
 		return nil, fmt.Errorf("spectator lane rows: %w", err)
 	}
 
+	stageRows, err := s.db.QueryContext(ctx, `
+		SELECT
+			sh.lane_number,
+			st.stage_number,
+			COALESCE(SUM(h.points), 0),
+			COALESCE(SUM(CASE WHEN h.ring = 'X' THEN 1 ELSE 0 END), 0),
+			st.fully_locked
+		FROM stages st
+		JOIN shooters sh ON sh.id = st.shooter_id
+		LEFT JOIN hits h ON h.stage_id = st.id
+		WHERE sh.competition_id = ?
+		GROUP BY st.id
+		ORDER BY sh.lane_number, st.stage_number
+	`, competitionID)
+	if err != nil {
+		return nil, fmt.Errorf("query spectator stages: %w", err)
+	}
+	defer func() { _ = stageRows.Close() }()
+
+	stagesByLane := make(map[int][]SpectatorStage)
+	for stageRows.Next() {
+		var laneNum int
+		var ss SpectatorStage
+		var locked int
+		if err := stageRows.Scan(&laneNum, &ss.StageNumber, &ss.Score, &ss.XCount, &locked); err != nil {
+			return nil, fmt.Errorf("scan spectator stage: %w", err)
+		}
+		ss.Locked = locked == 1
+		stagesByLane[laneNum] = append(stagesByLane[laneNum], ss)
+	}
+	if err := stageRows.Err(); err != nil {
+		return nil, fmt.Errorf("spectator stage rows: %w", err)
+	}
+
 	lanes := make([]SpectatorLane, 0, len(laneRows))
 	for _, lr := range laneRows {
-		stages, err := s.getShooterStages(ctx, competitionID, lr.laneNumber)
-		if err != nil {
-			return nil, err
+		stages := stagesByLane[lr.laneNumber]
+		if stages == nil {
+			stages = []SpectatorStage{}
 		}
 		lanes = append(lanes, SpectatorLane{
 			LaneNumber:       lr.laneNumber,
@@ -154,43 +192,4 @@ func (s *SpectatorService) GetSnapshot(ctx context.Context, competitionID int64)
 		CompetitionName: name,
 		Lanes:           lanes,
 	}, nil
-}
-
-func (s *SpectatorService) getShooterStages(ctx context.Context, competitionID int64, laneNumber int) (_ []SpectatorStage, retErr error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT
-			st.stage_number,
-			COALESCE(SUM(h.points), 0),
-			COALESCE(SUM(CASE WHEN h.ring = 'X' THEN 1 ELSE 0 END), 0),
-			st.fully_locked
-		FROM stages st
-		JOIN shooters sh ON sh.id = st.shooter_id
-		LEFT JOIN hits h ON h.stage_id = st.id
-		WHERE sh.competition_id = ? AND sh.lane_number = ?
-		GROUP BY st.id
-		ORDER BY st.stage_number
-	`, competitionID, laneNumber)
-	if err != nil {
-		return nil, fmt.Errorf("query spectator stages: %w", err)
-	}
-	defer func() {
-		if cerr := rows.Close(); cerr != nil && retErr == nil {
-			retErr = cerr
-		}
-	}()
-
-	var out []SpectatorStage
-	for rows.Next() {
-		var ss SpectatorStage
-		var locked int
-		if err := rows.Scan(&ss.StageNumber, &ss.Score, &ss.XCount, &locked); err != nil {
-			return nil, fmt.Errorf("scan spectator stage: %w", err)
-		}
-		ss.Locked = locked == 1
-		out = append(out, ss)
-	}
-	if out == nil {
-		out = []SpectatorStage{}
-	}
-	return out, rows.Err()
 }

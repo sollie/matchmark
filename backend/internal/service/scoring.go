@@ -17,6 +17,7 @@ var (
 	ErrInvalidRing         = errors.New("invalid ring value")
 	ErrNotAssignedToLane   = errors.New("you are not assigned to score this lane")
 	ErrSingleLaneAdminOnly = errors.New("single-lane competition: only admins may score")
+	ErrAdminRequired       = errors.New("admin access required")
 )
 
 type ScoringService struct {
@@ -69,6 +70,51 @@ type StageDetail struct {
 	StageXCount      int
 	CumulativeScore  int
 	CumulativeXCount int
+}
+
+func (s *ScoringService) resolveStage(ctx context.Context, competitionID int64, lane, stageNumber int) (*model.Competition, *model.Shooter, *model.Stage, error) {
+	comp, err := s.competitions.GetByID(ctx, competitionID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, nil, nil, ErrCompetitionNotFound
+		}
+		return nil, nil, nil, fmt.Errorf("get competition: %w", err)
+	}
+
+	targetShooter, err := s.shooters.GetByLane(ctx, competitionID, lane)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, nil, nil, ErrStageLaneNotFound
+		}
+		return nil, nil, nil, fmt.Errorf("get shooter by lane: %w", err)
+	}
+
+	stage, err := s.stages.GetByShooterAndNumber(ctx, targetShooter.ID, stageNumber)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, nil, nil, ErrShooterNotFound
+		}
+		return nil, nil, nil, fmt.Errorf("get stage: %w", err)
+	}
+
+	return comp, targetShooter, stage, nil
+}
+
+func (s *ScoringService) checkScorerAuthorization(ctx context.Context, comp *model.Competition, lane int, callerID int64) error {
+	if comp.LanesTotal == 1 {
+		return ErrSingleLaneAdminOnly
+	}
+	assignment, err := s.assignments.GetByUser(ctx, comp.ID, callerID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrNotAssignedToLane
+		}
+		return fmt.Errorf("get assignment: %w", err)
+	}
+	if GetScoreLane(assignment.LaneNumber, comp.LanesTotal) != lane {
+		return ErrNotAssignedToLane
+	}
+	return nil
 }
 
 func (s *ScoringService) GetStageDetail(ctx context.Context, competitionID int64, lane, stageNumber int, callerID int64, isAdmin bool) (*StageDetail, error) {
@@ -168,43 +214,14 @@ type SubmitHitsResult struct {
 }
 
 func (s *ScoringService) SubmitHits(ctx context.Context, competitionID int64, lane, stageNumber int, rings []string, callerID int64, isAdmin bool) (*SubmitHitsResult, error) {
-	comp, err := s.competitions.GetByID(ctx, competitionID)
+	comp, _, stage, err := s.resolveStage(ctx, competitionID, lane, stageNumber)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, ErrCompetitionNotFound
-		}
-		return nil, fmt.Errorf("get competition: %w", err)
-	}
-
-	targetShooter, err := s.shooters.GetByLane(ctx, competitionID, lane)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, ErrStageLaneNotFound
-		}
-		return nil, fmt.Errorf("get shooter: %w", err)
-	}
-
-	stage, err := s.stages.GetByShooterAndNumber(ctx, targetShooter.ID, stageNumber)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, ErrShooterNotFound
-		}
-		return nil, fmt.Errorf("get stage: %w", err)
+		return nil, err
 	}
 
 	if !isAdmin {
-		if comp.LanesTotal == 1 {
-			return nil, ErrSingleLaneAdminOnly
-		}
-		assignment, err := s.assignments.GetByUser(ctx, competitionID, callerID)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return nil, ErrNotAssignedToLane
-			}
-			return nil, fmt.Errorf("get assignment: %w", err)
-		}
-		if GetScoreLane(assignment.LaneNumber, comp.LanesTotal) != lane {
-			return nil, ErrNotAssignedToLane
+		if err := s.checkScorerAuthorization(ctx, comp, lane, callerID); err != nil {
+			return nil, err
 		}
 
 		if stage.FullyLocked {
@@ -250,43 +267,14 @@ func (s *ScoringService) SubmitHits(ctx context.Context, competitionID int64, la
 }
 
 func (s *ScoringService) LockStage(ctx context.Context, competitionID int64, lane, stageNumber int, callerID int64, isAdmin bool) error {
-	comp, err := s.competitions.GetByID(ctx, competitionID)
+	comp, _, stage, err := s.resolveStage(ctx, competitionID, lane, stageNumber)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return ErrCompetitionNotFound
-		}
-		return fmt.Errorf("get competition: %w", err)
-	}
-
-	targetShooter, err := s.shooters.GetByLane(ctx, competitionID, lane)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return ErrStageLaneNotFound
-		}
-		return fmt.Errorf("get shooter: %w", err)
-	}
-
-	stage, err := s.stages.GetByShooterAndNumber(ctx, targetShooter.ID, stageNumber)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return ErrShooterNotFound
-		}
-		return fmt.Errorf("get stage: %w", err)
+		return err
 	}
 
 	if !isAdmin {
-		if comp.LanesTotal == 1 {
-			return ErrSingleLaneAdminOnly
-		}
-		assignment, err := s.assignments.GetByUser(ctx, competitionID, callerID)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return ErrNotAssignedToLane
-			}
-			return fmt.Errorf("get assignment: %w", err)
-		}
-		if GetScoreLane(assignment.LaneNumber, comp.LanesTotal) != lane {
-			return ErrNotAssignedToLane
+		if err := s.checkScorerAuthorization(ctx, comp, lane, callerID); err != nil {
+			return err
 		}
 	}
 
@@ -303,29 +291,12 @@ func (s *ScoringService) LockStage(ctx context.Context, competitionID int64, lan
 
 func (s *ScoringService) UnlockStage(ctx context.Context, competitionID int64, lane, stageNumber int, isAdmin bool) error {
 	if !isAdmin {
-		return ErrNotAssignedToLane
-	}
-	if _, err := s.competitions.GetByID(ctx, competitionID); err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return ErrCompetitionNotFound
-		}
-		return fmt.Errorf("get competition: %w", err)
+		return ErrAdminRequired
 	}
 
-	targetShooter, err := s.shooters.GetByLane(ctx, competitionID, lane)
+	_, _, stage, err := s.resolveStage(ctx, competitionID, lane, stageNumber)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return ErrStageLaneNotFound
-		}
-		return fmt.Errorf("get shooter: %w", err)
-	}
-
-	stage, err := s.stages.GetByShooterAndNumber(ctx, targetShooter.ID, stageNumber)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return ErrShooterNotFound
-		}
-		return fmt.Errorf("get stage: %w", err)
+		return err
 	}
 
 	if err := s.locks.ClearForStage(ctx, stage.ID); err != nil {
