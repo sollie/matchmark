@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sollie/matchmark/internal/auth"
+	"github.com/sollie/matchmark/internal/model"
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/service"
 )
@@ -26,6 +27,15 @@ func NewUserHandler(userSvc *service.UserService) *UserHandler {
 	return &UserHandler{userSvc: userSvc}
 }
 
+func toUserResp(u *model.User) userResp {
+	return userResp{
+		ID:        u.ID,
+		Username:  u.Username,
+		Role:      u.Role,
+		CreatedAt: u.CreatedAt,
+	}
+}
+
 func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 	id := auth.UserIDFromContext(r.Context())
 	user, err := h.userSvc.GetByID(r.Context(), id)
@@ -33,12 +43,7 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to get user")
 		return
 	}
-	writeJSON(w, http.StatusOK, userResp{
-		ID:        user.ID,
-		Username:  user.Username,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-	})
+	writeJSON(w, http.StatusOK, toUserResp(user))
 }
 
 func (h *UserHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -48,13 +53,8 @@ func (h *UserHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := make([]userResp, 0, len(users))
-	for _, u := range users {
-		out = append(out, userResp{
-			ID:        u.ID,
-			Username:  u.Username,
-			Role:      u.Role,
-			CreatedAt: u.CreatedAt,
-		})
+	for i := range users {
+		out = append(out, toUserResp(&users[i]))
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -89,12 +89,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, userResp{
-		ID:        user.ID,
-		Username:  user.Username,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-	})
+	writeJSON(w, http.StatusCreated, toUserResp(user))
 }
 
 func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -131,12 +126,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, userResp{
-		ID:        user.ID,
-		Username:  user.Username,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
-	})
+	writeJSON(w, http.StatusOK, toUserResp(user))
 }
 
 func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {

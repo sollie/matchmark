@@ -67,7 +67,7 @@ func (r *ShooterRepository) ListByCompetition(ctx context.Context, competitionID
 		}
 	}()
 
-	var out []model.Shooter
+	out := make([]model.Shooter, 0)
 	for rows.Next() {
 		s, err := scanShooterRow(rows)
 		if err != nil {
