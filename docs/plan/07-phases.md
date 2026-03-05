@@ -80,14 +80,10 @@ After every shell script change: run `shellcheck`.
 
 - [x] `internal/service/monitor.go`: `GetMonitorSnapshot(competitionID)` — single
       SQL query aggregating per-lane status, scores, lock state
-- [x] `internal/handler/monitor.go`: GET /api/admin/monitor?competition_id={id}
-      — SSE stream; emit snapshot every 3s; handle client disconnect cleanly
-- [x] `004_sse_tickets.sql` + `006_sse_ticket_competition.sql`: short-lived single-use
-      SSE auth tickets (browsers cannot send custom headers on EventSource connections)
-- [x] `internal/service/sse_ticket.go`: issue and consume tickets
-- [x] `internal/handler/sse_ticket.go`: POST /api/admin/sse-ticket (admin, returns ticket)
-      Ticket is passed as `?ticket=` query param on SSE connections and validated once
-      on first connection; not required for subsequent reconnects within the session
+- [x] `internal/handler/monitor.go`: GET /api/admin/competitions/{id}/monitor
+      — SSE stream; authenticated via standard `Authorization: Bearer` header;
+      emit snapshot every 3s; handle client disconnect cleanly
+- [x] `008_drop_sse_tickets.sql`: drops the `sse_tickets` table (no longer needed)
 
 ## Phase 7 — Export
 
@@ -138,16 +134,13 @@ After every shell script change: run `shellcheck`.
 
 ## Phase 9b — Post-Lock Stage Review
 
-- [x] `backend/internal/db/migrations/007_sse_ticket_lane_stage.sql`: adds `lane INTEGER NOT NULL DEFAULT 0`
-      and `stage_number INTEGER NOT NULL DEFAULT 0` columns to `sse_tickets`
-- [x] `internal/service/sse_ticket.go`: `IssueForStage(ctx, userID, competitionID, lane, stageNumber)`
-      and `ConsumeForStage(ctx, ticket, competitionID, lane, stageNumber)` — validate all four columns
-- [x] `internal/handler/scoring.go`: added `ticketSvc *service.SSETicketService` to `ScoringHandler`;
-      `IssueStageTicket` — `POST /api/competitions/{id}/score-sse-ticket`;
-      `StreamStage` — `GET /api/competitions/{id}/lanes/{lane}/stage/{stage}/stream`
-      (ticket-authenticated, streams until `fully_locked == true` then closes)
-- [x] `cmd/server/main.go`: pass `sseTicketSvc` to `NewScoringHandler`; register both new routes
-      (`IssueStageTicket` inside `RequireAuth`, `StreamStage` outside)
+- [x] `internal/handler/scoring.go`: `StreamStage` — `GET /api/competitions/{id}/lanes/{lane}/stage/{stage}/stream`
+      (authenticated via standard `Authorization: Bearer` header; verifies lane assignment
+      on connect; streams until `fully_locked == true` then closes)
+- [x] `cmd/server/main.go`: `StreamStage` registered inside `RequireAuth` group
+- [x] `frontend/src/lib/api/sse.ts`: shared `openSSEStream()` utility using `fetch` +
+      `ReadableStream` with SSE frame parser and `AbortController` for cancellation;
+      replaces `EventSource` throughout the app (supports `Authorization: Bearer` header)
 - [x] `/score/stage` page: post-lock review modal — spinner while adjacent scorer is pending,
       score/X/hits display once both sides locked, "Next →" blocked while pending,
       `goto('/score/summary')` moved from `lockStage()` into `nextStage()` so modal always shows

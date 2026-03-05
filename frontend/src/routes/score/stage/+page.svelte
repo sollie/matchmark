@@ -6,6 +6,7 @@
 	import { scoring } from '$lib/stores/scoring';
 	import type { StageState } from '$lib/stores/scoring';
 	import { apiFetch } from '$lib/api/client';
+	import { openSSEStream } from '$lib/api/sse';
 	import { enqueue, replayQueue, registerBackgroundSync } from '$lib/sync/queue';
 	import { RING_VALUES, RING_KEYS } from '$lib/rulebook';
 

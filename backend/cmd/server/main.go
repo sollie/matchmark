@@ -82,18 +82,16 @@ func main() {
 	monitorSvc := service.NewMonitorService(database, competitionSvc)
 	exportSvc := service.NewExportService(exportRepo, competitionRepo)
 	spectatorSvc := service.NewSpectatorService(database)
-	sseTicketSvc := service.NewSSETicketService(database)
 
 	authH := handler.NewAuthHandler(authSvc)
 	userH := handler.NewUserHandler(userSvc)
 	competitionH := handler.NewCompetitionHandler(competitionSvc)
 	shooterH := handler.NewShooterHandler(shooterSvc)
-	scoringH := handler.NewScoringHandler(scoringSvc, sseTicketSvc)
+	scoringH := handler.NewScoringHandler(scoringSvc)
 	assignmentH := handler.NewAssignmentHandler(assignmentSvc)
-	monitorH := handler.NewMonitorHandler(monitorSvc, sseTicketSvc)
+	monitorH := handler.NewMonitorHandler(monitorSvc)
 	exportH := handler.NewExportHandler(exportSvc)
 	spectatorH := handler.NewSpectatorHandler(spectatorSvc)
-	sseTicketH := handler.NewSSETicketHandler(sseTicketSvc)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
@@ -144,9 +142,8 @@ func main() {
 				r.Get("/", scoringH.GetStage)
 				r.Post("/hits", scoringH.SubmitHits)
 				r.Post("/lock", scoringH.LockStage)
+				r.Get("/stream", scoringH.StreamStage)
 			})
-
-			r.Post("/competitions/{id}/score-sse-ticket", scoringH.IssueStageTicket)
 
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireAdmin)
@@ -172,12 +169,9 @@ func main() {
 				r.Get("/competitions/{id}/export/csv", exportH.ExportCSV)
 				r.Get("/competitions/{id}/export/pdf", exportH.ExportPDF)
 
-				r.Post("/admin/sse-ticket", sseTicketH.Issue)
+				r.Get("/admin/competitions/{id}/monitor", monitorH.Stream)
 			})
 		})
-
-		r.Get("/admin/monitor", monitorH.Stream)
-		r.Get("/competitions/{id}/lanes/{lane}/stage/{stage}/stream", scoringH.StreamStage)
 	})
 
 	srv := &http.Server{
