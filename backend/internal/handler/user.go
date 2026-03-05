@@ -15,6 +15,13 @@ type UserHandler struct {
 	userSvc *service.UserService
 }
 
+type userResp struct {
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	Role      string `json:"role"`
+	CreatedAt string `json:"created_at"`
+}
+
 func NewUserHandler(userSvc *service.UserService) *UserHandler {
 	return &UserHandler{userSvc: userSvc}
 }
@@ -26,11 +33,11 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to get user")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"id":         user.ID,
-		"username":   user.Username,
-		"role":       user.Role,
-		"created_at": user.CreatedAt,
+	writeJSON(w, http.StatusOK, userResp{
+		ID:        user.ID,
+		Username:  user.Username,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
 	})
 }
 
@@ -39,12 +46,6 @@ func (h *UserHandler) List(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list users")
 		return
-	}
-	type userResp struct {
-		ID        int64  `json:"id"`
-		Username  string `json:"username"`
-		Role      string `json:"role"`
-		CreatedAt string `json:"created_at"`
 	}
 	out := make([]userResp, 0, len(users))
 	for _, u := range users {
@@ -88,11 +89,11 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"id":         user.ID,
-		"username":   user.Username,
-		"role":       user.Role,
-		"created_at": user.CreatedAt,
+	writeJSON(w, http.StatusCreated, userResp{
+		ID:        user.ID,
+		Username:  user.Username,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
 	})
 }
 
@@ -130,11 +131,11 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"id":         user.ID,
-		"username":   user.Username,
-		"role":       user.Role,
-		"created_at": user.CreatedAt,
+	writeJSON(w, http.StatusOK, userResp{
+		ID:        user.ID,
+		Username:  user.Username,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
 	})
 }
 

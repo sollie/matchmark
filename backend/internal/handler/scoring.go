@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sollie/matchmark/internal/auth"
+	"github.com/sollie/matchmark/internal/model"
 	"github.com/sollie/matchmark/internal/service"
 )
 
@@ -33,6 +34,14 @@ func parseStageParam(r *http.Request) (int, error) {
 type hitResp struct {
 	Ring   string `json:"ring"`
 	Points int    `json:"points"`
+}
+
+func hitsToResp(hits []model.Hit) []hitResp {
+	out := make([]hitResp, len(hits))
+	for i, h := range hits {
+		out[i] = hitResp{Ring: h.Ring, Points: h.Points}
+	}
+	return out
 }
 
 func parseScoringParams(r *http.Request) (int64, int, int, error) {
@@ -83,10 +92,7 @@ func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 		WAID string  `json:"wa_id"`
 		Club *string `json:"club"`
 	}
-	hits := make([]hitResp, len(detail.Hits))
-	for i, h := range detail.Hits {
-		hits[i] = hitResp{Ring: h.Ring, Points: h.Points}
-	}
+	hits := hitsToResp(detail.Hits)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"stage_number":       detail.StageNumber,
@@ -154,10 +160,7 @@ func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hits := make([]hitResp, len(result.Hits))
-	for i, h := range result.Hits {
-		hits[i] = hitResp{Ring: h.Ring, Points: h.Points}
-	}
+	hits := hitsToResp(result.Hits)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"hits":          hits,
 		"stage_score":   result.StageScore,
@@ -213,7 +216,7 @@ func (h *ScoringHandler) UnlockStage(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "no shooter on that lane")
 		case errors.Is(err, service.ErrShooterNotFound):
 			writeError(w, http.StatusNotFound, "stage not found")
-		case errors.Is(err, service.ErrNotAssignedToLane):
+		case errors.Is(err, service.ErrAdminRequired):
 			writeError(w, http.StatusForbidden, "admin access required")
 		default:
 			writeError(w, http.StatusInternalServerError, "failed to unlock stage")
@@ -294,10 +297,7 @@ func (h *ScoringHandler) StreamStage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return true
 		}
-		hits := make([]hitResp, len(detail.Hits))
-		for i, h := range detail.Hits {
-			hits[i] = hitResp{Ring: h.Ring, Points: h.Points}
-		}
+		hits := hitsToResp(detail.Hits)
 		data, err := json.Marshal(map[string]any{
 			"stage_score":   detail.StageScore,
 			"stage_x_count": detail.StageXCount,
