@@ -3,13 +3,20 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 )
 
-const MaxBodyBytes = 1 << 20
+const (
+	MaxBodyBytes   = 1 << 20
+	maxUsernameLen = 64
+	maxNameLen     = 128
+	maxWAIDLen     = 32
+	maxClubLen     = 128
+)
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -22,7 +29,7 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 func decodeJSON(r *http.Request, v any) error {
-	dec := json.NewDecoder(r.Body)
+	dec := json.NewDecoder(io.LimitReader(r.Body, MaxBodyBytes))
 	if err := dec.Decode(v); err != nil {
 		return err
 	}

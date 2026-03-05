@@ -52,6 +52,18 @@ func (h *ShooterHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	if len(body.Name) > maxNameLen {
+		writeError(w, http.StatusBadRequest, "name too long")
+		return
+	}
+	if len(body.WAID) > maxWAIDLen {
+		writeError(w, http.StatusBadRequest, "wa_id too long")
+		return
+	}
+	if body.Club != nil && len(*body.Club) > maxClubLen {
+		writeError(w, http.StatusBadRequest, "club too long")
+		return
+	}
 
 	shooter, err := h.shooterSvc.Create(r.Context(), service.CreateShooterParams{
 		CompetitionID: compID,
@@ -102,6 +114,18 @@ func (h *ShooterHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.Name != nil && len(*body.Name) > maxNameLen {
+		writeError(w, http.StatusBadRequest, "name too long")
+		return
+	}
+	if body.WAID != nil && len(*body.WAID) > maxWAIDLen {
+		writeError(w, http.StatusBadRequest, "wa_id too long")
+		return
+	}
+	if body.Club != nil && len(*body.Club) > maxClubLen {
+		writeError(w, http.StatusBadRequest, "club too long")
 		return
 	}
 
