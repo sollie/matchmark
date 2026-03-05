@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -95,7 +97,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.RealIP)
+	r.Use(trustedProxyRealIP)
 	r.Use(middleware.RequestSize(handler.MaxBodyBytes))
 	r.Use(newStructuredLogger())
 
@@ -297,6 +299,40 @@ func newCORSMiddleware(allowedOrigin string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func trustedProxyRealIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if peer, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+			if ip := net.ParseIP(peer); ip != nil && isPrivateOrLoopback(ip) {
+				if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+					r.RemoteAddr = strings.TrimSpace(strings.SplitN(xff, ",", 2)[0]) + ":0"
+				} else if xri := r.Header.Get("X-Real-IP"); xri != "" {
+					r.RemoteAddr = strings.TrimSpace(xri) + ":0"
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+var privateRanges = []net.IPNet{
+	{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(8, 32)},
+	{IP: net.ParseIP("172.16.0.0"), Mask: net.CIDRMask(12, 32)},
+	{IP: net.ParseIP("192.168.0.0"), Mask: net.CIDRMask(16, 32)},
+	{IP: net.ParseIP("fc00::"), Mask: net.CIDRMask(7, 128)},
+}
+
+func isPrivateOrLoopback(ip net.IP) bool {
+	if ip.IsLoopback() {
+		return true
+	}
+	for _, r := range privateRanges {
+		if r.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 type config struct {
