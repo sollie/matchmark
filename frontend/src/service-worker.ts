@@ -39,6 +39,7 @@ async function replayQueue(): Promise<void> {
 	const db = await openSyncQueue();
 	const items = await db.getAll('sync_queue');
 	for (const item of items) {
+		if (item.errored) continue;
 		try {
 			const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 			if (accessToken) {
@@ -49,7 +50,8 @@ async function replayQueue(): Promise<void> {
 				{
 					method: 'POST',
 					headers,
-					body: JSON.stringify({ hits: item.hits })
+					body: JSON.stringify({ hits: item.hits }),
+					signal: AbortSignal.timeout(10_000)
 				}
 			);
 			if (res.ok) {

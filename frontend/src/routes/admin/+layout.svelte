@@ -5,12 +5,15 @@
 	import { auth } from '$lib/stores/auth';
 
 	let { children } = $props();
+	let isAdmin = $state(false);
 
 	onMount(() => {
 		const state = get(auth);
 		if (state.user?.role !== 'admin') {
 			goto('/login');
+			return;
 		}
+		isAdmin = true;
 		return auth.subscribe((s) => {
 			if (s.accessToken && s.user?.role !== 'admin') {
 				goto('/login');
@@ -19,4 +22,6 @@
 	});
 </script>
 
-{@render children()}
+{#if isAdmin}
+	{@render children()}
+{/if}

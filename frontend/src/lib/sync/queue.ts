@@ -22,17 +22,18 @@ export async function replayQueue(): Promise<void> {
 	for (const item of items) {
 		if (item.errored) continue;
 		try {
-			const res = await fetch(
-				`/api/competitions/${item.competitionId}/lanes/${item.lane}/stage/${item.stage}/hits`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						...(token ? { Authorization: `Bearer ${token}` } : {})
-					},
-					body: JSON.stringify({ hits: item.hits })
-				}
-			);
+		const res = await fetch(
+			`/api/competitions/${item.competitionId}/lanes/${item.lane}/stage/${item.stage}/hits`,
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...(token ? { Authorization: `Bearer ${token}` } : {})
+				},
+				body: JSON.stringify({ hits: item.hits }),
+				signal: AbortSignal.timeout(10_000)
+			}
+		);
 			if (res.ok) {
 				await db.delete('sync_queue', item.id as number);
 			} else {

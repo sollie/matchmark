@@ -60,7 +60,7 @@ export async function silentRefresh(): Promise<void> {
 		});
 		if (!res.ok) throw new Error('refresh failed');
 		const data = await res.json();
-		setTokens(data.access_token, data.refresh_token, Date.now() + data.expires_in * 1000, data.user);
+		setTokens(data.access_token, data.refresh_token, Date.now() + data.expires_in * 1000, get(auth).user!);
 	})();
 	try {
 		await refreshPromise;
