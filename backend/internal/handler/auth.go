@@ -15,6 +15,25 @@ func NewAuthHandler(authSvc *service.AuthService) *AuthHandler {
 	return &AuthHandler{authSvc: authSvc}
 }
 
+type loginUserResp struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+}
+
+type loginResp struct {
+	AccessToken  string        `json:"access_token"`
+	RefreshToken string        `json:"refresh_token"`
+	ExpiresIn    int           `json:"expires_in"`
+	User         loginUserResp `json:"user"`
+}
+
+type refreshResp struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
+}
+
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Username string `json:"username"`
@@ -39,14 +58,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"access_token":  result.AccessToken,
-		"refresh_token": result.RefreshToken,
-		"expires_in":    result.ExpiresIn,
-		"user": map[string]any{
-			"id":       result.User.ID,
-			"username": result.User.Username,
-			"role":     result.User.Role,
+	writeJSON(w, http.StatusOK, loginResp{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		ExpiresIn:    result.ExpiresIn,
+		User: loginUserResp{
+			ID:       result.User.ID,
+			Username: result.User.Username,
+			Role:     result.User.Role,
 		},
 	})
 }
@@ -74,10 +93,10 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"access_token":  result.AccessToken,
-		"refresh_token": result.RefreshToken,
-		"expires_in":    result.ExpiresIn,
+	writeJSON(w, http.StatusOK, refreshResp{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		ExpiresIn:    result.ExpiresIn,
 	})
 }
 

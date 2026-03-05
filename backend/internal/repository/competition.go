@@ -68,7 +68,7 @@ func (r *CompetitionRepository) List(ctx context.Context, status string) (_ []mo
 		}
 	}()
 
-	var out []model.Competition
+	out := make([]model.Competition, 0)
 	for rows.Next() {
 		c, err := scanCompetitionRow(rows)
 		if err != nil {

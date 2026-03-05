@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +30,10 @@ func parseLaneParam(r *http.Request) (int, error) {
 
 func parseStageParam(r *http.Request) (int, error) {
 	return strconv.Atoi(chi.URLParam(r, "stage"))
+}
+
+func isAdminFromCtx(ctx context.Context) bool {
+	return auth.RoleFromContext(ctx) == "admin"
 }
 
 type hitResp struct {
@@ -60,6 +65,61 @@ func parseScoringParams(r *http.Request) (int64, int, int, error) {
 	return compID, lane, stage, nil
 }
 
+func writeScoringError(w http.ResponseWriter, err error) bool {
+	switch {
+	case errors.Is(err, service.ErrCompetitionNotFound):
+		writeError(w, http.StatusNotFound, "competition not found")
+	case errors.Is(err, service.ErrStageLaneNotFound):
+		writeError(w, http.StatusNotFound, "no shooter on that lane")
+	case errors.Is(err, service.ErrShooterNotFound):
+		writeError(w, http.StatusNotFound, "stage not found")
+	default:
+		return false
+	}
+	return true
+}
+
+type shooterResp struct {
+	Name string  `json:"name"`
+	WAID string  `json:"wa_id"`
+	Club *string `json:"club"`
+}
+
+type stageResp struct {
+	StageNumber      int         `json:"stage_number"`
+	ExpectedShots    int         `json:"expected_shots"`
+	Distance         string      `json:"distance"`
+	TimeSeconds      int         `json:"time_seconds"`
+	Position         string      `json:"position"`
+	Discipline       string      `json:"discipline"`
+	TotalStages      int         `json:"total_stages"`
+	Shooter          shooterResp `json:"shooter"`
+	Hits             []hitResp   `json:"hits"`
+	LockedByScorer   bool        `json:"locked_by_scorer"`
+	FullyLocked      bool        `json:"fully_locked"`
+	StageScore       int         `json:"stage_score"`
+	StageXCount      int         `json:"stage_x_count"`
+	CumulativeScore  int         `json:"cumulative_score"`
+	CumulativeXCount int         `json:"cumulative_x_count"`
+}
+
+type submitHitsResp struct {
+	Hits        []hitResp `json:"hits"`
+	StageScore  int       `json:"stage_score"`
+	StageXCount int       `json:"stage_x_count"`
+}
+
+type lockResp struct {
+	FullyLocked bool `json:"fully_locked"`
+}
+
+type streamEventResp struct {
+	StageScore  int       `json:"stage_score"`
+	StageXCount int       `json:"stage_x_count"`
+	Hits        []hitResp `json:"hits"`
+	FullyLocked bool      `json:"fully_locked"`
+}
+
 func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 	compID, lane, stageNum, err := parseScoringParams(r)
 	if err != nil {
@@ -68,17 +128,13 @@ func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	callerID := auth.UserIDFromContext(r.Context())
-	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
 
-	detail, err := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, callerID, isAdmin)
+	detail, err := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, callerID, isAdminFromCtx(r.Context()))
 	if err != nil {
+		if writeScoringError(w, err) {
+			return
+		}
 		switch {
-		case errors.Is(err, service.ErrCompetitionNotFound):
-			writeError(w, http.StatusNotFound, "competition not found")
-		case errors.Is(err, service.ErrStageLaneNotFound):
-			writeError(w, http.StatusNotFound, "no shooter on that lane")
-		case errors.Is(err, service.ErrShooterNotFound):
-			writeError(w, http.StatusNotFound, "stage not found")
 		case errors.Is(err, service.ErrNotAssignedToLane):
 			writeError(w, http.StatusForbidden, "you are not assigned to score this lane")
 		default:
@@ -87,29 +143,22 @@ func (h *ScoringHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type shooterResp struct {
-		Name string  `json:"name"`
-		WAID string  `json:"wa_id"`
-		Club *string `json:"club"`
-	}
-	hits := hitsToResp(detail.Hits)
-
-	writeJSON(w, http.StatusOK, map[string]any{
-		"stage_number":       detail.StageNumber,
-		"expected_shots":     detail.ExpectedShots,
-		"distance":           detail.Distance,
-		"time_seconds":       detail.TimeSeconds,
-		"position":           detail.Position,
-		"discipline":         detail.Discipline,
-		"total_stages":       detail.TotalStages,
-		"shooter":            shooterResp{Name: detail.Shooter.Name, WAID: detail.Shooter.WAID, Club: detail.Shooter.Club},
-		"hits":               hits,
-		"locked_by_scorer":   detail.LockedByScorer,
-		"fully_locked":       detail.FullyLocked,
-		"stage_score":        detail.StageScore,
-		"stage_x_count":      detail.StageXCount,
-		"cumulative_score":   detail.CumulativeScore,
-		"cumulative_x_count": detail.CumulativeXCount,
+	writeJSON(w, http.StatusOK, stageResp{
+		StageNumber:      detail.StageNumber,
+		ExpectedShots:    detail.ExpectedShots,
+		Distance:         detail.Distance,
+		TimeSeconds:      detail.TimeSeconds,
+		Position:         detail.Position,
+		Discipline:       detail.Discipline,
+		TotalStages:      detail.TotalStages,
+		Shooter:          shooterResp{Name: detail.Shooter.Name, WAID: detail.Shooter.WAID, Club: detail.Shooter.Club},
+		Hits:             hitsToResp(detail.Hits),
+		LockedByScorer:   detail.LockedByScorer,
+		FullyLocked:      detail.FullyLocked,
+		StageScore:       detail.StageScore,
+		StageXCount:      detail.StageXCount,
+		CumulativeScore:  detail.CumulativeScore,
+		CumulativeXCount: detail.CumulativeXCount,
 	})
 }
 
@@ -133,17 +182,13 @@ func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
 	}
 
 	callerID := auth.UserIDFromContext(r.Context())
-	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
 
-	result, err := h.scoringSvc.SubmitHits(r.Context(), compID, lane, stageNum, body.Hits, callerID, isAdmin)
+	result, err := h.scoringSvc.SubmitHits(r.Context(), compID, lane, stageNum, body.Hits, callerID, isAdminFromCtx(r.Context()))
 	if err != nil {
+		if writeScoringError(w, err) {
+			return
+		}
 		switch {
-		case errors.Is(err, service.ErrCompetitionNotFound):
-			writeError(w, http.StatusNotFound, "competition not found")
-		case errors.Is(err, service.ErrStageLaneNotFound):
-			writeError(w, http.StatusNotFound, "no shooter on that lane")
-		case errors.Is(err, service.ErrShooterNotFound):
-			writeError(w, http.StatusNotFound, "stage not found")
 		case errors.Is(err, service.ErrStageLocked):
 			writeError(w, http.StatusConflict, err.Error())
 		case errors.Is(err, service.ErrSingleLaneAdminOnly):
@@ -160,11 +205,10 @@ func (h *ScoringHandler) SubmitHits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hits := hitsToResp(result.Hits)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"hits":          hits,
-		"stage_score":   result.StageScore,
-		"stage_x_count": result.XCount,
+	writeJSON(w, http.StatusOK, submitHitsResp{
+		Hits:        hitsToResp(result.Hits),
+		StageScore:  result.StageScore,
+		StageXCount: result.XCount,
 	})
 }
 
@@ -176,16 +220,12 @@ func (h *ScoringHandler) LockStage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	callerID := auth.UserIDFromContext(r.Context())
-	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
 
-	if err := h.scoringSvc.LockStage(r.Context(), compID, lane, stageNum, callerID, isAdmin); err != nil {
+	if err := h.scoringSvc.LockStage(r.Context(), compID, lane, stageNum, callerID, isAdminFromCtx(r.Context())); err != nil {
+		if writeScoringError(w, err) {
+			return
+		}
 		switch {
-		case errors.Is(err, service.ErrCompetitionNotFound):
-			writeError(w, http.StatusNotFound, "competition not found")
-		case errors.Is(err, service.ErrStageLaneNotFound):
-			writeError(w, http.StatusNotFound, "no shooter on that lane")
-		case errors.Is(err, service.ErrShooterNotFound):
-			writeError(w, http.StatusNotFound, "stage not found")
 		case errors.Is(err, service.ErrSingleLaneAdminOnly):
 			writeError(w, http.StatusForbidden, "admin scoring required")
 		case errors.Is(err, service.ErrNotAssignedToLane):
@@ -196,7 +236,7 @@ func (h *ScoringHandler) LockStage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]bool{"fully_locked": true})
+	writeJSON(w, http.StatusOK, lockResp{FullyLocked: true})
 }
 
 func (h *ScoringHandler) UnlockStage(w http.ResponseWriter, r *http.Request) {
@@ -206,16 +246,11 @@ func (h *ScoringHandler) UnlockStage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
-
-	if err := h.scoringSvc.UnlockStage(r.Context(), compID, lane, stageNum, isAdmin); err != nil {
+	if err := h.scoringSvc.UnlockStage(r.Context(), compID, lane, stageNum, isAdminFromCtx(r.Context())); err != nil {
+		if writeScoringError(w, err) {
+			return
+		}
 		switch {
-		case errors.Is(err, service.ErrCompetitionNotFound):
-			writeError(w, http.StatusNotFound, "competition not found")
-		case errors.Is(err, service.ErrStageLaneNotFound):
-			writeError(w, http.StatusNotFound, "no shooter on that lane")
-		case errors.Is(err, service.ErrShooterNotFound):
-			writeError(w, http.StatusNotFound, "stage not found")
 		case errors.Is(err, service.ErrAdminRequired):
 			writeError(w, http.StatusForbidden, "admin access required")
 		default:
@@ -224,7 +259,7 @@ func (h *ScoringHandler) UnlockStage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]bool{"fully_locked": false})
+	writeJSON(w, http.StatusOK, lockResp{FullyLocked: false})
 }
 
 func (h *ScoringHandler) IssueStageTicket(w http.ResponseWriter, r *http.Request) {
@@ -295,14 +330,15 @@ func (h *ScoringHandler) StreamStage(w http.ResponseWriter, r *http.Request) {
 	emit := func() bool {
 		detail, err := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, userID, false)
 		if err != nil {
+			_, _ = fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
+			flusher.Flush()
 			return true
 		}
-		hits := hitsToResp(detail.Hits)
-		data, err := json.Marshal(map[string]any{
-			"stage_score":   detail.StageScore,
-			"stage_x_count": detail.StageXCount,
-			"hits":          hits,
-			"fully_locked":  detail.FullyLocked,
+		data, err := json.Marshal(streamEventResp{
+			StageScore:  detail.StageScore,
+			StageXCount: detail.StageXCount,
+			Hits:        hitsToResp(detail.Hits),
+			FullyLocked: detail.FullyLocked,
 		})
 		if err != nil {
 			return true
