@@ -1,22 +1,20 @@
 <script lang="ts">
 	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { session } from '$lib/stores/session';
 	import { scoring } from '$lib/stores/scoring';
 	import type { StageState } from '$lib/stores/scoring';
 	import { apiFetch } from '$lib/api/client';
 	import { enqueue, replayQueue, registerBackgroundSync } from '$lib/sync/queue';
-
-	const RING_VALUES: Record<string, number> = { X: 10, '10': 10, '9': 9, '8': 8, '7': 7, '0': 0, M: 0 };
-	const RING_KEYS = ['X', '10', '9', '8', '7', '0'];
+	import { RING_VALUES, RING_KEYS } from '$lib/rulebook';
 
 	let sess = $derived(get(session));
 	let sc = $state(get(scoring));
-	scoring.subscribe((v) => { sc = v; });
+	const unsubscribeScoring = scoring.subscribe((v) => { sc = v; });
 
 	let stage = $derived(sc.stages[sc.currentStage - 1] as StageState | undefined);
-	let readonly = $derived(!stage || stage.fullyLocked || sc.currentStage !== sc.currentStage);
+	let readonly = $derived(!stage || stage.fullyLocked);
 	let isActive = $derived((s: StageState) => s.stageNumber === sc.currentStage);
 	let syncError = $state(false);
 	let adminOnly = $state(false);
@@ -34,6 +32,10 @@
 		const s = get(session);
 		if (!s.competitionId || !s.scoreLane) { goto('/score/select'); return; }
 		await registerBackgroundSync().catch(() => undefined);
+	});
+
+	onDestroy(() => {
+		unsubscribeScoring();
 	});
 
 	function addHit(ring: string) {

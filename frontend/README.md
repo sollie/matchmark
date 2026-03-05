@@ -1,42 +1,48 @@
-# sv
+# MatchMark Frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit PWA for the MatchMark WA1500/PPC competition scoring system.
 
-## Creating a project
+Built with SvelteKit (`adapter-static`), TypeScript, and `@vite-pwa/sveltekit`.
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Prerequisites
 
-```sh
-# create a new project
-npx sv create my-app
-```
+- Node.js 20+
+- npm
 
-To recreate this project with the same configuration:
+## Setup
 
 ```sh
-# recreate this project
-npx sv@0.12.4 create --template minimal --types ts --install npm .
+npm install
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Development
 
 ```sh
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+The dev server starts at `http://localhost:5173`. It expects the backend API to be available at `/api` — use the Caddy reverse proxy or configure Vite's proxy in `vite.config.ts` for local development.
 
-To create a production version of your app:
+## Building
 
 ```sh
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+Produces a fully static bundle in `build/`. This is served by Caddy in production (see `caddy/Dockerfile`).
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Type checking
+
+```sh
+npm run check
+```
+
+## Production deployment
+
+The frontend is built inside the Caddy Docker image — see `caddy/Dockerfile` in the repo root. No separate frontend service is needed.
+
+For full stack local development, use Docker Compose from the repo root:
+
+```sh
+docker compose up
+```

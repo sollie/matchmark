@@ -1,24 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { apiFetch } from '$lib/api/client';
-
-	const WEAPON_CLASSES: Record<string, string[]> = {
-		'1500': [
-			'Revolver 1500',
-			'Pistol 1500',
-			'Revolver Optical Sight 1500',
-			'Pistol Optical Sight 1500'
-		],
-		'60': ['Distinguished Revolver', 'Distinguished Pistol', 'Open Match'],
-		'48': [
-			'Standard Revolver 4.25"',
-			'Standard Revolver 2.75"',
-			'Standard Revolver 2.75" 5-Shot',
-			'Standard Semi-Automatic Pistol 5.5" Production',
-			'Standard Semi-Automatic Pistol 5.5"',
-			'Standard Semi-Automatic Pistol 3.7"'
-		]
-	};
+	import { WEAPON_CLASSES } from '$lib/rulebook';
 
 	interface ShooterRow {
 		key: number;

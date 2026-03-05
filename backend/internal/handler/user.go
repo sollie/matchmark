@@ -3,9 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/sollie/matchmark/internal/auth"
 	"github.com/sollie/matchmark/internal/model"
 	"github.com/sollie/matchmark/internal/repository"
@@ -184,8 +182,4 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func parseIDParam(r *http.Request, param string) (int64, error) {
-	return strconv.ParseInt(chi.URLParam(r, param), 10, 64)
 }

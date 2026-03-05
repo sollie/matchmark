@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -8,7 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -46,6 +49,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("open database: %v", err)
 	}
+	database.SetMaxOpenConns(1)
 	defer func() {
 		if err := database.Close(); err != nil {
 			log.Printf("close database: %v", err)
@@ -94,6 +98,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
+	r.Use(middleware.RequestSize(handler.MaxBodyBytes))
 	r.Use(newStructuredLogger())
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -175,9 +180,28 @@ func main() {
 		r.Get("/competitions/{id}/lanes/{lane}/stage/{stage}/stream", scoringH.StreamStage)
 	})
 
-	log.Printf("matchmark %s listening on :8080", version)
-	if err := http.ListenAndServe(":8080", r); err != nil {
-		log.Fatalf("listen: %v", err)
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	go func() {
+		log.Printf("matchmark %s listening on :8080", version)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("listen: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	stop()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown: %v", err)
 	}
 }
 

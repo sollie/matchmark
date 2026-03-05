@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/sollie/matchmark/internal/service"
 )
 
@@ -18,16 +16,8 @@ func NewExportHandler(exportSvc *service.ExportService) *ExportHandler {
 	return &ExportHandler{exportSvc: exportSvc}
 }
 
-func (h *ExportHandler) competitionID(r *http.Request) (int64, error) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil || id < 1 {
-		return 0, fmt.Errorf("invalid id")
-	}
-	return id, nil
-}
-
 func (h *ExportHandler) ExportJSON(w http.ResponseWriter, r *http.Request) {
-	id, err := h.competitionID(r)
+	id, err := parseIDParam(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
@@ -48,7 +38,7 @@ func (h *ExportHandler) ExportJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ExportHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
-	id, err := h.competitionID(r)
+	id, err := parseIDParam(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
@@ -69,7 +59,7 @@ func (h *ExportHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ExportHandler) ExportPDF(w http.ResponseWriter, r *http.Request) {
-	id, err := h.competitionID(r)
+	id, err := parseIDParam(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
