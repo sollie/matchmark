@@ -24,11 +24,19 @@ func NewScoringHandler(scoringSvc *service.ScoringService) *ScoringHandler {
 }
 
 func parseLaneParam(r *http.Request) (int, error) {
-	return strconv.Atoi(chi.URLParam(r, "lane"))
+	v, err := strconv.Atoi(chi.URLParam(r, "lane"))
+	if err != nil || v < 1 {
+		return 0, errors.New("invalid lane")
+	}
+	return v, nil
 }
 
 func parseStageParam(r *http.Request) (int, error) {
-	return strconv.Atoi(chi.URLParam(r, "stage"))
+	v, err := strconv.Atoi(chi.URLParam(r, "stage"))
+	if err != nil || v < 1 {
+		return 0, errors.New("invalid stage")
+	}
+	return v, nil
 }
 
 func isAdminFromCtx(ctx context.Context) bool {
@@ -269,8 +277,9 @@ func (h *ScoringHandler) StreamStage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := auth.UserIDFromContext(r.Context())
+	isAdmin := isAdminFromCtx(r.Context())
 
-	_, verifyErr := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, userID, false)
+	_, verifyErr := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, userID, isAdmin)
 	if verifyErr != nil {
 		if writeScoringError(w, verifyErr) {
 			return
@@ -295,7 +304,7 @@ func (h *ScoringHandler) StreamStage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 
 	emit := func() bool {
-		detail, err := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, userID, false)
+		detail, err := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, userID, isAdmin)
 		if err != nil {
 			_, _ = fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
 			flusher.Flush()

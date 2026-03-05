@@ -7,6 +7,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       DB_PATH: /data/matchmark.db
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-172.16.0.0/12}
     volumes:
       - db_data:/data
     restart: unless-stopped

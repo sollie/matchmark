@@ -30,6 +30,10 @@ import (
 
 var version = "dev"
 
+type ctxKey int
+
+const ctxPeerIP ctxKey = iota
+
 const (
 	authRateLimit              rate.Limit = 5
 	authRateBurst                         = 10
@@ -97,7 +101,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
-	r.Use(trustedProxyRealIP)
+	r.Use(trustedProxyRealIP(cfg.trustedProxy))
 	r.Use(middleware.RequestSize(handler.MaxBodyBytes))
 	r.Use(newStructuredLogger())
 
@@ -177,8 +181,9 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: r,
+		Addr:              ":8080",
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -265,12 +270,14 @@ func newStructuredLogger() func(http.Handler) http.Handler {
 			start := time.Now()
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 			next.ServeHTTP(ww, r)
+			peer, _ := r.Context().Value(ctxPeerIP).(string)
 			slog.Info("request",
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", ww.Status(),
 				"latency_ms", time.Since(start).Milliseconds(),
 				"remote", r.RemoteAddr,
+				"peer", peer,
 			)
 		})
 	}
@@ -301,38 +308,22 @@ func newCORSMiddleware(allowedOrigin string) func(http.Handler) http.Handler {
 	}
 }
 
-func trustedProxyRealIP(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if peer, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-			if ip := net.ParseIP(peer); ip != nil && isPrivateOrLoopback(ip) {
+func trustedProxyRealIP(trusted *net.IPNet) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			peer, _, _ := net.SplitHostPort(r.RemoteAddr)
+			ctx := context.WithValue(r.Context(), ctxPeerIP, peer)
+			r = r.WithContext(ctx)
+			if ip := net.ParseIP(peer); ip != nil && trusted.Contains(ip) {
 				if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 					r.RemoteAddr = strings.TrimSpace(strings.SplitN(xff, ",", 2)[0]) + ":0"
 				} else if xri := r.Header.Get("X-Real-IP"); xri != "" {
 					r.RemoteAddr = strings.TrimSpace(xri) + ":0"
 				}
 			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-var privateRanges = []net.IPNet{
-	{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(8, 32)},
-	{IP: net.ParseIP("172.16.0.0"), Mask: net.CIDRMask(12, 32)},
-	{IP: net.ParseIP("192.168.0.0"), Mask: net.CIDRMask(16, 32)},
-	{IP: net.ParseIP("fc00::"), Mask: net.CIDRMask(7, 128)},
-}
-
-func isPrivateOrLoopback(ip net.IP) bool {
-	if ip.IsLoopback() {
-		return true
+			next.ServeHTTP(w, r)
+		})
 	}
-	for _, r := range privateRanges {
-		if r.Contains(ip) {
-			return true
-		}
-	}
-	return false
 }
 
 type config struct {
@@ -340,6 +331,7 @@ type config struct {
 	jwtSecret      string
 	adminPassword  string
 	frontendOrigin string
+	trustedProxy   *net.IPNet
 }
 
 func loadConfig() (config, error) {
@@ -368,10 +360,22 @@ func loadConfig() (config, error) {
 		return config{}, fmt.Errorf("%s", msg)
 	}
 
+	var trustedProxy *net.IPNet
+	if cidr := os.Getenv("TRUSTED_PROXY"); cidr != "" {
+		var parseErr error
+		_, trustedProxy, parseErr = net.ParseCIDR(cidr)
+		if parseErr != nil {
+			return config{}, fmt.Errorf("invalid TRUSTED_PROXY CIDR %q: %w", cidr, parseErr)
+		}
+	} else {
+		_, trustedProxy, _ = net.ParseCIDR("127.0.0.1/32")
+	}
+
 	return config{
 		dbPath:         dbPath,
 		jwtSecret:      jwtSecret,
 		adminPassword:  adminPassword,
 		frontendOrigin: os.Getenv("FRONTEND_ORIGIN"),
+		trustedProxy:   trustedProxy,
 	}, nil
 }

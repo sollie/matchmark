@@ -30,8 +30,12 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 
 func decodeJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(io.LimitReader(r.Body, MaxBodyBytes))
+	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		return err
+	}
+	if dec.More() {
+		return errors.New("request body must contain a single JSON object")
 	}
 	return nil
 }
