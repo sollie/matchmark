@@ -12,7 +12,8 @@
 | JWT algorithm | HS256 | Sufficient for a single-backend deployment; no asymmetric key management needed |
 | Access token TTL | 1 hour | Covers a typical slow competition session; short enough to limit exposure |
 | Refresh token TTL | 7 days | Allows multi-day competition events without re-login; rotated on every use |
-| Refresh token storage | DB (hashed) | Enables server-side revocation (logout, admin force-logout) |
+| Refresh token storage | HttpOnly; Secure; SameSite=Lax cookie (`mm_rt`) + DB (hashed) | Cookie eliminates XSS exposure from `localStorage`; DB enables server-side revocation |
+| JWT claims | `iss=matchmark`, `aud=matchmark-api` | Prevents token confusion attacks if multiple services share the same secret |
 | Refresh token families | `family_id` column on `refresh_tokens` | Detects token replay: if an already-consumed token from a family is presented, the entire family is revoked |
 | PDF export | `github.com/go-pdf/fpdf` | Pure Go, no CGO, mature, sufficient layout control for scorecard format |
 | Admin monitoring | SSE (Server-Sent Events) | Simpler than WebSocket for a unidirectional push use-case |

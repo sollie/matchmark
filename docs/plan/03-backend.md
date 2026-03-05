@@ -33,16 +33,18 @@ db/         migration runner (embedded SQL), admin seed
 ```
 POST /api/auth/login
      Body:     { "username": string, "password": string }
-     Response: { "access_token": string, "refresh_token": string,
-                 "expires_in": 3600, "user": { "id", "username", "role" } }
+     Response: { "access_token": string, "expires_in": 3600,
+                 "user": { "id", "username", "role" } }
+     Sets:     HttpOnly; Secure; SameSite=Lax cookie `mm_rt` containing the refresh token
 
 POST /api/auth/refresh
-     Body:     { "refresh_token": string }
-     Response: { "access_token": string, "refresh_token": string, "expires_in": 3600 }
+     Cookie:   mm_rt (HttpOnly refresh token)
+     Response: { "access_token": string, "expires_in": 3600 }
+     Sets:     Rotated mm_rt cookie
 
 POST /api/auth/logout
      Headers:  Authorization: Bearer <token>
-     Body:     { "refresh_token": string }
+     Cookie:   mm_rt (read to revoke token; clears cookie on success)
      Response: 204 No Content
 ```
 
@@ -318,6 +320,7 @@ GET /api/competitions/{id}/export/json
 
 ### JWT
 - Algorithm: HS256
+- Claims: `iss=matchmark`, `aud=matchmark-api`, `uid`, `sub` (username), `role`, `iat`, `exp`
 - Access token TTL: 1 hour
 - Refresh token TTL: 7 days; stored as `SHA-256(raw_token)` in `refresh_tokens` table
 - Every refresh rotates the refresh token (old deleted, new inserted)
