@@ -17,11 +17,10 @@ import (
 
 type ScoringHandler struct {
 	scoringSvc *service.ScoringService
-	ticketSvc  *service.SSETicketService
 }
 
-func NewScoringHandler(scoringSvc *service.ScoringService, ticketSvc *service.SSETicketService) *ScoringHandler {
-	return &ScoringHandler{scoringSvc: scoringSvc, ticketSvc: ticketSvc}
+func NewScoringHandler(scoringSvc *service.ScoringService) *ScoringHandler {
+	return &ScoringHandler{scoringSvc: scoringSvc}
 }
 
 func parseLaneParam(r *http.Request) (int, error) {
@@ -262,37 +261,6 @@ func (h *ScoringHandler) UnlockStage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, lockResp{FullyLocked: false})
 }
 
-func (h *ScoringHandler) IssueStageTicket(w http.ResponseWriter, r *http.Request) {
-	compID, err := parseIDParam(r, "id")
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid competition id")
-		return
-	}
-
-	var body struct {
-		Lane  int `json:"lane"`
-		Stage int `json:"stage"`
-	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-	if body.Lane < 1 || body.Stage < 1 {
-		writeError(w, http.StatusBadRequest, "lane and stage must be positive")
-		return
-	}
-
-	callerID := auth.UserIDFromContext(r.Context())
-
-	ticket, err := h.ticketSvc.IssueForStage(r.Context(), callerID, compID, body.Lane, body.Stage)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to issue ticket")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]string{"ticket": ticket})
-}
-
 func (h *ScoringHandler) StreamStage(w http.ResponseWriter, r *http.Request) {
 	compID, lane, stageNum, err := parseScoringParams(r)
 	if err != nil {
@@ -300,19 +268,18 @@ func (h *ScoringHandler) StreamStage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticket := r.URL.Query().Get("ticket")
-	if ticket == "" {
-		writeError(w, http.StatusUnauthorized, "missing ticket")
-		return
-	}
+	userID := auth.UserIDFromContext(r.Context())
 
-	userID, err := h.ticketSvc.ConsumeForStage(r.Context(), ticket, compID, lane, stageNum)
-	if err != nil {
-		if errors.Is(err, service.ErrInvalidTicket) {
-			writeError(w, http.StatusUnauthorized, "invalid or expired ticket")
+	_, verifyErr := h.scoringSvc.GetStageDetail(r.Context(), compID, lane, stageNum, userID, false)
+	if verifyErr != nil {
+		if writeScoringError(w, verifyErr) {
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "ticket validation failed")
+		if errors.Is(verifyErr, service.ErrNotAssignedToLane) {
+			writeError(w, http.StatusForbidden, "you are not assigned to score this lane")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to verify lane assignment")
 		return
 	}
 

@@ -212,17 +212,10 @@ POST /api/competitions/{id}/lanes/{lane}/stage/{stage}/unlock
 ### Scorer Stage Review (SSE)
 
 ```
-POST /api/competitions/{id}/score-sse-ticket
-     Auth: authenticated user (scorer)
-     Body: { "lane": int, "stage": int }
-     Response: 200 { "ticket": string }
-     Purpose: issues a short-lived single-use token so the browser can authenticate
-              the subsequent EventSource connection for the post-lock stage review.
-              Ticket expires after ~30s and is consumed on first connection.
-
-GET /api/competitions/{id}/lanes/{lane}/stage/{stage}/stream?ticket={ticket}
-    Auth: ticket validated on connect (no Authorization header required)
+GET /api/competitions/{id}/lanes/{lane}/stage/{stage}/stream
+    Auth: Authorization: Bearer <access_token>
     Content-Type: text/event-stream
+    On connect: verifies lane assignment (same check as SubmitHits); 403 if not assigned.
     Emits every 3 seconds until fully_locked == true, then closes:
     data: {
       "stage_score":   int,
@@ -230,23 +223,16 @@ GET /api/competitions/{id}/lanes/{lane}/stage/{stage}/stream?ticket={ticket}
       "hits":          [ { "ring": string, "points": int } ],
       "fully_locked":  bool
     }
-    401 if ticket missing, invalid, or expired.
+    401 if token missing or invalid.
+    403 if caller is not assigned to the requested lane.
     Stream closes automatically once fully_locked becomes true (final frame emitted).
 ```
 
 ### Admin Monitoring (SSE)
 
 ```
-POST /api/admin/sse-ticket
-     Auth: admin
-     Body: { "competition_id": int }
-     Response: 200 { "ticket": string }
-     Purpose: issues a short-lived single-use token so the browser can authenticate
-              the subsequent EventSource connection (browsers cannot set Authorization
-              headers on EventSource). Ticket expires after ~30s and is consumed on use.
-
-GET /api/admin/monitor?competition_id={id}&ticket={ticket}
-    Auth: admin (ticket validated on first connect; standard JWT used for reconnects)
+GET /api/admin/competitions/{id}/monitor
+    Auth: Authorization: Bearer <access_token>  (admin role required)
     Content-Type: text/event-stream
     Emits every 3 seconds:
     data: {

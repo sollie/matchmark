@@ -153,14 +153,14 @@ After a scorer locks a stage, a full-screen overlay appears showing their **own 
 
 **Flow:**
 1. Scorer taps "Lock Stage" → stage is locked on the server → modal opens
-2. Frontend issues `POST /api/competitions/{id}/score-sse-ticket` with `{ lane: ownLane, stage }` → receives `{ ticket }`
-3. Opens `EventSource` at `/api/competitions/{id}/lanes/{ownLane}/stage/{stageNum}/stream?ticket={ticket}`
-4. SSE stream emits updates every 3s; once `fully_locked === true` the stream closes automatically
-5. Modal shows a spinner ("Waiting for your scorer to finish…") until `fully_locked` becomes true
-6. Once resolved: displays score, X count, and hit sequence; "To protest this score, contact the match director."
-7. Scorer taps "Next →" → modal resets; if all stages are fully locked → navigate to `/score/summary`
+2. Frontend calls `openSSEStream()` (fetch + ReadableStream with `Authorization: Bearer`) to
+   `GET /api/competitions/{id}/lanes/{ownLane}/stage/{stageNum}/stream`
+3. SSE stream emits updates every 3s; once `fully_locked === true` the stream closes automatically
+4. Modal shows a spinner ("Waiting for your scorer to finish…") until `fully_locked` becomes true
+5. Once resolved: displays score, X count, and hit sequence; "To protest this score, contact the match director."
+6. Scorer taps "Next →" → modal resets; if all stages are fully locked → navigate to `/score/summary`
 
-**Error state:** if ticket request or SSE connection fails, modal shows an error message
+**Error state:** if the SSE connection fails, modal shows an error message
 ("Could not retrieve your score. Contact the match director.") and "Next →" is re-enabled.
 
 ### Colour / Accessibility
@@ -201,7 +201,8 @@ VitePWA({
 
 ## Admin Competition Monitor
 
-- SSE connection to `/api/admin/monitor?competition_id={id}`
+- SSE connection to `GET /api/admin/competitions/{id}/monitor` (authenticated via `Authorization: Bearer` header)
+- Uses `openSSEStream()` (`fetch` + `ReadableStream`) — no `EventSource`
 - Auto-reconnects on disconnect (exponential backoff, max 30s)
 - Live table columns: Lane | Shooter | Discipline | Stage | Score | X | Locked
 
