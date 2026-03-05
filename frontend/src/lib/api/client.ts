@@ -3,7 +3,6 @@ import { auth } from '$lib/stores/auth';
 import { goto } from '$app/navigation';
 import { openSyncQueue } from '$lib/db/idb';
 
-const REFRESH_KEY = 'mm_refresh_token';
 let proactiveTimer: ReturnType<typeof setTimeout> | null = null;
 let refreshPromise: Promise<void> | null = null;
 
@@ -14,16 +13,14 @@ function postTokenToSW(token: string | null): void {
 	}).catch(() => undefined);
 }
 
-export function setTokens(accessToken: string, refreshToken: string, expiresAt: number, user: { id: number; username: string; role: 'user' | 'admin' }) {
+export function setTokens(accessToken: string, expiresAt: number, user: { id: number; username: string; role: 'user' | 'admin' }) {
 	auth.set({ accessToken, user, expiresAt });
-	localStorage.setItem(REFRESH_KEY, refreshToken);
 	scheduleProactiveRefresh(expiresAt);
 	postTokenToSW(accessToken);
 }
 
 export function clearTokens() {
 	auth.set({ accessToken: null, user: null, expiresAt: null });
-	localStorage.removeItem(REFRESH_KEY);
 	if (proactiveTimer !== null) {
 		clearTimeout(proactiveTimer);
 		proactiveTimer = null;
@@ -51,16 +48,13 @@ function scheduleProactiveRefresh(expiresAt: number) {
 export async function silentRefresh(): Promise<void> {
 	if (refreshPromise) return refreshPromise;
 	refreshPromise = (async () => {
-		const refreshToken = localStorage.getItem(REFRESH_KEY);
-		if (!refreshToken) throw new Error('no refresh token');
 		const res = await fetch('/api/auth/refresh', {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ refresh_token: refreshToken })
+			credentials: 'include'
 		});
 		if (!res.ok) throw new Error('refresh failed');
 		const data = await res.json();
-		setTokens(data.access_token, data.refresh_token, Date.now() + data.expires_in * 1000, get(auth).user!);
+		setTokens(data.access_token, Date.now() + data.expires_in * 1000, get(auth).user!);
 	})();
 	try {
 		await refreshPromise;
@@ -70,8 +64,6 @@ export async function silentRefresh(): Promise<void> {
 }
 
 export async function restoreSession(): Promise<void> {
-	const refreshToken = localStorage.getItem(REFRESH_KEY);
-	if (!refreshToken) return;
 	try {
 		await silentRefresh();
 	} catch {
