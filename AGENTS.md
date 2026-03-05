@@ -23,6 +23,10 @@ See `docs/plan/` for the full specification:
 ## General Rules
 
 - Never do git write operations (commit, push, tag, etc.)
+- After completing any change, always suggest a commit message for the user to run.
+- When working through a list of items (e.g. a code review or security review), do one
+  commit per change: stop after each item, suggest the commit message, and wait for the
+  user to commit before proceeding to the next item.
 - Never add comments to code. This is critical!
 - Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
 - Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
@@ -59,7 +63,7 @@ See `docs/plan/` for the full specification:
 - SvelteKit with `adapter-static`. Output must be a static bundle (no SSR).
 - PWA via `@vite-pwa/sveltekit` with a custom `service-worker.ts` (injectManifest strategy).
 - Offline sync: IndexedDB queue → Background Sync API → iOS `visibilitychange` fallback.
-- Access tokens stored in memory (Svelte store) only. Refresh tokens in `localStorage`.
+- Access tokens stored in memory (Svelte store) only. Refresh tokens in an `HttpOnly; Secure; SameSite=Lax` cookie (`mm_rt`).
 - After every change, run:
   ```
   npm run check
