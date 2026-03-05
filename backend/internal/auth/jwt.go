@@ -15,6 +15,8 @@ const (
 	accessTokenTTL  = time.Hour
 	refreshTokenTTL = 7 * 24 * time.Hour
 	rawTokenBytes   = 32
+	TokenIssuer     = "matchmark"
+	TokenAudience   = "matchmark-api"
 )
 
 var (
@@ -36,6 +38,8 @@ func SignAccessToken(secret string, userID int64, username, role string) (string
 		Username: username,
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    TokenIssuer,
+			Audience:  jwt.ClaimStrings{TokenAudience},
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(accessTokenTTL)),
 		},
@@ -54,7 +58,11 @@ func VerifyAccessToken(secret, tokenStr string) (*Claims, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return []byte(secret), nil
-	})
+	},
+		jwt.WithIssuer(TokenIssuer),
+		jwt.WithAudience(TokenAudience),
+		jwt.WithExpirationRequired(),
+	)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, ErrExpiredToken
