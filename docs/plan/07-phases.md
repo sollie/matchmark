@@ -219,6 +219,25 @@ After every shell script change: run `shellcheck`.
 - Multi-language UI
 - Re-entry and aggregate match types
 
+## Phase 15 — Security Hardening
+
+- [x] HIGH-03: Replace `middleware.RealIP` with `trustedProxyRealIP` — only honour
+      `X-Forwarded-For` / `X-Real-IP` when the connecting peer is a private/loopback address
+- [x] HIGH-01: Migrate refresh token from `localStorage` to `HttpOnly; Secure; SameSite=Lax`
+      cookie (`mm_rt`); remove `refresh_token` from login/refresh JSON responses;
+      `Logout` reads token from cookie and clears it on success;
+      frontend `silentRefresh` sends no body — cookie forwarded automatically
+- [x] MED-01/02: Field length limits on create/update endpoints — username ≤ 64,
+      shooter name ≤ 128, wa_id ≤ 32, club ≤ 128; validated in handler before service call
+- [x] MED-04: `io.LimitReader(r.Body, MaxBodyBytes)` in `decodeJSON` — defence-in-depth
+      against body reads exceeding the `middleware.RequestSize` envelope
+- [x] LOW-02: JWT `iss=matchmark` and `aud=matchmark-api` claims added to access tokens;
+      `VerifyAccessToken` validates both with `jwt.WithIssuer` / `jwt.WithAudience` /
+      `jwt.WithExpirationRequired`
+- [x] `golangci-lint run ./...` — 0 issues
+- [x] `trivy fs --scanners vuln,secret .` — 0 findings
+- [x] `npm run check && npm run build && npm audit` — 0 errors, 0 vulnerabilities
+
 ## Phase 13 — Spectator Live View
 
 Backend:
