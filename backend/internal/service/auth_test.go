@@ -83,3 +83,110 @@ func TestRefresh_InvalidToken(t *testing.T) {
 		t.Errorf("expected ErrInvalidToken, got %v", err)
 	}
 }
+
+func TestLogout_RevokesRefreshToken(t *testing.T) {
+	database := newTestDB(t)
+	userRepo := repository.NewUserRepository(database)
+	passwordHash, err := auth.HashPassword("supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	user, err := userRepo.Create(context.Background(), "tester", passwordHash, "admin")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	svc := service.NewAuthService(userRepo, database, testJWTSecret)
+
+	loginResult, err := svc.Login(context.Background(), user.Username, "supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if err := svc.Logout(context.Background(), loginResult.RefreshToken); err != nil {
+		t.Fatalf("logout: %v", err)
+	}
+	if _, err := svc.Refresh(context.Background(), loginResult.RefreshToken); !errors.Is(err, service.ErrInvalidToken) {
+		t.Fatalf("expected invalid token after logout, got %v", err)
+	}
+}
+
+func TestRefresh_RejectsAfterPasswordReset(t *testing.T) {
+	database := newTestDB(t)
+	userRepo := repository.NewUserRepository(database)
+	passwordHash, err := auth.HashPassword("supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	user, err := userRepo.Create(context.Background(), "tester", passwordHash, "admin")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	authSvc := service.NewAuthService(userRepo, database, testJWTSecret)
+	userSvc := service.NewUserService(userRepo)
+
+	loginResult, err := authSvc.Login(context.Background(), user.Username, "supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if err := userSvc.ResetPassword(context.Background(), user.ID, "newpassword12345678"); err != nil {
+		t.Fatalf("reset password: %v", err)
+	}
+	if _, err := authSvc.Refresh(context.Background(), loginResult.RefreshToken); !errors.Is(err, service.ErrInvalidToken) {
+		t.Fatalf("expected invalid token after password reset, got %v", err)
+	}
+}
+
+func TestRefresh_RejectsAfterRoleChange(t *testing.T) {
+	database := newTestDB(t)
+	userRepo := repository.NewUserRepository(database)
+	passwordHash, err := auth.HashPassword("supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	user, err := userRepo.Create(context.Background(), "tester", passwordHash, "admin")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	authSvc := service.NewAuthService(userRepo, database, testJWTSecret)
+	userSvc := service.NewUserService(userRepo)
+
+	loginResult, err := authSvc.Login(context.Background(), user.Username, "supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	role := "user"
+	if _, err := userSvc.Update(context.Background(), user.ID, service.UpdateUserParams{Role: &role}); err != nil {
+		t.Fatalf("update role: %v", err)
+	}
+	if _, err := authSvc.Refresh(context.Background(), loginResult.RefreshToken); !errors.Is(err, service.ErrInvalidToken) {
+		t.Fatalf("expected invalid token after role change, got %v", err)
+	}
+	updated, err := userRepo.GetByID(context.Background(), user.ID)
+	if err != nil {
+		t.Fatalf("get updated user: %v", err)
+	}
+	claims, err := auth.VerifyAccessToken(testJWTSecret, loginResult.AccessToken)
+	if err != nil {
+		t.Fatalf("verify token: %v", err)
+	}
+	if claims.AuthVer == updated.AuthVersion {
+		t.Fatalf("expected token auth version to differ after role change")
+	}
+	if claims.Role == updated.Role {
+		t.Fatalf("expected token role to differ after role change")
+	}
+}
+
+func TestAccessTokenClaimsIncludeAuthVersion(t *testing.T) {
+	svc, username := newAuthServiceWithUser(t)
+	result, err := svc.Login(context.Background(), username, "supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	claims, err := auth.VerifyAccessToken(testJWTSecret, result.AccessToken)
+	if err != nil {
+		t.Fatalf("verify token: %v", err)
+	}
+	if claims.AuthVer != 0 {
+		t.Fatalf("expected initial auth version 0, got %d", claims.AuthVer)
+	}
+}

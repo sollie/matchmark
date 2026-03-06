@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/sollie/matchmark/internal/auth"
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/service"
 )
@@ -122,5 +123,69 @@ func TestUserService_ResetPassword_Success(t *testing.T) {
 
 	if err := svc.ResetPassword(context.Background(), userID, "newpassword12345678"); err != nil {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestUserService_Update_RoleChangeBumpsAuthVersionAndRevokesRefreshTokens(t *testing.T) {
+	database := newTestDB(t)
+	userRepo := repository.NewUserRepository(database)
+	userSvc := service.NewUserService(userRepo)
+	authSvc := service.NewAuthService(userRepo, database, testJWTSecret)
+
+	passwordHash, err := auth.HashPassword("supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	user, err := userRepo.Create(context.Background(), "tester", passwordHash, "admin")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	loginResult, err := authSvc.Login(context.Background(), user.Username, "supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	role := "user"
+	updated, err := userSvc.Update(context.Background(), user.ID, service.UpdateUserParams{Role: &role})
+	if err != nil {
+		t.Fatalf("update role: %v", err)
+	}
+	if updated.AuthVersion != 1 {
+		t.Fatalf("expected auth version 1, got %d", updated.AuthVersion)
+	}
+	if _, err := authSvc.Refresh(context.Background(), loginResult.RefreshToken); !errors.Is(err, service.ErrInvalidToken) {
+		t.Fatalf("expected invalid refresh token after role change, got %v", err)
+	}
+}
+
+func TestUserService_ResetPassword_BumpsAuthVersionAndRevokesRefreshTokens(t *testing.T) {
+	database := newTestDB(t)
+	userRepo := repository.NewUserRepository(database)
+	userSvc := service.NewUserService(userRepo)
+	authSvc := service.NewAuthService(userRepo, database, testJWTSecret)
+
+	passwordHash, err := auth.HashPassword("supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	user, err := userRepo.Create(context.Background(), "tester", passwordHash, "admin")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	loginResult, err := authSvc.Login(context.Background(), user.Username, "supersecretpassword1234")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if err := userSvc.ResetPassword(context.Background(), user.ID, "newpassword12345678"); err != nil {
+		t.Fatalf("reset password: %v", err)
+	}
+	updated, err := userRepo.GetByID(context.Background(), user.ID)
+	if err != nil {
+		t.Fatalf("get user: %v", err)
+	}
+	if updated.AuthVersion != 1 {
+		t.Fatalf("expected auth version 1, got %d", updated.AuthVersion)
+	}
+	if _, err := authSvc.Refresh(context.Background(), loginResult.RefreshToken); !errors.Is(err, service.ErrInvalidToken) {
+		t.Fatalf("expected invalid refresh token after password reset, got %v", err)
 	}
 }

@@ -96,6 +96,54 @@ func TestCompetitionService_List_ValidStatus(t *testing.T) {
 	}
 }
 
+func TestCompetitionService_ListVisible_ScorersOnlySeeActive(t *testing.T) {
+	database := newTestDB(t)
+	repo := repository.NewCompetitionRepository(database)
+	svc := service.NewCompetitionService(repo)
+	ctx := context.Background()
+
+	if _, err := repo.Create(ctx, "Draft", "2026-01-01", 3, false); err != nil {
+		t.Fatalf("create draft competition: %v", err)
+	}
+	activeComp, err := repo.Create(ctx, "Active", "2026-01-02", 3, false)
+	if err != nil {
+		t.Fatalf("create active competition: %v", err)
+	}
+	active := "active"
+	if _, err := svc.Update(ctx, activeComp.ID, service.UpdateCompetitionParams{Status: &active}); err != nil {
+		t.Fatalf("activate competition: %v", err)
+	}
+
+	results, err := svc.ListVisible(ctx, "draft", false)
+	if err != nil {
+		t.Fatalf("list visible: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 visible competition, got %d", len(results))
+	}
+	if results[0].Status != "active" {
+		t.Fatalf("expected only active competition, got %s", results[0].Status)
+	}
+}
+
+func TestCompetitionService_GetVisibleByID_HidesNonActiveFromScorers(t *testing.T) {
+	database := newTestDB(t)
+	repo := repository.NewCompetitionRepository(database)
+	svc := service.NewCompetitionService(repo)
+	ctx := context.Background()
+
+	comp, err := repo.Create(ctx, "Draft", "2026-01-01", 3, false)
+	if err != nil {
+		t.Fatalf("create competition: %v", err)
+	}
+	if _, err := svc.GetVisibleByID(ctx, comp.ID, false); !errors.Is(err, service.ErrCompetitionNotFound) {
+		t.Fatalf("expected ErrCompetitionNotFound, got %v", err)
+	}
+	if _, err := svc.GetVisibleByID(ctx, comp.ID, true); err != nil {
+		t.Fatalf("expected admin access, got %v", err)
+	}
+}
+
 func TestCompetitionService_Update_NotFound(t *testing.T) {
 	database := newTestDB(t)
 	svc := service.NewCompetitionService(repository.NewCompetitionRepository(database))
