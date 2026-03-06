@@ -61,9 +61,12 @@ matchmark/
 │   │   │       ├── 001_init.sql     # full schema (see 02-database.md)
 │   │   │       ├── 002_spectator.sql        # spectator_enabled column
 │   │   │       ├── 003_scorer_assignments.sql
-│   │   │       ├── 004_sse_tickets.sql      # SSE auth ticket table
+│   │   │       ├── 004_sse_tickets.sql      # historical SSE ticket table
 │   │   │       ├── 005_refresh_token_family.sql  # token family tracking
-│   │   │       └── 006_sse_ticket_competition.sql
+│   │   │       ├── 006_sse_ticket_competition.sql
+│   │   │       ├── 007_sse_ticket_lane_stage.sql
+│   │   │       ├── 008_drop_sse_tickets.sql
+│   │   │       └── 009_user_auth_version.sql
 │   │   ├── model/
 │   │   │   └── model.go             # shared Go structs
 │   │   ├── rulebook/

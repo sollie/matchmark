@@ -55,6 +55,59 @@ func TestShooterService_ListByCompetition_Success(t *testing.T) {
 	}
 }
 
+func TestShooterService_ListVisibleByCompetition_ScorerGetsReducedPayload(t *testing.T) {
+	database := newTestDB(t)
+	comp := seedCompetition(t, database, 3)
+	repo := repository.NewCompetitionRepository(database)
+	svc := service.NewShooterService(
+		repository.NewShooterRepository(database),
+		repository.NewStageRepository(database),
+		repo,
+	)
+
+	active := "active"
+	competitionSvc := service.NewCompetitionService(repo)
+	if _, err := competitionSvc.Update(context.Background(), comp.ID, service.UpdateCompetitionParams{Status: &active}); err != nil {
+		t.Fatalf("activate competition: %v", err)
+	}
+	shooter, err := svc.Create(context.Background(), service.CreateShooterParams{
+		CompetitionID: comp.ID,
+		Name:          "Alice",
+		WAID:          "WA001",
+		LaneNumber:    2,
+		Discipline:    "1500",
+		WeaponClass:   "Revolver 1500",
+	})
+	if err != nil {
+		t.Fatalf("create shooter: %v", err)
+	}
+
+	visible, err := svc.ListVisibleByCompetition(context.Background(), comp.ID, false)
+	if err != nil {
+		t.Fatalf("list visible shooters: %v", err)
+	}
+	if len(visible) != 1 {
+		t.Fatalf("expected 1 visible shooter, got %d", len(visible))
+	}
+	if visible[0].ID != shooter.ID || visible[0].Name != shooter.Name || visible[0].LaneNumber != shooter.LaneNumber || visible[0].Discipline != shooter.Discipline {
+		t.Fatalf("unexpected visible shooter payload: %+v", visible[0])
+	}
+}
+
+func TestShooterService_ListVisibleByCompetition_HidesNonActiveFromScorers(t *testing.T) {
+	database := newTestDB(t)
+	comp := seedCompetition(t, database, 3)
+	svc := service.NewShooterService(
+		repository.NewShooterRepository(database),
+		repository.NewStageRepository(database),
+		repository.NewCompetitionRepository(database),
+	)
+
+	if _, err := svc.ListVisibleByCompetition(context.Background(), comp.ID, false); !errors.Is(err, service.ErrCompetitionNotFound) {
+		t.Fatalf("expected ErrCompetitionNotFound, got %v", err)
+	}
+}
+
 func TestShooterService_Create_CompNotFound(t *testing.T) {
 	database := newTestDB(t)
 	svc := service.NewShooterService(
