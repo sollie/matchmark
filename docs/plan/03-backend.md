@@ -44,8 +44,13 @@ POST /api/auth/refresh
 
 POST /api/auth/logout
      Headers:  Authorization: Bearer <token>
-     Cookie:   mm_rt (read to revoke token; clears cookie on success)
+     Cookie:   mm_rt (read to revoke token; clears cookie server-side)
      Response: 204 No Content
+
+Access tokens include a user auth version claim. Every authenticated request reloads the
+current user and rejects tokens for deleted users, changed roles, or bumped auth versions.
+Password resets and admin role changes revoke all refresh tokens for that user and bump the
+auth version so existing access tokens stop working immediately.
 ```
 
 ### Current User

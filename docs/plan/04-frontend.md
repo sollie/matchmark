@@ -31,13 +31,14 @@
 
 ## Auth Flow
 
-1. `POST /api/auth/login` → receive `access_token` + `refresh_token`
+1. `POST /api/auth/login` → receive `access_token`; backend also sets the `mm_rt` refresh cookie
 2. Store `access_token` in memory (Svelte store — never in localStorage)
-3. Store `refresh_token` in `localStorage` (survives page reload)
+3. Store no refresh token in JS-visible storage; refresh is handled by the HttpOnly cookie only
 4. `client.ts` attaches `Authorization: Bearer <access_token>` to every request
 5. On 401: call `POST /api/auth/refresh` silently, retry original request
-6. On refresh failure: clear stores, redirect to `/login`
-7. Proactive refresh: set `setTimeout` to refresh 5 minutes before expiry
+6. On explicit sign-out: call `POST /api/auth/logout`, then clear in-memory auth state
+7. On refresh failure: clear stores, redirect to `/login`
+8. Proactive refresh: set `setTimeout` to refresh 5 minutes before expiry
 
 ## Svelte Stores
 

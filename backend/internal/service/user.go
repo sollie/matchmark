@@ -86,7 +86,22 @@ func (s *UserService) Update(ctx context.Context, id int64, params UpdateUserPar
 
 	u, err := s.users.Update(ctx, id, username, role)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrUserNotFound
+		}
 		return nil, fmt.Errorf("update user: %w", err)
+	}
+	if params.Role != nil && *params.Role != current.Role {
+		if err := s.users.BumpAuthVersion(ctx, id); err != nil {
+			return nil, fmt.Errorf("bump auth version: %w", err)
+		}
+		if err := s.users.DeleteRefreshTokensByUser(ctx, id); err != nil {
+			return nil, fmt.Errorf("delete refresh tokens: %w", err)
+		}
+		u, err = s.users.GetByID(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("reload user: %w", err)
+		}
 	}
 	return u, nil
 }
@@ -114,6 +129,9 @@ func (s *UserService) ResetPassword(ctx context.Context, id int64, newPassword s
 			return ErrUserNotFound
 		}
 		return fmt.Errorf("update password: %w", err)
+	}
+	if err := s.users.DeleteRefreshTokensByUser(ctx, id); err != nil {
+		return fmt.Errorf("delete refresh tokens: %w", err)
 	}
 	return nil
 }

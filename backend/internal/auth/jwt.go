@@ -28,15 +28,17 @@ type Claims struct {
 	UserID   int64  `json:"uid"`
 	Username string `json:"sub"`
 	Role     string `json:"role"`
+	AuthVer  int64  `json:"av"`
 	jwt.RegisteredClaims
 }
 
-func SignAccessToken(secret string, userID int64, username, role string) (string, error) {
+func SignAccessToken(secret string, userID int64, username, role string, authVersion int64) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
 		Role:     role,
+		AuthVer:  authVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    TokenIssuer,
 			Audience:  jwt.ClaimStrings{TokenAudience},

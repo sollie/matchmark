@@ -5,6 +5,7 @@ type User struct {
 	Username     string `json:"username"`
 	PasswordHash string `json:"-"`
 	Role         string `json:"role"`
+	AuthVersion  int64  `json:"-"`
 	CreatedAt    string `json:"created_at"`
 }
 
