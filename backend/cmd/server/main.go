@@ -227,7 +227,7 @@ func newIPRateLimiter(r rate.Limit, burst int) func(http.Handler) http.Handler {
 	go l.cleanup()
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			limiter := l.getLimiter(r.RemoteAddr)
+			limiter := l.getLimiter(clientIPFromRemoteAddr(r.RemoteAddr))
 			if !limiter.Allow() {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
@@ -237,6 +237,14 @@ func newIPRateLimiter(r rate.Limit, burst int) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func clientIPFromRemoteAddr(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err == nil {
+		return host
+	}
+	return remoteAddr
 }
 
 func (l *ipRateLimiter) getLimiter(ip string) *rate.Limiter {
