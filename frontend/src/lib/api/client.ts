@@ -1,5 +1,6 @@
 import { get } from 'svelte/store';
 import { auth } from '$lib/stores/auth';
+import type { AuthUser } from '$lib/stores/auth';
 import { goto } from '$app/navigation';
 import { openSyncQueue } from '$lib/db/idb';
 
@@ -13,10 +14,22 @@ function postTokenToSW(token: string | null): void {
 	}).catch(() => undefined);
 }
 
-export function setTokens(accessToken: string, expiresAt: number, user: { id: number; username: string; role: 'user' | 'admin' }) {
+export function setTokens(accessToken: string, expiresAt: number, user: AuthUser) {
 	auth.set({ accessToken, user, expiresAt });
 	scheduleProactiveRefresh(expiresAt);
 	postTokenToSW(accessToken);
+}
+
+async function fetchCurrentUser(accessToken: string): Promise<AuthUser> {
+	const res = await fetch('/api/users/me', {
+		headers: {
+			Authorization: `Bearer ${accessToken}`
+		}
+	});
+	if (!res.ok) {
+		throw new Error('failed to fetch current user');
+	}
+	return res.json() as Promise<AuthUser>;
 }
 
 export function clearTokens() {
@@ -63,8 +76,7 @@ export async function silentRefresh(): Promise<void> {
 		});
 		if (!res.ok) throw new Error('refresh failed');
 		const data = await res.json();
-		const user = get(auth).user;
-		if (!user) throw new Error('no user in store');
+		const user = await fetchCurrentUser(data.access_token);
 		setTokens(data.access_token, Date.now() + data.expires_in * 1000, user);
 	})();
 	try {

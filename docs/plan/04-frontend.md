@@ -35,10 +35,11 @@
 2. Store `access_token` in memory (Svelte store — never in localStorage)
 3. Store no refresh token in JS-visible storage; refresh is handled by the HttpOnly cookie only
 4. `client.ts` attaches `Authorization: Bearer <access_token>` to every request
-5. On 401: call `POST /api/auth/refresh` silently, retry original request
+5. On 401: call `POST /api/auth/refresh` silently, fetch `GET /api/users/me` to rebuild the auth store, then retry the original request
 6. On explicit sign-out: call `POST /api/auth/logout`, then clear in-memory auth state
-7. On refresh failure: clear stores, redirect to `/login`
-8. Proactive refresh: set `setTimeout` to refresh 5 minutes before expiry
+7. On initial app load for protected routes: call refresh + `GET /api/users/me` to restore the in-memory session from the refresh cookie
+8. On refresh failure: clear stores, redirect to `/login`
+9. Proactive refresh: set `setTimeout` to refresh 5 minutes before expiry
 
 ## Svelte Stores
 
