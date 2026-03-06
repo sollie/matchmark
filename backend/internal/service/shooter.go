@@ -23,6 +23,13 @@ type ShooterService struct {
 	competitions *repository.CompetitionRepository
 }
 
+type ScorerShooter struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	LaneNumber int    `json:"lane_number"`
+	Discipline string `json:"discipline"`
+}
+
 func NewShooterService(
 	shooters *repository.ShooterRepository,
 	stages *repository.StageRepository,
@@ -36,13 +43,36 @@ func NewShooterService(
 }
 
 func (s *ShooterService) ListByCompetition(ctx context.Context, competitionID int64) ([]model.Shooter, error) {
-	if _, err := s.competitions.GetByID(ctx, competitionID); err != nil {
+	if _, err := s.getVisibleCompetition(ctx, competitionID, true); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrCompetitionNotFound
+		}
+		if errors.Is(err, ErrCompetitionNotFound) {
+			return nil, err
 		}
 		return nil, fmt.Errorf("get competition: %w", err)
 	}
 	return s.shooters.ListByCompetition(ctx, competitionID)
+}
+
+func (s *ShooterService) ListVisibleByCompetition(ctx context.Context, competitionID int64, isAdmin bool) ([]ScorerShooter, error) {
+	if _, err := s.getVisibleCompetition(ctx, competitionID, isAdmin); err != nil {
+		return nil, err
+	}
+	shooters, err := s.shooters.ListByCompetition(ctx, competitionID)
+	if err != nil {
+		return nil, fmt.Errorf("list shooters: %w", err)
+	}
+	visible := make([]ScorerShooter, 0, len(shooters))
+	for _, shooter := range shooters {
+		visible = append(visible, ScorerShooter{
+			ID:         shooter.ID,
+			Name:       shooter.Name,
+			LaneNumber: shooter.LaneNumber,
+			Discipline: shooter.Discipline,
+		})
+	}
+	return visible, nil
 }
 
 type CreateShooterParams struct {
@@ -217,4 +247,18 @@ func (s *ShooterService) Delete(ctx context.Context, competitionID, shooterID in
 		return fmt.Errorf("delete shooter: %w", err)
 	}
 	return nil
+}
+
+func (s *ShooterService) getVisibleCompetition(ctx context.Context, competitionID int64, isAdmin bool) (*model.Competition, error) {
+	comp, err := s.competitions.GetByID(ctx, competitionID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrCompetitionNotFound
+		}
+		return nil, fmt.Errorf("get competition: %w", err)
+	}
+	if !isAdmin && comp.Status != "active" {
+		return nil, ErrCompetitionNotFound
+	}
+	return comp, nil
 }

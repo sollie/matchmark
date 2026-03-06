@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/sollie/matchmark/internal/auth"
 	"github.com/sollie/matchmark/internal/service"
 )
 
@@ -18,7 +19,8 @@ func NewCompetitionHandler(competitionSvc *service.CompetitionService) *Competit
 
 func (h *CompetitionHandler) List(w http.ResponseWriter, r *http.Request) {
 	status := strings.ToLower(r.URL.Query().Get("status"))
-	competitions, err := h.competitionSvc.List(r.Context(), status)
+	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
+	competitions, err := h.competitionSvc.ListVisible(r.Context(), status, isAdmin)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidStatus) {
 			writeError(w, http.StatusBadRequest, err.Error())
@@ -36,7 +38,8 @@ func (h *CompetitionHandler) Get(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
 	}
-	c, err := h.competitionSvc.GetByID(r.Context(), id)
+	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
+	c, err := h.competitionSvc.GetVisibleByID(r.Context(), id, isAdmin)
 	if err != nil {
 		if errors.Is(err, service.ErrCompetitionNotFound) {
 			writeError(w, http.StatusNotFound, "competition not found")

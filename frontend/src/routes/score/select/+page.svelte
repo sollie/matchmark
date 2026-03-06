@@ -11,16 +11,13 @@
 		name: string;
 		date: string;
 		status: string;
-		discipline: string;
 	}
 
 	interface Shooter {
 		id: number;
 		name: string;
-		club: string;
-		lane: number;
+		lane_number: number;
 		discipline: string;
-		weapon_class: string;
 	}
 
 	interface Assignment {
@@ -87,8 +84,7 @@
 		try {
 			const res = await apiFetch('/api/competitions');
 			if (!res.ok) { loadError = 'Failed to load competitions'; return; }
-			const all: Competition[] = await res.json();
-			competitions = all.filter((c) => c.status === 'active');
+			competitions = await res.json();
 		} catch {
 			loadError = 'Network error loading competitions';
 			return;
@@ -205,7 +201,7 @@
 					<li>
 						<button class="comp-card" onclick={() => selectCompetition(comp)}>
 							<span class="comp-name">{comp.name}</span>
-							<span class="comp-meta">{comp.date} · {comp.discipline}</span>
+							<span class="comp-meta">{comp.date}</span>
 						</button>
 					</li>
 				{/each}
@@ -228,7 +224,7 @@
 							disabled={claiming !== null}
 						>
 							<span class="shooter-name">{shooter.name}</span>
-							<span class="shooter-meta">Lane {shooter.lane} · {shooter.club}</span>
+							<span class="shooter-meta">Lane {shooter.lane_number} · {shooter.discipline}</span>
 						</button>
 					</li>
 				{/each}
