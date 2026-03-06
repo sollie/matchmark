@@ -86,7 +86,6 @@ matchmark/
 │   │   │   ├── assignment.go        # scorer ↔ shooter claim/release
 │   │   │   ├── monitor.go           # SSE data aggregation
 │   │   │   ├── spectator.go         # public spectator snapshots
-│   │   │   ├── sse_ticket.go        # short-lived SSE auth tickets
 │   │   │   ├── export.go
 │   │   │   └── user.go
 │   │   ├── handler/
@@ -98,7 +97,6 @@ matchmark/
 │   │   │   ├── assignment.go
 │   │   │   ├── monitor.go           # SSE endpoint
 │   │   │   ├── spectator.go
-│   │   │   ├── sse_ticket.go        # POST /api/admin/sse-ticket
 │   │   │   ├── export.go
 │   │   │   └── helpers.go
 │   │   └── export/

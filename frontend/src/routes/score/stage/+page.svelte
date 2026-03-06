@@ -27,7 +27,7 @@
 	let reviewHits: string[] = $state([]);
 	let reviewStage: number = $state(0);
 	let reviewError       = $state(false);
-	let reviewES: EventSource | null = null;
+	let reviewES: AbortController | null = null;
 
 	onMount(async () => {
 		const s = get(session);
@@ -36,6 +36,7 @@
 	});
 
 	onDestroy(() => {
+		reviewES?.abort();
 		unsubscribeScoring();
 	});
 
@@ -110,41 +111,26 @@
 		reviewXCount = null;
 		reviewHits = [];
 
-		const ticketRes = await apiFetch(
-			`/api/competitions/${s.competitionId}/score-sse-ticket`,
-			{ method: 'POST', body: JSON.stringify({ lane: s.ownLane, stage: cur.stageNumber }) }
-		);
-		if (!ticketRes.ok) {
-			reviewPending = false;
-			reviewError = true;
-			return;
-		}
-		const { ticket } = await ticketRes.json();
-
-		const es = new EventSource(
-			`/api/competitions/${s.competitionId}/lanes/${s.ownLane}/stage/${cur.stageNumber}/stream?ticket=${ticket}`
-		);
-		reviewES = es;
-
-		es.onmessage = (e) => {
-			let data: { stage_score: number; stage_x_count: number; hits: { ring: string }[]; fully_locked: boolean };
-			try { data = JSON.parse(e.data); } catch { return; }
-			reviewScore = data.stage_score;
-			reviewXCount = data.stage_x_count;
-			reviewHits = data.hits.map((h) => h.ring);
-			if (data.fully_locked === true) {
+		reviewES = openSSEStream(
+			`/api/competitions/${s.competitionId}/lanes/${s.ownLane}/stage/${cur.stageNumber}/stream`,
+			(raw) => {
+				let data: { stage_score: number; stage_x_count: number; hits: { ring: string }[]; fully_locked: boolean };
+				try { data = JSON.parse(raw); } catch { return; }
+				reviewScore = data.stage_score;
+				reviewXCount = data.stage_x_count;
+				reviewHits = data.hits.map((h) => h.ring);
+				if (data.fully_locked === true) {
+					reviewPending = false;
+					reviewES?.abort();
+					reviewES = null;
+				}
+			},
+			() => {
 				reviewPending = false;
-				es.close();
+				reviewError = true;
 				reviewES = null;
 			}
-		};
-
-		es.onerror = () => {
-			reviewPending = false;
-			reviewError = true;
-			es.close();
-			reviewES = null;
-		};
+		);
 	}
 
 	async function submitHits(compId: number, lane: number, st: StageState) {
@@ -186,7 +172,7 @@
 
 	async function nextStage() {
 		if (reviewES) {
-			reviewES.close();
+			reviewES.abort();
 			reviewES = null;
 		}
 		reviewOpen = false;
