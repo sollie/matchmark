@@ -1,12 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { clearTokens } from '$lib/api/client';
+	import { signOut } from '$lib/api/client';
+
+	async function handleSignOut() {
+		await signOut();
+		goto('/login');
+	}
 </script>
 
 <main class="admin-page">
 	<header class="page-header">
 		<h1>MatchMark Admin</h1>
-		<button class="logout-btn" onclick={() => { clearTokens(); goto('/login'); }}>Sign out</button>
+		<button class="logout-btn" onclick={handleSignOut}>Sign out</button>
 	</header>
 
 	<nav class="dashboard-nav">

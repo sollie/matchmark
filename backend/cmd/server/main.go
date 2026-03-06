@@ -128,11 +128,11 @@ func main() {
 		r.Route("/auth", func(r chi.Router) {
 			r.With(authRateLimiter).Post("/login", authH.Login)
 			r.With(authRateLimiter).Post("/refresh", authH.Refresh)
-			r.With(auth.RequireAuth(cfg.jwtSecret)).Post("/logout", authH.Logout)
+			r.With(auth.RequireAuth(cfg.jwtSecret, userRepo)).Post("/logout", authH.Logout)
 		})
 
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireAuth(cfg.jwtSecret))
+			r.Use(auth.RequireAuth(cfg.jwtSecret, userRepo))
 
 			r.Get("/users/me", userH.Me)
 

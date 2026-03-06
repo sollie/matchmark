@@ -51,7 +51,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 		return nil, ErrInvalidCredentials
 	}
 
-	accessToken, err := auth.SignAccessToken(s.jwtSecret, user.ID, user.Username, user.Role)
+	accessToken, err := auth.SignAccessToken(s.jwtSecret, user.ID, user.Username, user.Role, user.AuthVersion)
 	if err != nil {
 		return nil, fmt.Errorf("sign access token: %w", err)
 	}
@@ -116,7 +116,7 @@ func (s *AuthService) Refresh(ctx context.Context, rawRefreshToken string) (*Ref
 		return nil, fmt.Errorf("rotate refresh token: %w", err)
 	}
 
-	accessToken, err := auth.SignAccessToken(s.jwtSecret, user.ID, user.Username, user.Role)
+	accessToken, err := auth.SignAccessToken(s.jwtSecret, user.ID, user.Username, user.Role, user.AuthVersion)
 	if err != nil {
 		return nil, fmt.Errorf("sign access token: %w", err)
 	}

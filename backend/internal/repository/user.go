@@ -22,7 +22,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*model.User, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password_hash, role, created_at FROM users WHERE username = ?`,
+		`SELECT id, username, password_hash, role, auth_version, created_at FROM users WHERE username = ?`,
 		username,
 	)
 	return scanUser(row)
@@ -30,7 +30,7 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*m
 
 func (r *UserRepository) GetByID(ctx context.Context, id int64) (*model.User, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, username, password_hash, role, created_at FROM users WHERE id = ?`,
+		`SELECT id, username, password_hash, role, auth_version, created_at FROM users WHERE id = ?`,
 		id,
 	)
 	return scanUser(row)
@@ -38,7 +38,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*model.User, er
 
 func (r *UserRepository) List(ctx context.Context) (_ []model.User, retErr error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, username, password_hash, role, created_at FROM users ORDER BY id`,
+		`SELECT id, username, password_hash, role, auth_version, created_at FROM users ORDER BY id`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
@@ -52,7 +52,7 @@ func (r *UserRepository) List(ctx context.Context) (_ []model.User, retErr error
 	var users []model.User
 	for rows.Next() {
 		var u model.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.AuthVersion, &u.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan user: %w", err)
 		}
 		users = append(users, u)
@@ -88,7 +88,7 @@ func (r *UserRepository) Update(ctx context.Context, id int64, username, role st
 
 func (r *UserRepository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE users SET password_hash = ? WHERE id = ?`,
+		`UPDATE users SET password_hash = ?, auth_version = auth_version + 1 WHERE id = ?`,
 		passwordHash, id,
 	)
 	if err != nil {
@@ -100,6 +100,31 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, id int64, passwordH
 	}
 	if n == 0 {
 		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) BumpAuthVersion(ctx context.Context, id int64) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE users SET auth_version = auth_version + 1 WHERE id = ?`,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("bump auth version: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) DeleteRefreshTokensByUser(ctx context.Context, userID int64) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM refresh_tokens WHERE user_id = ?`, userID); err != nil {
+		return fmt.Errorf("delete refresh tokens by user: %w", err)
 	}
 	return nil
 }
@@ -158,7 +183,7 @@ func (r *UserRepository) DeleteRefreshToken(ctx context.Context, tokenHash strin
 
 func scanUser(row *sql.Row) (*model.User, error) {
 	var u model.User
-	if err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.AuthVersion, &u.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}

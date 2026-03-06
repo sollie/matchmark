@@ -32,6 +32,15 @@ export function clearTokens() {
 	}
 }
 
+export async function signOut(): Promise<void> {
+	try {
+		await apiFetch('/api/auth/logout', { method: 'POST' });
+	} catch {
+		// ignore network/logout errors; local session still needs to be cleared
+	}
+	clearTokens();
+}
+
 function scheduleProactiveRefresh(expiresAt: number) {
 	if (proactiveTimer !== null) clearTimeout(proactiveTimer);
 	const delay = expiresAt - Date.now() - 5 * 60 * 1000;

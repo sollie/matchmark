@@ -2,8 +2,11 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/sollie/matchmark/internal/repository"
 )
 
 type contextKey string
@@ -13,7 +16,7 @@ const (
 	contextKeyRole   contextKey = "role"
 )
 
-func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
+func RequireAuth(jwtSecret string, users *repository.UserRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
@@ -27,6 +30,25 @@ func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
 
 			claims, err := VerifyAccessToken(jwtSecret, tokenStr)
 			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":"invalid or expired token"}`))
+				return
+			}
+
+			user, err := users.GetByID(r.Context(), claims.UserID)
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				if errors.Is(err, repository.ErrNotFound) {
+					w.WriteHeader(http.StatusUnauthorized)
+					_, _ = w.Write([]byte(`{"error":"invalid or expired token"}`))
+					return
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"error":"authentication check failed"}`))
+				return
+			}
+			if user.Role != claims.Role || user.AuthVersion != claims.AuthVer {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				_, _ = w.Write([]byte(`{"error":"invalid or expired token"}`))

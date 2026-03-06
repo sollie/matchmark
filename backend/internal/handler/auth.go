@@ -116,6 +116,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.authSvc.Logout(r.Context(), cookie.Value); err != nil {
+		setRefreshCookie(w, "", -1)
 		writeError(w, http.StatusInternalServerError, "logout failed")
 		return
 	}
