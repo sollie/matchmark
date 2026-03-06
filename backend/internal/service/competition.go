@@ -46,11 +46,29 @@ func (s *CompetitionService) GetByID(ctx context.Context, id int64) (*model.Comp
 	return c, nil
 }
 
+func (s *CompetitionService) GetVisibleByID(ctx context.Context, id int64, isAdmin bool) (*model.Competition, error) {
+	c, err := s.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !isAdmin && c.Status != "active" {
+		return nil, ErrCompetitionNotFound
+	}
+	return c, nil
+}
+
 func (s *CompetitionService) List(ctx context.Context, status string) ([]model.Competition, error) {
 	if status != "" && !validStatuses[status] {
 		return nil, ErrInvalidStatus
 	}
 	return s.competitions.List(ctx, status)
+}
+
+func (s *CompetitionService) ListVisible(ctx context.Context, status string, isAdmin bool) ([]model.Competition, error) {
+	if !isAdmin {
+		status = "active"
+	}
+	return s.List(ctx, status)
 }
 
 type CreateCompetitionParams struct {

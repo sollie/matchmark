@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/sollie/matchmark/internal/auth"
 	"github.com/sollie/matchmark/internal/service"
 )
 
@@ -21,7 +22,22 @@ func (h *ShooterHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid competition id")
 		return
 	}
-	shooters, err := h.shooterSvc.ListByCompetition(r.Context(), compID)
+	isAdmin := auth.RoleFromContext(r.Context()) == "admin"
+	if isAdmin {
+		shooters, err := h.shooterSvc.ListByCompetition(r.Context(), compID)
+		if err != nil {
+			if errors.Is(err, service.ErrCompetitionNotFound) {
+				writeError(w, http.StatusNotFound, "competition not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to list shooters")
+			return
+		}
+		writeJSON(w, http.StatusOK, shooters)
+		return
+	}
+
+	shooters, err := h.shooterSvc.ListVisibleByCompetition(r.Context(), compID, false)
 	if err != nil {
 		if errors.Is(err, service.ErrCompetitionNotFound) {
 			writeError(w, http.StatusNotFound, "competition not found")

@@ -87,7 +87,7 @@ POST   /api/users/{id}/reset-password
 
 ```
 GET  /api/competitions
-     Query:    ?status=draft|active|finished  (omit for all; scorers only see active)
+     Query:    ?status=draft|active|finished  (admins only; scorers are forced to active)
      Response: [ { "id", "name", "date", "lanes_total", "status", "spectator_enabled" } ]
 
 POST /api/competitions                          (admin)
@@ -97,6 +97,7 @@ POST /api/competitions                          (admin)
                      "spectator_enabled" }
 
 GET  /api/competitions/{id}
+     Auth:     admins may read any competition; scorers may read active competitions only
      Response: { "id", "name", "date", "lanes_total", "status", "spectator_enabled" }
 
 PUT  /api/competitions/{id}                     (admin)
@@ -108,8 +109,11 @@ PUT  /api/competitions/{id}                     (admin)
 
 ```
 GET  /api/competitions/{id}/shooters
-     Response: [ { "id", "name", "wa_id", "club", "lane_number",
-                   "discipline", "weapon_class" } ]
+     Auth:     admin → full shooter payload for any competition
+               scorer → active competitions only, reduced payload
+     Response: admin  [ { "id", "name", "wa_id", "club", "lane_number",
+                          "discipline", "weapon_class" } ]
+               scorer [ { "id", "name", "lane_number", "discipline" } ]
 
 POST /api/competitions/{id}/shooters            (admin)
      Body:     { "name": string, "wa_id": string, "club"?: string,

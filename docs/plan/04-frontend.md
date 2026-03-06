@@ -19,7 +19,7 @@
 | `/live` | public | List active competitions with spectator mode enabled; select one |
 | `/live/[id]` | public | SSE-driven live ranked scoreboard for selected competition |
 | `/` | auth | Redirect: admin → `/admin`, user → `/score/select` |
-| `/score/select` | user | Pick active competition + own lane number |
+| `/score/select` | user | Pick an active competition, then claim from name + lane + discipline |
 | `/score/stage` | user | Scoring keypad — one stage at a time |
 | `/score/summary` | user | Read-only summary when all stages locked |
 | `/admin` | admin | Dashboard |
