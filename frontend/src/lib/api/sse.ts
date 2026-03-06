@@ -8,24 +8,36 @@ export type SSEErrorHandler = (err: Error) => void;
 export function openSSEStream(
 	url: string,
 	onMessage: SSEMessageHandler,
-	onError: SSEErrorHandler
+	onError: SSEErrorHandler,
+	onClose?: () => void
 ): AbortController {
 	const controller = new AbortController();
 
 	(async () => {
-		let token = get(auth).accessToken;
-		if (!token) {
-			try {
+		const fetchStream = async (): Promise<Response> => {
+			let token = get(auth).accessToken;
+			if (!token) {
 				await silentRefresh();
 				token = get(auth).accessToken;
-			} catch {
-				onError(new Error('not authenticated'));
-				return;
 			}
-		}
-
-		let res: Response;
-		try {
+			if (!token) {
+				throw new Error('not authenticated');
+			}
+			let res = await fetch(url, {
+				signal: controller.signal,
+				headers: {
+					Authorization: `Bearer ${token}`,
+					Accept: 'text/event-stream'
+				}
+			});
+			if (res.status !== 401) {
+				return res;
+			}
+			await silentRefresh();
+			token = get(auth).accessToken;
+			if (!token) {
+				throw new Error('not authenticated');
+			}
 			res = await fetch(url, {
 				signal: controller.signal,
 				headers: {
@@ -33,6 +45,12 @@ export function openSSEStream(
 					Accept: 'text/event-stream'
 				}
 			});
+			return res;
+		};
+
+		let res: Response;
+		try {
+			res = await fetchStream();
 		} catch (e) {
 			if (!controller.signal.aborted) {
 				onError(e instanceof Error ? e : new Error(String(e)));
@@ -52,7 +70,12 @@ export function openSSEStream(
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
-				if (done) break;
+				if (done) {
+					if (!controller.signal.aborted) {
+						onClose?.();
+					}
+					break;
+				}
 				buf += decoder.decode(value, { stream: true });
 				const lines = buf.split('\n');
 				buf = lines.pop() ?? '';

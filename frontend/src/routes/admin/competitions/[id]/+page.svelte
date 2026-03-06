@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 	import { apiFetch } from '$lib/api/client';
+	import { openSSEStream } from '$lib/api/sse';
 	import { RING_KEYS, RING_VALUES, WEAPON_CLASSES } from '$lib/rulebook';
 
 	interface MonitorLane {
@@ -85,33 +86,29 @@
 	let addError = $state('');
 	let addSaving = $state(false);
 
-	let sse: EventSource | null = null;
+	let sse: AbortController | null = null;
 	let sseBackoff = 1000;
+	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 	async function connectSSE() {
-		const ticketRes = await apiFetch('/api/admin/sse-ticket', {
-			method: 'POST',
-			body: JSON.stringify({ competition_id: compId })
-		});
-		if (!ticketRes.ok) {
-			sseError = 'Failed to obtain monitor ticket';
-			return;
-		}
-		const { ticket } = await ticketRes.json() as { ticket: string };
-		sse = new EventSource(`/api/admin/monitor?ticket=${encodeURIComponent(ticket)}&competition_id=${compId}`);
-		sse.onmessage = (e) => {
+		sse?.abort();
+		sse = openSSEStream(
+			`/api/admin/competitions/${compId}/monitor`,
+			(raw) => {
 			try {
-				monitor = JSON.parse(e.data) as MonitorEvent;
+				monitor = JSON.parse(raw) as MonitorEvent;
 				sseError = '';
 				sseBackoff = 1000;
 			} catch { /* ignore parse errors */ }
-		};
-		sse.onerror = () => {
-			sse?.close();
+			},
+			() => {
+				sse?.abort();
+				sse = null;
 			sseError = 'Monitor disconnected — reconnecting…';
-			setTimeout(connectSSE, sseBackoff);
+			reconnectTimer = setTimeout(connectSSE, sseBackoff);
 			sseBackoff = Math.min(sseBackoff * 2, 30000);
-		};
+			}
+		);
 	}
 
 	async function loadComp() {
@@ -256,7 +253,8 @@
 	});
 
 	onDestroy(() => {
-		sse?.close();
+		sse?.abort();
+		if (reconnectTimer) clearTimeout(reconnectTimer);
 	});
 </script>
 
