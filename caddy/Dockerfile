@@ -8,7 +8,7 @@ RUN npm ci
 COPY frontend/ .
 RUN npm run build
 
-FROM caddy:2.11.3-alpine
+FROM caddy:2.11.4-alpine
 
 COPY --from=frontend-builder /app/build /srv/frontend
 COPY caddy/Caddyfile /etc/caddy/Caddyfile
