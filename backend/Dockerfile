@@ -10,7 +10,7 @@ COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /bin/matchmark ./cmd/server
 
-FROM alpine:3.24.1
+FROM alpine:3.24.2
 
 RUN addgroup -S matchmark && adduser -S -G matchmark matchmark
 
