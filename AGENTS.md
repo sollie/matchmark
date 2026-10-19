@@ -44,7 +44,7 @@ Specification and decisions:
 
 ### Go (`source/`)
 
-- Use Go 1.26+. Run commands from `source/`.
+- Use Go 1.27+. Run commands from `source/`.
 - Architecture: `handler` → `service` → `repository`. No business logic in handlers or repositories.
 - SQLite-format storage via `turso.tech/database/tursogo` (`database/sql` driver `turso`; `-tags musl` only for Alpine). `CGO_ENABLED=0` always. See ADR 0005.
 - Schema evolves through ordered migrations in `internal/db/migrations/`; never edit an applied migration.

@@ -27,7 +27,7 @@ Sign in at `/` with the admin password. `ADMIN_PASSWORD` must be at least 16 cha
 
 ## Run without Docker
 
-Prerequisites: Go 1.26+ and Node.js 24 LTS.
+Prerequisites: Go 1.27+ and Node.js 24 LTS.
 
 ```sh
 cd source/web && npm ci && npm run build && cd ..
