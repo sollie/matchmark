@@ -34,7 +34,7 @@ cd source/web && npm ci && npm run build && cd ..
 ADMIN_PASSWORD='at-least-16-characters' CGO_ENABLED=0 go run ./cmd/server
 ```
 
-For frontend development run `npm run dev` in `source/web`; it proxies `/api` to `localhost:8080`.
+For frontend development run `npm run dev` in `source/web`; it proxies `/api` to `localhost:8080`. Run the frontend tests with `npm test` (Vitest, jsdom and Testing Library; dev-only).
 
 ## Environment variables
 

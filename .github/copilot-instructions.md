@@ -14,9 +14,9 @@ trivy fs --scanners vuln,secret .                           # from repo root
 ADMIN_PASSWORD=<16+ chars> go run ./cmd/server
 ```
 
-Frontend (run in `source/web/`):
+Frontend (run in `source/web/`; tests use Vitest with Testing Library and a stubbed fetch):
 ```sh
-npm run check && npm run build && npm audit   # required after every change; no test runner exists
+npm run check && npm run build && npm test && npm audit   # required after every change
 ```
 
 API client: after editing `source/api/openapi.yaml`, run `npm run generate` in `source/api` and commit `web/src/lib/api/schema.d.ts`.
