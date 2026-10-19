@@ -52,6 +52,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	svcOpts = append(svcOpts, service.WithScoreLog(logger))
 	api := handler.NewRouter(service.New(repo, svcOpts...),
 		handler.WithAdminAuth(auth, cfg.BaseURL),
 		handler.WithBackupDir(filepath.Dir(cfg.DBPath)),

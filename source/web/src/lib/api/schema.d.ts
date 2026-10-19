@@ -245,7 +245,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Admin overwrite of a stage's ring counts */
+        /** Admin overwrite of a stage's ring counts, allowed on a locked stage which stays locked */
         put: operations["setRingCounts"];
         post?: never;
         delete?: never;
@@ -1263,7 +1263,6 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             422: components["responses"]["Invalid"];
         };
     };
