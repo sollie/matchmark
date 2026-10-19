@@ -36,6 +36,7 @@
     while (taken.has(n)) n++;
     return n;
   });
+  const available = $derived(shooters.filter((s) => !entries.some((e) => e.shooter_id === s.id)));
   const lane = $derived(laneInput ?? nextLane);
   const stageNumbers = $derived(entries[0]?.stages.map((s) => s.stage_number) ?? []);
   const shooterName = (id: number) => {
@@ -65,7 +66,10 @@
         body: { shooter_id: shooterId, category, lane },
       }),
     );
-    if (ok) laneInput = null;
+    if (ok) {
+      laneInput = null;
+      shooterId = null;
+    }
   }
 
   async function saveEdit() {
@@ -118,7 +122,7 @@
       Shooter
       <select bind:value={shooterId} required>
         <option value={null} disabled>Select shooter</option>
-        {#each shooters as s (s.id)}<option value={s.id}>{s.last_name}, {s.first_name}</option>{/each}
+        {#each available as s (s.id)}<option value={s.id}>{s.last_name}, {s.first_name}</option>{/each}
       </select>
     </label>
     <label>
