@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -36,7 +37,9 @@ func run() error {
 	if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0o750); err != nil {
 		return err
 	}
-	conn, err := db.Open(cfg.DBPath)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	conn, svcOpts, err := openDatabase(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -46,7 +49,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	api := handler.NewRouter(service.New(repo),
+	api := handler.NewRouter(service.New(repo, svcOpts...),
 		handler.WithAdminAuth(auth, cfg.BaseURL),
 		handler.WithBackupDir(filepath.Dir(cfg.DBPath)),
 	)
@@ -58,8 +61,6 @@ func run() error {
 		IdleTimeout:       2 * time.Minute,
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	errc := make(chan error, 1)
 	go func() { errc <- serve(ctx, srv, cfg) }()
 
@@ -74,6 +75,21 @@ func run() error {
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
 	}
+}
+
+func openDatabase(ctx context.Context, cfg Config) (*sql.DB, []service.Option, error) {
+	if cfg.ReplicationURL == "" {
+		conn, err := db.Open(cfg.DBPath)
+		return conn, nil, err
+	}
+	conn, syncDB, err := db.OpenReplicated(ctx, cfg.DBPath, cfg.ReplicationURL)
+	if err != nil {
+		return nil, nil, err
+	}
+	replicator := service.NewReplicator(syncDB, cfg.ReplicationInterval, log.Printf)
+	go replicator.Run(ctx)
+	log.Printf("replication enabled: pushing to %s every %s", cfg.ReplicationURL, cfg.ReplicationInterval)
+	return conn, []service.Option{service.WithReplicator(replicator)}, nil
 }
 
 func serve(ctx context.Context, srv *http.Server, cfg Config) error {

@@ -13,6 +13,6 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 9. `source/web/`: Svelte + Vite SPA: admin, scorer, spectator screens.
 - [x] 10. Embed `web/dist`, TLS modes (plain, static, certmagic), backup endpoint.
 - [x] 10a. Spike: swap `modernc.org/sqlite` for tursogo (ADR 0005). Run `001_schema.sql` and the full test suite, check `foreign_keys`, `busy_timeout`, `SetMaxOpenConns(1)` and the backup download. Stop and revisit the ADR if it fails. Result: passes on tursogo v0.8.3; `foreign_keys` is not on by default and is set per connection, `VACUUM INTO` works only with a string literal path (no bound parameter).
-- [ ] 10b. Optional push-only Replication (timer plus on competition finish), `REPLICATION_*` config, `tursodb --sync-server` compose snippet and private-network warning in `README.md`.
+- [x] 10b. Optional push-only Replication (timer plus on competition finish), `REPLICATION_*` config, `tursodb --sync-server` compose snippet and private-network warning in `README.md`.
 - [ ] 11. Root `Dockerfile` (Alpine Node and Go stages, Alpine 3.24 final with `-tags musl`, non-root, `TURSO_GO_CACHE_DIR`), `docker-compose.yml`, `README.md`, and native-runner CI (amd64, arm64, darwin/arm64 build-only) with an in-image database smoke test.
 - [ ] 12. Manual QA: full flow on a phone, results report opened in Excel, Pi run. Then delete `docs/plan/`, update `AGENTS.md`, `docs/STATUS.md`, and merge.

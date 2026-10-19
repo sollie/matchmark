@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 )
 
 func env(m map[string]string) func(string) string {
@@ -116,5 +117,32 @@ func TestSPAHandlerWithoutBuild(t *testing.T) {
 	spaHandler(fstest.MapFS{".gitkeep": {}}, http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status %d", rec.Code)
+	}
+}
+
+func TestLoadConfigReplication(t *testing.T) {
+	tests := []struct {
+		name     string
+		env      map[string]string
+		url      string
+		interval time.Duration
+		wantErr  bool
+	}{
+		{"disabled by default", map[string]string{}, "", time.Minute, false},
+		{"enabled with default interval", map[string]string{"REPLICATION_URL": "http://10.0.0.2:8080"}, "http://10.0.0.2:8080", time.Minute, false},
+		{"custom interval", map[string]string{"REPLICATION_URL": "http://10.0.0.2:8080", "REPLICATION_INTERVAL": "15s"}, "http://10.0.0.2:8080", 15 * time.Second, false},
+		{"unparsable interval", map[string]string{"REPLICATION_INTERVAL": "soon"}, "", 0, true},
+		{"non-positive interval", map[string]string{"REPLICATION_INTERVAL": "0s"}, "", 0, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := LoadConfig(env(tc.env))
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tc.wantErr)
+			}
+			if err == nil && (c.ReplicationURL != tc.url || c.ReplicationInterval != tc.interval) {
+				t.Fatalf("url %q interval %v", c.ReplicationURL, c.ReplicationInterval)
+			}
+		})
 	}
 }

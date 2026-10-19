@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	_ "turso.tech/database/tursogo"
+	turso "turso.tech/database/tursogo"
 )
 
 //go:embed migrations/*.sql
@@ -24,6 +24,36 @@ func Open(path string) (*sql.DB, error) {
 	}
 	conn := sql.OpenDB(&connector{drv: probe.Driver(), dsn: path + "?_busy_timeout=5000"})
 	_ = probe.Close()
+	return finishOpen(conn)
+}
+
+func OpenReplicated(ctx context.Context, path, remoteURL string) (*sql.DB, *turso.TursoSyncDb, error) {
+	bootstrap := false
+	sdb, err := turso.NewTursoSyncDb(ctx, turso.TursoSyncDbConfig{
+		Path:             path + "?_busy_timeout=5000",
+		RemoteUrl:        remoteURL,
+		BootstrapIfEmpty: &bootstrap,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("open replicated database: %w", err)
+	}
+	conn, err := sdb.Connect(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open replicated database: %w", err)
+	}
+	conn.SetMaxIdleConns(1)
+	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys = ON`); err != nil {
+		_ = conn.Close()
+		return nil, nil, fmt.Errorf("enable foreign keys: %w", err)
+	}
+	conn, err = finishOpen(conn)
+	if err != nil {
+		return nil, nil, err
+	}
+	return conn, sdb, nil
+}
+
+func finishOpen(conn *sql.DB) (*sql.DB, error) {
 	conn.SetMaxOpenConns(1)
 	if err := migrate(conn); err != nil {
 		_ = conn.Close()

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"strings"
+	"time"
 )
 
 type TLSMode string
@@ -27,6 +28,9 @@ type Config struct {
 	ACMEDomain    string
 	ACMEEmail     string
 	TLSMode       TLSMode
+
+	ReplicationURL      string
+	ReplicationInterval time.Duration
 }
 
 func LoadConfig(getenv func(string) string) (Config, error) {
@@ -39,6 +43,16 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		TLSKeyFile:    getenv("TLS_KEY_FILE"),
 		ACMEDomain:    getenv("ACME_DOMAIN"),
 		ACMEEmail:     getenv("ACME_EMAIL"),
+
+		ReplicationURL:      getenv("REPLICATION_URL"),
+		ReplicationInterval: time.Minute,
+	}
+	if raw := getenv("REPLICATION_INTERVAL"); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil || d <= 0 {
+			return Config{}, fmt.Errorf("REPLICATION_INTERVAL: invalid positive duration %q", raw)
+		}
+		c.ReplicationInterval = d
 	}
 	if c.DBPath == "" {
 		c.DBPath = "data/matchmark.db"
