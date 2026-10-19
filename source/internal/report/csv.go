@@ -18,6 +18,7 @@ func safeCell(v string) string {
 
 func CSV(d Data) ([]byte, error) {
 	var buf bytes.Buffer
+	buf.WriteString("\ufeff")
 	w := csv.NewWriter(&buf)
 	if err := w.Write(csvHeader); err != nil {
 		return nil, err

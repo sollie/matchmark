@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"strings"
+	"unicode"
 
 	"github.com/sollie/matchmark/internal/report"
 )
@@ -18,18 +20,53 @@ func (s *Service) loadReport(ctx context.Context, competitionID int64) (report.D
 	return report.Data{Competition: comp, Entries: entries}, nil
 }
 
-func (s *Service) ResultsWorkbook(ctx context.Context, competitionID int64) ([]byte, error) {
-	data, err := s.loadReport(ctx, competitionID)
-	if err != nil {
-		return nil, err
-	}
-	return report.Workbook(data)
+type Download struct {
+	BaseName string
+	Data     []byte
 }
 
-func (s *Service) ResultsCSV(ctx context.Context, competitionID int64) ([]byte, error) {
+const maxNameRunes = 60
+
+func downloadBaseName(name, date string) string {
+	var b strings.Builder
+	pendingDash := false
+	count := 0
+	for _, r := range name {
+		if count >= maxNameRunes {
+			break
+		}
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
+			if pendingDash && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			pendingDash = false
+			b.WriteRune(r)
+			count++
+		} else {
+			pendingDash = true
+		}
+	}
+	base := b.String()
+	if base == "" {
+		base = "results"
+	}
+	return base + "-" + date
+}
+
+func (s *Service) ResultsWorkbook(ctx context.Context, competitionID int64) (Download, error) {
 	data, err := s.loadReport(ctx, competitionID)
 	if err != nil {
-		return nil, err
+		return Download{}, err
 	}
-	return report.CSV(data)
+	out, err := report.Workbook(data)
+	return Download{BaseName: downloadBaseName(data.Competition.Name, data.Competition.Date), Data: out}, err
+}
+
+func (s *Service) ResultsCSV(ctx context.Context, competitionID int64) (Download, error) {
+	data, err := s.loadReport(ctx, competitionID)
+	if err != nil {
+		return Download{}, err
+	}
+	out, err := report.CSV(data)
+	return Download{BaseName: downloadBaseName(data.Competition.Name, data.Competition.Date), Data: out}, err
 }
