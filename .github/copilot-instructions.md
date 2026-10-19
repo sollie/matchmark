@@ -1,46 +1,47 @@
 # Copilot Instructions — MatchMark
 
-WA1500/PPC competition scoring system: Go REST API (`backend/`) + SvelteKit PWA (`frontend/`) + Caddy (`caddy/`). The spec lives in `docs/plan/` (start at `00-index.md`); `AGENTS.md` holds the binding agent rules. Current status/open work: `docs/STATUS.md`.
+Single-club WA1500/PPC competition scoring system: one Go binary (`source/`) with an embedded Svelte SPA (`source/web/`). The spec is `docs/spec.md`, vocabulary is `GLOSSARY.md`, decisions are in `docs/adr/`; `AGENTS.md` holds the binding agent rules.
 
 ## Build, test, lint
 
-Backend (run in `backend/`, always `CGO_ENABLED=0`):
+Backend (run in `source/`, always `CGO_ENABLED=0`):
 ```sh
 CGO_ENABLED=0 go build ./...
 CGO_ENABLED=0 go test ./...
-CGO_ENABLED=0 go test ./internal/service -run TestGetScoreLane -v   # single test
+CGO_ENABLED=0 go test ./internal/service -run TestName -v   # single test
 golangci-lint run ./...
-trivy fs --scanners vuln,secret .                                   # from repo root
-go run ./cmd/server    # needs JWT_SECRET (>=32 bytes), ADMIN_PASSWORD (>=16 chars), DB_PATH
+trivy fs --scanners vuln,secret .                           # from repo root
+ADMIN_PASSWORD=<16+ chars> go run ./cmd/server
 ```
 
-Frontend (run in `frontend/`):
+Frontend (run in `source/web/`):
 ```sh
 npm run check && npm run build && npm audit   # required after every change; no test runner exists
 ```
 
-Shell scripts: `shellcheck`. Full stack: `docker compose up --build` (dev, plain HTTP: add `-f docker-compose.dev.yml`). Local CodeQL: `./scripts/codeql-local.sh`.
+API client: after editing `source/api/openapi.yaml`, run `npm run generate` in `source/api` and commit `web/src/lib/api/schema.d.ts`.
+
+Shell scripts: `shellcheck`. Full stack: `docker compose up --build`.
 
 ## Architecture
 
-- **Backend layering is strict:** `handler` → `service` → `repository` (under `backend/internal/`). No business logic in handlers or repositories. Wiring/DI, middleware, rate limiters and routes are all in `cmd/server/main.go`.
-- **SQLite** via pure-Go `modernc.org/sqlite`; schema evolves through embedded, ordered migrations in `internal/db/migrations/` (never edit an applied migration; add a new numbered one). Migrations 004/006/007 created `sse_tickets`, 008 dropped it.
-- **`internal/rulebook/` is the single source of truth** for courses of fire, shot counts and weapon classes. Never hard-code these elsewhere in Go. The frontend mirror is `frontend/src/lib/rulebook.ts`. `Standard Revolver 2.75" 5-Shot` auto-selects the 40-shot 48-course variant.
-- **Stages are created eagerly** when a shooter is added; submitting hits replaces all hits for that stage in one transaction (no patch/undo endpoints).
-- **Scoring model:** each lane has one scorer who scores the neighbouring lane: `scoreLane = ownLane - 1` (lane 1 wraps to `lanes_total`). It is derived server-side from the JWT/assignment, never from client input. Single-lane competitions require admin scoring (`ErrSingleLaneAdminOnly` → 403 `"admin scoring required"`). Admins bypass lock and assignment checks.
-- **Auth:** HS256 access token (1h, in-memory only on the client, `iss=matchmark`, `aud=matchmark-api`); refresh token (7d, rotated, family-tracked, stored hashed in DB) lives only in the `mm_rt` HttpOnly cookie. `users.auth_version` revokes sessions. Client IP comes from a custom `trustedProxyRealIP` that trusts forwarded headers only from private/loopback peers (`TRUSTED_PROXY`).
-- **Realtime:** admin monitor and spectator views are SSE (3s snapshot polling). The frontend uses `lib/api/sse.ts` (`fetch` + `ReadableStream`, not `EventSource`) so the `Authorization` header works. Spectator endpoints (`/api/spectator/...`) are unauthenticated and gated by the competition's `spectator_enabled` flag.
-- **Offline sync (frontend):** scorer writes go to IndexedDB first (`lib/db/idb.ts`), replayed by `lib/sync/queue.ts` and the custom `service-worker.ts` (Background Sync; `visibilitychange` fallback for iOS). Static adapter only — no SSR.
-- **Docker:** two services only (`backend`, `caddy`). The caddy image builds the SvelteKit app in a Node stage. Domain comes from `DOMAIN` via `{$DOMAIN}` in the Caddyfile.
+- **Backend layering is strict:** `handler` → `service` → `repository` (under `source/internal/`). No business logic in handlers or repositories. Wiring, config, TLS and request logging are in `cmd/server/`.
+- **Storage:** SQLite format via `turso.tech/database/tursogo` (ADR 0005); schema evolves through ordered migrations in `internal/db/migrations/` (never edit an applied migration). Optional push-only replication.
+- **`internal/rulebook/` is the single source of truth** for courses of fire and shot counts. Never hard-code them elsewhere.
+- **Scoring model:** the score lane is the next manned lane after the scorer's own lane, wrapping, derived server-side from the device pairing and current entries. A competition with one manned lane requires admin scoring. Hits are seven ring counts per stage that must sum to the expected shots. A lock records the scorer; only the admin unlocks, edits, or locks as "Admin".
+- **Auth:** admin password from `ADMIN_PASSWORD` and a cookie session with login rate limiting. Scorers are paired devices (QR link), not accounts. Spectator endpoints are unauthenticated and gated by per-competition visibility flags.
+- **Reports:** `.xlsx` filled from the embedded template via excelize, plus a detailed CSV.
+- **Logging:** JSON `log/slog` to stdout, one `request` line per HTTP request.
+- **Docker:** one image built from the root `Dockerfile`; TLS is handled by the binary (plain, static, or certmagic).
 
 ## Conventions
 
 - **Never add comments to code.**
-- All strings (UI, PDF, API fields, logs) in English only.
+- All strings (UI, reports, API fields, logs) in English only.
+- Dates are ISO 8601 (`2026-10-19`) and times are 24-hour.
 - All SQL uses `?` placeholders; no string concatenation.
-- Input limits are validated in handlers (username ≤ 64, name ≤ 128, wa_id ≤ 32, club ≤ 128); passwords ≥ 16 chars enforced in the service layer on every create/reset.
-- Tests are table/unit tests in `internal/service`, `internal/auth`, `internal/rulebook` and `cmd/server`; follow the existing style when adding service tests.
+- Tests are table/unit tests in `internal/service`, `internal/handler`, `internal/rulebook` and `cmd/server`; follow the existing style.
 - Use the latest stable dependency versions; verify upstream before pinning; remove unused deps. Fix high/critical `npm audit` findings.
-- Keep `docs/plan/` and `README.md` in sync with any change to architecture, API, Docker or run/deploy steps; tick items in `docs/plan/07-phases.md` when done.
+- Keep `README.md`, `docs/spec.md` and `GLOSSARY.md` in sync with any change to behaviour, API, Docker or run/deploy steps.
 - Git write operations are allowed (Conventional Commits; never force-push or rewrite history on `main`). When working through a list of items (reviews), finish one, run checks, and commit it before starting the next.
 - Issues live in GitHub Issues; see the `## Agent skills` section of `AGENTS.md` and `docs/agents/`.
