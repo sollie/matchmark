@@ -45,17 +45,23 @@ JSON REST API under `/api`, documented with OpenAPI; admin and spectator endpoin
 
 ## Backend
 
-Go, chi, SQLite via `modernc.org/sqlite` (`CGO_ENABLED=0`), embedded ordered migrations, strict handler → service → repository layering, `excelize` for xlsx, `certmagic` for ACME. Admin password hashed with argon2id; session cookie `HttpOnly`, `SameSite=Lax`, `Secure` when `BASE_URL` is https.
+Go, chi, SQLite-format storage via Turso Database and `turso.tech/database/tursogo` (`CGO_ENABLED=0`, native library loaded at runtime; see ADR 0005), embedded ordered migrations, strict handler → service → repository layering, `excelize` for xlsx, `certmagic` for ACME. Admin password hashed with argon2id; session cookie `HttpOnly`, `SameSite=Lax`, `Secure` when `BASE_URL` is https.
 
 ## Configuration (environment only)
 
-`ADMIN_PASSWORD` (≥16 chars), `DB_PATH`, `LISTEN_ADDR`, `BASE_URL`, `TRUSTED_PROXY`, `TLS_CERT_FILE`, `TLS_KEY_FILE`, `ACME_DOMAIN`, `ACME_EMAIL`.
+`ADMIN_PASSWORD` (≥16 chars), `DB_PATH`, `LISTEN_ADDR`, `BASE_URL`, `TRUSTED_PROXY`, `TLS_CERT_FILE`, `TLS_KEY_FILE`, `ACME_DOMAIN`, `ACME_EMAIL`, `TURSO_GO_CACHE_DIR` (writable path for the extracted native library), `REPLICATION_URL` (empty disables Replication), `REPLICATION_INTERVAL` (default 60s).
+
+## Replication
+
+Optional and off by default. When `REPLICATION_URL` is set, the primary opens its database through the tursogo sync API and pushes to a self-hosted `tursodb --sync-server` on another host, every `REPLICATION_INTERVAL` and when a competition finishes. Push-only: the replica is never merged back. Failures are logged and retried and never block scoring. The sync server has no authentication, so it must only be reachable over a private network; across the public internet use snapshot files instead. Restore is copying the replica's database file to a new primary. See ADR 0005.
 
 TLS modes: plain HTTP (default, behind a proxy); static certificate; ACME via certmagic with certificates stored in the data volume.
 
 ## Delivery
 
-Repository root: `Dockerfile`, `docker-compose.yml` (app plus `./data` volume only), `docs/`, `GLOSSARY.md`, `README.md`, `AGENTS.md`. Code in `source/` (Go module root; `source/web/` for the SPA). Dockerfile: Alpine Node stage builds `web/`, Alpine Go stage embeds `web/dist` and builds a static binary, final `scratch` image with CA certificates copied from the build stage, running non-root. The admin UI offers a database backup download using SQLite's online backup.
+Repository root: `Dockerfile`, `docker-compose.yml` (app plus `./data` volume only), `docs/`, `GLOSSARY.md`, `README.md`, `AGENTS.md`. Code in `source/` (Go module root; `source/web/` for the SPA). Dockerfile: Alpine Node stage builds `web/`, Alpine Go stage embeds `web/dist` and builds with `CGO_ENABLED=0 -tags musl`, final Alpine 3.24 image (the tursogo native library needs a libc to `dlopen`) running non-root with `TURSO_GO_CACHE_DIR` on a writable path. Supported targets: linux/amd64 and linux/arm64 (64-bit Pi OS only); darwin/arm64 for development. The admin UI offers a database backup download; the spike must confirm how to produce it with Turso Database.
+
+CI (GitHub Actions) builds, tests and smoke-tests the image natively: `ubuntu-latest` for amd64, `ubuntu-24.04-arm` for arm64, no QEMU, plus a build-only `macos-latest` job. The smoke test opens a database inside each image because a library-loading failure only shows at runtime.
 
 ## Rulebook verification
 
