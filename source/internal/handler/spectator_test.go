@@ -1,0 +1,168 @@
+package handler_test
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"testing"
+)
+
+func publicGet(t *testing.T, f *fixture, path string) (int, map[string]any) {
+	t.Helper()
+	resp, err := http.Get(f.env.Server.URL + path)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
+}
+
+func (f *fixture) score(t *testing.T, entry, stage int, counts map[string]any) {
+	t.Helper()
+	path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/%d", f.comp, entry, stage)
+	if status, out := f.env.Do("PUT", path, counts); status != http.StatusOK {
+		t.Fatalf("score: %d %v", status, out)
+	}
+}
+
+func (f *fixture) activate(t *testing.T) {
+	t.Helper()
+	if status, out := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]string{"status": "active"}); status != http.StatusOK {
+		t.Fatalf("activate: %d %v", status, out)
+	}
+}
+
+func spectatorFixture(t *testing.T) *fixture {
+	f := newFixture(t, "150")
+	one := f.addEntry(t, "Hansen", 1)
+	two := f.addEntry(t, "Berg", 2)
+	f.score(t, one, 1, map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 1})
+	f.score(t, two, 1, map[string]any{"x": 12})
+	f.activate(t)
+	return f
+}
+
+func standingsPath(f *fixture) string {
+	return fmt.Sprintf("/api/spectator/competitions/%d/standings", f.comp)
+}
+
+func TestSpectatorStandings(t *testing.T) {
+	f := spectatorFixture(t)
+	status, out := publicGet(t, f, standingsPath(f))
+	if status != http.StatusOK {
+		t.Fatalf("status %d %v", status, out)
+	}
+	rows := out["standings"].([]any)
+	if len(rows) != 2 {
+		t.Fatalf("rows %v", rows)
+	}
+	first := rows[0].(map[string]any)
+	if first["last_name"] != "Berg" || first["total"].(float64) != 120 {
+		t.Fatalf("first %v", first)
+	}
+	second := rows[1].(map[string]any)
+	if second["last_name"] != "Hansen" || second["total"].(float64) != 112 {
+		t.Fatalf("second %v", second)
+	}
+}
+
+func TestSpectatorDraftCompetitionIsHidden(t *testing.T) {
+	f := newFixture(t, "150")
+	if status, _ := publicGet(t, f, standingsPath(f)); status != http.StatusNotFound {
+		t.Fatalf("status %d", status)
+	}
+}
+
+func TestSpectatorVisibilityFlags(t *testing.T) {
+	f := spectatorFixture(t)
+	visPath := fmt.Sprintf("/api/competitions/%d/visibility", f.comp)
+
+	t.Run("defaults are readable by admin", func(t *testing.T) {
+		status, out := f.env.Do("GET", visPath, nil)
+		if status != http.StatusOK || out["show_names"] != true || out["show_ring_counts"] != false {
+			t.Fatalf("got %d %v", status, out)
+		}
+	})
+	t.Run("ring counts hidden by default", func(t *testing.T) {
+		_, out := publicGet(t, f, standingsPath(f))
+		row := out["standings"].([]any)[0].(map[string]any)
+		if _, ok := row["ring_counts"]; ok {
+			t.Fatalf("ring_counts present: %v", row)
+		}
+	})
+	t.Run("hidden fields are omitted", func(t *testing.T) {
+		body := map[string]any{
+			"show_names": false, "show_clubs": false, "show_countries": false,
+			"show_stage_scores": false, "show_ring_counts": false,
+		}
+		if status, out := f.env.Do("PUT", visPath, body); status != http.StatusOK {
+			t.Fatalf("put %d %v", status, out)
+		}
+		_, out := publicGet(t, f, standingsPath(f))
+		row := out["standings"].([]any)[0].(map[string]any)
+		for _, k := range []string{"last_name", "first_name", "club", "country", "stages", "ring_counts", "x_count"} {
+			if _, ok := row[k]; ok {
+				t.Fatalf("%s present: %v", k, row)
+			}
+		}
+		if row["lane"] == nil || row["total"] == nil || row["category"] == nil {
+			t.Fatalf("always-visible fields missing: %v", row)
+		}
+	})
+	t.Run("enabled fields appear", func(t *testing.T) {
+		body := map[string]any{
+			"show_names": true, "show_clubs": true, "show_countries": true,
+			"show_stage_scores": true, "show_ring_counts": true,
+		}
+		if status, out := f.env.Do("PUT", visPath, body); status != http.StatusOK {
+			t.Fatalf("put %d %v", status, out)
+		}
+		_, out := publicGet(t, f, standingsPath(f))
+		row := out["standings"].([]any)[0].(map[string]any)
+		for _, k := range []string{"last_name", "first_name", "club", "country", "stages", "ring_counts"} {
+			if _, ok := row[k]; !ok {
+				t.Fatalf("%s missing: %v", k, row)
+			}
+		}
+		stages := row["stages"].([]any)
+		if len(stages) != 10 || stages[0].(map[string]any)["score"].(float64) != 120 {
+			t.Fatalf("stages %v", stages)
+		}
+	})
+	t.Run("visibility requires admin", func(t *testing.T) {
+		if status, _ := publicGet(t, f, visPath); status != http.StatusUnauthorized {
+			t.Fatalf("status %d", status)
+		}
+	})
+}
+
+func TestSpectatorProgress(t *testing.T) {
+	f := spectatorFixture(t)
+	status, out := publicGet(t, f, fmt.Sprintf("/api/spectator/competitions/%d/progress", f.comp))
+	if status != http.StatusOK {
+		t.Fatalf("status %d %v", status, out)
+	}
+	stages := out["stages"].([]any)
+	if len(stages) != 10 {
+		t.Fatalf("stages %v", stages)
+	}
+	s1 := stages[0].(map[string]any)
+	if s1["stage"].(float64) != 1 || s1["entries"].(float64) != 2 || s1["locked"].(float64) != 0 {
+		t.Fatalf("stage 1 %v", s1)
+	}
+}
+
+func TestSpectatorCompetitionList(t *testing.T) {
+	f := spectatorFixture(t)
+	f.env.ID("POST", "/api/competitions", map[string]any{"name": "Draft", "date": "2026-06-01", "course": "60"})
+	status, out := publicGet(t, f, "/api/spectator/competitions")
+	if status != http.StatusOK {
+		t.Fatalf("status %d", status)
+	}
+	list := out["competitions"].([]any)
+	if len(list) != 1 || list[0].(map[string]any)["name"] != "Club Match" {
+		t.Fatalf("list %v", list)
+	}
+}

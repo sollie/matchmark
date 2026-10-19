@@ -29,9 +29,11 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.Post("/admin/logout", h.adminLogout)
 			r.With(h.RequireAdmin).Get("/admin/session", h.adminSession)
 		}
+		h.spectatorRoutes(r)
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireAdmin)
 			h.adminRoutes(r)
+			h.visibilityRoutes(r)
 		})
 	})
 	return r
