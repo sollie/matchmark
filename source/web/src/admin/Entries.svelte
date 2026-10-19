@@ -128,7 +128,7 @@
   <h2>Entries and progress</h2>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
-  <form class="row" onsubmit={add}>
+  <form class="row add-form" onsubmit={add}>
     <label>
       Shooter
       <select bind:value={shooterId} required>
@@ -148,57 +148,69 @@
   </form>
 
   <div class="scroll">
-  <table>
+  <table class="entries">
     <thead>
       <tr>
         <th>Lane</th><th>Shooter</th><th>Category</th>
         {#each stageNumbers as n (n)}<th>S{n}</th>{/each}
-        <th></th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {#each ordered as entry (entry.id)}
         <tr class:muted={entry.withdrawn}>
           {#if editing?.id === entry.id}
-            <td><input type="number" min="1" bind:value={editing.lane} size="3" /></td>
-            <td>{shooterName(entry.shooter_id)}</td>
-            <td>
-              <select bind:value={editing.category}>
+            <td class="lane"><input type="number" min="1" aria-label="Lane" bind:value={editing.lane} size="3" /></td>
+            <td class="shooter">{shooterName(entry.shooter_id)}</td>
+            <td class="category">
+              <select aria-label="Category" bind:value={editing.category}>
                 {#each categories as c (c)}<option value={c}>{c}</option>{/each}
               </select>
             </td>
           {:else}
-            <td>{entry.lane}</td>
-            <td>{shooterName(entry.shooter_id)}{entry.withdrawn ? " (withdrawn)" : ""}</td>
-            <td>{entry.category}</td>
+            <td class="lane">{entry.lane}</td>
+            <td class="shooter">
+              {shooterName(entry.shooter_id)}
+              {#if entry.withdrawn}<span class="badge neutral">Withdrawn</span>{/if}
+            </td>
+            <td class="category">{entry.category}</td>
           {/if}
           {#each entry.stages as st (st.stage_number)}
-            <td class="row-actions">
-              {#if st.locked}
-                <span class="badge success" title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
-                <button class="secondary" onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
-              {:else}
-                <span class="badge warning">Open</span>
-                <button class="secondary" onclick={() => lock(entry, st.stage_number)}>Lock</button>
-              {/if}
-              <button class="ghost" onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
+            <td class="stage" data-label={`Stage ${st.stage_number}`}>
+              <div class="stage-cell">
+                {#if st.locked}
+                  <span class="badge success" title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
+                {:else}
+                  <span class="badge warning">Open</span>
+                {/if}
+                <span class="stage-actions">
+                  {#if st.locked}
+                    <button class="secondary" onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
+                  {:else}
+                    <button class="secondary" onclick={() => lock(entry, st.stage_number)}>Lock</button>
+                  {/if}
+                  <button class="ghost" onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
+                </span>
+              </div>
             </td>
           {/each}
-          <td class="row-actions">
-            {#if editing?.id === entry.id}
-              <button class="primary" onclick={saveEdit}>Save</button>
-              <button class="secondary" onclick={() => (editing = null)}>Cancel</button>
-            {:else}
-              <button class="secondary" onclick={() => (editing = { id: entry.id, category: entry.category, lane: entry.lane })}>
-                Move
-              </button>
-              {#if !entry.withdrawn}<button class="secondary" onclick={() => withdraw(entry)}>Withdraw</button>{/if}
-              <button class="danger" onclick={() => remove(entry)}>Remove</button>
-            {/if}
+          <td class="entry-actions">
+            <div class="entry-buttons">
+              {#if editing?.id === entry.id}
+                <button class="primary" onclick={saveEdit}>Save</button>
+                <button class="secondary" onclick={() => (editing = null)}>Cancel</button>
+              {:else}
+                <button class="secondary" onclick={() => (editing = { id: entry.id, category: entry.category, lane: entry.lane })}>
+                  Move
+                </button>
+                {#if !entry.withdrawn}<button class="secondary" onclick={() => withdraw(entry)}>Withdraw</button>{/if}
+                <button class="danger remove" onclick={() => remove(entry)}>Remove</button>
+              {/if}
+            </div>
           </td>
         </tr>
       {:else}
-        <tr><td colspan={4 + stageNumbers.length} class="muted">No entries yet.</td></tr>
+        <tr class="empty"><td colspan={4 + stageNumbers.length}>No entries yet. Add a shooter above to get started.</td></tr>
       {/each}
     </tbody>
   </table>
@@ -222,3 +234,40 @@
     </div>
   {/if}
 </section>
+
+<style>
+  .add-form label { min-width: 0; }
+  .entries .stage-cell { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .entries .stage-actions, .entries .entry-buttons { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+  .entries .entry-buttons .remove { margin-left: var(--space-3); }
+  .entries .shooter { font-weight: 600; }
+  .entries .shooter .badge { margin-left: var(--space-1); }
+  .entries .empty td { padding: var(--space-5); text-align: center; color: var(--text-muted); }
+  tr.muted td { color: var(--text-muted); }
+
+  @media (max-width: 47.99rem) {
+    .add-form { flex-direction: column; align-items: stretch; }
+    .add-form :is(input, select, button) { width: 100%; min-height: var(--touch); }
+    .add-form a { display: inline-flex; align-items: center; min-height: var(--touch); }
+    .entries, .entries tbody, .entries tr, .entries td { display: block; }
+    .entries thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .entries tbody tr { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+    .entries tbody tr:hover > td { background: transparent; }
+    .entries td { padding: 0; border: 0; }
+    .entries .lane { order: 1; }
+    .entries .shooter { order: 2; flex: 1 1 8rem; }
+    .entries .category { order: 3; color: var(--text-muted); }
+    .entries .lane::before { content: "Lane "; color: var(--text-muted); font-weight: 600; }
+    .entries .lane, .entries .category { align-self: center; }
+    .entries .stage { order: 4; flex: 1 1 11rem; padding: var(--space-2); background: var(--surface-alt); border-radius: var(--radius); }
+    .entries .stage::before { content: attr(data-label); display: block; margin-bottom: var(--space-1); font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
+    .entries .entry-actions { order: 5; flex: 1 1 100%; padding-top: var(--space-2); border-top: 1px solid var(--border); }
+    .entries .entry-buttons { align-items: center; }
+    .entries .entry-buttons .remove { margin-left: auto; }
+    .entries button { min-height: var(--touch); min-width: var(--touch); }
+    .entries input, .entries select { min-height: var(--touch); }
+    .entries .empty { display: block; padding: 0; border: 1px dashed var(--border); border-radius: var(--radius-lg); }
+    .entries .empty td { padding: var(--space-5); }
+    .scroll { overflow: visible; border: 0; }
+  }
+</style>

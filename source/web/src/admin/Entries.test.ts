@@ -92,6 +92,6 @@ describe("Entries", () => {
 
   it("marks withdrawn entries in text", () => {
     setup([entry({ withdrawn: true })]);
-    expect(screen.getByText(/\(withdrawn\)/)).toBeTruthy();
+    expect(screen.getByText("Withdrawn")).toBeTruthy();
   });
 });
