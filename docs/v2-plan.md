@@ -8,7 +8,7 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 4. Competition, shooter registry, entry and lane management APIs.
 - [x] 5. Device pairing and scorer API (score lane derived server-side, lock, admin unlock).
 - [x] 6. Spectator API with per-competition visibility flags.
-- [ ] 7. Results report: embed template, generate `.xlsx` with excelize; detailed CSV. Tests against the template.
+- [x] 7. Results report: embed template, generate `.xlsx` with excelize; detailed CSV. Tests against the template.
 - [ ] 8. OpenAPI spec and generated TypeScript client.
 - [ ] 9. `source/web/`: Svelte + Vite SPA: admin, scorer, spectator screens.
 - [ ] 10. Embed `web/dist`, TLS modes (plain, static, certmagic), backup endpoint.
