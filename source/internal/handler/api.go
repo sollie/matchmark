@@ -130,7 +130,7 @@ func (h *Handler) setRingCounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	counts := repository.RingCounts{X: body.X, Ten: body.Ten, Nine: body.Nine, Eight: body.Eight, Seven: body.Seven, Zero: body.Zero, Miss: body.Miss}
-	if err := h.svc.SetRingCounts(r.Context(), compID, entryID, int(stage), counts); err != nil {
+	if err := h.svc.AdminSetRingCounts(r.Context(), compID, entryID, int(stage), counts); err != nil {
 		writeError(w, err)
 		return
 	}

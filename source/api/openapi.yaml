@@ -497,7 +497,7 @@ paths:
     put:
       operationId: setRingCounts
       tags: [entries]
-      summary: Admin overwrite of a stage's ring counts
+      summary: Admin overwrite of a stage's ring counts, allowed on a locked stage which stays locked
       security:
         - adminCookie: []
       requestBody:
@@ -517,8 +517,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
   /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock:

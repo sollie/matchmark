@@ -79,3 +79,7 @@ _Avoid_: Terminal, client
 **Replication**:
 Copying the club's data to a separate host so it can be snapshotted and restored if the primary host is lost. It does not involve devices and is unrelated to how a device submits hits.
 _Avoid_: Sync, backup
+
+**Score log**:
+The JSON `stage_locked` and `stage_unlocked` lines the server writes to stdout whenever a stage is locked or its locked state changes. Each line is self-contained, so a competition's scored results can be rebuilt by taking the latest line per stage.
+_Avoid_: Audit log, scoring log
