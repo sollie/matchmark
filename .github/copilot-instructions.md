@@ -42,4 +42,5 @@ Shell scripts: `shellcheck`. Full stack: `docker compose up --build` (dev, plain
 - Tests are table/unit tests in `internal/service`, `internal/auth`, `internal/rulebook` and `cmd/server`; follow the existing style when adding service tests.
 - Use the latest stable dependency versions; verify upstream before pinning; remove unused deps. Fix high/critical `npm audit` findings.
 - Keep `docs/plan/` and `README.md` in sync with any change to architecture, API, Docker or run/deploy steps; tick items in `docs/plan/07-phases.md` when done.
-- Do not run git write operations (commit/push/tag). After finishing a change, suggest a commit message. When working through a list of items (reviews), finish one, run checks, suggest the commit message, then stop and wait.
+- Git write operations are allowed (Conventional Commits; never force-push or rewrite history on `main`). When working through a list of items (reviews), finish one, run checks, and commit it before starting the next.
+- Issues live in GitHub Issues; see the `## Agent skills` section of `AGENTS.md` and `docs/agents/`.
