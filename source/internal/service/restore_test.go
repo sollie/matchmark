@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -41,18 +42,18 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 	repo := repository.New(conn)
 	svc := service.New(repo)
 
-	first, err := svc.RestoreScoreLog(ctx, plan)
+	first, err := svc.RestoreScoreLog(ctx, plan, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if first.Competitions != 1 || first.Entries != 2 || first.Stages != 3 {
 		t.Fatalf("first = %+v", first)
 	}
-	second, err := svc.RestoreScoreLog(ctx, plan)
+	second, err := svc.RestoreScoreLog(ctx, plan, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second != (service.RestoreResult{}) {
+	if !reflect.DeepEqual(second, service.RestoreResult{}) {
 		t.Fatalf("second = %+v", second)
 	}
 
@@ -97,4 +98,79 @@ func normalizedReport(t *testing.T, repo *repository.Repository, compID int64) [
 		entries[i].Shooter.Country = ""
 	}
 	return entries
+}
+
+func mergePlan(name string, counts [7]int, stages ...int) restore.Plan {
+	var scored []restore.ScoredStage
+	for _, n := range stages {
+		scored = append(scored, restore.ScoredStage{Number: n, ExpectedShots: 10, RingCounts: counts, LockedBy: "Admin", LockedAt: "2026-10-19T10:00:00Z"})
+	}
+	return restore.Plan{Competitions: []restore.RestoredCompetition{{
+		ID: 7, Name: name, Date: "2026-10-19", CourseOfFire: restore.CourseOfFire{Key: "150"},
+		Entries: []restore.RestoredEntry{{
+			ID: 1, Lane: 2, Category: "Pistol",
+			Shooter: restore.Shooter{FirstName: "Ann", LastName: "Lee"},
+			Stages:  scored,
+		}},
+	}}}
+}
+
+func TestRestoreRefusesNonEmptyDatabaseWithoutMerge(t *testing.T) {
+	ctx := context.Background()
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	repo := repository.New(conn)
+	svc := service.New(repo)
+	if _, err := svc.RestoreScoreLog(ctx, mergePlan("Club Match", [7]int{1, 2, 3, 4, 0, 0, 0}, 1), false); err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.RestoreScoreLog(ctx, mergePlan("Club Match", [7]int{1, 2, 3, 4, 0, 0, 0}, 1, 2), false)
+	if !errors.Is(err, service.ErrRestoreTargetNotEmpty) {
+		t.Fatalf("err = %v", err)
+	}
+	st, err := repo.GetStage(ctx, 7, 1, 2)
+	if err != nil || st.Locked {
+		t.Fatalf("stage 2 = %+v, %v", st, err)
+	}
+}
+
+func TestRestoreMergeAppliesMatchingIDsAndListsConflicts(t *testing.T) {
+	ctx := context.Background()
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	repo := repository.New(conn)
+	svc := service.New(repo)
+	if _, err := svc.RestoreScoreLog(ctx, mergePlan("Club Match", [7]int{1, 2, 3, 4, 0, 0, 0}, 1), false); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := svc.RestoreScoreLog(ctx, mergePlan("Club Match", [7]int{9, 1, 0, 0, 0, 0, 0}, 1, 2), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Stages != 1 || len(res.Conflicts) != 1 || !strings.Contains(res.Conflicts[0], "competition 7 entry 1 stage 1") {
+		t.Fatalf("res = %+v", res)
+	}
+	kept, err := repo.GetStage(ctx, 7, 1, 1)
+	if err != nil || kept.Counts.X != 1 || kept.Counts.Ten != 2 {
+		t.Fatalf("stage 1 = %+v, %v", kept, err)
+	}
+	added, err := repo.GetStage(ctx, 7, 1, 2)
+	if err != nil || !added.Locked || added.Counts.X != 9 {
+		t.Fatalf("stage 2 = %+v, %v", added, err)
+	}
+
+	res, err = svc.RestoreScoreLog(ctx, mergePlan("Other Match", [7]int{1, 2, 3, 4, 0, 0, 0}, 1, 2), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Competitions+res.Entries+res.Stages != 0 || len(res.Conflicts) != 1 || !strings.Contains(res.Conflicts[0], "competition 7") {
+		t.Fatalf("res = %+v", res)
+	}
 }

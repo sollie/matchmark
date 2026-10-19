@@ -49,7 +49,7 @@ func TestRestoreCommandRejectsUnknownSchemaVersion(t *testing.T) {
 	}
 }
 
-func TestRestoreCommandApplyWritesAndIsIdempotent(t *testing.T) {
+func TestRestoreCommandApplyRefusesNonEmptyUnlessMerge(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "sub", "restored.db")
 	env := map[string]string{"DB_PATH": dbPath}
 	getenv := func(k string) string { return env[k] }
@@ -66,9 +66,17 @@ func TestRestoreCommandApplyWritesAndIsIdempotent(t *testing.T) {
 			t.Fatalf("first output missing %q: %s", want, first)
 		}
 	}
-	second := run()
-	if !strings.Contains(second, "restored 0 competition(s), 0 entries, 0 scored stage(s)") {
-		t.Fatalf("second output = %s", second)
+	var refused bytes.Buffer
+	err := runRestore([]string{"--apply"}, getenv, strings.NewReader(restoreLine+"\n"), &refused)
+	if err == nil || !strings.Contains(err.Error(), "--merge") {
+		t.Fatalf("err = %v", err)
+	}
+	var merged bytes.Buffer
+	if err := runRestore([]string{"--apply", "--merge"}, getenv, strings.NewReader(restoreLine+"\n"), &merged); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(merged.String(), "restored 0 competition(s), 0 entries, 0 scored stage(s)") {
+		t.Fatalf("merged output = %s", merged.String())
 	}
 	conn, err := db.Open(dbPath)
 	if err != nil {
@@ -78,6 +86,33 @@ func TestRestoreCommandApplyWritesAndIsIdempotent(t *testing.T) {
 	st, err := repository.New(conn).GetStage(context.Background(), 7, 1, 1)
 	if err != nil || !st.Locked || st.Counts.Ten != 2 || st.ScorerName != "" {
 		t.Fatalf("stage = %+v, %v", st, err)
+	}
+}
+
+func TestRestoreCommandMergeReportsConflicts(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "restored.db")
+	getenv := func(k string) string {
+		if k == "DB_PATH" {
+			return dbPath
+		}
+		return ""
+	}
+	if err := runRestore([]string{"--apply"}, getenv, strings.NewReader(restoreLine+"\n"), &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	changed := strings.Replace(restoreLine, `"ring_counts":[1,2,3,4,0,0,0]`, `"ring_counts":[5,5,0,0,0,0,0]`, 1)
+	var out bytes.Buffer
+	if err := runRestore([]string{"--merge", "--apply"}, getenv, strings.NewReader(changed+"\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "1 conflict(s) left unchanged") || !strings.Contains(out.String(), "competition 7 entry 1 stage 1") {
+		t.Fatalf("output = %s", out.String())
+	}
+}
+
+func TestRestoreCommandMergeRequiresApply(t *testing.T) {
+	if err := runRestore([]string{"--merge"}, os.Getenv, strings.NewReader(restoreLine+"\n"), &bytes.Buffer{}); err == nil {
+		t.Fatal("expected error")
 	}
 }
 

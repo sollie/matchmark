@@ -25,9 +25,15 @@ func WriteSummary(w io.Writer, plan Plan, stats Stats) {
 		len(plan.Competitions), entries, stages)
 }
 
-func WriteApplied(w io.Writer, stats Stats, competitions, entries, stages int) {
+func WriteApplied(w io.Writer, stats Stats, competitions, entries, stages int, conflicts []string) {
 	_, _ = fmt.Fprintf(w, "read %d lines: %d score events, %d non-score skipped, %d malformed skipped\n",
 		stats.Lines, stats.Events, stats.NonScore, stats.Malformed)
 	_, _ = fmt.Fprintf(w, "restored %d competition(s), %d entries, %d scored stage(s)\n", competitions, entries, stages)
+	if len(conflicts) > 0 {
+		_, _ = fmt.Fprintf(w, "%d conflict(s) left unchanged:\n", len(conflicts))
+		for _, c := range conflicts {
+			_, _ = fmt.Fprintf(w, "  %s\n", c)
+		}
+	}
 	_, _ = fmt.Fprintln(w, "note: unscored entries, devices and pairings are not restored")
 }

@@ -14,13 +14,20 @@ import (
 	"github.com/sollie/matchmark/internal/service"
 )
 
-const restoreUsage = "usage: matchmark restore [--apply] [score-log-file]"
+const restoreUsage = "usage: matchmark restore [--apply [--merge]] [score-log-file]"
 
 func runRestore(args []string, getenv func(string) string, stdin io.Reader, stdout io.Writer) error {
-	apply := false
-	if len(args) > 0 && args[0] == "--apply" {
-		apply = true
+	apply, merge := false, false
+	for len(args) > 0 && (args[0] == "--apply" || args[0] == "--merge") {
+		if args[0] == "--apply" {
+			apply = true
+		} else {
+			merge = true
+		}
 		args = args[1:]
+	}
+	if merge && !apply {
+		return errors.New(restoreUsage)
 	}
 	if len(args) > 1 {
 		return errors.New(restoreUsage)
@@ -55,10 +62,10 @@ func runRestore(args []string, getenv func(string) string, stdin io.Reader, stdo
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	result, err := service.New(repository.New(conn)).RestoreScoreLog(context.Background(), plan)
+	result, err := service.New(repository.New(conn)).RestoreScoreLog(context.Background(), plan, merge)
 	if err != nil {
 		return err
 	}
-	restore.WriteApplied(stdout, stats, result.Competitions, result.Entries, result.Stages)
+	restore.WriteApplied(stdout, stats, result.Competitions, result.Entries, result.Stages, result.Conflicts)
 	return nil
 }

@@ -34,6 +34,18 @@ type RestoreCounts struct {
 	Stages       int
 }
 
+func (r *Repository) CountCompetitions(ctx context.Context) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM competitions`).Scan(&n)
+	return n, err
+}
+
+func (r *Repository) EntryExists(ctx context.Context, id int64) (bool, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM entries WHERE id = ?`, id).Scan(&n)
+	return n > 0, err
+}
+
 func (r *Repository) RestoreCompetition(ctx context.Context, rc RestoreCompetition) (RestoreCounts, error) {
 	var counts RestoreCounts
 	tx, err := r.db.BeginTx(ctx, nil)
