@@ -36,8 +36,14 @@ func (r *Repository) GetStage(ctx context.Context, competitionID, entryID int64,
 }
 
 func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCounts) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ? WHERE id = ?`,
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ? WHERE id = ? AND locked = 0`,
 		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
-	return mapErr(err)
+	if err != nil {
+		return mapErr(err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrConflict
+	}
+	return nil
 }
