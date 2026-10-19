@@ -24,6 +24,7 @@
 
   --brand: #1f3a5f;
   --brand-hover: #2a4d7e;
+  --brand-tint: #e1e9f4;
   --on-brand: #ffffff;
   --accent: #0b7285;
   --bg: #f1f3f6;
@@ -53,6 +54,7 @@
   :root {
     --brand: #4f86d1;
     --brand-hover: #6a9be0;
+    --brand-tint: #1f3354;
     --on-brand: #0b1220;
     --accent: #3cc4dc;
     --bg: #0e131b;
@@ -157,18 +159,24 @@ label.check { flex-direction: row; align-items: center; gap: 0.4rem; font-size: 
 .badge.success { background: var(--success-bg); color: var(--success-fg); }
 .badge.warning { background: var(--warning-bg); color: var(--warning-fg); }
 .badge.danger { background: var(--danger-bg); color: var(--danger-fg); }
+.badge.info { background: var(--brand-tint); color: var(--link); }
 .badge.neutral { background: var(--neutral-bg); color: var(--neutral-fg); }
 
 table { border-collapse: separate; border-spacing: 0; width: 100%; background: var(--surface); }
 th, td { padding: 0.55rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
-th { position: sticky; top: 0; z-index: 1; background: var(--surface-alt); font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+th { background: var(--surface-alt); font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 tbody tr:hover > td { background: var(--surface-alt); }
 tbody tr:last-child > td { border-bottom: 0; }
-.scroll { overflow: auto; max-width: 100%; max-height: 70vh; border: 1px solid var(--border); border-radius: var(--radius); }
+.scroll { overflow: auto; max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius); }
 .row-actions { white-space: nowrap; }
 .row-actions button + button { margin-left: var(--space-1); }
-.flags { display: flex; flex-wrap: wrap; gap: var(--space-2); list-style: none; padding: 0; margin: var(--space-2) 0; }
-.card .scroll { margin: var(--space-2) 0; }
+.card .scroll { margin: 0; border: 0; border-radius: 0; }
+.num { text-align: right; }
+.spectator th, .spectator td { padding: var(--space-2) var(--space-3); }
+@media (max-width: 40rem) {
+  .spectator th, .spectator td { padding: var(--space-2) var(--space-1); }
+  .spectator .optional { display: none; }
+}
 
 .qr { width: 14rem; height: 14rem; padding: var(--space-2); background: #ffffff; border-radius: var(--radius); }
 .qr-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); max-width: 28rem; }

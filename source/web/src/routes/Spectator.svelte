@@ -127,9 +127,9 @@
               <th class="num">#</th>
               <th class="num">Lane</th>
               {#if showNames}<th>Name</th>{/if}
-              {#if showClubs}<th>Club</th>{/if}
-              {#if showCountries}<th>Country</th>{/if}
-              <th>Category</th>
+              {#if showClubs}<th class="optional">Club</th>{/if}
+              {#if showCountries}<th class="optional">Country</th>{/if}
+              <th class="optional">Category</th>
               {#each stageNumbers as n (n)}<th class="num">S{n}</th>{/each}
               <th class="num">Total</th>
               {#if showX}<th class="num">X</th>{/if}
@@ -141,9 +141,9 @@
                 <td class="num rank">{s.withdrawn ? "" : rank(i)}</td>
                 <td class="num">{s.lane}</td>
                 {#if showNames}<td>{s.last_name} {s.first_name}{s.withdrawn ? " (withdrawn)" : ""}</td>{/if}
-                {#if showClubs}<td>{s.club}</td>{/if}
-                {#if showCountries}<td>{s.country}</td>{/if}
-                <td>{s.category}</td>
+                {#if showClubs}<td class="optional">{s.club}</td>{/if}
+                {#if showCountries}<td class="optional">{s.country}</td>{/if}
+                <td class="optional">{s.category}</td>
                 {#each stageNumbers as n (n)}
                   <td class="num">{s.stages?.find((st) => st.stage === n)?.score ?? ""}</td>
                 {/each}
@@ -164,25 +164,21 @@
   .status { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-3) 0; }
   .empty { text-align: center; padding: var(--space-6) var(--space-4); }
   .empty p { margin: var(--space-1) 0; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .rank { font-weight: 700; font-size: var(--text-lg); }
-  .total { font-weight: 700; font-size: var(--text-lg); }
-  tr.leader > td { background: var(--warning-bg); color: var(--warning-fg); font-weight: 600; }
-  tr.leader:hover > td { background: var(--warning-bg); }
+  .rank, .total { font-weight: 700; font-size: var(--text-lg); }
+  tr.leader > td, tr.leader:hover > td { background: var(--brand-tint); font-weight: 600; }
   .progress li { flex-wrap: wrap; }
   .stage-name { min-width: 4.5rem; font-weight: 600; }
   .count { min-width: 6.5rem; text-align: right; color: var(--text-muted); }
-  progress { appearance: none; height: 0.9rem; border: 0; border-radius: 999px; overflow: hidden; background: var(--neutral-bg); }
+  progress { appearance: none; height: var(--space-3); border: 0; border-radius: 999px; overflow: hidden; background: var(--neutral-bg); }
   progress::-webkit-progress-bar { background: var(--neutral-bg); }
   progress::-webkit-progress-value { background: var(--brand); border-radius: 999px; }
   progress::-moz-progress-bar { background: var(--brand); border-radius: 999px; }
   @media (max-width: 40rem) {
     .progress progress { flex-basis: 100%; order: 3; }
-    :global(.spectator th), :global(.spectator td) { padding: 0.45rem 0.5rem; }
   }
   @media (min-width: 90rem) {
-    .spectator { max-width: 96rem; font-size: 1.25rem; }
+    .spectator { max-width: 96rem; font-size: var(--text-lg); }
     .spectator :global(th) { font-size: var(--text-base); }
-    .total, .rank { font-size: 1.6rem; }
+    .total, .rank { font-size: var(--text-xl); }
   }
 </style>

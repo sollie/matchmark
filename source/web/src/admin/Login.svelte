@@ -27,7 +27,7 @@
 
 <main class="centered">
   <div class="card">
-    <h1>MatchMark admin</h1>
+    <h1>Admin sign in</h1>
     <form onsubmit={submit}>
       <label>
         Password

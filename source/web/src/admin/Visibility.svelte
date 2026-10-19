@@ -46,9 +46,6 @@
 <section class="card">
   <h2>Spectator visibility</h2>
   {#if visibility}
-    <ul class="flags">
-      {#each labels as [key, label] (key)}<li><span class="badge {visibility[key] ? "success" : "neutral"}">{label}: {visibility[key] ? "Shown" : "Hidden"}</span></li>{/each}
-    </ul>
     <div class="row">
       {#each labels as [key, label] (key)}
         <label class="check"><input type="checkbox" bind:checked={visibility[key]} /> {label}</label>
