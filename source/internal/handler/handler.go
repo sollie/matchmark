@@ -19,12 +19,7 @@ func NewRouter(svc *service.Service) http.Handler {
 	h := &Handler{svc: svc}
 	r := chi.NewRouter()
 	r.Route("/api", func(r chi.Router) {
-		r.Post("/shooters", h.createShooter)
-		r.Post("/competitions", h.createCompetition)
-		r.Post("/competitions/{competitionID}/entries", h.addEntry)
-		r.Post("/competitions/{competitionID}/entries/{entryID}/withdraw", h.withdrawEntry)
-		r.Get("/competitions/{competitionID}/lanes/{lane}/score-lane", h.scoreLane)
-		r.Put("/competitions/{competitionID}/entries/{entryID}/stages/{stage}", h.setRingCounts)
+		r.Group(h.adminRoutes)
 	})
 	return r
 }
@@ -46,6 +41,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusConflict, "conflict"
 	case errors.Is(err, service.ErrLaneNotManned):
 		status, msg = http.StatusConflict, "lane is not manned"
+	case errors.Is(err, service.ErrNotBetweenStages):
+		status, msg = http.StatusConflict, "entries can only change between stages"
 	case errors.Is(err, service.ErrStageLocked):
 		status, msg = http.StatusConflict, "stage is locked"
 	case errors.Is(err, service.ErrAdminScoringNeeded):

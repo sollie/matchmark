@@ -7,22 +7,12 @@ import (
 )
 
 func (h *Handler) createShooter(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		LastName  string `json:"last_name"`
-		FirstName string `json:"first_name"`
-		Sex       string `json:"sex"`
-		Country   string `json:"country"`
-		Club      string `json:"club"`
-		WAID      string `json:"waid"`
-	}
+	var body shooterBody
 	if err := decode(r, &body); err != nil {
 		writeError(w, err)
 		return
 	}
-	id, err := h.svc.CreateShooter(r.Context(), repository.Shooter{
-		LastName: body.LastName, FirstName: body.FirstName, Sex: body.Sex,
-		Country: body.Country, Club: body.Club, WAID: body.WAID,
-	})
+	id, err := h.svc.CreateShooter(r.Context(), body.shooter(0))
 	if err != nil {
 		writeError(w, err)
 		return
