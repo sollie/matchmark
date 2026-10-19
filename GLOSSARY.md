@@ -75,3 +75,7 @@ _Avoid_: Score sheet
 **Device**:
 A phone or tablet paired to one lane for a competition and used to score that lane's score lane.
 _Avoid_: Terminal, client
+
+**Replication**:
+Copying the club's data to a separate host so it can be snapshotted and restored if the primary host is lost. It does not involve devices and is unrelated to how a device submits hits.
+_Avoid_: Sync, backup
