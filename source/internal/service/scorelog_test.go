@@ -398,3 +398,122 @@ func TestAdminEditOfUnlockedStageEmitsNothing(t *testing.T) {
 		t.Fatalf("lines = %d", n)
 	}
 }
+
+func (f *scoreFixture) lockedAt(t *testing.T) map[stageKey]logLine {
+	t.Helper()
+	return replayScoreLog(t, f.buf.String())
+}
+
+func TestEntryEditReemitsLockedStages(t *testing.T) {
+	f := newScoreFixture(t)
+	ctx := context.Background()
+	for _, e := range []int64{f.entry1, f.entry2} {
+		for _, n := range []int{1, 2} {
+			f.fillStage(t, e, n)
+			if err := f.svc.AdminLockStage(ctx, f.compID, e, n); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	before := f.lockedAt(t)
+	n := len(f.lines(t))
+	time.Sleep(1100 * time.Millisecond)
+	if _, err := f.svc.UpdateEntry(ctx, f.compID, f.entry2, "Revolver", 5); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(f.lines(t)) - n; got != 2 {
+		t.Fatalf("new lines = %d", got)
+	}
+	after := f.lockedAt(t)
+	if len(after) != 4 {
+		t.Fatalf("folded = %d", len(after))
+	}
+	for k, l := range after {
+		if k.entry != f.entry2 {
+			if l.EmittedAt != before[k].EmittedAt {
+				t.Fatalf("unaffected entry re-emitted: %+v", k)
+			}
+			continue
+		}
+		if l.Entry.Lane != 5 || l.Entry.Category != "Revolver" {
+			t.Fatalf("context = %+v", l.Entry)
+		}
+		if l.LockedBy != before[k].LockedBy || l.LockedAt != before[k].LockedAt || l.ScorerName != before[k].ScorerName {
+			t.Fatalf("provenance changed: %+v vs %+v", l, before[k])
+		}
+		if l.EmittedAt <= before[k].EmittedAt {
+			t.Fatalf("emitted_at not newer: %q vs %q", l.EmittedAt, before[k].EmittedAt)
+		}
+	}
+}
+
+func TestShooterEditReemitsAcrossCompetitions(t *testing.T) {
+	f := newScoreFixture(t)
+	ctx := context.Background()
+	f.fillStage(t, f.entry2, 1)
+	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); err != nil {
+		t.Fatal(err)
+	}
+	n := len(f.lines(t))
+	entry, err := f.repo.GetEntry(ctx, f.compID, f.entry2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sh, err := f.repo.GetShooter(ctx, entry.ShooterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sh.Club = "Club Z"
+	sh.FirstName = "Bob"
+	if err := f.svc.UpdateShooter(ctx, sh); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(f.lines(t)) - n; got != 1 {
+		t.Fatalf("new lines = %d", got)
+	}
+	l := f.lockedAt(t)[stageKey{f.compID, f.entry2, 1}]
+	if l.Entry.Shooter.Club != "Club Z" || l.Entry.Shooter.FirstName != "Bob" {
+		t.Fatalf("shooter = %+v", l.Entry.Shooter)
+	}
+}
+
+func TestCompetitionEditReemitsLockedStages(t *testing.T) {
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	ctx := context.Background()
+	buf := &bytes.Buffer{}
+	repo := repository.New(conn)
+	svc := service.New(repo, service.WithScoreLog(newLogger(buf)))
+	sh, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "Alm", Sex: "M", Country: "NOR", Club: "Club A", WAID: "W1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	compID, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Spring Match", Date: "2026-10-19", Course: "150"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e1, err := svc.AddEntry(ctx, repository.Entry{CompetitionID: compID, ShooterID: sh, Category: "Revolver", Lane: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetRingCounts(ctx, compID, e1, 1, repository.RingCounts{X: 2, Ten: 4, Nine: 6}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.AdminLockStage(ctx, compID, e1, 1); err != nil {
+		t.Fatal(err)
+	}
+	n := strings.Count(buf.String(), "\n")
+	if err := svc.UpdateCompetition(ctx, repository.Competition{ID: compID, Name: "Autumn Match", Date: "2026-11-01", Course: "150"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(buf.String(), "\n") - n; got != 1 {
+		t.Fatalf("new lines = %d", got)
+	}
+	l := replayScoreLog(t, buf.String())[stageKey{compID, e1, 1}]
+	if l.Competition.Name != "Autumn Match" || l.Competition.Date != "2026-11-01" {
+		t.Fatalf("competition = %+v", l.Competition)
+	}
+}

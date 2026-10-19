@@ -92,3 +92,17 @@ func (s *Service) stageEventAttrs(ctx context.Context, event string, competition
 		slog.String("locked_at", stage.LockedAt),
 	}, nil
 }
+
+func (s *Service) reemitLockedStages(ctx context.Context, competitionID, entryID, shooterID int64) {
+	if s.scoreLog == nil {
+		return
+	}
+	refs, err := s.repo.ListLockedStages(ctx, competitionID, entryID, shooterID)
+	if err != nil {
+		s.scoreLog.ErrorContext(ctx, "score log context failed", "event", eventStageLocked, "error", err)
+		return
+	}
+	for _, ref := range refs {
+		s.emitStageEvent(ctx, eventStageLocked, ref.CompetitionID, ref.EntryID, ref.Number)
+	}
+}

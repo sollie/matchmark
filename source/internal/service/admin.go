@@ -48,7 +48,11 @@ func (s *Service) UpdateShooter(ctx context.Context, sh repository.Shooter) erro
 	if !validShooter(sh) {
 		return ErrInvalid
 	}
-	return mapRepoErr(s.repo.UpdateShooter(ctx, sh))
+	if err := s.repo.UpdateShooter(ctx, sh); err != nil {
+		return mapRepoErr(err)
+	}
+	s.reemitLockedStages(ctx, 0, 0, sh.ID)
+	return nil
 }
 
 func (s *Service) DeleteShooter(ctx context.Context, id int64) error {
@@ -87,7 +91,11 @@ func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competitio
 			return ErrConflict
 		}
 	}
-	return mapRepoErr(s.repo.UpdateCompetition(ctx, c))
+	if err := s.repo.UpdateCompetition(ctx, c); err != nil {
+		return mapRepoErr(err)
+	}
+	s.reemitLockedStages(ctx, c.ID, 0, 0)
+	return nil
 }
 
 func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status CompetitionStatus) error {
@@ -185,6 +193,7 @@ func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64,
 	if err := s.repo.UpdateEntry(ctx, competitionID, entryID, category, lane); err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
+	s.reemitLockedStages(ctx, competitionID, entryID, 0)
 	e, err := s.repo.GetEntry(ctx, competitionID, entryID)
 	return e, mapRepoErr(err)
 }
