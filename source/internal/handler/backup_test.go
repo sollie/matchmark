@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	_ "turso.tech/database/tursogo"
 
 	"github.com/sollie/matchmark/internal/apitest"
 )
@@ -34,7 +34,7 @@ func TestBackupDownloadsUsableDatabase(t *testing.T) {
 	if err := os.WriteFile(path, body, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	conn, err := sql.Open("sqlite", path)
+	conn, err := sql.Open("turso", path)
 	if err != nil {
 		t.Fatal(err)
 	}

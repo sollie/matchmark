@@ -6,7 +6,7 @@ Agent instructions for working in this repository.
 
 MatchMark is a WA1500/PPC competition scoring system consisting of:
 - `frontend/` — SvelteKit PWA (TypeScript, `@vite-pwa/sveltekit`, adapter-static)
-- `backend/` — Go REST API (`chi`, `modernc.org/sqlite`, JWT auth)
+- `backend/` — Go REST API (`chi`, `turso.tech/database/tursogo`, JWT auth)
 - `caddy/Caddyfile` — TLS termination + reverse proxy + static file server
 - `docker-compose.yml` — orchestrates backend and caddy services
 
@@ -47,7 +47,7 @@ See `docs/plan/` for the full specification:
 - Use Go 1.26+.
 - Module path: `github.com/sollie/matchmark`.
 - Architecture: `handler` → `service` → `repository`. No business logic in handlers or repositories.
-- SQLite via `modernc.org/sqlite` (pure Go, `database/sql` compatible). `CGO_ENABLED=0` always.
+- SQLite-format storage via `turso.tech/database/tursogo` (`database/sql` driver `turso`; `-tags musl` only for Alpine). `CGO_ENABLED=0` always.
 - JWT via `github.com/golang-jwt/jwt/v5`. Passwords hashed with argon2id (`golang.org/x/crypto`).
 - HTTP router: `github.com/go-chi/chi/v5`.
 - After every change, run:
