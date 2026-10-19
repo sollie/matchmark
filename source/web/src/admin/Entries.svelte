@@ -25,11 +25,18 @@
 
   let shooterId = $state<number | null>(null);
   let category = $state(categories[0]);
-  let lane = $state(1);
+  let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
   let scoring = $state<{ entry: EntryWithStages; stage: number; counts: RingCounts } | null>(null);
   let error = $state("");
 
+  const nextLane = $derived.by(() => {
+    const taken = new Set(entries.filter((e) => !e.withdrawn).map((e) => e.lane));
+    let n = 1;
+    while (taken.has(n)) n++;
+    return n;
+  });
+  const lane = $derived(laneInput ?? nextLane);
   const stageNumbers = $derived(entries[0]?.stages.map((s) => s.stage_number) ?? []);
   const shooterName = (id: number) => {
     const s = shooters.find((x) => x.id === id);
@@ -58,7 +65,7 @@
         body: { shooter_id: shooterId, category, lane },
       }),
     );
-    if (ok) lane = lane + 1;
+    if (ok) laneInput = null;
   }
 
   async function saveEdit() {
@@ -120,7 +127,7 @@
         {#each categories as c (c)}<option value={c}>{c}</option>{/each}
       </select>
     </label>
-    <label>Lane <input type="number" min="1" bind:value={lane} size="3" required /></label>
+    <label>Lane <input type="number" min="1" bind:value={() => lane, (v) => (laneInput = v)} size="3" required /></label>
     <button type="submit">Add entry</button>
     <a href="/admin/shooters">Manage shooters</a>
   </form>
