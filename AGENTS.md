@@ -22,12 +22,10 @@ See `docs/plan/` for the full specification:
 
 ## General Rules
 
-- Never do git write operations (commit, push, tag, etc.)
-- After completing any change, always suggest a commit message for the user to run.
+- Git write operations (branch, commit, push, tag, etc.) are allowed. Use Conventional
+  Commits messages. Never force-push or rewrite history on `main`.
 - When working through a list of items (e.g. a code review or security review), complete
-  one item, run all required checks, suggest the commit message, and then **stop and wait
-  for the user to commit before starting the next item**. Do not proceed to the next item
-  until explicitly told to continue.
+  one item, run all required checks, and commit it before starting the next item.
 - Never add comments to code. This is critical!
 - Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
 - Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
@@ -116,3 +114,17 @@ That package is the single source of truth for:
   production, update `README.md` in the same task.
 - Mark completed items in `docs/plan/07-phases.md` with `[x]` as soon as they are done.
 - Never leave the plan or README describing a state that no longer matches the codebase.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues (`sollie/matchmark`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
