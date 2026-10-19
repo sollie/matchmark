@@ -10,7 +10,7 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 6. Spectator API with per-competition visibility flags.
 - [x] 7. Results report: embed template, generate `.xlsx` with excelize; detailed CSV. Tests against the template.
 - [x] 8. OpenAPI spec and generated TypeScript client.
-- [ ] 9. `source/web/`: Svelte + Vite SPA: admin, scorer, spectator screens.
+- [x] 9. `source/web/`: Svelte + Vite SPA: admin, scorer, spectator screens.
 - [x] 10. Embed `web/dist`, TLS modes (plain, static, certmagic), backup endpoint.
 - [ ] 11. Root `Dockerfile` (Alpine Node and Go stages, scratch final, CA certs, non-root), `docker-compose.yml`, `README.md`.
 - [ ] 12. Manual QA: full flow on a phone, results report opened in Excel, Pi run. Then delete `docs/plan/`, update `AGENTS.md`, `docs/STATUS.md`, and merge.
