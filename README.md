@@ -127,3 +127,7 @@ docker compose up --build -d
 To cross-build from another machine: `docker buildx build --platform linux/arm64 -t matchmark:latest .`.
 
 CI builds, tests and smoke-tests the image on native runners (`ubuntu-latest`, `ubuntu-24.04-arm`) and builds darwin/arm64. Run the smoke test locally with `scripts/smoke-image.sh matchmark:latest`.
+
+## License
+
+MatchMark is released under the [MIT License](LICENSE).
