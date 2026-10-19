@@ -5,7 +5,11 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"time"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type statusRecorder struct {
@@ -67,4 +71,16 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 
 func logf(format string, args ...any) {
 	slog.Info(fmt.Sprintf(format, args...))
+}
+
+func certmagicLogger() *zap.Logger {
+	enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{
+		TimeKey:     "time",
+		LevelKey:    "level",
+		MessageKey:  "msg",
+		NameKey:     "logger",
+		EncodeLevel: zapcore.CapitalLevelEncoder,
+		EncodeTime:  zapcore.ISO8601TimeEncoder,
+	})
+	return zap.New(zapcore.NewCore(enc, zapcore.Lock(os.Stdout), zapcore.InfoLevel))
 }
