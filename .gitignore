@@ -1,14 +1,6 @@
-# —— Go (backend/) ——————————————————————————————————————————
-backend/bin/
-backend/tmp/
-
-# —— Node / SvelteKit (frontend/) ————————————————————————————
-frontend/node_modules/
-frontend/.svelte-kit/
-frontend/build/
-frontend/.env
-frontend/.env.*
-!frontend/.env.example
+# —— Go (source/) ——————————————————————————————————————————
+source/bin/
+source/tmp/
 
 # —— Environment files (repo root) ———————————————————————————
 .env
@@ -22,10 +14,6 @@ frontend/.env.*
 
 # —— Docker ——————————————————————————————————————————————————
 # (docker-compose.yml and Dockerfiles are committed)
-
-# —— Caddy ———————————————————————————————————————————————————
-caddy/data/
-caddy/config/
 
 # —— CodeQL ——————————————————————————————————————————————————
 codeql-db-go/
