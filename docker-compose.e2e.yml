@@ -1,0 +1,30 @@
+services:
+  matchmark:
+    build: .
+    environment:
+      ADMIN_PASSWORD: e2e-admin-password-1234
+    tmpfs:
+      - /data:uid=65532,gid=65532
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    working_dir: /work
+    volumes:
+      - ./source/web:/work
+      - e2e-node-modules:/work/node_modules
+    environment:
+      CI: "true"
+      E2E_BASE_URL: http://matchmark:8080
+      E2E_ADMIN_PASSWORD: e2e-admin-password-1234
+    command: sh -c "npm ci && npx playwright test"
+    depends_on:
+      matchmark:
+        condition: service_healthy
+
+volumes:
+  e2e-node-modules:

@@ -33,6 +33,8 @@ Thumbs.db
 
 # —— Node ——————————————————————————————————————————————————————
 node_modules/
+source/web/test-results/
+source/web/playwright-report/
 
 # —— SPA build output (source/web/dist is replaced by the real build) ——
 source/web/dist/*

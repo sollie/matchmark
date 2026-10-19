@@ -36,6 +36,36 @@ ADMIN_PASSWORD='at-least-16-characters' CGO_ENABLED=0 go run ./cmd/server
 
 For frontend development run `npm run dev` in `source/web`; it proxies `/api` to `localhost:8080`. Run the frontend tests with `npm test` (Vitest, jsdom and Testing Library; dev-only).
 
+## End-to-end tests
+
+Playwright drives the real binary with the embedded SPA in Chromium, Firefox and WebKit (ADR 0008). Each run starts a fresh server with a temporary database.
+
+```sh
+cd source/web
+npm ci && npm run build
+npx playwright install chromium firefox webkit
+npm run e2e
+npm run e2e -- --project=firefox
+```
+
+Without local browsers or Go, run the suite in Docker against the built image:
+
+```sh
+docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e
+```
+
+Set `E2E_BASE_URL` (and `E2E_ADMIN_PASSWORD`) to test an already running instance instead of starting one. CI runs the suite on every pull request and uploads the report on failure.
+
+Current coverage is a smoke test: admin sign-in and competition creation. Planned expansion:
+
+- Shooter management and entries
+- Device pairing and scorer stage entry
+- Score lane, locks and admin unlock
+- Spectator views and visibility flags
+- Reports (`.xlsx` and CSV downloads) and backup
+- Phone and tablet viewport projects
+
+
 ## Environment variables
 
 | Variable | Default | Description |
