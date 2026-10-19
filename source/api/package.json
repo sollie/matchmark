@@ -1,6 +1,7 @@
 {
   "name": "matchmark-api",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "generate": "openapi-typescript openapi.yaml -o ../web/src/lib/api/schema.d.ts",

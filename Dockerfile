@@ -21,6 +21,7 @@ RUN apk add --no-cache ca-certificates libgcc \
     && mkdir -p /data /var/cache/turso \
     && chown matchmark:matchmark /data /var/cache/turso
 COPY --from=build /out/matchmark /usr/local/bin/matchmark
+COPY LICENSE /usr/share/licenses/matchmark/LICENSE
 ENV DB_PATH=/data/matchmark.db \
     TURSO_GO_CACHE_DIR=/var/cache/turso
 USER matchmark
