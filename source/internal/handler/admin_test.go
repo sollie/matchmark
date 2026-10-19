@@ -179,6 +179,35 @@ func TestEntriesListWithStages(t *testing.T) {
 	}
 }
 
+func TestEntriesListStageScores(t *testing.T) {
+	f := newFixture(t, "150")
+	entry := f.addEntry(t, "One", 1)
+	base := fmt.Sprintf("/api/competitions/%d/entries/%d/stages", f.comp, entry)
+	f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "active"})
+	if status, out := f.env.Do("PUT", base+"/1", map[string]any{"x": 10, "9": 1, "8": 1}); status != http.StatusOK {
+		t.Fatalf("set counts: %d %v", status, out)
+	}
+	if status, out := f.env.Do("PUT", base+"/2", map[string]any{"x": 12}); status != http.StatusOK {
+		t.Fatalf("set counts: %d %v", status, out)
+	}
+	if status, out := f.env.Do("POST", base+"/2/lock", nil); status != http.StatusNoContent && status != http.StatusOK {
+		t.Fatalf("lock: %d %v", status, out)
+	}
+
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	stages := out["entries"].([]any)[0].(map[string]any)["stages"].([]any)
+	want := []struct {
+		score, shots int
+		locked       bool
+	}{{117, 12, false}, {120, 12, true}, {0, 0, false}}
+	for i, w := range want {
+		m := stages[i].(map[string]any)
+		if int(m["score"].(float64)) != w.score || int(m["shots_entered"].(float64)) != w.shots || m["locked"] != w.locked {
+			t.Fatalf("stage %d: %v", i+1, m)
+		}
+	}
+}
+
 func TestEntryUpdate(t *testing.T) {
 	f := newFixture(t, "150")
 	e1 := f.addEntry(t, "One", 1)

@@ -1068,7 +1068,7 @@ components:
           type: boolean
     EntryStage:
       type: object
-      required: [stage_number, expected_shots, locked, scorer_lane, scorer_name]
+      required: [stage_number, expected_shots, locked, scorer_lane, scorer_name, score, shots_entered]
       properties:
         stage_number:
           type: integer
@@ -1082,6 +1082,12 @@ components:
         scorer_name:
           type: string
           nullable: true
+        score:
+          type: integer
+          description: Points from the stored ring counts, whether or not the stage is locked
+        shots_entered:
+          type: integer
+          description: Sum of all stored ring counts
     EntryWithStages:
       allOf:
         - $ref: '#/components/schemas/Entry'
