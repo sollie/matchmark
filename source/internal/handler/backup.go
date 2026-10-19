@@ -30,6 +30,6 @@ func (h *Handler) backup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/vnd.sqlite3")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="matchmark-%s.db"`, time.Now().UTC().Format("20060102-150405")))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="matchmark-%s.db"`, time.Now().UTC().Format("2006-01-02T150405Z")))
 	http.ServeContent(w, r, "", info.ModTime(), f)
 }

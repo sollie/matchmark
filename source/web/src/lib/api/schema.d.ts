@@ -524,6 +524,7 @@ export interface components {
         };
         CompetitionInput: {
             name: string;
+            /** @description ISO 8601 calendar date, YYYY-MM-DD */
             date: string;
             /** @description Course of fire key from the rulebook */
             course: string;
