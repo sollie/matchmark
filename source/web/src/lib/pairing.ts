@@ -10,3 +10,20 @@ export function qrSvg(text: string): string {
   qr.make();
   return qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true });
 }
+
+const storageKey = "mm_device_token";
+
+export function loadDeviceToken(): string | null {
+  const match = /^#token=(.+)$/.exec(window.location.hash);
+  if (match) {
+    const token = decodeURIComponent(match[1]);
+    localStorage.setItem(storageKey, token);
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    return token;
+  }
+  return localStorage.getItem(storageKey);
+}
+
+export function forgetDeviceToken(): void {
+  localStorage.removeItem(storageKey);
+}

@@ -25,3 +25,17 @@ label.check { flex-direction: row; align-items: center; gap: 0.4rem; font-size: 
 .open { background: #fff3cd; }
 .qr { width: 14rem; height: 14rem; }
 .qr svg { width: 100%; height: 100%; }
+.scroll { overflow-x: auto; }
+.stages { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+.stages button { padding: 0.6rem 0.9rem; border: 1px solid #1f3a5f; border-radius: 6px; background: #fff; }
+.stages button.active { background: #1f3a5f; color: #fff; }
+.rings { display: grid; gap: 0.5rem; }
+.ring { display: grid; grid-template-columns: 3.5rem 1fr 5rem 1fr; gap: 0.5rem; align-items: center; }
+.ring .label { font-weight: bold; font-size: 1.25rem; }
+.ring button { font-size: 1.5rem; min-height: 3rem; }
+.ring input { font-size: 1.5rem; text-align: center; min-height: 3rem; width: 100%; box-sizing: border-box; }
+.scorer .row button { min-height: 3rem; flex: 1; }
+.primary { background: #1f3a5f; color: #fff; border: 0; border-radius: 4px; }
+.progress { list-style: none; padding: 0; margin: 0; }
+.progress li { display: flex; gap: 0.75rem; align-items: center; margin: 0.25rem 0; }
+.progress progress { flex: 1; }
