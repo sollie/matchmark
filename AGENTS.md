@@ -66,6 +66,7 @@ Specification and decisions:
   ```
   npm run check
   npm run build
+  npm test
   npm audit
   ```
 - Fix all high/critical findings reported by `npm audit` before considering the task done.
