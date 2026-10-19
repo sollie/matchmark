@@ -62,7 +62,7 @@ func (s *Service) publicCompetition(ctx context.Context, id int64) error {
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if c.Status == "draft" {
+	if CompetitionStatus(c.Status) == StatusDraft {
 		return ErrNotFound
 	}
 	return nil

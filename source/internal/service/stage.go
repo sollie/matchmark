@@ -32,5 +32,11 @@ func (s *Service) SetRingCounts(ctx context.Context, competitionID, entryID int6
 	if err := ValidateRingCounts(c, stage.ExpectedShots); err != nil {
 		return err
 	}
-	return mapRepoErr(s.repo.SetRingCounts(ctx, stage.ID, c))
+	if err := s.repo.SetRingCounts(ctx, stage.ID, c); err != nil {
+		if err == repository.ErrConflict {
+			return ErrStageLocked
+		}
+		return mapRepoErr(err)
+	}
+	return nil
 }

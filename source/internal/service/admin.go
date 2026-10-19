@@ -11,7 +11,23 @@ import (
 
 var ErrNotBetweenStages = errors.New("entries can only change between stages")
 
-var statusTransitions = map[string]string{"draft": "active", "active": "finished"}
+type CompetitionStatus string
+
+const (
+	StatusDraft    CompetitionStatus = "draft"
+	StatusActive   CompetitionStatus = "active"
+	StatusFinished CompetitionStatus = "finished"
+)
+
+var statusTransitions = map[CompetitionStatus]CompetitionStatus{StatusDraft: StatusActive, StatusActive: StatusFinished}
+
+func (st CompetitionStatus) Valid() bool {
+	switch st {
+	case StatusDraft, StatusActive, StatusFinished:
+		return true
+	}
+	return false
+}
 
 func validShooter(sh repository.Shooter) bool {
 	return strings.TrimSpace(sh.LastName) != "" && strings.TrimSpace(sh.FirstName) != "" &&
@@ -59,7 +75,7 @@ func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competitio
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if current.Status != "draft" {
+	if CompetitionStatus(current.Status) != StatusDraft {
 		return ErrConflict
 	}
 	if c.Course != current.Course {
@@ -74,21 +90,21 @@ func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competitio
 	return mapRepoErr(s.repo.UpdateCompetition(ctx, c))
 }
 
-func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status string) error {
-	if status != "draft" && status != "active" && status != "finished" {
+func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status CompetitionStatus) error {
+	if !status.Valid() {
 		return ErrInvalid
 	}
 	current, err := s.repo.GetCompetition(ctx, id)
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if statusTransitions[current.Status] != status {
+	if statusTransitions[CompetitionStatus(current.Status)] != status {
 		return ErrConflict
 	}
-	if err := s.repo.SetCompetitionStatus(ctx, id, status); err != nil {
+	if err := s.repo.SetCompetitionStatus(ctx, id, string(status)); err != nil {
 		return mapRepoErr(err)
 	}
-	if status == "finished" {
+	if status == StatusFinished {
 		return mapRepoErr(s.repo.RevokeCompetitionPairings(ctx, id))
 	}
 	return nil
@@ -111,7 +127,7 @@ func (s *Service) requireEntryChangeAllowed(ctx context.Context, competitionID i
 	if err != nil {
 		return comp, mapRepoErr(err)
 	}
-	if comp.Status == "finished" {
+	if CompetitionStatus(comp.Status) == StatusFinished {
 		return comp, ErrConflict
 	}
 	busy, err := s.repo.StageInProgress(ctx, competitionID)
@@ -146,7 +162,7 @@ func (s *Service) DeleteEntry(ctx context.Context, competitionID, entryID int64)
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if comp.Status != "draft" {
+	if CompetitionStatus(comp.Status) != StatusDraft {
 		return ErrConflict
 	}
 	return mapRepoErr(s.repo.DeleteEntry(ctx, competitionID, entryID))
