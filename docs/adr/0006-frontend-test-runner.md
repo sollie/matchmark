@@ -9,7 +9,7 @@ The frontend originally had no test runner; changes were verified by type checki
 ## Considered Options
 
 - Keep manual verification only: rejected, UI refactors had no regression protection.
-- Browser end-to-end tests (Playwright): rejected for now, heavy for a small single-club app. Layout is still checked by hand at phone, tablet and monitor widths.
+- Browser end-to-end tests (Playwright): rejected for now, heavy for a small single-club app. Layout is still checked by hand at phone, tablet and monitor widths. Superseded by ADR 0008.
 
 ## Consequences
 
