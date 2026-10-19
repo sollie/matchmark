@@ -50,9 +50,9 @@
       {#each labels as [key, label] (key)}
         <label class="check"><input type="checkbox" bind:checked={visibility[key]} /> {label}</label>
       {/each}
-      <button onclick={save}>Save</button>
+      <button class="primary" onclick={save}>Save</button>
     </div>
   {/if}
-  {#if message}<p class="muted">{message}</p>{/if}
-  {#if error}<p class="error">{error}</p>{/if}
+  {#if message}<p class="muted" role="status">{message}</p>{/if}
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>

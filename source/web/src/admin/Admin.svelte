@@ -11,6 +11,10 @@
 
   const competitionRoute = $derived(matchRoute("/admin/competitions/:id", router.path));
 
+  const activeSection = $derived(
+    router.path.startsWith("/admin/shooters") ? "shooters" : "competitions",
+  );
+
   async function signOut() {
     await logout();
     navigate("/admin");
@@ -23,9 +27,8 @@
   <Login />
 {:else}
   <nav>
-    <strong>MatchMark admin</strong>
-    <a href="/admin">Competitions</a>
-    <a href="/admin/shooters">Shooters</a>
+    <a href="/admin" aria-current={activeSection === "competitions" ? "page" : undefined}>Competitions</a>
+    <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}>Shooters</a>
     <a href="/api/admin/backup" download>Backup</a>
     <a href="/">Spectator view</a>
     <span class="spacer"></span>

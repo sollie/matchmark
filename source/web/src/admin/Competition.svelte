@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
-  import { courses, nextStatus } from "../lib/domain";
+  import { courses, nextStatus, statusTone } from "../lib/domain";
   import { navigate } from "../lib/router.svelte";
   import type { components } from "../lib/api/schema";
   import Visibility from "./Visibility.svelte";
@@ -79,19 +79,19 @@
   <h1>{competition.name}</h1>
   <p>
     {competition.date} · {courses.find((c) => c.key === competition?.course)?.label ?? competition.course} ·
-    <strong>{competition.status}</strong>
+    <span class="badge {statusTone[competition.status]}">{competition.status}</span>
   </p>
   <div class="row">
     {#if nextStatus[competition.status]}
-      <button onclick={advance}>
+      <button class="primary" onclick={advance}>
         {competition.status === "draft" ? "Start competition" : "Finish competition"}
       </button>
     {/if}
     <a href={`/api/competitions/${id}/results.xlsx`} download>Results report (.xlsx)</a>
     <a href={`/api/competitions/${id}/results.csv`} download>Detailed CSV</a>
-    <button onclick={remove}>Delete competition</button>
+    <button class="danger" onclick={remove}>Delete competition</button>
   </div>
-  {#if error}<p class="error">{error}</p>{/if}
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   <Entries competitionId={id} {entries} {shooters} reload={loadEntries} />
   <Pairings competitionId={id} {entries} finished={competition.status === "finished"} />

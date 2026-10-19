@@ -25,14 +25,16 @@
   }
 </script>
 
-<main>
-  <h1>MatchMark admin</h1>
-  <form class="row" onsubmit={submit}>
-    <label>
-      Password
-      <input type="password" bind:value={password} autocomplete="current-password" required />
-    </label>
-    <button type="submit" disabled={busy}>Sign in</button>
-  </form>
-  {#if error}<p class="error">{error}</p>{/if}
+<main class="centered">
+  <div class="card">
+    <h1>Admin sign in</h1>
+    <form onsubmit={submit}>
+      <label>
+        Password
+        <input type="password" bind:value={password} autocomplete="current-password" required />
+      </label>
+      <button class="primary" type="submit" disabled={busy}>Sign in</button>
+    </form>
+    {#if error}<p class="error" role="alert">{error}</p>{/if}
+  </div>
 </main>
