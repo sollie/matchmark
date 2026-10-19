@@ -85,7 +85,13 @@ func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status str
 	if statusTransitions[current.Status] != status {
 		return ErrConflict
 	}
-	return mapRepoErr(s.repo.SetCompetitionStatus(ctx, id, status))
+	if err := s.repo.SetCompetitionStatus(ctx, id, status); err != nil {
+		return mapRepoErr(err)
+	}
+	if status == "finished" {
+		return mapRepoErr(s.repo.RevokeCompetitionPairings(ctx, id))
+	}
+	return nil
 }
 
 func (s *Service) DeleteCompetition(ctx context.Context, id int64) error {
