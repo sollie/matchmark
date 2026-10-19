@@ -19,18 +19,23 @@ type Stage struct {
 	ExpectedShots int
 	Counts        RingCounts
 	Locked        bool
+	ScorerLane    *int
+	ScorerName    string
+	LockedAt      string
 }
 
 func (r *Repository) GetStage(ctx context.Context, competitionID, entryID int64, number int) (Stage, error) {
 	var s Stage
 	var locked int
 	err := r.db.QueryRowContext(ctx,
-		`SELECT s.id, s.entry_id, s.stage_number, s.expected_shots, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.locked
+		`SELECT s.id, s.entry_id, s.stage_number, s.expected_shots, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.locked,
+		        s.scorer_lane, COALESCE(s.scorer_name, ''), COALESCE(s.locked_at, '')
 		 FROM stages s JOIN entries e ON e.id = s.entry_id
 		 WHERE e.competition_id = ? AND e.id = ? AND s.stage_number = ?`,
 		competitionID, entryID, number).
 		Scan(&s.ID, &s.EntryID, &s.Number, &s.ExpectedShots,
-			&s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &locked)
+			&s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &locked,
+			&s.ScorerLane, &s.ScorerName, &s.LockedAt)
 	s.Locked = locked == 1
 	return s, mapErr(err)
 }

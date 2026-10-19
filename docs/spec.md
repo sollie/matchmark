@@ -58,6 +58,10 @@ Optional and off by default. When `REPLICATION_URL` is set, the primary opens it
 
 TLS modes: plain HTTP (default, behind a proxy); static certificate; ACME via certmagic with certificates stored in the data volume.
 
+## Score log
+
+Whenever a device or the admin locks a stage, the server writes one JSON `info` line to stdout with `msg` and `event` `stage_locked`. Fields: `schema_version` (1), `event`, `emitted_at` (RFC 3339 UTC), `competition` {`id`, `name`, `date`, `course_of_fire` {`key`, `discipline`, `total_shots`}}, `entry` {`id`, `lane`, `category`, `shooter` {`waid`, `first_name`, `last_name`, `club`}}, `stage` {`number`, `expected_shots`}, `ring_counts` (X, 10, 9, 8, 7, 0, miss), `locked_by` (lane number or `"Admin"`), `scorer_name`, `locked_at`. The line is written after the database write succeeds; a log failure never fails the lock. Replay: the last line per competition, entry and stage by `emitted_at` wins. Entries with no locked stage are not recoverable, and lines contain personal data. See ADR 0007.
+
 ## Delivery
 
 Repository root: `Dockerfile`, `docker-compose.yml` (app plus `./data` volume only), `docs/`, `GLOSSARY.md`, `README.md`, `AGENTS.md`. Code in `source/` (Go module root; `source/web/` for the SPA). Dockerfile: Alpine Node stage builds `web/`, Alpine Go stage embeds `web/dist` and builds with `CGO_ENABLED=0 -tags musl`, final Alpine 3.24 image (the tursogo native library needs a libc to `dlopen`) running non-root with `TURSO_GO_CACHE_DIR` on a writable path. Supported targets: linux/amd64 and linux/arm64 (64-bit Pi OS only); darwin/arm64 for development. The admin UI offers a database backup download; it uses `VACUUM INTO` with a string literal path, which Turso Database supports (bound parameters are rejected).

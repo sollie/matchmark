@@ -155,6 +155,7 @@ func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int
 		}
 		return mapRepoErr(err)
 	}
+	s.emitStageEvent(ctx, eventStageLocked, d.CompetitionID, t.entry.ID, stageNumber)
 	return nil
 }
 
@@ -175,6 +176,7 @@ func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int
 		}
 		return mapRepoErr(err)
 	}
+	s.emitStageEvent(ctx, eventStageLocked, competitionID, entryID, stageNumber)
 	return nil
 }
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/sollie/matchmark/internal/repository"
 )
@@ -18,6 +19,7 @@ var (
 type Service struct {
 	repo       *repository.Repository
 	replicator ReplicationRequester
+	scoreLog   *slog.Logger
 }
 
 func New(repo *repository.Repository, opts ...Option) *Service {
