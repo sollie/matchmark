@@ -1,116 +1,77 @@
 # MatchMark
 
-WA1500/PPC competition scoring system.
+WA1500/PPC competition scoring system: one Go binary (REST API + embedded Svelte SPA) backed by a single SQLite file. See [`docs/spec.md`](docs/spec.md) and [`docs/v2-plan.md`](docs/v2-plan.md).
 
-## Components
+## Layout
 
-| Directory | Description |
-|-----------|-------------|
-| `backend/` | Go REST API — chi router, SQLite, JWT auth |
-| `frontend/` | SvelteKit PWA — offline-first, touch-optimized |
-| `caddy/` | Caddyfile — TLS termination, reverse proxy, static files |
-| `docker-compose.yml` | Orchestrates all three services |
-| `docs/plan/` | Full project specification |
-
-## Quick Start
-
-Copy `.env.example` to `.env` and fill in the required values, then:
-
-```sh
-docker compose up --build
-```
-
-The app will be available at the domain configured in `DOMAIN`.
-
-## Local Development
-
-### With Docker
-
-Use the dev Compose override (plain HTTP, no TLS):
-
-```sh
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-```
-
-This swaps in `caddy/Caddyfile.dev` (plain HTTP on port 80) and sets `FRONTEND_ORIGIN` to empty. The app is available at `http://localhost`.
-
-### Without Docker
-
-Prerequisites: [Go](https://go.dev/dl/), [Node.js](https://nodejs.org/), [Caddy](https://caddyserver.com/docs/install).
-
-**1. Build the frontend:**
-
-```sh
-cd frontend
-npm install
-npm run build
-cd ..
-```
-
-**2. Start the backend:**
-
-```sh
-export JWT_SECRET=dev-secret-change-me-at-least-32-chars
-export ADMIN_PASSWORD=dev-admin-password
-export DB_PATH=./matchmark.db
-go run ./cmd/server
-```
-
-The API listens on `:8080`.
-
-**3. Start Caddy:**
-
-```sh
-caddy run --config caddy/Caddyfile.local
-```
-
-Caddy serves `https://localhost` (auto-TLS via its local CA — trust the root cert once when prompted). It proxies `/api/*` to `:8080` and serves the built frontend from `frontend/build`.
-
-The app is available at `https://localhost`. Re-run `npm run build` in the `frontend/` directory after any frontend changes.
-
-## Environment Variables
-
-See `.env.example` for the full list. Required variables:
-
-| Variable | Description |
-|----------|-------------|
-| `DOMAIN` | Domain name for Caddy TLS (e.g. `scores.example.com`) |
-| `JWT_SECRET` | Random secret, minimum 32 bytes |
-| `ADMIN_PASSWORD` | Initial admin password, minimum 16 characters |
-
-Optional variables:
-
-| Variable | Description |
-|----------|-------------|
-| `FRONTEND_ORIGIN` | Restrict CORS to this origin (e.g. `https://scores.example.com`). Leave empty when the frontend is served from the same origin as the API (normal Caddy setup). |
-
-## Local Security Scanning
-
-### CodeQL
-
-Requires the [CodeQL CLI](https://docs.github.com/en/code-security/codeql-cli/getting-started-with-the-codeql-cli/setting-up-the-codeql-cli). On macOS:
-
-```sh
-brew install codeql
-```
-
-Run both the Go and JavaScript/TypeScript scans from the repo root:
-
-```sh
-./scripts/codeql-local.sh
-```
-
-The script downloads the required query packs on first run (cached under `~/.codeql/packages` for subsequent runs), creates CodeQL databases for `backend/` (Go) and `frontend/` (JavaScript/TypeScript), analyzes them with the `security-and-quality` query suite, and prints a summary table to the console. It exits non-zero if any findings are present.
-
-Output files written to the repo root (gitignored):
-
-| File | Description |
+| Path | Description |
 |------|-------------|
-| `results-go.sarif` / `results-js.sarif` | Full SARIF — open in the VS Code SARIF Viewer or upload to the GitHub Security tab |
-| `results-go.csv` / `results-js.csv` | CSV with columns: name, description, severity, message, path, start\_line, start\_col, end\_line, end\_col |
+| `source/` | Go module (`cmd/server`, `internal/`, `api/openapi.yaml`) |
+| `source/web/` | Svelte + Vite + TypeScript SPA, built to `source/web/dist` and embedded in the binary |
+| `Dockerfile` | Node build stage, Go build stage, `scratch` final image (CA certificates, non-root) |
+| `docker-compose.yml` | The app plus a `./data` volume |
+| `docs/` | Spec, ADRs, plan |
 
-SARIF files can be viewed with the [SARIF Viewer](https://marketplace.visualstudio.com/items?itemName=MS-SarifVSCode.sarif-viewer) extension in VS Code, or uploaded to the GitHub Security tab.
+## Run with Docker
 
-## Documentation
+```sh
+mkdir -p data && sudo chown 65532:65532 data
+export ADMIN_PASSWORD='at-least-16-characters'
+docker compose up --build -d
+```
 
-See [`docs/plan/00-index.md`](docs/plan/00-index.md) for the full specification index.
+The app listens on plain HTTP at `http://localhost:8080` (override the host port with `HTTP_PORT`). The container runs as UID/GID 65532, so the `data` directory must be writable by that user. The SQLite database, backups and ACME certificates live in `/data`.
+
+Sign in at `/` with the admin password. `ADMIN_PASSWORD` must be at least 16 characters and is the only required setting.
+
+## Run without Docker
+
+Prerequisites: Go 1.26+ and Node.js 24 LTS.
+
+```sh
+cd source/web && npm ci && npm run build && cd ..
+ADMIN_PASSWORD='at-least-16-characters' CGO_ENABLED=0 go run ./cmd/server
+```
+
+For frontend development run `npm run dev` in `source/web`; it proxies `/api` to `localhost:8080`.
+
+## Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ADMIN_PASSWORD` | required | Admin password, minimum 16 characters |
+| `DB_PATH` | `data/matchmark.db` (`/data/matchmark.db` in the image) | SQLite file; its directory also holds backups and ACME certificates |
+| `LISTEN_ADDR` | `:8080` plain, `:8443` with TLS | Listen address |
+| `BASE_URL` | empty | Public URL, used for pairing links; an `https` URL marks the session cookie `Secure` |
+| `TRUSTED_PROXY` | empty | Comma-separated IPs or CIDRs of reverse proxies whose forwarded client IP headers are trusted |
+| `TLS_CERT_FILE`, `TLS_KEY_FILE` | empty | Static certificate mode; set both |
+| `ACME_DOMAIN`, `ACME_EMAIL` | empty | Automatic certificates (Let's Encrypt); both required together |
+
+Static and ACME modes are mutually exclusive.
+
+## TLS modes
+
+- **Plain HTTP (default):** for local networks or behind a TLS-terminating reverse proxy. Set `BASE_URL` to the public URL and `TRUSTED_PROXY` to the proxy address.
+- **Static certificate:** mount the files and set `TLS_CERT_FILE` and `TLS_KEY_FILE`; the server listens on `:8443`. Map the port in compose, e.g. `"443:8443"`.
+- **ACME:** set `ACME_DOMAIN` and `ACME_EMAIL`. The server obtains and renews certificates itself using the HTTP-01 challenge, which needs the public port 80 forwarded to the container's `:8080`, with HTTPS served on `:8443` (map `"80:8080"` and `"443:8443"`). Certificates are stored under `/data/certs`. Set `BASE_URL` to `https://<domain>`.
+
+## Pairing flow
+
+1. Admin creates a competition, adds entries and assigns lanes.
+2. Admin opens pairing and shows or shares the pairing link (QR code) for each lane; `BASE_URL` must be set so links point at the public address.
+3. A scorer opens the link once on a phone. The device is paired to that lane and thereafter sees only the lane it scores (the next manned lane, wrapping).
+4. Admin can revoke a pairing at any time.
+
+## Backup
+
+The admin UI offers a database backup download (SQLite online backup, safe while running). Alternatively stop the container and copy `data/matchmark.db`. Restore by placing the file at `data/matchmark.db` before starting.
+
+## Raspberry Pi / arm64
+
+The binary is pure Go (`CGO_ENABLED=0`) and the base images are multi-arch, so building on the device works unchanged:
+
+```sh
+docker compose up --build -d
+```
+
+To cross-build from another machine: `docker buildx build --platform linux/arm64 -t matchmark:latest .`. The first build on a Pi is slow (npm install); the resulting image is about 20 MB.

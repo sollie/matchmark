@@ -1,0 +1,13 @@
+services:
+  matchmark:
+    build: .
+    image: matchmark:latest
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+      BASE_URL: ${BASE_URL:-}
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
