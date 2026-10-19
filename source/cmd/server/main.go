@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,12 +24,15 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatalf("matchmark: %v", err)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+	if err := run(logger); err != nil {
+		logger.Error("matchmark exited", "error", err)
+		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(logger *slog.Logger) error {
 	cfg, err := LoadConfig(os.Getenv)
 	if err != nil {
 		return err
@@ -53,7 +56,7 @@ func run() error {
 		handler.WithAdminAuth(auth, cfg.BaseURL),
 		handler.WithBackupDir(filepath.Dir(cfg.DBPath)),
 	)
-	root := trustedProxyRealIP(cfg.TrustedProxy)(spaHandler(web.Dist(), api))
+	root := trustedProxyRealIP(cfg.TrustedProxy)(requestLogger(logger)(spaHandler(web.Dist(), api)))
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
 		Handler:           root,
@@ -86,16 +89,16 @@ func openDatabase(ctx context.Context, cfg Config) (*sql.DB, []service.Option, e
 	if err != nil {
 		return nil, nil, err
 	}
-	replicator := service.NewReplicator(syncDB, cfg.ReplicationInterval, log.Printf)
+	replicator := service.NewReplicator(syncDB, cfg.ReplicationInterval, logf)
 	go replicator.Run(ctx)
-	log.Printf("replication enabled: pushing to %s every %s", cfg.ReplicationURL, cfg.ReplicationInterval)
+	slog.Info("replication enabled", "url", cfg.ReplicationURL, "interval", cfg.ReplicationInterval.String())
 	return conn, []service.Option{service.WithReplicator(replicator)}, nil
 }
 
 func serve(ctx context.Context, srv *http.Server, cfg Config) error {
 	switch cfg.TLSMode {
 	case TLSStatic:
-		log.Printf("listening on %s (static certificate)", srv.Addr)
+		slog.Info("listening", "addr", srv.Addr, "tls", "static")
 		return srv.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
 	case TLSACME:
 		certmagic.DefaultACME.Agreed = true
@@ -109,9 +112,9 @@ func serve(ctx context.Context, srv *http.Server, cfg Config) error {
 		}
 		srv.TLSConfig = magic.TLSConfig()
 		srv.TLSConfig.MinVersion = tls.VersionTLS12
-		log.Printf("listening on %s (ACME for %s)", srv.Addr, cfg.ACMEDomain)
+		slog.Info("listening", "addr", srv.Addr, "tls", "acme", "domain", cfg.ACMEDomain)
 		return srv.ListenAndServeTLS("", "")
 	}
-	log.Printf("listening on %s (plain HTTP)", srv.Addr)
+	slog.Info("listening", "addr", srv.Addr, "tls", "none")
 	return srv.ListenAndServe()
 }

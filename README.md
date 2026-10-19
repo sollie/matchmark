@@ -52,6 +52,10 @@ For frontend development run `npm run dev` in `source/web`; it proxies `/api` to
 
 Static and ACME modes are mutually exclusive.
 
+## Logging
+
+The server writes structured JSON logs (`log/slog`) to stdout: one `request` line per HTTP request with `method`, `path` (no query string), `status`, `bytes`, `duration_ms`, `remote` (the client IP, honouring `TRUSTED_PROXY`) and `user_agent`. Level is `INFO` for 1xx-3xx, `WARN` for 4xx and `ERROR` for 5xx. Use `docker compose logs -f` to follow them.
+
 ## TLS modes
 
 - **Plain HTTP (default):** for local networks or behind a TLS-terminating reverse proxy. Set `BASE_URL` to the public URL and `TRUSTED_PROXY` to the proxy address.
