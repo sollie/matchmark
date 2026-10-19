@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.env.*
+data
+docs
+*.db
+*.db-shm
+*.db-wal
+**/node_modules
+source/web/dist
+source/bin
+source/tmp

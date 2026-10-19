@@ -179,6 +179,30 @@ func TestResultsCSV(t *testing.T) {
 	}
 }
 
+func TestResultsCSVNeutralisesFormulas(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	comp := seedReport(t, env, "Spring Match", []reportShooter{
+		{"=HYPERLINK(\"x\")", "+1", "M", "", "Revolver", 1, nil},
+		{"-2", "@sum", "F", "", "Revolver", 2, nil},
+		{"\tTab", "\rCR", "F", "", "Revolver", 3, nil},
+	})
+	_, _, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
+	rows, err := csv.NewReader(bytes.NewReader(body)).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := [][2]string{{"'=HYPERLINK(\"x\")", "'+1"}, {"'-2", "'@sum"}, {"'\tTab", "'\rCR"}}
+	got := map[string][2]string{}
+	for _, row := range rows[1:] {
+		got[row[1]] = [2]string{row[2], row[3]}
+	}
+	for i, w := range want {
+		if got[fmt.Sprint(i+1)] != w {
+			t.Fatalf("lane %d names %q, want %q", i+1, got[fmt.Sprint(i+1)], w)
+		}
+	}
+}
+
 func TestResultsUnknownCompetition(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	for _, p := range []string{"results.xlsx", "results.csv"} {

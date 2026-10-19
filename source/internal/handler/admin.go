@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/service"
 )
 
 func (h *Handler) adminRoutes(r chi.Router) {
@@ -205,7 +206,7 @@ func (h *Handler) setCompetitionStatus(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if err := h.svc.SetCompetitionStatus(r.Context(), id, body.Status); err != nil {
+	if err := h.svc.SetCompetitionStatus(r.Context(), id, service.CompetitionStatus(body.Status)); err != nil {
 		writeError(w, err)
 		return
 	}

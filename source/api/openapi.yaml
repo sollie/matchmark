@@ -1,0 +1,1174 @@
+openapi: 3.0.3
+info:
+  title: MatchMark API
+  version: 2.0.0
+  description: Admin, scorer, spectator and report endpoints of the MatchMark scoring server.
+servers:
+  - url: /
+tags:
+  - name: admin-auth
+  - name: shooters
+  - name: competitions
+  - name: entries
+  - name: pairings
+  - name: scorer
+  - name: spectator
+  - name: reports
+paths:
+  /api/admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin-auth]
+      summary: Log in as admin and set the mm_session cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '204':
+          description: Logged in
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many login attempts
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/admin/logout:
+    post:
+      operationId: adminLogout
+      tags: [admin-auth]
+      summary: Log out and clear the mm_session cookie
+      responses:
+        '204':
+          description: Logged out
+  /api/admin/session:
+    get:
+      operationId: adminSession
+      tags: [admin-auth]
+      summary: Check that the admin session is valid
+      security:
+        - adminCookie: []
+      responses:
+        '204':
+          description: Session is valid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/admin/backup:
+    get:
+      operationId: adminBackup
+      tags: [admin-auth]
+      summary: Download a consistent backup of the database
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: SQLite database snapshot
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/shooters:
+    get:
+      operationId: listShooters
+      tags: [shooters]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: All shooters
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [shooters]
+                properties:
+                  shooters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Shooter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createShooter
+      tags: [shooters]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShooterInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/shooters/{shooterID}:
+    parameters:
+      - $ref: '#/components/parameters/ShooterID'
+    get:
+      operationId: getShooter
+      tags: [shooters]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The shooter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shooter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updateShooter
+      tags: [shooters]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShooterInput'
+      responses:
+        '200':
+          description: The updated shooter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shooter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: deleteShooter
+      tags: [shooters]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Deleted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/competitions:
+    get:
+      operationId: listCompetitions
+      tags: [competitions]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: All competitions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [competitions]
+                properties:
+                  competitions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Competition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createCompetition
+      tags: [competitions]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompetitionInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: getCompetition
+      tags: [competitions]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The competition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Competition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updateCompetition
+      tags: [competitions]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompetitionInput'
+      responses:
+        '200':
+          description: The updated competition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Competition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: deleteCompetition
+      tags: [competitions]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Deleted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/status:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    post:
+      operationId: setCompetitionStatus
+      tags: [competitions]
+      summary: Advance the competition status (draft, active, finished)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/CompetitionStatus'
+      responses:
+        '200':
+          description: The new status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    $ref: '#/components/schemas/CompetitionStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/visibility:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: getVisibility
+      tags: [competitions]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Spectator visibility flags
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visibility'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: setVisibility
+      tags: [competitions]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Visibility'
+      responses:
+        '200':
+          description: The stored visibility flags
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visibility'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/entries:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: listEntries
+      tags: [entries]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Entries with their stages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entries]
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EntryWithStages'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: addEntry
+      tags: [entries]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shooter_id, category, lane]
+              properties:
+                shooter_id:
+                  type: integer
+                  format: int64
+                category:
+                  type: string
+                lane:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/entries/{entryID}:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/EntryID'
+    put:
+      operationId: updateEntry
+      tags: [entries]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category, lane]
+              properties:
+                category:
+                  type: string
+                lane:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: The updated entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: deleteEntry
+      tags: [entries]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Deleted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/entries/{entryID}/withdraw:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/EntryID'
+    post:
+      operationId: withdrawEntry
+      tags: [entries]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Entry withdrawn
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [withdrawn]
+                properties:
+                  withdrawn:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/EntryID'
+      - $ref: '#/components/parameters/Stage'
+    put:
+      operationId: setRingCounts
+      tags: [entries]
+      summary: Admin overwrite of a stage's ring counts
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RingCounts'
+      responses:
+        '200':
+          description: The stored ring counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RingCounts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/EntryID'
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: unlockStage
+      tags: [entries]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Stage unlocked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [locked]
+                properties:
+                  locked:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/competitions/{competitionID}/lanes/{lane}/score-lane:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - name: lane
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      operationId: getScoreLane
+      tags: [entries]
+      summary: Lane scored by the scorer on the given lane
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The derived score lane
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [score_lane]
+                properties:
+                  score_lane:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminScoringRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/pairings:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: listPairings
+      tags: [pairings]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Device pairings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pairings]
+                properties:
+                  pairings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pairing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: createPairing
+      tags: [pairings]
+      summary: Pair a scorer device with a lane
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lane]
+              properties:
+                lane:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          description: The pairing and its one-time device token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, lane, token]
+                properties:
+                  id:
+                    type: integer
+                    format: int64
+                  lane:
+                    type: integer
+                  token:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/pairings/{pairingID}:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - name: pairingID
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    delete:
+      operationId: revokePairing
+      tags: [pairings]
+      security:
+        - adminCookie: []
+      responses:
+        '204':
+          description: Pairing revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/competitions/{competitionID}/results.xlsx:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadResultsWorkbook
+      tags: [reports]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Results workbook
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/competitions/{competitionID}/results.csv:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadResultsCsv
+      tags: [reports]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Detailed results CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/scorer/session:
+    get:
+      operationId: getScorerSession
+      tags: [scorer]
+      summary: The paired device's lane, score lane and stages
+      security:
+        - deviceBearer: []
+      responses:
+        '200':
+          description: Scorer session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScorerSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminScoringRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/scorer/stages/{stage}:
+    parameters:
+      - $ref: '#/components/parameters/Stage'
+    put:
+      operationId: scorerSetCounts
+      tags: [scorer]
+      summary: Replace the ring counts of a stage on the score lane
+      security:
+        - deviceBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RingCounts'
+      responses:
+        '200':
+          description: The stored ring counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RingCounts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminScoringRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/scorer/stages/{stage}/lock:
+    parameters:
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: scorerLockStage
+      tags: [scorer]
+      security:
+        - deviceBearer: []
+      responses:
+        '200':
+          description: Stage locked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [locked]
+                properties:
+                  locked:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminScoringRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/spectator/competitions:
+    get:
+      operationId: listSpectatorCompetitions
+      tags: [spectator]
+      summary: Competitions that are not drafts
+      responses:
+        '200':
+          description: Public competitions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [competitions]
+                properties:
+                  competitions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Competition'
+  /api/spectator/competitions/{competitionID}/standings:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: getSpectatorStandings
+      tags: [spectator]
+      summary: Standings filtered by the competition's visibility flags
+      responses:
+        '200':
+          description: Ranked standings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [standings]
+                properties:
+                  standings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Standing'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/spectator/competitions/{competitionID}/progress:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: getSpectatorProgress
+      tags: [spectator]
+      responses:
+        '200':
+          description: Per-stage locked counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stages]
+                properties:
+                  stages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StageProgress'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    adminCookie:
+      type: apiKey
+      in: cookie
+      name: mm_session
+    deviceBearer:
+      type: http
+      scheme: bearer
+  parameters:
+    CompetitionID:
+      name: competitionID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ShooterID:
+      name: shooterID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    EntryID:
+      name: entryID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    Stage:
+      name: stage
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    Created:
+      description: Created
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [id]
+            properties:
+              id:
+                type: integer
+                format: int64
+    Deleted:
+      description: Deleted
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [deleted]
+            properties:
+              deleted:
+                type: boolean
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Invalid:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflicts with current state (stage locked, lane not manned, not between stages)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    AdminScoringRequired:
+      description: Single-lane competitions require admin scoring
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    LoginRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+    CompetitionStatus:
+      type: string
+      enum: [draft, active, finished]
+    Shooter:
+      allOf:
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              format: int64
+        - $ref: '#/components/schemas/ShooterInput'
+    ShooterInput:
+      type: object
+      required: [last_name, first_name, sex, country, club, waid]
+      properties:
+        last_name:
+          type: string
+        first_name:
+          type: string
+        sex:
+          type: string
+          enum: [M, F]
+        country:
+          type: string
+        club:
+          type: string
+        waid:
+          type: string
+    CompetitionInput:
+      type: object
+      required: [name, date, course]
+      properties:
+        name:
+          type: string
+        date:
+          type: string
+        course:
+          type: string
+          description: Course of fire key from the rulebook
+    Competition:
+      allOf:
+        - type: object
+          required: [id, status]
+          properties:
+            id:
+              type: integer
+              format: int64
+            status:
+              $ref: '#/components/schemas/CompetitionStatus'
+        - $ref: '#/components/schemas/CompetitionInput'
+    Visibility:
+      type: object
+      required: [show_names, show_clubs, show_countries, show_stage_scores, show_ring_counts]
+      properties:
+        show_names:
+          type: boolean
+        show_clubs:
+          type: boolean
+        show_countries:
+          type: boolean
+        show_stage_scores:
+          type: boolean
+        show_ring_counts:
+          type: boolean
+    Entry:
+      type: object
+      required: [id, competition_id, shooter_id, category, lane, withdrawn]
+      properties:
+        id:
+          type: integer
+          format: int64
+        competition_id:
+          type: integer
+          format: int64
+        shooter_id:
+          type: integer
+          format: int64
+        category:
+          type: string
+        lane:
+          type: integer
+        withdrawn:
+          type: boolean
+    EntryStage:
+      type: object
+      required: [stage_number, expected_shots, locked, scorer_lane, scorer_name]
+      properties:
+        stage_number:
+          type: integer
+        expected_shots:
+          type: integer
+        locked:
+          type: boolean
+        scorer_lane:
+          type: integer
+          nullable: true
+        scorer_name:
+          type: string
+          nullable: true
+    EntryWithStages:
+      allOf:
+        - $ref: '#/components/schemas/Entry'
+        - type: object
+          required: [stages]
+          properties:
+            stages:
+              type: array
+              items:
+                $ref: '#/components/schemas/EntryStage'
+    RingCounts:
+      type: object
+      required: [x, '10', '9', '8', '7', '0', miss]
+      properties:
+        x:
+          type: integer
+          minimum: 0
+        '10':
+          type: integer
+          minimum: 0
+        '9':
+          type: integer
+          minimum: 0
+        '8':
+          type: integer
+          minimum: 0
+        '7':
+          type: integer
+          minimum: 0
+        '0':
+          type: integer
+          minimum: 0
+        miss:
+          type: integer
+          minimum: 0
+    Pairing:
+      type: object
+      required: [id, lane, revoked]
+      properties:
+        id:
+          type: integer
+          format: int64
+        lane:
+          type: integer
+        revoked:
+          type: boolean
+    ScorerSession:
+      type: object
+      required: [lane, score_lane, entry_id, shooter_name, stages]
+      properties:
+        lane:
+          type: integer
+        score_lane:
+          type: integer
+        entry_id:
+          type: integer
+          format: int64
+        shooter_name:
+          type: string
+        stages:
+          type: array
+          items:
+            type: object
+            required: [stage_number, expected_shots, locked]
+            properties:
+              stage_number:
+                type: integer
+              expected_shots:
+                type: integer
+              locked:
+                type: boolean
+    StageScore:
+      type: object
+      required: [stage, score, locked]
+      properties:
+        stage:
+          type: integer
+        score:
+          type: integer
+        locked:
+          type: boolean
+        ring_counts:
+          $ref: '#/components/schemas/RingCounts'
+    Standing:
+      type: object
+      required: [lane, category, withdrawn, total]
+      properties:
+        lane:
+          type: integer
+        category:
+          type: string
+        withdrawn:
+          type: boolean
+        total:
+          type: integer
+        last_name:
+          type: string
+        first_name:
+          type: string
+        club:
+          type: string
+        country:
+          type: string
+        x_count:
+          type: integer
+        ring_counts:
+          $ref: '#/components/schemas/RingCounts'
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageScore'
+    StageProgress:
+      type: object
+      required: [stage, entries, locked]
+      properties:
+        stage:
+          type: integer
+        entries:
+          type: integer
+        locked:
+          type: integer

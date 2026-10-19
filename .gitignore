@@ -30,3 +30,10 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# —— Node ——————————————————————————————————————————————————————
+node_modules/
+
+# —— SPA build output (source/web/dist is replaced by the real build) ——
+source/web/dist/*
+!source/web/dist/.gitkeep

@@ -15,6 +15,7 @@ type Handler struct {
 	svc          *service.Service
 	auth         *service.AdminAuth
 	secureCookie bool
+	backupDir    string
 }
 
 func NewRouter(svc *service.Service, opts ...Option) http.Handler {
@@ -28,6 +29,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.Post("/admin/login", h.adminLogin)
 			r.Post("/admin/logout", h.adminLogout)
 			r.With(h.RequireAdmin).Get("/admin/session", h.adminSession)
+			r.With(h.RequireAdmin).Get("/admin/backup", h.backup)
 		}
 		h.spectatorRoutes(r)
 		r.Group(func(r chi.Router) {
