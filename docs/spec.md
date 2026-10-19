@@ -23,6 +23,7 @@ Future: relays; Rifle; DNS-01 and other ACME challenge methods; CDN-hosted front
 - Everyone shoots in step. Entries change only between stages. A withdrawn entry is flagged and keeps its results; later stages re-target to the next manned lane.
 - Hits per stage are seven counts (X, 10, 9, 8, 7, 0, miss) that must sum to the stage's expected shots. X scores 10. 0 and miss score 0.
 - Lock stores the scorer's lane and name. Only the admin can unlock and edit.
+- The admin entries list shows each stage's score and shots entered, for open as well as locked stages. An open stage with all expected shots entered is shown as "Scored, not locked".
 - Course data and shot counts live in one `rulebook` package and match rulebook Issue 2026-01-01 §7. The 150 course is 10 stages grouped as Match 1 (7 yd, 15 yd), Match 2 (25 yd), Match 3 (50 yd), Match 4 (2 × 25 yd), Match 5 (7 yd, 25 yd, 50 yd, 25 yd × 6).
 
 ## Competition model

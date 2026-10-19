@@ -20,8 +20,8 @@ const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
   lane: 1,
   withdrawn: false,
   stages: [
-    { stage_number: 1, expected_shots: 30, locked: true, scorer_lane: 2, scorer_name: "Rick Roe" },
-    { stage_number: 2, expected_shots: 30, locked: false, scorer_lane: null, scorer_name: null },
+    { stage_number: 1, expected_shots: 30, locked: true, scorer_lane: 2, scorer_name: "Rick Roe", score: 287, shots_entered: 30 },
+    { stage_number: 2, expected_shots: 30, locked: false, scorer_lane: null, scorer_name: null, score: 0, shots_entered: 0 },
   ],
   ...overrides,
 });
@@ -41,6 +41,26 @@ describe("Entries", () => {
     const row = screen.getByRole("row", { name: /Doe, Jane/ });
     expect(within(row).getByText("Locked")).toBeTruthy();
     expect(within(row).getByText("Open")).toBeTruthy();
+  });
+
+  it("shows scores and tells scored-but-unlocked stages from untouched ones", () => {
+    const stage = (n: number, locked: boolean, score: number, shots: number) => ({
+      stage_number: n,
+      expected_shots: 30,
+      locked,
+      scorer_lane: null,
+      scorer_name: null,
+      score,
+      shots_entered: shots,
+    });
+    setup([entry({ stages: [stage(1, true, 287, 30), stage(2, false, 295, 30), stage(3, false, 0, 0)] })]);
+    const row = screen.getByRole("row", { name: /Doe, Jane/ });
+    expect(within(row).getByText("Locked")).toBeTruthy();
+    expect(within(row).getByText("287")).toBeTruthy();
+    expect(within(row).getByText("Scored, not locked")).toBeTruthy();
+    expect(within(row).getByText("295")).toBeTruthy();
+    expect(within(row).getAllByText("Open")).toHaveLength(1);
+    expect(within(row).getAllByText("pts")).toHaveLength(2);
   });
 
   it("unlocks a locked stage and reloads", async () => {

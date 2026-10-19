@@ -558,6 +558,10 @@ export interface components {
             locked: boolean;
             scorer_lane: number | null;
             scorer_name: string | null;
+            /** @description Points from the stored ring counts, whether or not the stage is locked */
+            score: number;
+            /** @description Sum of all stored ring counts */
+            shots_entered: number;
         };
         EntryWithStages: components["schemas"]["Entry"] & {
             stages: components["schemas"]["EntryStage"][];

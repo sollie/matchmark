@@ -180,8 +180,16 @@
               <div class="stage-cell">
                 {#if st.locked}
                   <span class="badge success" title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
+                {:else if st.shots_entered >= st.expected_shots}
+                  <span class="badge info">Scored, not locked</span>
                 {:else}
                   <span class="badge warning">Open</span>
+                {/if}
+                {#if st.locked || st.shots_entered > 0}
+                  <span class="score"><strong>{st.score}</strong> pts</span>
+                {/if}
+                {#if !st.locked && st.shots_entered > 0 && st.shots_entered < st.expected_shots}
+                  <span class="muted">{st.shots_entered} / {st.expected_shots} shots</span>
                 {/if}
                 <span class="stage-actions">
                   {#if st.locked}
@@ -255,6 +263,8 @@
   .entries .stage-actions, .entries .entry-buttons { display: flex; flex-wrap: wrap; gap: var(--space-1); }
   .entries .entry-buttons .remove { margin-left: var(--space-3); }
   .entries .shooter { font-weight: 600; }
+  .entries .score { font-size: var(--text-sm); color: var(--text-muted); }
+  .entries .score strong { color: var(--text); font-size: var(--text-base); }
   .entries .shooter .badge { margin-left: var(--space-1); }
   .entries .empty td { padding: var(--space-5); text-align: center; color: var(--text-muted); }
   .count-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr)); gap: var(--space-3); margin: var(--space-3) 0; }

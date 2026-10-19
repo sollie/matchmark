@@ -230,7 +230,7 @@ func (h *Handler) listEntries(w http.ResponseWriter, r *http.Request) {
 		m := entryJSON(e.Entry)
 		stages := make([]map[string]any, 0, len(e.Stages))
 		for _, s := range e.Stages {
-			stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "locked": s.Locked, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName})
+			stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "locked": s.Locked, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered})
 		}
 		m["stages"] = stages
 		out = append(out, m)

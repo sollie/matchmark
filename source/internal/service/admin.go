@@ -119,12 +119,39 @@ func (s *Service) DeleteCompetition(ctx context.Context, id int64) error {
 	return mapRepoErr(s.repo.DeleteCompetition(ctx, id))
 }
 
-func (s *Service) ListEntries(ctx context.Context, competitionID int64) ([]repository.EntryWithStages, error) {
+type StageScoring struct {
+	repository.StageInfo
+	Score        int
+	ShotsEntered int
+}
+
+type EntryScoring struct {
+	repository.Entry
+	Stages []StageScoring
+}
+
+func (s *Service) ListEntries(ctx context.Context, competitionID int64) ([]EntryScoring, error) {
 	if _, err := s.repo.GetCompetition(ctx, competitionID); err != nil {
 		return nil, mapRepoErr(err)
 	}
 	entries, err := s.repo.ListEntries(ctx, competitionID)
-	return entries, mapRepoErr(err)
+	if err != nil {
+		return nil, mapRepoErr(err)
+	}
+	out := make([]EntryScoring, 0, len(entries))
+	for _, e := range entries {
+		p := EntryScoring{Entry: e.Entry, Stages: make([]StageScoring, 0, len(e.Stages))}
+		for _, st := range e.Stages {
+			c := st.Counts
+			p.Stages = append(p.Stages, StageScoring{
+				StageInfo:    st,
+				Score:        stagePoints(c),
+				ShotsEntered: c.X + c.Ten + c.Nine + c.Eight + c.Seven + c.Zero + c.Miss,
+			})
+		}
+		out = append(out, p)
+	}
+	return out, nil
 }
 
 func (s *Service) requireEntryChangeAllowed(ctx context.Context, competitionID int64) (repository.Competition, error) {
