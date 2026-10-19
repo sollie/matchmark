@@ -93,7 +93,7 @@ services:
       - "10.0.0.2:8080:8080"
 ```
 
-Adjust the image or binary to your install of `tursodb`, and bind the port to the private address only. On the primary set `REPLICATION_URL=http://10.0.0.2:8080`.
+Adjust the image or binary to your install of `tursodb`, and bind the port to the private address only. On the primary set `REPLICATION_URL=http://10.0.0.2:8080`. For local testing, `brew install turso` provides `tursodb`; run `tursodb replica.db --sync-server 127.0.0.1:8080` and point `REPLICATION_URL` at `http://127.0.0.1:8080`.
 
 > **Warning:** the sync server has no authentication. Expose it only on a private network (WireGuard, Tailscale or LAN), never on the public internet. Where the replica must cross the public internet, copy snapshot files instead.
 
