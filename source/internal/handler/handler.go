@@ -12,14 +12,27 @@ import (
 )
 
 type Handler struct {
-	svc *service.Service
+	svc          *service.Service
+	auth         *service.AdminAuth
+	secureCookie bool
 }
 
-func NewRouter(svc *service.Service) http.Handler {
+func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 	h := &Handler{svc: svc}
+	for _, opt := range opts {
+		opt(h)
+	}
 	r := chi.NewRouter()
 	r.Route("/api", func(r chi.Router) {
-		r.Group(h.adminRoutes)
+		if h.auth != nil {
+			r.Post("/admin/login", h.adminLogin)
+			r.Post("/admin/logout", h.adminLogout)
+			r.With(h.RequireAdmin).Get("/admin/session", h.adminSession)
+		}
+		r.Group(func(r chi.Router) {
+			r.Use(h.RequireAdmin)
+			h.adminRoutes(r)
+		})
 	})
 	return r
 }

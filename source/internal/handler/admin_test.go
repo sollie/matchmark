@@ -13,7 +13,7 @@ func shooterBody(last string) map[string]any {
 }
 
 func TestShooterRegistry(t *testing.T) {
-	env := apitest.New(t)
+	env := apitest.NewAdmin(t)
 	id := env.ID("POST", "/api/shooters", shooterBody("Hansen"))
 
 	t.Run("get", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestShooterRegistry(t *testing.T) {
 }
 
 func TestCompetitionLifecycle(t *testing.T) {
-	env := apitest.New(t)
+	env := apitest.NewAdmin(t)
 	id := env.ID("POST", "/api/competitions", map[string]any{"name": "Spring", "date": "2026-05-01", "course": "150"})
 	path := fmt.Sprintf("/api/competitions/%d", id)
 
@@ -284,5 +284,14 @@ func TestEntriesFrozenWhenFinished(t *testing.T) {
 	status, _ := f.env.Do("PUT", fmt.Sprintf("%s/entries/%d", base, e1), map[string]any{"category": "Pistol", "lane": 4})
 	if status != http.StatusConflict {
 		t.Fatalf("status %d", status)
+	}
+}
+
+func TestAdminRoutesRequireLogin(t *testing.T) {
+	env := apitest.New(t)
+	for _, path := range []string{"/api/shooters", "/api/competitions"} {
+		if status, _ := env.Do("GET", path, nil); status != http.StatusUnauthorized {
+			t.Fatalf("%s: status %d", path, status)
+		}
 	}
 }
