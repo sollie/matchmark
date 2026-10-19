@@ -18,15 +18,26 @@ type Env struct {
 	Server *httptest.Server
 }
 
+const AdminPassword = "correct-horse-battery"
+
 func New(t *testing.T) *Env {
+	t.Helper()
+	return NewWithBaseURL(t, "http://localhost")
+}
+
+func NewWithBaseURL(t *testing.T, baseURL string) *Env {
 	t.Helper()
 	conn, err := db.Open(":memory:")
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { _ = conn.Close() })
-	svc := service.New(repository.New(conn))
-	srv := httptest.NewServer(handler.NewRouter(svc))
+	repo := repository.New(conn)
+	auth, err := service.NewAdminAuth(repo, AdminPassword)
+	if err != nil {
+		t.Fatalf("admin auth: %v", err)
+	}
+	srv := httptest.NewServer(handler.NewRouter(service.New(repo), handler.WithAdminAuth(auth, baseURL)))
 	t.Cleanup(srv.Close)
 	return &Env{t: t, Server: srv}
 }
