@@ -4,13 +4,14 @@
   import { failure } from "../lib/api/util";
   import { navigate } from "../lib/router.svelte";
   import { courses } from "../lib/domain";
+  import { localDate } from "../lib/datetime";
   import type { components } from "../lib/api/schema";
 
   type Competition = components["schemas"]["Competition"];
 
   let competitions = $state<Competition[]>([]);
   let name = $state("");
-  let date = $state(new Date().toISOString().slice(0, 10));
+  let date = $state(localDate(new Date()));
   let course = $state("150");
   let error = $state("");
 
@@ -36,7 +37,7 @@
 
 <form class="row card" onsubmit={create}>
   <label>Name <input bind:value={name} maxlength="128" required /></label>
-  <label>Date <input type="date" bind:value={date} required /></label>
+  <label>Date <input type="text" bind:value={date} placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" inputmode="numeric" size="10" required /></label>
   <label>
     Course of fire
     <select bind:value={course}>

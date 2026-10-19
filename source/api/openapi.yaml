@@ -1018,6 +1018,7 @@ components:
           type: string
         date:
           type: string
+          description: ISO 8601 calendar date, YYYY-MM-DD
         course:
           type: string
           description: Course of fire key from the rulebook

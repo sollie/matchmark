@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
+  import { clockTime } from "../lib/datetime";
   import type { components } from "../lib/api/schema";
 
   type Competition = components["schemas"]["Competition"];
@@ -136,7 +137,7 @@
       </table>
     </div>
     {#if error}<p class="error">{error}</p>{/if}
-    {#if updated}<p class="muted">Updated {updated.toLocaleTimeString()}</p>{/if}
+    {#if updated}<p class="muted">Updated {clockTime(updated)}</p>{/if}
   {/if}
   <p><a href="/admin">Admin</a></p>
 </main>

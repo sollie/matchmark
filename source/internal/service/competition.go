@@ -3,10 +3,16 @@ package service
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
 )
+
+func validDate(d string) bool {
+	t, err := time.Parse(time.DateOnly, d)
+	return err == nil && t.Format(time.DateOnly) == d
+}
 
 var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Rifle"}
 
@@ -19,7 +25,7 @@ func (s *Service) CreateShooter(ctx context.Context, sh repository.Shooter) (int
 }
 
 func (s *Service) CreateCompetition(ctx context.Context, c repository.Competition) (int64, error) {
-	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || c.Date == "" {
+	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || !validDate(c.Date) {
 		return 0, ErrInvalid
 	}
 	if _, err := rulebook.CourseByKey(c.Course); err != nil {

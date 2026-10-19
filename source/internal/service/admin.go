@@ -65,7 +65,7 @@ func (s *Service) GetCompetition(ctx context.Context, id int64) (repository.Comp
 }
 
 func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competition) error {
-	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || c.Date == "" {
+	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || !validDate(c.Date) {
 		return ErrInvalid
 	}
 	if _, err := rulebook.CourseByKey(c.Course); err != nil {

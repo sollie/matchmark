@@ -135,6 +135,16 @@ func TestStageExpectedShotsFollowCourse(t *testing.T) {
 	}
 }
 
+func TestCreateCompetitionRejectsNonISODate(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	for _, date := range []string{"19/10/2026", "2026-13-01", "2026-2-1", ""} {
+		status, _ := env.Do("POST", "/api/competitions", map[string]any{"name": "X", "date": date, "course": "150"})
+		if status != http.StatusUnprocessableEntity {
+			t.Fatalf("date %q: status %d", date, status)
+		}
+	}
+}
+
 func TestCreateCompetitionRejectsUnknownCourse(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	status, _ := env.Do("POST", "/api/competitions", map[string]any{"name": "X", "date": "2026-05-01", "course": "99"})
