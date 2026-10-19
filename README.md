@@ -46,6 +46,8 @@ For frontend development run `npm run dev` in `source/web`; it proxies `/api` to
 | `TRUSTED_PROXY` | empty | Comma-separated IPs or CIDRs of reverse proxies whose forwarded client IP headers are trusted |
 | `TLS_CERT_FILE`, `TLS_KEY_FILE` | empty | Static certificate mode; set both |
 | `ACME_DOMAIN`, `ACME_EMAIL` | empty | Automatic certificates (Let's Encrypt); both required together |
+| `REPLICATION_URL` | empty | Base URL of a `tursodb --sync-server`; empty disables [Replication](#replication) |
+| `REPLICATION_INTERVAL` | `60s` | Push interval as a Go duration (for example `30s`, `5m`); must be positive |
 
 Static and ACME modes are mutually exclusive.
 
@@ -73,6 +75,29 @@ Static and ACME modes are mutually exclusive.
 ## Backup
 
 The admin UI offers a database backup download (SQLite online backup, safe while running). Alternatively stop the container and copy `data/matchmark.db`. Restore by placing the file at `data/matchmark.db` before starting.
+
+## Replication
+
+Optional and off by default. With `REPLICATION_URL` set, the database is opened through the Turso sync API and pushed to a self-hosted `tursodb --sync-server` every `REPLICATION_INTERVAL` and once when a competition is finished. Push-only: nothing is pulled back. A failed push is logged and retried on the next tick and never blocks scoring. Without `REPLICATION_URL` the database opens through plain `database/sql`; both modes run the same migrations.
+
+Run the sync server on a second host (the replica's database file is `/data/replica.db`):
+
+```yaml
+services:
+  replica:
+    image: ghcr.io/tursodatabase/turso:latest
+    command: ["tursodb", "/data/replica.db", "--sync-server", "0.0.0.0:8080"]
+    volumes:
+      - ./replica-data:/data
+    ports:
+      - "10.0.0.2:8080:8080"
+```
+
+Adjust the image or binary to your install of `tursodb`, and bind the port to the private address only. On the primary set `REPLICATION_URL=http://10.0.0.2:8080`.
+
+> **Warning:** the sync server has no authentication. Expose it only on a private network (WireGuard, Tailscale or LAN), never on the public internet. Where the replica must cross the public internet, copy snapshot files instead.
+
+Restore by copying the replica's database file to `data/matchmark.db` on a new primary.
 
 ## Raspberry Pi / arm64
 

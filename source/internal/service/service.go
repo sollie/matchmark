@@ -16,11 +16,16 @@ var (
 )
 
 type Service struct {
-	repo *repository.Repository
+	repo       *repository.Repository
+	replicator ReplicationRequester
 }
 
-func New(repo *repository.Repository) *Service {
-	return &Service{repo: repo}
+func New(repo *repository.Repository, opts ...Option) *Service {
+	s := &Service{repo: repo}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 func mapRepoErr(err error) error {

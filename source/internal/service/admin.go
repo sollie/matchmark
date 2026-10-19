@@ -105,7 +105,12 @@ func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status Com
 		return mapRepoErr(err)
 	}
 	if status == StatusFinished {
-		return mapRepoErr(s.repo.RevokeCompetitionPairings(ctx, id))
+		if err := s.repo.RevokeCompetitionPairings(ctx, id); err != nil {
+			return mapRepoErr(err)
+		}
+		if s.replicator != nil {
+			s.replicator.Request()
+		}
 	}
 	return nil
 }
