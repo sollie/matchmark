@@ -1,7 +1,9 @@
 package db
 
 import (
+	"context"
 	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -9,21 +11,19 @@ import (
 	"strconv"
 	"strings"
 
-	_ "modernc.org/sqlite"
+	_ "turso.tech/database/tursogo"
 )
 
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
 func Open(path string) (*sql.DB, error) {
-	dsn := path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
-	if path != ":memory:" {
-		dsn = "file:" + dsn
-	}
-	conn, err := sql.Open("sqlite", dsn)
+	probe, err := sql.Open("turso", path+"?_busy_timeout=5000")
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
+	conn := sql.OpenDB(&connector{drv: probe.Driver(), dsn: path + "?_busy_timeout=5000"})
+	_ = probe.Close()
 	conn.SetMaxOpenConns(1)
 	if err := migrate(conn); err != nil {
 		_ = conn.Close()
@@ -31,6 +31,31 @@ func Open(path string) (*sql.DB, error) {
 	}
 	return conn, nil
 }
+
+type connector struct {
+	drv driver.Driver
+	dsn string
+}
+
+func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
+	dc, err := c.drv.Open(c.dsn)
+	if err != nil {
+		return nil, err
+	}
+	stmt, err := dc.Prepare(`PRAGMA foreign_keys = ON`)
+	if err != nil {
+		_ = dc.Close()
+		return nil, err
+	}
+	defer func() { _ = stmt.Close() }()
+	if _, err := stmt.Exec(nil); err != nil { //nolint:staticcheck
+		_ = dc.Close()
+		return nil, err
+	}
+	return dc, nil
+}
+
+func (c *connector) Driver() driver.Driver { return c.drv }
 
 func migrate(conn *sql.DB) error {
 	if _, err := conn.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)`); err != nil {

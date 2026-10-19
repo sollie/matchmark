@@ -59,7 +59,7 @@ TLS modes: plain HTTP (default, behind a proxy); static certificate; ACME via ce
 
 ## Delivery
 
-Repository root: `Dockerfile`, `docker-compose.yml` (app plus `./data` volume only), `docs/`, `GLOSSARY.md`, `README.md`, `AGENTS.md`. Code in `source/` (Go module root; `source/web/` for the SPA). Dockerfile: Alpine Node stage builds `web/`, Alpine Go stage embeds `web/dist` and builds with `CGO_ENABLED=0 -tags musl`, final Alpine 3.24 image (the tursogo native library needs a libc to `dlopen`) running non-root with `TURSO_GO_CACHE_DIR` on a writable path. Supported targets: linux/amd64 and linux/arm64 (64-bit Pi OS only); darwin/arm64 for development. The admin UI offers a database backup download; the spike must confirm how to produce it with Turso Database.
+Repository root: `Dockerfile`, `docker-compose.yml` (app plus `./data` volume only), `docs/`, `GLOSSARY.md`, `README.md`, `AGENTS.md`. Code in `source/` (Go module root; `source/web/` for the SPA). Dockerfile: Alpine Node stage builds `web/`, Alpine Go stage embeds `web/dist` and builds with `CGO_ENABLED=0 -tags musl`, final Alpine 3.24 image (the tursogo native library needs a libc to `dlopen`) running non-root with `TURSO_GO_CACHE_DIR` on a writable path. Supported targets: linux/amd64 and linux/arm64 (64-bit Pi OS only); darwin/arm64 for development. The admin UI offers a database backup download; it uses `VACUUM INTO` with a string literal path, which Turso Database supports (bound parameters are rejected).
 
 CI (GitHub Actions) builds, tests and smoke-tests the image natively: `ubuntu-latest` for amd64, `ubuntu-24.04-arm` for arm64, no QEMU, plus a build-only `macos-latest` job. The smoke test opens a database inside each image because a library-loading failure only shows at runtime.
 
