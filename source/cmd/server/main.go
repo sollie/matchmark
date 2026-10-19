@@ -101,6 +101,7 @@ func serve(ctx context.Context, srv *http.Server, cfg Config) error {
 		slog.Info("listening", "addr", srv.Addr, "tls", "static")
 		return srv.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
 	case TLSACME:
+		certmagic.Default.Logger = certmagicLogger()
 		certmagic.DefaultACME.Agreed = true
 		certmagic.DefaultACME.Email = cfg.ACMEEmail
 		certmagic.DefaultACME.AltHTTPPort = 8080

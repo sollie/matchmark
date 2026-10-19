@@ -54,7 +54,7 @@ Static and ACME modes are mutually exclusive.
 
 ## Logging
 
-The server writes structured JSON logs (`log/slog`) to stdout: one `request` line per HTTP request with `method`, `path` (no query string), `status`, `bytes`, `duration_ms`, `remote` (the client IP, honouring `TRUSTED_PROXY`) and `user_agent`. Level is `INFO` for 1xx-3xx, `WARN` for 4xx and `ERROR` for 5xx. Use `docker compose logs -f` to follow them.
+The server writes structured JSON logs (`log/slog`) to stdout: one `request` line per HTTP request with `method`, `path` (no query string), `status`, `bytes`, `duration_ms`, `remote` (the client IP, honouring `TRUSTED_PROXY`) and `user_agent`. Level is `INFO` for 1xx-3xx, `WARN` for 4xx and `ERROR` for 5xx. In ACME mode certmagic's certificate and renewal messages are written to stdout as JSON in the same shape (`time`, `level`, `msg`). Use `docker compose logs -f` to follow them.
 
 ## TLS modes
 
