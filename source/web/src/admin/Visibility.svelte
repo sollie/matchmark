@@ -46,13 +46,16 @@
 <section class="card">
   <h2>Spectator visibility</h2>
   {#if visibility}
+    <ul class="flags">
+      {#each labels as [key, label] (key)}<li><span class="badge {visibility[key] ? "success" : "neutral"}">{label}: {visibility[key] ? "Shown" : "Hidden"}</span></li>{/each}
+    </ul>
     <div class="row">
       {#each labels as [key, label] (key)}
         <label class="check"><input type="checkbox" bind:checked={visibility[key]} /> {label}</label>
       {/each}
-      <button onclick={save}>Save</button>
+      <button class="primary" onclick={save}>Save</button>
     </div>
   {/if}
-  {#if message}<p class="muted">{message}</p>{/if}
-  {#if error}<p class="error">{error}</p>{/if}
+  {#if message}<p class="muted" role="status">{message}</p>{/if}
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>

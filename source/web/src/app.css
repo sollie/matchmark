@@ -165,6 +165,9 @@ th { position: sticky; top: 0; z-index: 1; background: var(--surface-alt); font-
 tbody tr:hover > td { background: var(--surface-alt); }
 tbody tr:last-child > td { border-bottom: 0; }
 .scroll { overflow: auto; max-width: 100%; max-height: 70vh; border: 1px solid var(--border); border-radius: var(--radius); }
+.actions { white-space: nowrap; }
+.actions button + button { margin-left: var(--space-1); }
+.flags { display: flex; flex-wrap: wrap; gap: var(--space-2); list-style: none; padding: 0; margin: var(--space-2) 0; }
 .card .scroll { margin: var(--space-2) 0; }
 
 .qr { width: 14rem; height: 14rem; padding: var(--space-2); background: #ffffff; border-radius: var(--radius); }
