@@ -101,15 +101,26 @@
     );
   }
 
-  async function saveCounts() {
+  async function lock(entry: EntryWithStages, stage: number) {
+    await run(
+      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock", {
+        params: { path: { ...path(entry), stage } },
+      }),
+    );
+  }
+
+  async function saveCounts(andLock = false) {
     if (!scoring) return;
+    const { entry, stage } = scoring;
     const ok = await run(
       api.PUT("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}", {
         params: { path: { ...path(scoring.entry), stage: scoring.stage } },
         body: scoring.counts,
       }),
     );
-    if (ok) scoring = null;
+    if (!ok) return;
+    scoring = null;
+    if (andLock) await lock(entry, stage);
   }
 </script>
 
@@ -167,6 +178,7 @@
                 <button onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
               {:else}
                 Open
+                <button onclick={() => lock(entry, st.stage_number)}>Lock</button>
               {/if}
               <button onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
             </td>
@@ -201,7 +213,8 @@
         {#each ringKeys as k (k)}
           <label>{k === "x" ? "X" : k} <input type="number" min="0" bind:value={scoring.counts[k]} size="3" /></label>
         {/each}
-        <button onclick={saveCounts}>Save counts</button>
+        <button onclick={() => saveCounts()}>Save counts</button>
+        <button onclick={() => saveCounts(true)}>Save and lock</button>
         <button onclick={() => (scoring = null)}>Cancel</button>
       </div>
     </div>

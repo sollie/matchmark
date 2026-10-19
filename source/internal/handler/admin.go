@@ -30,6 +30,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Put("/competitions/{competitionID}/entries/{entryID}/stages/{stage}", h.setRingCounts)
 	r.Get("/competitions/{competitionID}/results.xlsx", h.resultsWorkbook)
 	r.Get("/competitions/{competitionID}/results.csv", h.resultsCSV)
+	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock", h.lockStage)
 	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock", h.unlockStage)
 	r.Post("/competitions/{competitionID}/pairings", h.createPairing)
 	r.Get("/competitions/{competitionID}/pairings", h.listPairings)

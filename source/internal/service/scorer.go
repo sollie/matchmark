@@ -158,6 +158,26 @@ func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int
 	return nil
 }
 
+func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int64, stageNumber int) error {
+	stage, err := s.repo.GetStage(ctx, competitionID, entryID, stageNumber)
+	if err != nil {
+		return mapRepoErr(err)
+	}
+	if stage.Locked {
+		return ErrStageLocked
+	}
+	if err := ValidateRingCounts(stage.Counts, stage.ExpectedShots); err != nil {
+		return err
+	}
+	if err := s.repo.LockStageAsAdmin(ctx, stage.ID); err != nil {
+		if err == repository.ErrConflict {
+			return ErrStageLocked
+		}
+		return mapRepoErr(err)
+	}
+	return nil
+}
+
 func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64, stageNumber int) error {
 	stage, err := s.repo.GetStage(ctx, competitionID, entryID, stageNumber)
 	if err != nil {

@@ -90,6 +90,18 @@ func (r *Repository) LockStage(ctx context.Context, stageID int64, scorerLane in
 	return nil
 }
 
+func (r *Repository) LockStageAsAdmin(ctx context.Context, stageID int64) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE stages SET locked = 1, scorer_lane = NULL, scorer_name = 'Admin' WHERE id = ? AND locked = 0`, stageID)
+	if err != nil {
+		return mapErr(err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrConflict
+	}
+	return nil
+}
+
 func (r *Repository) UnlockStage(ctx context.Context, stageID int64) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE stages SET locked = 0, scorer_lane = NULL, scorer_name = NULL WHERE id = ?`, stageID)
