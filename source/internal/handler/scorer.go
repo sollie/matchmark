@@ -148,6 +148,29 @@ func (h *Handler) revokePairing(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) lockStage(w http.ResponseWriter, r *http.Request) {
+	compID, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	entryID, err := pathInt(r, "entryID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	stage, err := pathInt(r, "stage")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := h.svc.AdminLockStage(r.Context(), compID, entryID, int(stage)); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"locked": true})
+}
+
 func (h *Handler) unlockStage(w http.ResponseWriter, r *http.Request) {
 	compID, err := pathInt(r, "competitionID")
 	if err != nil {

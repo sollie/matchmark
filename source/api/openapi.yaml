@@ -521,6 +521,36 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/EntryID'
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: lockStage
+      tags: [entries]
+      summary: Admin lock of a stage whose ring counts are complete
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Stage locked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [locked]
+                properties:
+                  locked:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'

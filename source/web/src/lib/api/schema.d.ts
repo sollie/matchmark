@@ -254,6 +254,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+                entryID: components["parameters"]["EntryID"];
+                stage: components["parameters"]["Stage"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin lock of a stage whose ring counts are complete */
+        post: operations["lockStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock": {
         parameters: {
             query?: never;
@@ -1233,6 +1254,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RingCounts"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    lockStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+                entryID: components["parameters"]["EntryID"];
+                stage: components["parameters"]["Stage"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stage locked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        locked: boolean;
+                    };
                 };
             };
             401: components["responses"]["Unauthorized"];

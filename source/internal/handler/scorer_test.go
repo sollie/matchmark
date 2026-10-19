@@ -89,6 +89,24 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 	})
 }
 
+func TestAdminLocksCompleteStage(t *testing.T) {
+	f := newScoringFixture(t, 1, 2)
+	p := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[2])
+	if status, _ := f.env.Do("POST", p+"/lock", nil); status != http.StatusUnprocessableEntity {
+		t.Fatalf("lock incomplete: %d", status)
+	}
+	f.env.Do("PUT", p, counts(12, 0))
+	if status, out := f.env.Do("POST", p+"/lock", nil); status != http.StatusOK {
+		t.Fatalf("lock: %d %v", status, out)
+	}
+	if !f.stageLocked(t, 2, 1) {
+		t.Fatal("not locked")
+	}
+	if status, _ := f.env.Do("POST", p+"/lock", nil); status != http.StatusConflict {
+		t.Fatalf("lock twice: %d", status)
+	}
+}
+
 func TestLockRecordsScorerAndAdminUnlock(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	token := f.pair(t, 1)
