@@ -1,13 +1,17 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/xuri/excelize/v2"
+
 	"github.com/sollie/matchmark/internal/db"
+	"github.com/sollie/matchmark/internal/report"
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/restore"
 	"github.com/sollie/matchmark/internal/service"
@@ -61,6 +65,14 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 	got := normalizedReport(t, repo, f.compID)
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("report mismatch\nwant %+v\ngot  %+v", want, got)
+	}
+	wantCSV, wantRows := reportOutputs(t, f.repo, f.compID)
+	gotCSV, gotRows := reportOutputs(t, repo, f.compID)
+	if !bytes.Equal(wantCSV, gotCSV) {
+		t.Fatalf("csv mismatch\nwant %s\ngot  %s", wantCSV, gotCSV)
+	}
+	if !reflect.DeepEqual(wantRows, gotRows) {
+		t.Fatalf("xlsx mismatch\nwant %v\ngot  %v", wantRows, gotRows)
 	}
 	for _, ref := range []struct {
 		entry  int64
@@ -173,4 +185,40 @@ func TestRestoreMergeAppliesMatchingIDsAndListsConflicts(t *testing.T) {
 	if res.Competitions+res.Entries+res.Stages != 0 || len(res.Conflicts) != 1 || !strings.Contains(res.Conflicts[0], "competition 7") {
 		t.Fatalf("res = %+v", res)
 	}
+}
+
+func reportOutputs(t *testing.T, repo *repository.Repository, compID int64) ([]byte, map[string][][]string) {
+	t.Helper()
+	ctx := context.Background()
+	comp, err := repo.GetCompetition(ctx, compID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := repo.ReportEntries(ctx, compID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := report.Data{Competition: comp, Entries: entries}
+	csvBytes, err := report.CSV(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xlsx, err := report.Workbook(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wb, err := excelize.OpenReader(bytes.NewReader(xlsx))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = wb.Close() }()
+	rows := map[string][][]string{}
+	for _, name := range wb.GetSheetList() {
+		r, err := wb.GetRows(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows[name] = r
+	}
+	return csvBytes, rows
 }
