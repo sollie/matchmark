@@ -1,6 +1,6 @@
 module github.com/sollie/matchmark
 
-go 1.26.0
+go 1.27.2
 
 require (
 	github.com/caddyserver/certmagic v0.25.6
