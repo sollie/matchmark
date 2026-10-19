@@ -9,9 +9,9 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 5. Device pairing and scorer API (score lane derived server-side, lock, admin unlock).
 - [x] 6. Spectator API with per-competition visibility flags.
 - [x] 7. Results report: embed template, generate `.xlsx` with excelize; detailed CSV. Tests against the template.
-- [ ] 8. OpenAPI spec and generated TypeScript client.
-- [ ] 9. `source/web/`: Svelte + Vite SPA: admin, scorer, spectator screens.
-- [ ] 10. Embed `web/dist`, TLS modes (plain, static, certmagic), backup endpoint.
+- [x] 8. OpenAPI spec and generated TypeScript client.
+- [x] 9. `source/web/`: Svelte + Vite SPA: admin, scorer, spectator screens.
+- [x] 10. Embed `web/dist`, TLS modes (plain, static, certmagic), backup endpoint.
 - [ ] 10a. Spike: swap `modernc.org/sqlite` for tursogo (ADR 0005). Run `001_schema.sql` and the full test suite, check `foreign_keys`, `busy_timeout`, `SetMaxOpenConns(1)` and the backup download. Stop and revisit the ADR if it fails.
 - [ ] 10b. Optional push-only Replication (timer plus on competition finish), `REPLICATION_*` config, `tursodb --sync-server` compose snippet and private-network warning in `README.md`.
 - [ ] 11. Root `Dockerfile` (Alpine Node and Go stages, Alpine 3.24 final with `-tags musl`, non-root, `TURSO_GO_CACHE_DIR`), `docker-compose.yml`, `README.md`, and native-runner CI (amd64, arm64, darwin/arm64 build-only) with an in-image database smoke test.

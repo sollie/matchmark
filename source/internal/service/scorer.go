@@ -26,7 +26,7 @@ func (s *Service) CreatePairing(ctx context.Context, competitionID int64, lane i
 	if err != nil {
 		return 0, "", mapRepoErr(err)
 	}
-	if comp.Status == "finished" {
+	if CompetitionStatus(comp.Status) == StatusFinished {
 		return 0, "", ErrConflict
 	}
 	if _, err := s.repo.MannedEntryByLane(ctx, competitionID, lane); err != nil {
@@ -78,7 +78,7 @@ func (s *Service) deviceTarget(ctx context.Context, d Device) (scoringTarget, st
 	if err != nil {
 		return scoringTarget{}, "", mapRepoErr(err)
 	}
-	if comp.Status != "active" {
+	if CompetitionStatus(comp.Status) != StatusActive {
 		return scoringTarget{}, "", ErrConflict
 	}
 	scoreLane, err := s.ScoreLane(ctx, d.CompetitionID, d.Lane)
