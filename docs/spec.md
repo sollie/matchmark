@@ -38,7 +38,7 @@ Future: relays; Rifle; DNS-01 and other ACME challenge methods; CDN-hosted front
 
 Filled in from the embedded `Results reporting mal.xlsx` using `excelize`. One sheet per category; competition name and date in the header; known shooters as WAID + total result, extra rows inserted as needed; new shooters in the "New shooters" block with last name, first name, sex, country, club, result. The template is a replaceable embedded file.
 
-An internal detailed CSV lists ring counts per stage per entry for the club's own records.
+An internal detailed CSV lists ring counts per stage per entry for the club's own records. The CSV starts with a UTF-8 byte-order mark so spreadsheet applications show non-ASCII names correctly. Both downloads are named `<competition name>-<competition date>.<ext>` (for example `Test2-2026-10-20.xlsx`): characters other than letters, digits and `_` collapse to a single `-`, names are capped at 60 characters, an empty name becomes `results`, and non-ASCII letters are sent via an RFC 5987 `filename*`.
 
 ## API and frontend
 

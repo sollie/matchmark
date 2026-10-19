@@ -160,7 +160,10 @@ func TestResultsCSV(t *testing.T) {
 	if status != http.StatusOK || !strings.HasPrefix(header.Get("Content-Type"), "text/csv") {
 		t.Fatalf("status %d type %q", status, header.Get("Content-Type"))
 	}
-	rows, err := csv.NewReader(bytes.NewReader(body)).ReadAll()
+	if !bytes.HasPrefix(body, []byte("\xef\xbb\xbf")) {
+		t.Fatalf("missing byte-order mark")
+	}
+	rows, err := csv.NewReader(bytes.NewReader(bytes.TrimPrefix(body, []byte("\xef\xbb\xbf")))).ReadAll()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +190,7 @@ func TestResultsCSVNeutralisesFormulas(t *testing.T) {
 		{"\tTab", "\rCR", "F", "", "Revolver", 3, nil},
 	})
 	_, _, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
-	rows, err := csv.NewReader(bytes.NewReader(body)).ReadAll()
+	rows, err := csv.NewReader(bytes.NewReader(bytes.TrimPrefix(body, []byte("\xef\xbb\xbf")))).ReadAll()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,6 +202,60 @@ func TestResultsCSVNeutralisesFormulas(t *testing.T) {
 	for i, w := range want {
 		if got[fmt.Sprint(i+1)] != w {
 			t.Fatalf("lane %d names %q, want %q", i+1, got[fmt.Sprint(i+1)], w)
+		}
+	}
+}
+
+func TestResultsKeepNonASCIINames(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	comp := seedReport(t, env, "Spring Match", []reportShooter{
+		{"Hansen", "Pål", "M", "W100", "Revolver", 1, nil},
+		{"Åsen", "Östen", "M", "", "Revolver", 2, nil},
+	})
+	_, _, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
+	if !bytes.HasPrefix(body, []byte("\xef\xbb\xbf")) || !bytes.Contains(body, []byte("Hansen,Pål,W100")) || !bytes.Contains(body, []byte("Åsen,Östen,")) {
+		t.Fatalf("names garbled in csv")
+	}
+	f := openReport(t, env, comp)
+	found := map[string]bool{}
+	for _, sheet := range f.GetSheetList() {
+		rows, err := f.GetRows(sheet)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, row := range rows {
+			for _, c := range row {
+				found[c] = true
+			}
+		}
+	}
+	if !found["Åsen"] || !found["Östen"] {
+		t.Fatalf("workbook lacks new shooter names: %v", found)
+	}
+}
+
+func TestResultsDownloadFilename(t *testing.T) {
+	tests := []struct {
+		name string
+		want string
+	}{
+		{"Test2", `attachment; filename="Test2-2026-05-01.%s"`},
+		{"Spring Match: A/B  \"final\"", `attachment; filename="Spring-Match-A-B-final-2026-05-01.%s"`},
+		{"Åre cup", `attachment; filename="_re-cup-2026-05-01.%s"; filename*=UTF-8''%C3%85re-cup-2026-05-01.%s`},
+		{"///", `attachment; filename="results-2026-05-01.%s"`},
+		{strings.Repeat("a", 100), `attachment; filename="` + strings.Repeat("a", 60) + `-2026-05-01.%s"`},
+	}
+	for _, tt := range tests {
+		for _, ext := range []string{"xlsx", "csv"} {
+			t.Run(tt.name+"/"+ext, func(t *testing.T) {
+				env := apitest.NewAdmin(t)
+				comp := seedReport(t, env, tt.name, nil)
+				_, header, _ := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.%s", comp, ext))
+				want := strings.ReplaceAll(tt.want, "%s", ext)
+				if got := header.Get("Content-Disposition"); got != want {
+					t.Fatalf("got %q, want %q", got, want)
+				}
+			})
 		}
 	}
 }
