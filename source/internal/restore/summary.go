@@ -21,6 +21,13 @@ func WriteSummary(w io.Writer, plan Plan, stats Stats) {
 			}
 		}
 	}
-	_, _ = fmt.Fprintf(w, "\nwould restore %d competition(s), %d entries, %d scored stage(s)\ndry run: nothing was written\n",
+	_, _ = fmt.Fprintf(w, "\nwould restore %d competition(s), %d entries, %d scored stage(s)\ndry run: nothing was written (use --apply to restore)\n",
 		len(plan.Competitions), entries, stages)
+}
+
+func WriteApplied(w io.Writer, stats Stats, competitions, entries, stages int) {
+	_, _ = fmt.Fprintf(w, "read %d lines: %d score events, %d non-score skipped, %d malformed skipped\n",
+		stats.Lines, stats.Events, stats.NonScore, stats.Malformed)
+	_, _ = fmt.Fprintf(w, "restored %d competition(s), %d entries, %d scored stage(s)\n", competitions, entries, stages)
+	_, _ = fmt.Fprintln(w, "note: unscored entries, devices and pairings are not restored")
 }

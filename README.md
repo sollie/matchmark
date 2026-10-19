@@ -60,7 +60,9 @@ The server writes structured JSON logs (`log/slog`) to stdout: one `request` lin
 
 Each time a stage is locked, unlocked, or edited by the admin while locked, a `stage_locked` or `stage_unlocked` line is also written to stdout with the competition, entry, shooter, ring counts and who locked it (see `docs/spec.md`). Keep your container logs: if the database is lost and there is no replica, they are the only record of the final scores. The lines contain personal data (WAID, names, club), so apply your club's retention policy to them.
 
-To preview what a log would restore, run `matchmark restore [file]` (or pipe the log on stdin, e.g. `docker compose logs --no-log-prefix matchmark | matchmark restore`). It needs no `ADMIN_PASSWORD`, skips non-score and malformed lines with a count, rejects an unknown `schema_version`, and prints the competitions, entries and scored stages it would restore. It is a dry run for now and writes nothing.
+To preview what a log would restore, run `matchmark restore [file]` (or pipe the log on stdin, e.g. `docker compose logs --no-log-prefix matchmark | matchmark restore`). It needs no `ADMIN_PASSWORD`, skips non-score and malformed lines with a count, rejects an unknown `schema_version`, and prints the competitions, entries and scored stages it would restore. Without `--apply` it is a dry run and writes nothing.
+
+To write the restore, run `matchmark restore --apply [file]` with the same `DB_PATH` the server uses (for example `docker compose run --rm -T matchmark restore --apply < scores.jsonl` while the server is stopped). It opens the database, runs migrations, and recreates competitions (as `finished`), shooters, entries and the locked stages with their ring counts, `locked_by` lane (or `Admin`), `scorer_name` and `locked_at`, keeping the original competition and entry ids. It is idempotent by ids: re-running changes nothing, and stages already locked are left untouched. The log has no sex or country, so restored shooters get sex `M` and an empty country. Unscored entries, devices and pairings are not restored; the command prints a note saying so.
 
 ## TLS modes
 
