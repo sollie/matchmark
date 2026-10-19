@@ -32,3 +32,57 @@ jobs:
         with:
           version: latest
           working-directory: source
+
+  image:
+    name: Image (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: source/go.mod
+          cache-dependency-path: source/go.sum
+
+      - name: Test
+        working-directory: source
+        run: CGO_ENABLED=0 go test ./...
+
+      - name: Build image
+        run: docker build -t matchmark:ci .
+
+      - name: Smoke test
+        run: scripts/smoke-image.sh matchmark:ci
+
+  darwin-arm64:
+    name: Build (darwin/arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: source/go.mod
+          cache-dependency-path: source/go.sum
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: source/web/package-lock.json
+
+      - name: Build web
+        working-directory: source/web
+        run: npm ci && npm run build
+
+      - name: Build
+        working-directory: source
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build ./...

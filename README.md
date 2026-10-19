@@ -8,8 +8,9 @@ WA1500/PPC competition scoring system: one Go binary (REST API + embedded Svelte
 |------|-------------|
 | `source/` | Go module (`cmd/server`, `internal/`, `api/openapi.yaml`) |
 | `source/web/` | Svelte + Vite + TypeScript SPA, built to `source/web/dist` and embedded in the binary |
-| `Dockerfile` | Node build stage, Go build stage, `scratch` final image (CA certificates, non-root) |
+| `Dockerfile` | Node build stage, Go build stage, Alpine 3.24 final image built with `-tags musl` (non-root) |
 | `docker-compose.yml` | The app plus a `./data` volume |
+| `scripts/smoke-image.sh` | Starts an image and checks it opens its database |
 | `docs/` | Spec, ADRs, plan |
 
 ## Run with Docker
@@ -20,7 +21,7 @@ export ADMIN_PASSWORD='at-least-16-characters'
 docker compose up --build -d
 ```
 
-The app listens on plain HTTP at `http://localhost:8080` (override the host port with `HTTP_PORT`). The container runs as UID/GID 65532, so the `data` directory must be writable by that user. The SQLite database, backups and ACME certificates live in `/data`.
+The app listens on plain HTTP at `http://localhost:8080` (override the host port with `HTTP_PORT`). The container runs as UID/GID 65532, so the `data` directory must be writable by that user. The database (a SQLite-format file opened through the tursogo driver), backups and ACME certificates live in `/data`.
 
 Sign in at `/` with the admin password. `ADMIN_PASSWORD` must be at least 16 characters and is the only required setting.
 
@@ -74,12 +75,22 @@ Static and ACME modes are mutually exclusive.
 
 The admin UI offers a database backup download (SQLite online backup, safe while running). Alternatively stop the container and copy `data/matchmark.db`. Restore by placing the file at `data/matchmark.db` before starting.
 
-## Raspberry Pi / arm64
+## Targets
 
-The binary is pure Go (`CGO_ENABLED=0`) and the base images are multi-arch, so building on the device works unchanged:
+| Target | Use |
+|--------|-----|
+| linux/amd64 | Supported (Docker image) |
+| linux/arm64 | Supported, including 64-bit Raspberry Pi OS (Docker image) |
+| darwin/arm64 | Development only |
+
+32-bit ARM is unsupported: tursogo ships no native library for it. The binary is built with `CGO_ENABLED=0` but loads an embedded native library at runtime, which the final image extracts to `TURSO_GO_CACHE_DIR` (`/var/cache/turso`, writable by the non-root user). On Alpine the build needs `-tags musl`, and the image installs `libgcc`.
+
+On a Pi (64-bit OS) building on the device works unchanged:
 
 ```sh
 docker compose up --build -d
 ```
 
-To cross-build from another machine: `docker buildx build --platform linux/arm64 -t matchmark:latest .`. The first build on a Pi is slow (npm install); the resulting image is about 20 MB.
+To cross-build from another machine: `docker buildx build --platform linux/arm64 -t matchmark:latest .`.
+
+CI builds, tests and smoke-tests the image on native runners (`ubuntu-latest`, `ubuntu-24.04-arm`) and builds darwin/arm64. Run the smoke test locally with `scripts/smoke-image.sh matchmark:latest`.
