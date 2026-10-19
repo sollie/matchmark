@@ -9,6 +9,8 @@
 
   type Competition = components["schemas"]["Competition"];
 
+  const datePattern = "\\d{4}-\\d{2}-\\d{2}";
+
   let competitions = $state<Competition[]>([]);
   let name = $state("");
   let date = $state(localDate(new Date()));
@@ -37,7 +39,7 @@
 
 <form class="row card" onsubmit={create}>
   <label>Name <input bind:value={name} maxlength="128" required /></label>
-  <label>Date <input type="text" bind:value={date} placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" inputmode="numeric" size="10" required /></label>
+  <label>Date <input type="text" bind:value={date} placeholder="YYYY-MM-DD" pattern={datePattern} inputmode="numeric" size="10" required /></label>
   <label>
     Course of fire
     <select bind:value={course}>
