@@ -1,6 +1,6 @@
 # MatchMark v2 Spec
 
-Scoring for WA1500/PPC competitions at a single club. Vocabulary is in `GLOSSARY.md`; decisions are in `docs/adr/`. This spec replaces `docs/plan/` once v2 reaches parity.
+Scoring for WA1500/PPC competitions at a single club. Vocabulary is in `GLOSSARY.md`; decisions are in `docs/adr/`.
 
 ## Scope
 
