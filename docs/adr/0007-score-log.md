@@ -10,6 +10,8 @@ Each line has `msg` and `event` set to `stage_locked` (later also `stage_unlocke
 
 Replay rule: the last line per (competition id, entry id, stage number) by `emitted_at` wins, and entry and competition context come from the latest line. A final `stage_unlocked` means the stage is not scored. `locked_at` is stored in `stages.locked_at` (migration 011) so re-emitted lines keep the original lock time.
 
+Editing a competition (name, date, course), an entry (category, lane) or a shooter (name, club) re-emits `stage_locked` for every affected locked stage, keeping `locked_by`, `scorer_name` and `locked_at` and setting a new `emitted_at`. Unlocked stages emit nothing.
+
 ## Considered Options
 
 - A dedicated log file or table: rejected, stdout is already shipped by container log collection and the destination stays injectable.

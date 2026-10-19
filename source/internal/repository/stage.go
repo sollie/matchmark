@@ -52,3 +52,34 @@ func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCou
 	}
 	return nil
 }
+
+type LockedStageRef struct {
+	CompetitionID int64
+	EntryID       int64
+	Number        int
+}
+
+func (r *Repository) ListLockedStages(ctx context.Context, competitionID, entryID, shooterID int64) ([]LockedStageRef, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT e.competition_id, s.entry_id, s.stage_number FROM stages s
+		 JOIN entries e ON e.id = s.entry_id
+		 WHERE s.locked = 1
+		   AND (? = 0 OR e.competition_id = ?)
+		   AND (? = 0 OR s.entry_id = ?)
+		   AND (? = 0 OR e.shooter_id = ?)
+		 ORDER BY e.competition_id, s.entry_id, s.stage_number`,
+		competitionID, competitionID, entryID, entryID, shooterID, shooterID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var refs []LockedStageRef
+	for rows.Next() {
+		var ref LockedStageRef
+		if err := rows.Scan(&ref.CompetitionID, &ref.EntryID, &ref.Number); err != nil {
+			return nil, err
+		}
+		refs = append(refs, ref)
+	}
+	return refs, rows.Err()
+}
