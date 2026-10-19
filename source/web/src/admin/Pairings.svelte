@@ -69,33 +69,41 @@
           {#each lanes as l (l)}<option value={l}>Lane {l}</option>{/each}
         </select>
       </label>
-      <button type="submit">Create pairing link</button>
+      <button type="submit" class="primary">Create pairing link</button>
     </form>
   {/if}
-  {#if error}<p class="error">{error}</p>{/if}
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if issued}
-    <div class="card">
+    <div class="card qr-card">
       <h3>Lane {issued.lane}</h3>
+      <ol class="muted steps">
+        <li>Open the camera on the scorer's device and scan the code, or copy the link below.</li>
+        <li>The link is shown once and pairs the device with lane {issued.lane}.</li>
+      </ol>
       <div class="qr" role="img" aria-label={`QR code pairing lane ${issued.lane}`}>{@html issued.svg}</div>
-      <p><input readonly value={issued.url} size="48" onfocus={(e) => e.currentTarget.select()} /></p>
-      <p class="muted">The link is shown once. Open it on the scorer's device.</p>
-      <button onclick={() => (issued = null)}>Hide</button>
+      <label>
+        Pairing link
+        <input readonly value={issued.url} onfocus={(e) => e.currentTarget.select()} />
+      </label>
+      <button class="secondary" onclick={() => (issued = null)}>Hide</button>
     </div>
   {/if}
 
+  <div class="scroll">
   <table>
     <thead><tr><th>Lane</th><th>Status</th><th></th></tr></thead>
     <tbody>
       {#each pairings as p (p.id)}
         <tr>
           <td>{p.lane}</td>
-          <td>{p.revoked ? "revoked" : "paired"}</td>
-          <td>{#if !p.revoked}<button onclick={() => revoke(p)}>Revoke</button>{/if}</td>
+          <td><span class="badge {p.revoked ? "neutral" : "success"}">{p.revoked ? "revoked" : "paired"}</span></td>
+          <td>{#if !p.revoked}<button class="danger" onclick={() => revoke(p)}>Revoke</button>{/if}</td>
         </tr>
       {:else}
         <tr><td colspan="3" class="muted">No devices paired.</td></tr>
       {/each}
     </tbody>
   </table>
+  </div>
 </section>
