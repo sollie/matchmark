@@ -131,3 +131,19 @@ func TestRestoreCommandDryRunDoesNotCreateDatabase(t *testing.T) {
 		t.Fatalf("stat err = %v", err)
 	}
 }
+
+func TestRestoreCommandAcceptsFlagsAfterPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "score.log")
+	if err := os.WriteFile(path, []byte(restoreLine+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := map[string]string{"DB_PATH": filepath.Join(dir, "r.db")}
+	var out bytes.Buffer
+	if err := runRestore([]string{path, "--apply"}, func(k string) string { return env[k] }, strings.NewReader(""), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "restored 1 competition(s)") {
+		t.Fatalf("output = %s", out.String())
+	}
+}

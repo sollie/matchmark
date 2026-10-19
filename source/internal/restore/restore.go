@@ -8,9 +8,18 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
+	"time"
+
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 const SchemaVersion = 1
+
+const (
+	emittedAtLayout = "2006-01-02T15:04:05.000Z"
+	adminLockedBy   = "Admin"
+)
 
 const (
 	eventStageLocked   = "stage_locked"
@@ -159,11 +168,37 @@ func parseLine(raw []byte) (Event, lineKind, error) {
 }
 
 func valid(ev Event) bool {
+	if _, err := rulebook.CourseByKey(ev.Competition.CourseOfFire.Key); err != nil {
+		return false
+	}
+	if _, ok := parseLockedBy(ev.LockedBy); !ok {
+		return false
+	}
+	if t, err := time.Parse(emittedAtLayout, ev.EmittedAt); err != nil || t.Format(emittedAtLayout) != ev.EmittedAt {
+		return false
+	}
 	return len(ev.RingCounts) == 7 &&
-		ev.EmittedAt != "" &&
 		ev.Competition.ID != 0 &&
 		ev.Entry.ID != 0 &&
 		ev.Stage.Number > 0
+}
+
+func parseLockedBy(raw json.RawMessage) (string, bool) {
+	var name string
+	if err := json.Unmarshal(raw, &name); err == nil {
+		return name, name == adminLockedBy
+	}
+	var lane int
+	if err := json.Unmarshal(raw, &lane); err == nil && lane > 0 {
+		return strconv.Itoa(lane), true
+	}
+	return "", false
+}
+
+func ringCountsFromSlice(s []int) [7]int {
+	var counts [7]int
+	copy(counts[:], s)
+	return counts
 }
 
 type stageKey struct {
@@ -198,17 +233,12 @@ func Fold(events []Event) Plan {
 
 	byEntry := map[[2]int64][]ScoredStage{}
 	for k, ev := range stages {
-		var counts [7]int
-		copy(counts[:], ev.RingCounts)
-		var lockedBy string
-		if err := json.Unmarshal(ev.LockedBy, &lockedBy); err != nil {
-			lockedBy = string(ev.LockedBy)
-		}
+		lockedBy, _ := parseLockedBy(ev.LockedBy)
 		ek := [2]int64{k.competition, k.entry}
 		byEntry[ek] = append(byEntry[ek], ScoredStage{
 			Number:        k.stage,
 			ExpectedShots: ev.Stage.ExpectedShots,
-			RingCounts:    counts,
+			RingCounts:    ringCountsFromSlice(ev.RingCounts),
 			LockedBy:      lockedBy,
 			ScorerName:    ev.ScorerName,
 			LockedAt:      ev.LockedAt,

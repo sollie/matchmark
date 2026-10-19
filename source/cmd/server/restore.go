@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -17,21 +18,28 @@ import (
 const restoreUsage = "usage: matchmark restore [--apply [--merge]] [score-log-file]"
 
 func runRestore(args []string, getenv func(string) string, stdin io.Reader, stdout io.Writer) error {
-	apply, merge := false, false
-	for len(args) > 0 && (args[0] == "--apply" || args[0] == "--merge") {
-		if args[0] == "--apply" {
-			apply = true
-		} else {
-			merge = true
+	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	apply := fs.Bool("apply", false, "")
+	merge := fs.Bool("merge", false, "")
+	var paths []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return errors.New(restoreUsage)
 		}
-		args = args[1:]
+		if fs.NArg() == 0 {
+			break
+		}
+		paths = append(paths, fs.Arg(0))
+		args = fs.Args()[1:]
 	}
-	if merge && !apply {
+	if *merge && !*apply {
 		return errors.New(restoreUsage)
 	}
-	if len(args) > 1 {
+	if len(paths) > 1 {
 		return errors.New(restoreUsage)
 	}
+	args = paths
 	in := stdin
 	if len(args) == 1 {
 		f, err := os.Open(args[0])
@@ -46,7 +54,7 @@ func runRestore(args []string, getenv func(string) string, stdin io.Reader, stdo
 		return fmt.Errorf("parse score log: %w", err)
 	}
 	plan := restore.Fold(events)
-	if !apply {
+	if !*apply {
 		restore.WriteSummary(stdout, plan, stats)
 		return nil
 	}
@@ -62,10 +70,10 @@ func runRestore(args []string, getenv func(string) string, stdin io.Reader, stdo
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	result, err := service.New(repository.New(conn)).RestoreScoreLog(context.Background(), plan, merge)
+	result, err := service.New(repository.New(conn)).RestoreScoreLog(context.Background(), plan, *merge)
 	if err != nil {
 		return err
 	}
-	restore.WriteApplied(stdout, stats, result.Competitions, result.Entries, result.Stages, result.Conflicts)
+	restore.WriteApplied(stdout, stats, result)
 	return nil
 }

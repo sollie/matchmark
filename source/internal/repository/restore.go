@@ -40,24 +40,42 @@ func (r *Repository) CountCompetitions(ctx context.Context) (int, error) {
 	return n, err
 }
 
+func (r *Repository) CountShooters(ctx context.Context) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM shooters`).Scan(&n)
+	return n, err
+}
+
 func (r *Repository) EntryExists(ctx context.Context, id int64) (bool, error) {
 	var n int
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM entries WHERE id = ?`, id).Scan(&n)
 	return n > 0, err
 }
 
-func (r *Repository) RestoreCompetition(ctx context.Context, rc RestoreCompetition) (RestoreCounts, error) {
+func (r *Repository) RestoreCompetitions(ctx context.Context, rcs []RestoreCompetition) (RestoreCounts, error) {
 	var counts RestoreCounts
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return counts, err
+		return RestoreCounts{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	for _, rc := range rcs {
+		if err := restoreCompetition(ctx, tx, rc, &counts); err != nil {
+			return RestoreCounts{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return RestoreCounts{}, err
+	}
+	return counts, nil
+}
+
+func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, counts *RestoreCounts) error {
 	res, err := tx.ExecContext(ctx,
 		`INSERT OR IGNORE INTO competitions (id, name, date, course, status) VALUES (?, ?, ?, ?, ?)`,
 		rc.Competition.ID, rc.Competition.Name, rc.Competition.Date, rc.Competition.Course, rc.Competition.Status)
 	if err != nil {
-		return counts, mapErr(err)
+		return mapErr(err)
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
 		counts.Competitions++
@@ -65,17 +83,17 @@ func (r *Repository) RestoreCompetition(ctx context.Context, rc RestoreCompetiti
 	for _, e := range rc.Entries {
 		var exists int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM entries WHERE id = ?`, e.ID).Scan(&exists); err != nil {
-			return counts, err
+			return err
 		}
 		if exists == 0 {
 			shooterID, err := restoreShooter(ctx, tx, e.Shooter)
 			if err != nil {
-				return counts, err
+				return err
 			}
 			if _, err := tx.ExecContext(ctx,
 				`INSERT INTO entries (id, competition_id, shooter_id, category, lane) VALUES (?, ?, ?, ?, ?)`,
 				e.ID, rc.Competition.ID, shooterID, e.Category, e.Lane); err != nil {
-				return counts, mapErr(err)
+				return mapErr(err)
 			}
 			counts.Entries++
 		}
@@ -83,7 +101,7 @@ func (r *Repository) RestoreCompetition(ctx context.Context, rc RestoreCompetiti
 			if _, err := tx.ExecContext(ctx,
 				`INSERT OR IGNORE INTO stages (entry_id, stage_number, expected_shots) VALUES (?, ?, ?)`,
 				e.ID, s.Number, s.Expected); err != nil {
-				return counts, mapErr(err)
+				return mapErr(err)
 			}
 			if !s.Scored {
 				continue
@@ -95,14 +113,14 @@ func (r *Repository) RestoreCompetition(ctx context.Context, rc RestoreCompetiti
 				s.Counts.X, s.Counts.Ten, s.Counts.Nine, s.Counts.Eight, s.Counts.Seven, s.Counts.Zero, s.Counts.Miss,
 				s.ScorerLane, s.ScorerName, s.LockedAt, e.ID, s.Number)
 			if err != nil {
-				return counts, mapErr(err)
+				return mapErr(err)
 			}
 			if n, _ := res.RowsAffected(); n > 0 {
 				counts.Stages++
 			}
 		}
 	}
-	return counts, tx.Commit()
+	return nil
 }
 
 type execer interface {

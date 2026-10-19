@@ -25,13 +25,20 @@ func WriteSummary(w io.Writer, plan Plan, stats Stats) {
 		len(plan.Competitions), entries, stages)
 }
 
-func WriteApplied(w io.Writer, stats Stats, competitions, entries, stages int, conflicts []string) {
+type Applied struct {
+	Competitions int
+	Entries      int
+	Stages       int
+	Conflicts    []string
+}
+
+func WriteApplied(w io.Writer, stats Stats, applied Applied) {
 	_, _ = fmt.Fprintf(w, "read %d lines: %d score events, %d non-score skipped, %d malformed skipped\n",
 		stats.Lines, stats.Events, stats.NonScore, stats.Malformed)
-	_, _ = fmt.Fprintf(w, "restored %d competition(s), %d entries, %d scored stage(s)\n", competitions, entries, stages)
-	if len(conflicts) > 0 {
-		_, _ = fmt.Fprintf(w, "%d conflict(s) left unchanged:\n", len(conflicts))
-		for _, c := range conflicts {
+	_, _ = fmt.Fprintf(w, "restored %d competition(s), %d entries, %d scored stage(s)\n", applied.Competitions, applied.Entries, applied.Stages)
+	if len(applied.Conflicts) > 0 {
+		_, _ = fmt.Fprintf(w, "%d conflict(s) left unchanged:\n", len(applied.Conflicts))
+		for _, c := range applied.Conflicts {
 			_, _ = fmt.Fprintf(w, "  %s\n", c)
 		}
 	}

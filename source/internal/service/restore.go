@@ -18,28 +18,27 @@ const (
 
 var ErrRestoreTargetNotEmpty = errors.New("database already contains data; use --merge to apply only data whose ids match")
 
-type RestoreResult struct {
-	Competitions int
-	Entries      int
-	Stages       int
-	Conflicts    []string
-}
-
-func (s *Service) RestoreScoreLog(ctx context.Context, plan restore.Plan, merge bool) (RestoreResult, error) {
-	var total RestoreResult
-	existing, err := s.repo.CountCompetitions(ctx)
+func (s *Service) RestoreScoreLog(ctx context.Context, plan restore.Plan, merge bool) (restore.Applied, error) {
+	var total restore.Applied
+	competitions, err := s.repo.CountCompetitions(ctx)
 	if err != nil {
 		return total, err
 	}
-	if existing > 0 && !merge {
+	shooters, err := s.repo.CountShooters(ctx)
+	if err != nil {
+		return total, err
+	}
+	nonEmpty := competitions > 0 || shooters > 0
+	if nonEmpty && !merge {
 		return total, ErrRestoreTargetNotEmpty
 	}
+	var toWrite []repository.RestoreCompetition
 	for _, c := range plan.Competitions {
-		rc, err := restoreCompetition(c)
+		rc, err := buildRestoreCompetition(c)
 		if err != nil {
 			return total, err
 		}
-		if existing > 0 {
+		if nonEmpty {
 			var conflicts []string
 			rc, conflicts, err = s.dropConflicts(ctx, rc)
 			if err != nil {
@@ -47,21 +46,25 @@ func (s *Service) RestoreScoreLog(ctx context.Context, plan restore.Plan, merge 
 			}
 			total.Conflicts = append(total.Conflicts, conflicts...)
 		}
-		if rc.Competition.ID == 0 {
-			continue
+		if rc.Competition.ID != 0 {
+			toWrite = append(toWrite, rc)
 		}
-		counts, err := s.repo.RestoreCompetition(ctx, rc)
-		if err != nil {
-			return total, fmt.Errorf("restore competition %d: %w", c.ID, mapRepoErr(err))
-		}
-		total.Competitions += counts.Competitions
-		total.Entries += counts.Entries
-		total.Stages += counts.Stages
 	}
+	counts, err := s.repo.RestoreCompetitions(ctx, toWrite)
+	if err != nil {
+		return restore.Applied{}, fmt.Errorf("restore score log: %w", mapRepoErr(err))
+	}
+	total.Competitions = counts.Competitions
+	total.Entries = counts.Entries
+	total.Stages = counts.Stages
 	return total, nil
 }
 
-func restoreCompetition(c restore.RestoredCompetition) (repository.RestoreCompetition, error) {
+func ringCounts(c [7]int) repository.RingCounts {
+	return repository.RingCounts{X: c[0], Ten: c[1], Nine: c[2], Eight: c[3], Seven: c[4], Zero: c[5], Miss: c[6]}
+}
+
+func buildRestoreCompetition(c restore.RestoredCompetition) (repository.RestoreCompetition, error) {
 	course, err := rulebook.CourseByKey(c.CourseOfFire.Key)
 	if err != nil {
 		return repository.RestoreCompetition{}, fmt.Errorf("competition %d: %w", c.ID, err)
@@ -92,10 +95,7 @@ func restoreCompetition(c restore.RestoredCompetition) (repository.RestoreCompet
 			rs := repository.RestoreStage{Number: cs.StageNumber, Expected: cs.ExpectedShots}
 			if st, ok := scored[cs.StageNumber]; ok {
 				rs.Scored = true
-				rs.Counts = repository.RingCounts{
-					X: st.RingCounts[0], Ten: st.RingCounts[1], Nine: st.RingCounts[2], Eight: st.RingCounts[3],
-					Seven: st.RingCounts[4], Zero: st.RingCounts[5], Miss: st.RingCounts[6],
-				}
+				rs.Counts = ringCounts(st.RingCounts)
 				rs.ScorerName = st.ScorerName
 				rs.LockedAt = st.LockedAt
 				if lane, err := strconv.Atoi(st.LockedBy); err == nil {
@@ -123,16 +123,18 @@ func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreCompet
 	case !errors.Is(err, repository.ErrNotFound):
 		return rc, nil, err
 	}
-	var entries []repository.RestoreEntry
+	kept := rc
+	kept.Entries = nil
 	for _, e := range rc.Entries {
-		entryConflict, err := s.entryConflict(ctx, id, e)
+		conflict, found, err := s.entryConflict(ctx, id, e)
 		if err != nil {
 			return rc, nil, err
 		}
-		if entryConflict != "" {
-			conflicts = append(conflicts, entryConflict)
+		if found {
+			conflicts = append(conflicts, conflict)
 			continue
 		}
+		e.Stages = append([]repository.RestoreStage(nil), e.Stages...)
 		for i, st := range e.Stages {
 			if !st.Scored {
 				continue
@@ -144,41 +146,54 @@ func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreCompet
 			if err != nil {
 				return rc, nil, err
 			}
-			if cur.Locked && cur.Counts != st.Counts {
-				conflicts = append(conflicts, fmt.Sprintf("competition %d entry %d stage %d: database has %+v locked, log has %+v",
-					id, e.ID, st.Number, cur.Counts, st.Counts))
+			if cur.Locked && !sameLock(cur, st) {
+				conflicts = append(conflicts, fmt.Sprintf("competition %d entry %d stage %d: database has %+v locked by %s at %s, log has %+v locked by %s at %s",
+					id, e.ID, st.Number, cur.Counts, lockOwner(cur.ScorerLane, cur.ScorerName), cur.LockedAt,
+					st.Counts, lockOwner(st.ScorerLane, st.ScorerName), st.LockedAt))
 				e.Stages[i].Scored = false
 			}
 		}
-		entries = append(entries, e)
+		kept.Entries = append(kept.Entries, e)
 	}
-	rc.Entries = entries
-	return rc, conflicts, nil
+	return kept, conflicts, nil
 }
 
-func (s *Service) entryConflict(ctx context.Context, competitionID int64, e repository.RestoreEntry) (string, error) {
+func sameLock(cur repository.Stage, st repository.RestoreStage) bool {
+	sameLane := (cur.ScorerLane == nil) == (st.ScorerLane == nil) &&
+		(cur.ScorerLane == nil || *cur.ScorerLane == *st.ScorerLane)
+	return cur.Counts == st.Counts && sameLane && cur.ScorerName == st.ScorerName && cur.LockedAt == st.LockedAt
+}
+
+func lockOwner(lane *int, name string) string {
+	if lane == nil {
+		return fmt.Sprintf("Admin (%s)", name)
+	}
+	return fmt.Sprintf("lane %d (%s)", *lane, name)
+}
+
+func (s *Service) entryConflict(ctx context.Context, competitionID int64, e repository.RestoreEntry) (string, bool, error) {
 	have, err := s.repo.GetEntry(ctx, competitionID, e.ID)
 	if errors.Is(err, repository.ErrNotFound) {
 		elsewhere, err := s.repo.EntryExists(ctx, e.ID)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
 		if elsewhere {
-			return fmt.Sprintf("competition %d entry %d: id belongs to another competition in the database", competitionID, e.ID), nil
+			return fmt.Sprintf("competition %d entry %d: id belongs to another competition in the database", competitionID, e.ID), true, nil
 		}
-		return "", nil
+		return "", false, nil
 	}
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	shooter, err := s.repo.GetShooter(ctx, have.ShooterID)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	if have.Lane != e.Lane || have.Category != e.Category || shooter.FirstName != e.Shooter.FirstName || shooter.LastName != e.Shooter.LastName {
 		return fmt.Sprintf("competition %d entry %d: database has %s %s, lane %d, %s; log has %s %s, lane %d, %s",
 			competitionID, e.ID, shooter.FirstName, shooter.LastName, have.Lane, have.Category,
-			e.Shooter.FirstName, e.Shooter.LastName, e.Lane, e.Category), nil
+			e.Shooter.FirstName, e.Shooter.LastName, e.Lane, e.Category), true, nil
 	}
-	return "", nil
+	return "", false, nil
 }

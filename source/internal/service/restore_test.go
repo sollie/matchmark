@@ -57,7 +57,7 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(second, service.RestoreResult{}) {
+	if !reflect.DeepEqual(second, restore.Applied{}) {
 		t.Fatalf("second = %+v", second)
 	}
 
@@ -221,4 +221,66 @@ func reportOutputs(t *testing.T, repo *repository.Repository, compID int64) ([]b
 		rows[name] = r
 	}
 	return csvBytes, rows
+}
+
+func TestRestoreRefusesDatabaseWithOnlyShooters(t *testing.T) {
+	ctx := context.Background()
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	repo := repository.New(conn)
+	if _, err := repo.CreateShooter(ctx, repository.Shooter{FirstName: "Bo", LastName: "Ek", Sex: "M"}); err != nil {
+		t.Fatal(err)
+	}
+	_, err = service.New(repo).RestoreScoreLog(ctx, mergePlan("Club Match", [7]int{1, 2, 3, 4, 0, 0, 0}, 1), false)
+	if !errors.Is(err, service.ErrRestoreTargetNotEmpty) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRestoreWritesNothingWhenALaterCompetitionIsInvalid(t *testing.T) {
+	ctx := context.Background()
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	repo := repository.New(conn)
+	plan := mergePlan("Club Match", [7]int{1, 2, 3, 4, 0, 0, 0}, 1)
+	bad := plan.Competitions[0]
+	bad.ID = 8
+	bad.CourseOfFire.Key = "nope"
+	plan.Competitions = append(plan.Competitions, bad)
+	if _, err := service.New(repo).RestoreScoreLog(ctx, plan, false); err == nil {
+		t.Fatal("expected error")
+	}
+	n, err := repo.CountCompetitions(ctx)
+	if err != nil || n != 0 {
+		t.Fatalf("competitions = %d, %v", n, err)
+	}
+}
+
+func TestRestoreMergeReportsLockMetadataConflict(t *testing.T) {
+	ctx := context.Background()
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	svc := service.New(repository.New(conn))
+	counts := [7]int{1, 2, 3, 4, 0, 0, 0}
+	if _, err := svc.RestoreScoreLog(ctx, mergePlan("Club Match", counts, 1), false); err != nil {
+		t.Fatal(err)
+	}
+	other := mergePlan("Club Match", counts, 1)
+	other.Competitions[0].Entries[0].Stages[0].ScorerName = "Someone"
+	res, err := svc.RestoreScoreLog(ctx, other, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Conflicts) != 1 || !strings.Contains(res.Conflicts[0], "stage 1") {
+		t.Fatalf("res = %+v", res)
+	}
 }
