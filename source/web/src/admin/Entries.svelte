@@ -173,7 +173,7 @@
             <td>{entry.category}</td>
           {/if}
           {#each entry.stages as st (st.stage_number)}
-            <td class="actions">
+            <td class="row-actions">
               {#if st.locked}
                 <span class="badge success" title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
                 <button class="secondary" onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
@@ -184,7 +184,7 @@
               <button class="ghost" onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
             </td>
           {/each}
-          <td class="actions">
+          <td class="row-actions">
             {#if editing?.id === entry.id}
               <button class="primary" onclick={saveEdit}>Save</button>
               <button class="secondary" onclick={() => (editing = null)}>Cancel</button>

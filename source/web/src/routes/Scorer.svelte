@@ -206,7 +206,7 @@
 
 <style>
   .stages { display: flex; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-3) 0; }
-  .stages button { display: flex; flex-direction: column; align-items: center; min-width: 6rem; min-height: var(--touch); padding: 0.5rem 1rem; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-weight: 600; }
+  .stages button { display: flex; flex-direction: column; align-items: center; min-width: 6rem; min-height: var(--touch); padding: var(--space-2) var(--space-4); border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-weight: 600; }
   .stages button .state { font-size: var(--text-sm); font-weight: 500; }
   .stages button.is-locked { border-style: dashed; }
   .stages button.active { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }

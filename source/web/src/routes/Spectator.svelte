@@ -160,7 +160,7 @@
 </main>
 
 <style>
-  .picker select { font-size: var(--text-base); padding: 0.55rem 0.75rem; max-width: 100%; }
+  .picker select { font-size: var(--text-base); padding: var(--space-2) var(--space-3); max-width: 100%; }
   .status { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-3) 0; }
   .empty { text-align: center; padding: var(--space-6) var(--space-4); }
   .empty p { margin: var(--space-1) 0; }

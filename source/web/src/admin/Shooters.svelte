@@ -90,7 +90,7 @@
         <td>{s.country}</td>
         <td>{s.club}</td>
         <td>{s.waid || "—"}</td>
-        <td class="actions">
+        <td class="row-actions">
           <button class="secondary" onclick={() => edit(s)}>Edit</button>
           <button class="danger" onclick={() => remove(s)}>Delete</button>
         </td>
