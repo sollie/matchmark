@@ -30,6 +30,10 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.With(h.RequireAdmin).Get("/admin/session", h.adminSession)
 		}
 		r.Group(func(r chi.Router) {
+			r.Use(h.RequireDevice)
+			h.scorerRoutes(r)
+		})
+		r.Group(func(r chi.Router) {
 			r.Use(h.RequireAdmin)
 			h.adminRoutes(r)
 		})
@@ -58,6 +62,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusConflict, "entries can only change between stages"
 	case errors.Is(err, service.ErrStageLocked):
 		status, msg = http.StatusConflict, "stage is locked"
+	case errors.Is(err, service.ErrUnauthenticated):
+		status, msg = http.StatusUnauthorized, "unauthorized"
 	case errors.Is(err, service.ErrAdminScoringNeeded):
 		status, msg = http.StatusForbidden, "admin scoring required"
 	}

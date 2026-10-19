@@ -80,6 +80,30 @@ func (e *Env) Do(method, path string, body any) (int, map[string]any) {
 	return resp.StatusCode, out
 }
 
+func (e *Env) DoToken(token, method, path string, body any) (int, map[string]any) {
+	e.t.Helper()
+	var buf bytes.Buffer
+	if body != nil {
+		if err := json.NewEncoder(&buf).Encode(body); err != nil {
+			e.t.Fatalf("encode body: %v", err)
+		}
+	}
+	req, err := http.NewRequest(method, e.Server.URL+path, &buf)
+	if err != nil {
+		e.t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		e.t.Fatalf("do request: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
+}
+
 func (e *Env) ID(method, path string, body any) int {
 	e.t.Helper()
 	status, out := e.Do(method, path, body)
