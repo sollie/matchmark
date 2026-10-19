@@ -65,4 +65,4 @@ CI (GitHub Actions) builds, tests and smoke-tests the image natively: `ubuntu-la
 
 ## Rulebook verification
 
-`docs/references/rulebook2026.txt` is identical to the official PDF (Issue 2026-01-01). The scorecard rows (X, 10, 9, 8, 7, 0, miss) and the course totals (24, 18, 24, 24 = 90; Match 5 = 60; 150) agree with v1's `rulebook.go`. Open: weapon-class naming for 60/48 courses (rulebook §3.17(g) says "2,5" 5-shot" where §3.10 says 2,75") is only relevant once 60/48 are used.
+`docs/references/rulebook2026.txt` is a text extraction of the official PDF (Issue 2026-01-01, `https://wa1500.org/file.php?ID=1553`, SHA-256 `209f71e50b1e25abd167d4b2ea636e9f15be3b0c6d7303604dce3eaff003a123`). Re-extracted and compared on 2026-10-19: all 19,457 words match; only reading order of a few table labels and page numbers differs. The scorecard rows (X, 10, 9, 8, 7, 0, miss) and the course totals (24, 18, 24, 24 = 90; Match 5 = 60; 150) agree with v1's `rulebook.go`. Open: weapon-class naming for 60/48 courses (rulebook §3.17(g) says "2,5" 5-shot" where §3.10 says 2,75") is only relevant once 60/48 are used.
