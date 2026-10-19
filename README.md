@@ -60,6 +60,8 @@ The server writes structured JSON logs (`log/slog`) to stdout: one `request` lin
 
 Each time a stage is locked, unlocked, or edited by the admin while locked, a `stage_locked` or `stage_unlocked` line is also written to stdout with the competition, entry, shooter, ring counts and who locked it (see `docs/spec.md`). Keep your container logs: if the database is lost and there is no replica, they are the only record of the final scores. The lines contain personal data (WAID, names, club), so apply your club's retention policy to them.
 
+To preview what a log would restore, run `matchmark restore [file]` (or pipe the log on stdin, e.g. `docker compose logs --no-log-prefix matchmark | matchmark restore`). It needs no `ADMIN_PASSWORD`, skips non-score and malformed lines with a count, rejects an unknown `schema_version`, and prints the competitions, entries and scored stages it would restore. It is a dry run for now and writes nothing.
+
 ## TLS modes
 
 - **Plain HTTP (default):** for local networks or behind a TLS-terminating reverse proxy. Set `BASE_URL` to the public URL and `TRUSTED_PROXY` to the proxy address.
