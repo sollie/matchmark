@@ -12,17 +12,18 @@ COPY source/go.mod source/go.sum ./
 RUN go mod download
 COPY source ./
 COPY --from=web /src/web/dist ./web/dist
-ARG TARGETOS
-ARG TARGETARCH
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/matchmark ./cmd/server
-RUN mkdir -p /out/data && chown 65532:65532 /out/data
+RUN CGO_ENABLED=0 go build -tags musl -trimpath -ldflags="-s -w" -o /out/matchmark ./cmd/server
 
-FROM scratch
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=build /out/matchmark /matchmark
-COPY --from=build --chown=65532:65532 /out/data /data
-ENV DB_PATH=/data/matchmark.db
-USER 65532:65532
+FROM alpine:3.24
+RUN apk add --no-cache ca-certificates libgcc \
+    && addgroup -g 65532 -S matchmark \
+    && adduser -u 65532 -S -G matchmark -H -h /nonexistent matchmark \
+    && mkdir -p /data /var/cache/turso \
+    && chown matchmark:matchmark /data /var/cache/turso
+COPY --from=build /out/matchmark /usr/local/bin/matchmark
+ENV DB_PATH=/data/matchmark.db \
+    TURSO_GO_CACHE_DIR=/var/cache/turso
+USER matchmark
 VOLUME /data
 EXPOSE 8080 8443
-ENTRYPOINT ["/matchmark"]
+ENTRYPOINT ["matchmark"]
