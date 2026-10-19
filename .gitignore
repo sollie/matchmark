@@ -30,3 +30,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# —— SPA build output (source/web/dist is replaced by the real build) ——
+source/web/dist/*
+!source/web/dist/.gitkeep
