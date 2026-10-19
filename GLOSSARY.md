@@ -83,3 +83,7 @@ _Avoid_: Sync, backup
 **Score log**:
 The JSON `stage_locked` and `stage_unlocked` lines the server writes to stdout whenever a stage is locked or its locked state changes. Each line is self-contained, so a competition's scored results can be rebuilt by taking the latest line per stage.
 _Avoid_: Audit log, scoring log
+
+**Restore**:
+Rebuilding competitions, entries and locked stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
+_Avoid_: Backup, replication
