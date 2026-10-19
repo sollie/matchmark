@@ -1,6 +1,9 @@
 package repository
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type RingCounts struct {
 	X     int
@@ -53,12 +56,16 @@ func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCou
 	return nil
 }
 
-func (r *Repository) SetRingCountsAsAdmin(ctx context.Context, stageID int64, c RingCounts) error {
+func (r *Repository) OverwriteRingCounts(ctx context.Context, stageID int64, c RingCounts, asAdmin bool) error {
+	if !asAdmin {
+		res, err := r.db.ExecContext(ctx,
+			`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ? WHERE id = ?`,
+			c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
+		return affected(res, err)
+	}
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?,
-		   scorer_lane = NULL, scorer_name = CASE WHEN locked = 1 THEN 'Admin' ELSE scorer_name END
-		 WHERE id = ?`,
-		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
+		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, scorer_lane = NULL, scorer_name = ? WHERE id = ?`,
+		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, AdminName, stageID)
 	return affected(res, err)
 }
 
@@ -68,7 +75,13 @@ type LockedStageRef struct {
 	Number        int
 }
 
-func (r *Repository) ListLockedStages(ctx context.Context, competitionID, entryID, shooterID int64) ([]LockedStageRef, error) {
+type LockedStageFilter struct {
+	CompetitionID int64
+	EntryID       int64
+	ShooterID     int64
+}
+
+func (r *Repository) ListLockedStages(ctx context.Context, f LockedStageFilter) ([]LockedStageRef, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT e.competition_id, s.entry_id, s.stage_number FROM stages s
 		 JOIN entries e ON e.id = s.entry_id
@@ -77,7 +90,7 @@ func (r *Repository) ListLockedStages(ctx context.Context, competitionID, entryI
 		   AND (? = 0 OR s.entry_id = ?)
 		   AND (? = 0 OR e.shooter_id = ?)
 		 ORDER BY e.competition_id, s.entry_id, s.stage_number`,
-		competitionID, competitionID, entryID, entryID, shooterID, shooterID)
+		f.CompetitionID, f.CompetitionID, f.EntryID, f.EntryID, f.ShooterID, f.ShooterID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,4 +104,10 @@ func (r *Repository) ListLockedStages(ctx context.Context, competitionID, entryI
 		refs = append(refs, ref)
 	}
 	return refs, rows.Err()
+}
+
+const AdminName = "Admin"
+
+func lockTimestamp() string {
+	return time.Now().UTC().Format("2006-01-02T15:04:05Z")
 }

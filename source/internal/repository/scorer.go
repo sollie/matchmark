@@ -79,8 +79,8 @@ func (r *Repository) MannedEntryByLane(ctx context.Context, competitionID int64,
 
 func (r *Repository) LockStage(ctx context.Context, stageID int64, scorerLane int, scorerName string) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET locked = 1, scorer_lane = ?, scorer_name = ?, locked_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ? AND locked = 0`,
-		scorerLane, scorerName, stageID)
+		`UPDATE stages SET locked = 1, scorer_lane = ?, scorer_name = ?, locked_at = ? WHERE id = ? AND locked = 0`,
+		scorerLane, scorerName, lockTimestamp(), stageID)
 	if err != nil {
 		return mapErr(err)
 	}
@@ -92,7 +92,8 @@ func (r *Repository) LockStage(ctx context.Context, stageID int64, scorerLane in
 
 func (r *Repository) LockStageAsAdmin(ctx context.Context, stageID int64) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET locked = 1, scorer_lane = NULL, scorer_name = 'Admin', locked_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ? AND locked = 0`, stageID)
+		`UPDATE stages SET locked = 1, scorer_lane = NULL, scorer_name = ?, locked_at = ? WHERE id = ? AND locked = 0`,
+		AdminName, lockTimestamp(), stageID)
 	if err != nil {
 		return mapErr(err)
 	}

@@ -188,6 +188,6 @@ func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64,
 	if err := s.repo.UnlockStage(ctx, stage.ID); err != nil {
 		return mapRepoErr(err)
 	}
-	s.emitStageEvent(ctx, eventStageUnlocked, competitionID, entryID, stageNumber)
+	s.emitStageSnapshot(ctx, eventStageUnlocked, competitionID, entryID, stage)
 	return nil
 }

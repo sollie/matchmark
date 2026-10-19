@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -22,6 +23,7 @@ type logLine struct {
 	SchemaVersion int    `json:"schema_version"`
 	Event         string `json:"event"`
 	EmittedAt     string `json:"emitted_at"`
+	Seq           int64  `json:"seq"`
 	Competition   struct {
 		ID           int64  `json:"id"`
 		Name         string `json:"name"`
@@ -89,8 +91,11 @@ func TestStageLockedLines(t *testing.T) {
 	if l.Msg != "stage_locked" || l.Event != "stage_locked" || l.Level != "INFO" || l.SchemaVersion != 1 {
 		t.Fatalf("header = %+v", l)
 	}
-	if ts, err := time.Parse(time.RFC3339, l.EmittedAt); err != nil || ts.Location() != time.UTC {
+	if !emittedAtPattern.MatchString(l.EmittedAt) {
 		t.Fatalf("emitted_at = %q", l.EmittedAt)
+	}
+	if l.Seq < 1 {
+		t.Fatalf("seq = %d", l.Seq)
 	}
 	if l.Competition.ID != f.compID || l.Competition.Name != "Spring Match" || l.Competition.Date != "2026-10-19" ||
 		l.Competition.CourseOfFire.Key != "150" || l.Competition.CourseOfFire.Discipline != "1500" || l.Competition.CourseOfFire.TotalShots != 150 {
@@ -223,6 +228,15 @@ func TestReplayMatchesDatabase(t *testing.T) {
 	}
 }
 
+var emittedAtPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$`)
+
+func newerOrEqual(a, b logLine) bool {
+	if a.EmittedAt != b.EmittedAt {
+		return a.EmittedAt > b.EmittedAt
+	}
+	return a.Seq >= b.Seq
+}
+
 type stageKey struct {
 	comp, entry int64
 	stage       int
@@ -243,7 +257,7 @@ func replayScoreLog(t *testing.T, raw string) map[stageKey]logLine {
 			continue
 		}
 		k := stageKey{l.Competition.ID, l.Entry.ID, l.Stage.Number}
-		if prev, ok := out[k]; ok && prev.EmittedAt > l.EmittedAt {
+		if prev, ok := out[k]; ok && !newerOrEqual(l, prev) {
 			continue
 		}
 		if l.Event == "stage_unlocked" {
@@ -366,7 +380,6 @@ func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
 	if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(1100 * time.Millisecond)
 	edit := repository.RingCounts{X: 1, Ten: 1, Nine: 10}
 	if err := f.svc.AdminSetRingCounts(ctx, f.compID, f.entry2, 1, edit); err != nil {
 		t.Fatal(err)
@@ -380,7 +393,7 @@ func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
 		!equalInts(second.RingCounts, []int{1, 1, 10, 0, 0, 0, 0}) {
 		t.Fatalf("line = %+v", second)
 	}
-	if second.EmittedAt <= first.EmittedAt || second.LockedAt != first.LockedAt {
+	if second.Seq <= first.Seq || second.LockedAt != first.LockedAt {
 		t.Fatalf("emitted %q/%q locked %q/%q", first.EmittedAt, second.EmittedAt, first.LockedAt, second.LockedAt)
 	}
 	got := replayScoreLog(t, f.buf.String())[stageKey{f.compID, f.entry2, 1}]
@@ -417,7 +430,6 @@ func TestEntryEditReemitsLockedStages(t *testing.T) {
 	}
 	before := f.lockedAt(t)
 	n := len(f.lines(t))
-	time.Sleep(1100 * time.Millisecond)
 	if _, err := f.svc.UpdateEntry(ctx, f.compID, f.entry2, "Revolver", 5); err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +442,7 @@ func TestEntryEditReemitsLockedStages(t *testing.T) {
 	}
 	for k, l := range after {
 		if k.entry != f.entry2 {
-			if l.EmittedAt != before[k].EmittedAt {
+			if l.Seq != before[k].Seq {
 				t.Fatalf("unaffected entry re-emitted: %+v", k)
 			}
 			continue
@@ -441,8 +453,8 @@ func TestEntryEditReemitsLockedStages(t *testing.T) {
 		if l.LockedBy != before[k].LockedBy || l.LockedAt != before[k].LockedAt || l.ScorerName != before[k].ScorerName {
 			t.Fatalf("provenance changed: %+v vs %+v", l, before[k])
 		}
-		if l.EmittedAt <= before[k].EmittedAt {
-			t.Fatalf("emitted_at not newer: %q vs %q", l.EmittedAt, before[k].EmittedAt)
+		if l.Seq <= before[k].Seq {
+			t.Fatalf("seq not newer: %d vs %d", l.Seq, before[k].Seq)
 		}
 	}
 }
@@ -515,5 +527,66 @@ func TestCompetitionEditReemitsLockedStages(t *testing.T) {
 	l := replayScoreLog(t, buf.String())[stageKey{compID, e1, 1}]
 	if l.Competition.Name != "Autumn Match" || l.Competition.Date != "2026-11-01" {
 		t.Fatalf("competition = %+v", l.Competition)
+	}
+}
+
+func TestSeqStrictlyIncreasesAndReplayIgnoresEqualTimestamps(t *testing.T) {
+	f := newScoreFixture(t)
+	ctx := context.Background()
+	f.fillStage(t, f.entry1, 1)
+	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		if err := f.svc.AdminSetRingCounts(ctx, f.compID, f.entry1, 1, repository.RingCounts{X: i, Ten: 12 - i}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lines := f.lines(t)
+	for i := 1; i < len(lines); i++ {
+		if lines[i].Seq <= lines[i-1].Seq {
+			t.Fatalf("seq %d after %d", lines[i].Seq, lines[i-1].Seq)
+		}
+	}
+	got := replayScoreLog(t, f.buf.String())[stageKey{f.compID, f.entry1, 1}]
+	if !equalInts(got.RingCounts, []int{4, 8, 0, 0, 0, 0, 0}) {
+		t.Fatalf("replay = %+v", got)
+	}
+}
+
+func TestUnlockLineKeepsPreUnlockProvenance(t *testing.T) {
+	f := newScoreFixture(t)
+	ctx := context.Background()
+	f.fillStage(t, f.entry2, 1)
+	if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.UnlockStage(ctx, f.compID, f.entry2, 1); err != nil {
+		t.Fatal(err)
+	}
+	lines := f.lines(t)
+	locked, unlocked := lines[0], lines[1]
+	if unlocked.Event != "stage_unlocked" || unlocked.LockedBy != float64(1) || unlocked.ScorerName != "Al Alm" || unlocked.LockedAt != locked.LockedAt || unlocked.LockedAt == "" {
+		t.Fatalf("unlock line = %+v", unlocked)
+	}
+}
+
+func TestCourseChangeRejectedWhenLockedStagesExist(t *testing.T) {
+	f := newScoreFixture(t)
+	ctx := context.Background()
+	f.fillStage(t, f.entry1, 1)
+	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+		t.Fatal(err)
+	}
+	n := len(f.lines(t))
+	err := f.svc.UpdateCompetition(ctx, repository.Competition{ID: f.compID, Name: "Spring Match", Date: "2026-10-19", Course: "60"})
+	if !errors.Is(err, service.ErrConflict) {
+		t.Fatalf("err = %v", err)
+	}
+	if got := len(f.lines(t)); got != n {
+		t.Fatalf("lines = %d", got)
+	}
+	if l := f.lockedAt(t)[stageKey{f.compID, f.entry1, 1}]; l.Stage.ExpectedShots != 12 || l.Competition.CourseOfFire.Key != "150" {
+		t.Fatalf("line = %+v", l)
 	}
 }
