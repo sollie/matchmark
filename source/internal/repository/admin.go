@@ -10,6 +10,8 @@ type StageInfo struct {
 	Number        int
 	ExpectedShots int
 	Locked        bool
+	ScorerLane    *int
+	ScorerName    *string
 }
 
 type EntryWithStages struct {
@@ -149,7 +151,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 	_ = rows.Close()
 
 	srows, err := r.db.QueryContext(ctx,
-		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.locked FROM stages s
+		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.locked, s.scorer_lane, s.scorer_name FROM stages s
 		 JOIN entries e ON e.id = s.entry_id WHERE e.competition_id = ? ORDER BY s.entry_id, s.stage_number`,
 		competitionID)
 	if err != nil {
@@ -159,7 +161,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 	for srows.Next() {
 		var entryID int64
 		var si StageInfo
-		if err := srows.Scan(&entryID, &si.Number, &si.ExpectedShots, &si.Locked); err != nil {
+		if err := srows.Scan(&entryID, &si.Number, &si.ExpectedShots, &si.Locked, &si.ScorerLane, &si.ScorerName); err != nil {
 			return nil, err
 		}
 		i := index[entryID]
