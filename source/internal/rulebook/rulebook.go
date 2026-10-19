@@ -133,3 +133,17 @@ func RingPoints(ring string) (int, error) {
 	}
 	return 0, fmt.Errorf("invalid ring value %q", ring)
 }
+
+func CourseByKey(key string) (Course, error) {
+	switch key {
+	case "150":
+		return CourseOfFire("1500", "")
+	case "60":
+		return CourseOfFire("60", "")
+	case "48":
+		return CourseOfFire("48", "")
+	case "40":
+		return CourseOfFire("48", fiveShotWeaponClass)
+	}
+	return Course{}, fmt.Errorf("unknown course %q", key)
+}
