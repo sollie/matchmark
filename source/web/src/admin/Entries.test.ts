@@ -70,6 +70,18 @@ describe("Entries", () => {
     expect(calls[0].body).toEqual({ x: 30, 10: 0, 9: 0, 8: 0, 7: 0, 0: 0, miss: 0 });
   });
 
+  it("shows the entered total against the expected shots", async () => {
+    const { user } = setup();
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[1]);
+    expect(screen.getByText("30 to go", { exact: false })).toBeTruthy();
+    const x = screen.getByLabelText("X");
+    await user.clear(x);
+    await user.type(x, "30");
+    expect(screen.getByText("Shots match", { exact: false })).toBeTruthy();
+    await user.type(x, "1");
+    expect(screen.getByText("271 too many", { exact: false })).toBeTruthy();
+  });
+
   it("saves counts without locking", async () => {
     const { calls, user } = setup();
     await user.click(screen.getAllByRole("button", { name: "Edit" })[1]);

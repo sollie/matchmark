@@ -217,18 +217,32 @@
   </div>
 
   {#if scoring}
-    <div class="card">
+    {@const expected = scoring.entry.stages.find((s) => s.stage_number === scoring?.stage)?.expected_shots ?? 0}
+    {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
+    <div class="card counts">
       <h3>{shooterName(scoring.entry.shooter_id)}, stage {scoring.stage}: overwrite ring counts</h3>
-      <p class="muted">
-        Enter all counts; they must sum to {scoring.entry.stages.find((s) => s.stage_number === scoring?.stage)
-          ?.expected_shots} shots.
-      </p>
-      <div class="row">
+      <p class="muted">Enter all counts; they must sum to {expected} shots.</p>
+      <div class="count-grid">
         {#each ringKeys as k (k)}
-          <label>{k === "x" ? "X" : k} <input type="number" min="0" bind:value={scoring.counts[k]} size="3" /></label>
+          <label>
+            {k === "x" ? "X" : k}
+            <input type="number" inputmode="numeric" min="0" bind:value={scoring.counts[k]} />
+          </label>
         {/each}
+      </div>
+      <p class="total" class:mismatch={total !== expected}>
+        <strong>{total}</strong> / {expected}
+        {#if total === expected}
+          <span class="badge success">✓ Shots match</span>
+        {:else if total > expected}
+          <span class="badge danger">⚠ {total - expected} too many</span>
+        {:else}
+          <span class="badge warning">⚠ {expected - total} to go</span>
+        {/if}
+      </p>
+      <div class="count-actions">
         <button class="primary" onclick={() => saveCounts()}>Save counts</button>
-        <button class="secondary" onclick={() => saveCounts(true)}>Save and lock</button>
+        <button class="primary" onclick={() => saveCounts(true)}>Save and lock</button>
         <button class="secondary" onclick={() => (scoring = null)}>Cancel</button>
       </div>
     </div>
@@ -243,6 +257,14 @@
   .entries .shooter { font-weight: 600; }
   .entries .shooter .badge { margin-left: var(--space-1); }
   .entries .empty td { padding: var(--space-5); text-align: center; color: var(--text-muted); }
+  .count-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr)); gap: var(--space-3); margin: var(--space-3) 0; }
+  .count-grid label { font-size: var(--text-base); font-weight: 700; }
+  .count-grid input { width: 100%; min-height: 3.25rem; font-size: 1.5rem; text-align: center; }
+  .total { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); font-size: var(--text-lg); }
+  .total strong { font-size: 2rem; }
+  .total.mismatch strong { color: var(--danger-fg); }
+  .count-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .count-actions button { flex: 1 1 8rem; min-height: var(--touch); }
   tr.muted td { color: var(--text-muted); }
 
   @media (max-width: 47.99rem) {
