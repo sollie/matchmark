@@ -1,4 +1,4 @@
-FROM golang:1.26.0-alpine3.23 AS builder
+FROM golang:1.26.3-alpine3.23 AS builder
 
 WORKDIR /src
 
@@ -10,7 +10,7 @@ COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /bin/matchmark ./cmd/server
 
-FROM alpine:3.23.3
+FROM alpine:3.24.1
 
 RUN addgroup -S matchmark && adduser -S -G matchmark matchmark
 
