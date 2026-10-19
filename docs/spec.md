@@ -1,0 +1,62 @@
+# MatchMark v2 Spec
+
+Scoring for WA1500/PPC competitions at a single club. Vocabulary is in `GLOSSARY.md`; decisions are in `docs/adr/`. This spec replaces `docs/plan/` once v2 reaches parity.
+
+## Scope
+
+In: competitions, a persistent shooter registry, lane-paired scoring devices, live spectator view, results report (`.xlsx`), internal detailed CSV, admin database backup.
+
+Out for v1: classification and ranking, relays, Rifle, 60/48 beyond course data, offline operation, PDF/JSON export, SSE, multi-club hosting, accounts for scorers.
+
+Future: relays; Rifle; DNS-01 and other ACME challenge methods; CDN-hosted frontend; multi-club tenancy; offline queue; classification.
+
+## Users and flow
+
+- Admin (password, cookie session): creates a competition, picks the course of fire, adds entries from the shooter registry (or creates new shooters), assigns lanes and categories, opens pairing, sets spectator visibility, watches progress, unlocks and corrects stages, finishes the competition, downloads the results report.
+- Scorer (device): opens a pairing link once, then sees only "Scoring lane N: name", enters ring counts for the current stage and locks it.
+- Spectator (no login): live standings and per-stage progress, subject to admin's per-competition field visibility.
+
+## Scoring rules
+
+- Score lane is the next manned lane after the scorer's own lane, wrapping, derived server-side from the device's pairing and current entries. A paired lane is always manned.
+- A competition with one manned lane requires admin scoring.
+- Everyone shoots in step. Entries change only between stages. A withdrawn entry is flagged and keeps its results; later stages re-target to the next manned lane.
+- Hits per stage are seven counts (X, 10, 9, 8, 7, 0, miss) that must sum to the stage's expected shots. X scores 10. 0 and miss score 0.
+- Lock stores the scorer's lane and name. Only the admin can unlock and edit.
+- Course data and shot counts live in one `rulebook` package and match rulebook Issue 2026-01-01 §7. The 150 course is 10 stages grouped as Match 1 (7 yd, 15 yd), Match 2 (25 yd), Match 3 (50 yd), Match 4 (2 × 25 yd), Match 5 (7 yd, 25 yd, 50 yd, 25 yd × 6).
+
+## Competition model
+
+- Competition: name, date, course of fire (150 default; 60 and 48/40 selectable; no partial courses), status draft/active/finished, spectator visibility flags.
+- Shooter: last name, first name, sex, country, club, optional WAID. Persistent. A shooter without a WAID is a new shooter.
+- Entry: shooter, category (Revolver, Pistol, Revolver OS, Pistol OS, Rifle), lane, withdrawn flag.
+- Stage per entry, created when the entry is added: expected shots, seven ring counts, locked state, scorer.
+- Device pairing: token, competition, lane, revoked flag.
+
+## Results report
+
+Filled in from the embedded `Results reporting mal.xlsx` using `excelize`. One sheet per category; competition name and date in the header; known shooters as WAID + total result, extra rows inserted as needed; new shooters in the "New shooters" block with last name, first name, sex, country, club, result. The template is a replaceable embedded file.
+
+An internal detailed CSV lists ring counts per stage per entry for the club's own records.
+
+## API and frontend
+
+JSON REST API under `/api`, documented with OpenAPI; admin and spectator endpoints separated; spectator endpoints are unauthenticated and polled every few seconds. Frontend is a Svelte + Vite + TypeScript SPA with a typed client generated from the OpenAPI spec, no service worker or IndexedDB. All strings in English.
+
+## Backend
+
+Go, chi, SQLite via `modernc.org/sqlite` (`CGO_ENABLED=0`), embedded ordered migrations, strict handler → service → repository layering, `excelize` for xlsx, `certmagic` for ACME. Admin password hashed with argon2id; session cookie `HttpOnly`, `SameSite=Lax`, `Secure` when `BASE_URL` is https.
+
+## Configuration (environment only)
+
+`ADMIN_PASSWORD` (≥16 chars), `DB_PATH`, `LISTEN_ADDR`, `BASE_URL`, `TRUSTED_PROXY`, `TLS_CERT_FILE`, `TLS_KEY_FILE`, `ACME_DOMAIN`, `ACME_EMAIL`.
+
+TLS modes: plain HTTP (default, behind a proxy); static certificate; ACME via certmagic with certificates stored in the data volume.
+
+## Delivery
+
+Repository root: `Dockerfile`, `docker-compose.yml` (app plus `./data` volume only), `docs/`, `GLOSSARY.md`, `README.md`, `AGENTS.md`. Code in `source/` (Go module root; `source/web/` for the SPA). Dockerfile: Alpine Node stage builds `web/`, Alpine Go stage embeds `web/dist` and builds a static binary, final `scratch` image with CA certificates copied from the build stage, running non-root. The admin UI offers a database backup download using SQLite's online backup.
+
+## Rulebook verification
+
+`docs/references/rulebook2026.txt` is identical to the official PDF (Issue 2026-01-01). The scorecard rows (X, 10, 9, 8, 7, 0, miss) and the course totals (24, 18, 24, 24 = 90; Match 5 = 60; 150) agree with v1's `rulebook.go`. Open: weapon-class naming for 60/48 courses (rulebook §3.17(g) says "2,5" 5-shot" where §3.10 says 2,75") is only relevant once 60/48 are used.
