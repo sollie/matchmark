@@ -11,9 +11,7 @@ import (
 var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Rifle"}
 
 func (s *Service) CreateShooter(ctx context.Context, sh repository.Shooter) (int64, error) {
-	if strings.TrimSpace(sh.LastName) == "" || strings.TrimSpace(sh.FirstName) == "" ||
-		(sh.Sex != "M" && sh.Sex != "F") || sh.Country == "" || sh.Club == "" ||
-		len(sh.LastName) > 128 || len(sh.FirstName) > 128 || len(sh.WAID) > 32 || len(sh.Club) > 128 {
+	if !validShooter(sh) {
 		return 0, ErrInvalid
 	}
 	id, err := s.repo.CreateShooter(ctx, sh)
@@ -35,9 +33,9 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if e.Lane < 1 || !contains(categories, e.Category) {
 		return 0, ErrInvalid
 	}
-	comp, err := s.repo.GetCompetition(ctx, e.CompetitionID)
+	comp, err := s.requireEntryChangeAllowed(ctx, e.CompetitionID)
 	if err != nil {
-		return 0, mapRepoErr(err)
+		return 0, err
 	}
 	course, err := rulebook.CourseByKey(comp.Course)
 	if err != nil {
@@ -52,6 +50,9 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 }
 
 func (s *Service) WithdrawEntry(ctx context.Context, competitionID, entryID int64) error {
+	if _, err := s.requireEntryChangeAllowed(ctx, competitionID); err != nil {
+		return err
+	}
 	return mapRepoErr(s.repo.WithdrawEntry(ctx, competitionID, entryID))
 }
 
