@@ -1,0 +1,68 @@
+# MatchMark v2 Spec
+
+Scoring for WA1500/PPC competitions at a single club. Vocabulary is in `GLOSSARY.md`; decisions are in `docs/adr/`.
+
+## Scope
+
+In: competitions, a persistent shooter registry, lane-paired scoring devices, live spectator view, results report (`.xlsx`), internal detailed CSV, admin database backup.
+
+Out for v1: classification and ranking, relays, Rifle, 60/48 beyond course data, offline operation, PDF/JSON export, SSE, multi-club hosting, accounts for scorers.
+
+Future: relays; Rifle; DNS-01 and other ACME challenge methods; CDN-hosted frontend; multi-club tenancy; offline queue; classification.
+
+## Users and flow
+
+- Admin (password, cookie session): creates a competition, picks the course of fire, adds entries from the shooter registry (or creates new shooters), assigns lanes and categories, opens pairing, sets spectator visibility, watches progress, unlocks and corrects stages, finishes the competition, downloads the results report.
+- Scorer (device): opens a pairing link once, then sees only "Scoring lane N: name", enters ring counts for the current stage and locks it.
+- Spectator (no login): live standings and per-stage progress, subject to admin's per-competition field visibility.
+
+## Scoring rules
+
+- Score lane is the next manned lane after the scorer's own lane, wrapping, derived server-side from the device's pairing and current entries. A paired lane is always manned.
+- A competition with one manned lane requires admin scoring.
+- Everyone shoots in step. Entries change only between stages. A withdrawn entry is flagged and keeps its results; later stages re-target to the next manned lane.
+- Hits per stage are seven counts (X, 10, 9, 8, 7, 0, miss) that must sum to the stage's expected shots. X scores 10. 0 and miss score 0.
+- Lock stores the scorer's lane and name. Only the admin can unlock and edit.
+- Course data and shot counts live in one `rulebook` package and match rulebook Issue 2026-01-01 §7. The 150 course is 10 stages grouped as Match 1 (7 yd, 15 yd), Match 2 (25 yd), Match 3 (50 yd), Match 4 (2 × 25 yd), Match 5 (7 yd, 25 yd, 50 yd, 25 yd × 6).
+
+## Competition model
+
+- Competition: name, date, course of fire (150 default; 60 and 48/40 selectable; no partial courses), status draft/active/finished, spectator visibility flags.
+- Shooter: last name, first name, sex, country, club, optional WAID. Persistent. A shooter without a WAID is a new shooter.
+- Entry: shooter, category (Revolver, Pistol, Revolver OS, Pistol OS, Rifle), lane, withdrawn flag.
+- Stage per entry, created when the entry is added: expected shots, seven ring counts, locked state, scorer.
+- Device pairing: token, competition, lane, revoked flag.
+
+## Results report
+
+Filled in from the embedded `Results reporting mal.xlsx` using `excelize`. One sheet per category; competition name and date in the header; known shooters as WAID + total result, extra rows inserted as needed; new shooters in the "New shooters" block with last name, first name, sex, country, club, result. The template is a replaceable embedded file.
+
+An internal detailed CSV lists ring counts per stage per entry for the club's own records.
+
+## API and frontend
+
+JSON REST API under `/api`, documented with OpenAPI; admin and spectator endpoints separated; spectator endpoints are unauthenticated and polled every few seconds. Frontend is a Svelte + Vite + TypeScript SPA with a typed client generated from the OpenAPI spec, no service worker or IndexedDB. All strings in English.
+
+## Backend
+
+Go, chi, SQLite-format storage via Turso Database and `turso.tech/database/tursogo` (`CGO_ENABLED=0`, native library loaded at runtime; see ADR 0005), embedded ordered migrations, strict handler → service → repository layering, `excelize` for xlsx, `certmagic` for ACME. Admin password hashed with argon2id; session cookie `HttpOnly`, `SameSite=Lax`, `Secure` when `BASE_URL` is https.
+
+## Configuration (environment only)
+
+`ADMIN_PASSWORD` (≥16 chars), `DB_PATH`, `LISTEN_ADDR`, `BASE_URL`, `TRUSTED_PROXY`, `TLS_CERT_FILE`, `TLS_KEY_FILE`, `ACME_DOMAIN`, `ACME_EMAIL`, `TURSO_GO_CACHE_DIR` (writable path for the extracted native library), `REPLICATION_URL` (empty disables Replication), `REPLICATION_INTERVAL` (default 60s).
+
+## Replication
+
+Optional and off by default. When `REPLICATION_URL` is set, the primary opens its database through the tursogo sync API and pushes to a self-hosted `tursodb --sync-server` on another host, every `REPLICATION_INTERVAL` and when a competition finishes. Push-only: the replica is never merged back. Failures are logged and retried and never block scoring. The sync server has no authentication, so it must only be reachable over a private network; across the public internet use snapshot files instead. Restore is copying the replica's database file to a new primary. See ADR 0005.
+
+TLS modes: plain HTTP (default, behind a proxy); static certificate; ACME via certmagic with certificates stored in the data volume.
+
+## Delivery
+
+Repository root: `Dockerfile`, `docker-compose.yml` (app plus `./data` volume only), `docs/`, `GLOSSARY.md`, `README.md`, `AGENTS.md`. Code in `source/` (Go module root; `source/web/` for the SPA). Dockerfile: Alpine Node stage builds `web/`, Alpine Go stage embeds `web/dist` and builds with `CGO_ENABLED=0 -tags musl`, final Alpine 3.24 image (the tursogo native library needs a libc to `dlopen`) running non-root with `TURSO_GO_CACHE_DIR` on a writable path. Supported targets: linux/amd64 and linux/arm64 (64-bit Pi OS only); darwin/arm64 for development. The admin UI offers a database backup download; it uses `VACUUM INTO` with a string literal path, which Turso Database supports (bound parameters are rejected).
+
+CI (GitHub Actions) builds, tests and smoke-tests the image natively: `ubuntu-latest` for amd64, `ubuntu-24.04-arm` for arm64, no QEMU, plus a build-only `macos-latest` job. The smoke test opens a database inside each image because a library-loading failure only shows at runtime.
+
+## Rulebook verification
+
+`docs/references/rulebook2026.txt` is a text extraction of the official PDF (Issue 2026-01-01, `https://wa1500.org/file.php?ID=1553`, SHA-256 `209f71e50b1e25abd167d4b2ea636e9f15be3b0c6d7303604dce3eaff003a123`). Re-extracted and compared on 2026-10-19: all 19,457 words match; only reading order of a few table labels and page numbers differs. The scorecard rows (X, 10, 9, 8, 7, 0, miss) and the course totals (24, 18, 24, 24 = 90; Match 5 = 60; 150) agree with v1's `rulebook.go`. Open: weapon-class naming for 60/48 courses (rulebook §3.17(g) says "2,5" 5-shot" where §3.10 says 2,75") is only relevant once 60/48 are used.
