@@ -58,7 +58,7 @@ The server writes structured JSON logs (`log/slog`) to stdout: one `request` lin
 
 ### Score log
 
-Each time a stage is locked, a `stage_locked` line is also written to stdout with the competition, entry, shooter, ring counts and who locked it (see `docs/spec.md`). Keep your container logs: if the database is lost and there is no replica, they are the only record of the final scores. The lines contain personal data (WAID, names, club), so apply your club's retention policy to them.
+Each time a stage is locked, unlocked, or edited by the admin while locked, a `stage_locked` or `stage_unlocked` line is also written to stdout with the competition, entry, shooter, ring counts and who locked it (see `docs/spec.md`). Keep your container logs: if the database is lost and there is no replica, they are the only record of the final scores. The lines contain personal data (WAID, names, club), so apply your club's retention policy to them.
 
 ## TLS modes
 

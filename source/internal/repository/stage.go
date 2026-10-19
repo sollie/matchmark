@@ -52,3 +52,12 @@ func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCou
 	}
 	return nil
 }
+
+func (r *Repository) SetRingCountsAsAdmin(ctx context.Context, stageID int64, c RingCounts) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?,
+		   scorer_lane = NULL, scorer_name = CASE WHEN locked = 1 THEN 'Admin' ELSE scorer_name END
+		 WHERE id = ?`,
+		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
+	return affected(res, err)
+}

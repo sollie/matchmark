@@ -324,3 +324,77 @@ func (f *scoreFixture) lines(t *testing.T) []logLine {
 	}
 	return out
 }
+
+func TestUnlockLine(t *testing.T) {
+	f := newScoreFixture(t)
+	ctx := context.Background()
+	f.fillStage(t, f.entry1, 1)
+	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.UnlockStage(ctx, f.compID, f.entry1, 1); err != nil {
+		t.Fatal(err)
+	}
+	lines := f.lines(t)
+	if len(lines) != 2 {
+		t.Fatalf("lines = %d", len(lines))
+	}
+	l := lines[1]
+	if l.Event != "stage_unlocked" || l.Msg != "stage_unlocked" || l.Level != "INFO" || l.Entry.Shooter.WAID != "W1" ||
+		l.Competition.Name != "Spring Match" || l.Stage.Number != 1 || !equalInts(l.RingCounts, []int{2, 4, 6, 0, 0, 0, 0}) {
+		t.Fatalf("line = %+v", l)
+	}
+	if got := replayScoreLog(t, f.buf.String()); len(got) != 0 {
+		t.Fatalf("replay = %+v", got)
+	}
+}
+
+func TestNoUnlockLineOnMissingStage(t *testing.T) {
+	f := newScoreFixture(t)
+	if err := f.svc.UnlockStage(context.Background(), f.compID, f.entry1, 99); err == nil {
+		t.Fatal("expected error")
+	}
+	if n := len(f.lines(t)); n != 0 {
+		t.Fatalf("lines = %d", n)
+	}
+}
+
+func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
+	f := newScoreFixture(t)
+	ctx := context.Background()
+	f.fillStage(t, f.entry2, 1)
+	if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(1100 * time.Millisecond)
+	edit := repository.RingCounts{X: 1, Ten: 1, Nine: 10}
+	if err := f.svc.AdminSetRingCounts(ctx, f.compID, f.entry2, 1, edit); err != nil {
+		t.Fatal(err)
+	}
+	lines := f.lines(t)
+	if len(lines) != 2 {
+		t.Fatalf("lines = %d", len(lines))
+	}
+	first, second := lines[0], lines[1]
+	if second.Event != "stage_locked" || second.LockedBy != "Admin" || second.ScorerName != "Admin" ||
+		!equalInts(second.RingCounts, []int{1, 1, 10, 0, 0, 0, 0}) {
+		t.Fatalf("line = %+v", second)
+	}
+	if second.EmittedAt <= first.EmittedAt || second.LockedAt != first.LockedAt {
+		t.Fatalf("emitted %q/%q locked %q/%q", first.EmittedAt, second.EmittedAt, first.LockedAt, second.LockedAt)
+	}
+	got := replayScoreLog(t, f.buf.String())[stageKey{f.compID, f.entry2, 1}]
+	if !equalInts(got.RingCounts, []int{1, 1, 10, 0, 0, 0, 0}) {
+		t.Fatalf("replay = %+v", got)
+	}
+}
+
+func TestAdminEditOfUnlockedStageEmitsNothing(t *testing.T) {
+	f := newScoreFixture(t)
+	if err := f.svc.AdminSetRingCounts(context.Background(), f.compID, f.entry1, 1, repository.RingCounts{X: 12}); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(f.lines(t)); n != 0 {
+		t.Fatalf("lines = %d", n)
+	}
+}

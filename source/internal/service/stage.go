@@ -40,3 +40,20 @@ func (s *Service) SetRingCounts(ctx context.Context, competitionID, entryID int6
 	}
 	return nil
 }
+
+func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID int64, stageNumber int, c repository.RingCounts) error {
+	stage, err := s.repo.GetStage(ctx, competitionID, entryID, stageNumber)
+	if err != nil {
+		return mapRepoErr(err)
+	}
+	if err := ValidateRingCounts(c, stage.ExpectedShots); err != nil {
+		return err
+	}
+	if err := s.repo.SetRingCountsAsAdmin(ctx, stage.ID, c); err != nil {
+		return mapRepoErr(err)
+	}
+	if stage.Locked {
+		s.emitStageEvent(ctx, eventStageLocked, competitionID, entryID, stageNumber)
+	}
+	return nil
+}

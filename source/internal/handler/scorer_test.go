@@ -129,8 +129,11 @@ func TestLockRecordsScorerAndAdminUnlock(t *testing.T) {
 	if status, _ := f.env.DoToken(token, "POST", "/api/scorer/stages/1/unlock", nil); status == http.StatusOK {
 		t.Fatal("device must not unlock")
 	}
-	if status, _ := f.env.Do("PUT", p, counts(11, 1)); status != http.StatusConflict {
+	if status, _ := f.env.Do("PUT", p, counts(11, 1)); status != http.StatusOK {
 		t.Fatalf("admin edit while locked: %d", status)
+	}
+	if !f.stageLocked(t, 2, 1) {
+		t.Fatal("admin edit must keep the stage locked")
 	}
 	if status, out := f.env.Do("POST", p+"/unlock", nil); status != http.StatusOK {
 		t.Fatalf("unlock: %d %v", status, out)

@@ -22,7 +22,7 @@ Future: relays; Rifle; DNS-01 and other ACME challenge methods; CDN-hosted front
 - A competition with one manned lane requires admin scoring.
 - Everyone shoots in step. Entries change only between stages. A withdrawn entry is flagged and keeps its results; later stages re-target to the next manned lane.
 - Hits per stage are seven counts (X, 10, 9, 8, 7, 0, miss) that must sum to the stage's expected shots. X scores 10. 0 and miss score 0.
-- Lock stores the scorer's lane and name. Only the admin can unlock and edit.
+- Lock stores the scorer's lane and name. Only the admin can unlock and edit; an admin edit of a locked stage keeps it locked.
 - The admin entries list shows each stage's score and shots entered, for open as well as locked stages. An open stage with all expected shots entered is shown as "Scored, not locked".
 - Course data and shot counts live in one `rulebook` package and match rulebook Issue 2026-01-01 §7. The 150 course is 10 stages grouped as Match 1 (7 yd, 15 yd), Match 2 (25 yd), Match 3 (50 yd), Match 4 (2 × 25 yd), Match 5 (7 yd, 25 yd, 50 yd, 25 yd × 6).
 
@@ -60,7 +60,7 @@ TLS modes: plain HTTP (default, behind a proxy); static certificate; ACME via ce
 
 ## Score log
 
-Whenever a device or the admin locks a stage, the server writes one JSON `info` line to stdout with `msg` and `event` `stage_locked`. Fields: `schema_version` (1), `event`, `emitted_at` (RFC 3339 UTC), `competition` {`id`, `name`, `date`, `course_of_fire` {`key`, `discipline`, `total_shots`}}, `entry` {`id`, `lane`, `category`, `shooter` {`waid`, `first_name`, `last_name`, `club`}}, `stage` {`number`, `expected_shots`}, `ring_counts` (X, 10, 9, 8, 7, 0, miss), `locked_by` (lane number or `"Admin"`), `scorer_name`, `locked_at`. The line is written after the database write succeeds; a log failure never fails the lock. Replay: the last line per competition, entry and stage by `emitted_at` wins. Entries with no locked stage are not recoverable, and lines contain personal data. See ADR 0007.
+Whenever a device or the admin locks a stage, the server writes one JSON `info` line to stdout with `msg` and `event` `stage_locked`. Unlocking a stage writes a line with `event` `stage_unlocked` and the same fields. An admin overwrite of ring counts on a locked stage keeps it locked and writes a new `stage_locked` line with the new counts, `locked_by` `"Admin"` and a fresh `emitted_at`; `locked_at` keeps the original lock time. Fields: `schema_version` (1), `event`, `emitted_at` (RFC 3339 UTC), `competition` {`id`, `name`, `date`, `course_of_fire` {`key`, `discipline`, `total_shots`}}, `entry` {`id`, `lane`, `category`, `shooter` {`waid`, `first_name`, `last_name`, `club`}}, `stage` {`number`, `expected_shots`}, `ring_counts` (X, 10, 9, 8, 7, 0, miss), `locked_by` (lane number or `"Admin"`), `scorer_name`, `locked_at`. The line is written after the database write succeeds; a log failure never fails the lock. Replay: the last line per competition, entry and stage by `emitted_at` wins, and a final `stage_unlocked` means the stage is not scored. Entries with no locked stage are not recoverable, and lines contain personal data. See ADR 0007.
 
 ## Delivery
 

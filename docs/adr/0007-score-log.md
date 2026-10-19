@@ -8,7 +8,7 @@ If the database is lost and no replica exists, every scored competition is gone.
 
 Each line has `msg` and `event` set to `stage_locked` (later also `stage_unlocked`), plus `schema_version` (1), `emitted_at` (RFC 3339 UTC), `competition` (`id`, `name`, `date`, `course_of_fire` with `key`, `discipline`, `total_shots` taken from the rulebook), `entry` (`id`, `lane`, `category`, `shooter` with `waid`, `first_name`, `last_name`, `club`), `stage` (`number`, `expected_shots`), `ring_counts` (seven ints: X, 10, 9, 8, 7, 0, miss), `locked_by` (lane number, or `"Admin"`), `scorer_name` and `locked_at`. Visibility flags are not logged. The entry's category is the only class field, because the data model has no separate weapon class.
 
-Replay rule: the last line per (competition id, entry id, stage number) by `emitted_at` wins, and entry and competition context come from the latest line. A final `stage_unlocked` means the stage is not scored. `locked_at` is stored in `stages.locked_at` (migration 011) so re-emitted lines keep the original lock time.
+Replay rule: the last line per (competition id, entry id, stage number) by `emitted_at` wins, and entry and competition context come from the latest line. A final `stage_unlocked` means the stage is not scored. An admin ring-count edit on a locked stage keeps it locked and re-emits `stage_locked` with `locked_by` `"Admin"` and a new `emitted_at`. `locked_at` is stored in `stages.locked_at` (migration 011) so re-emitted lines keep the original lock time.
 
 ## Considered Options
 
