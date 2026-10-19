@@ -27,6 +27,8 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Post("/competitions/{competitionID}/entries/{entryID}/withdraw", h.withdrawEntry)
 	r.Get("/competitions/{competitionID}/lanes/{lane}/score-lane", h.scoreLane)
 	r.Put("/competitions/{competitionID}/entries/{entryID}/stages/{stage}", h.setRingCounts)
+	r.Get("/competitions/{competitionID}/results.xlsx", h.resultsWorkbook)
+	r.Get("/competitions/{competitionID}/results.csv", h.resultsCSV)
 }
 
 type shooterBody struct {
