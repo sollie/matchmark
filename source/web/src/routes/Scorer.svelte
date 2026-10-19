@@ -146,40 +146,54 @@
           role="tab"
           aria-selected={s.stage_number === stage}
           class:active={s.stage_number === stage}
-          class:locked={s.locked}
+          class:is-locked={s.locked}
           onclick={() => selectStage(s.stage_number)}
         >
-          Stage {s.stage_number}{s.locked ? " 🔒" : ""}
+          <span>Stage {s.stage_number}</span>
+          <span class="state">{s.locked ? "🔒 Locked" : "Open"}</span>
         </button>
       {/each}
     </div>
 
     {#if current}
       {#if current.locked}
-        <p class="card locked">Stage {current.stage_number} is locked.</p>
+        <p class="card locked banner">🔒 Stage {current.stage_number} is locked.</p>
       {:else}
-        <div class="rings">
-          {#each rings as r (r.key)}
-            <div class="ring">
-              <span class="label">{r.label}</span>
-              <button onclick={() => bump(r.key, -1)} aria-label="Decrease {r.label}">−</button>
-              <input
-                type="number"
-                inputmode="numeric"
-                min="0"
-                bind:value={counts[r.key]}
-                aria-label="{r.label} count"
-              />
-              <button onclick={() => bump(r.key, 1)} aria-label="Increase {r.label}">+</button>
+        <div class="layout">
+          <div class="rings">
+            {#each rings as r (r.key)}
+              <div class="ring">
+                <span class="label">{r.label}</span>
+                <button onclick={() => bump(r.key, -1)} aria-label="Decrease {r.label}">−</button>
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  bind:value={counts[r.key]}
+                  aria-label="{r.label} count"
+                />
+                <button onclick={() => bump(r.key, 1)} aria-label="Increase {r.label}">+</button>
+              </div>
+            {/each}
+          </div>
+          <div class="summary card">
+            <p class="total" class:mismatch={sum !== current.expected_shots}>
+              <strong>{sum}</strong> / {current.expected_shots}
+            </p>
+            <p class="total-label">
+              {#if sum === current.expected_shots}
+                <span class="badge success">✓ Shots match</span>
+              {:else if sum > current.expected_shots}
+                <span class="badge danger">⚠ {sum - current.expected_shots} too many</span>
+              {:else}
+                <span class="badge warning">⚠ {current.expected_shots - sum} to go</span>
+              {/if}
+            </p>
+            <div class="actions">
+              <button class="primary" disabled={busy} onclick={save}>Save</button>
+              <button class="primary lock" disabled={busy} onclick={lock}>Lock stage</button>
             </div>
-          {/each}
-        </div>
-        <p class:error={sum !== current.expected_shots}>
-          Total {sum} of {current.expected_shots} shots
-        </p>
-        <div class="row">
-          <button class="primary" disabled={busy} onclick={save}>Save</button>
-          <button disabled={busy} onclick={lock}>Lock stage</button>
+          </div>
         </div>
       {/if}
     {/if}
@@ -189,3 +203,31 @@
     <p><button onclick={unpair}>Unpair device</button></p>
   {/if}
 </main>
+
+<style>
+  .stages { display: flex; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-3) 0; }
+  .stages button { display: flex; flex-direction: column; align-items: center; min-width: 6rem; min-height: var(--touch); padding: var(--space-2) var(--space-4); border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-weight: 600; }
+  .stages button .state { font-size: var(--text-sm); font-weight: 500; }
+  .stages button.is-locked { border-style: dashed; }
+  .stages button.active { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+  .banner { font-weight: 600; font-size: var(--text-lg); }
+  .layout { display: grid; gap: var(--space-4); align-items: start; }
+  .rings { display: grid; gap: var(--space-2); }
+  .ring { display: grid; grid-template-columns: 3.5rem 1fr 5rem 1fr; gap: var(--space-2); align-items: center; }
+  .ring .label { font-weight: 700; font-size: var(--text-lg); }
+  .ring button { font-size: 1.75rem; min-height: 3.25rem; min-width: var(--touch); }
+  .ring input { font-size: 1.5rem; text-align: center; min-height: 3.25rem; width: 100%; }
+  .summary { margin: 0; text-align: center; }
+  .total { margin: 0; font-size: 2.5rem; line-height: 1.2; }
+  .total.mismatch { color: var(--danger-fg); }
+  .total-label { margin: var(--space-1) 0 var(--space-3); }
+  .actions { display: flex; gap: var(--space-2); }
+  .actions button { flex: 1; min-height: 3.5rem; font-size: var(--text-lg); }
+  .actions .lock { background: var(--accent); border-color: var(--accent); color: var(--on-brand); }
+  @media (min-width: 48rem) {
+    .layout { grid-template-columns: 1fr 18rem; }
+    .summary { position: sticky; top: var(--space-4); }
+    .ring { grid-template-columns: 4.5rem 1fr 7rem 1fr; gap: var(--space-3); }
+    .rings { gap: var(--space-3); }
+  }
+</style>

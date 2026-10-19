@@ -58,7 +58,7 @@
 </script>
 
 <h1>Shooters</h1>
-{#if error}<p class="error">{error}</p>{/if}
+{#if error}<p class="error" role="alert">{error}</p>{/if}
 
 <form class="row card" onsubmit={save}>
   <label>Last name <input bind:value={form.last_name} maxlength="64" required /></label>
@@ -73,10 +73,11 @@
   <label>Country <input bind:value={form.country} maxlength="3" size="4" required /></label>
   <label>Club <input bind:value={form.club} maxlength="128" required /></label>
   <label>WAID (blank for new shooter) <input bind:value={form.waid} maxlength="32" /></label>
-  <button type="submit">{editing === null ? "Add shooter" : "Save"}</button>
-  {#if editing !== null}<button type="button" onclick={cancel}>Cancel</button>{/if}
+  <button type="submit" class="primary">{editing === null ? "Add shooter" : "Save"}</button>
+  {#if editing !== null}<button type="button" class="secondary" onclick={cancel}>Cancel</button>{/if}
 </form>
 
+<div class="card scroll">
 <table>
   <thead>
     <tr><th>Name</th><th>Sex</th><th>Country</th><th>Club</th><th>WAID</th><th></th></tr>
@@ -89,9 +90,9 @@
         <td>{s.country}</td>
         <td>{s.club}</td>
         <td>{s.waid || "—"}</td>
-        <td>
-          <button onclick={() => edit(s)}>Edit</button>
-          <button onclick={() => remove(s)}>Delete</button>
+        <td class="row-actions">
+          <button class="secondary" onclick={() => edit(s)}>Edit</button>
+          <button class="danger" onclick={() => remove(s)}>Delete</button>
         </td>
       </tr>
     {:else}
@@ -99,3 +100,4 @@
     {/each}
   </tbody>
 </table>
+</div>

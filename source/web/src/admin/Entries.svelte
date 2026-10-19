@@ -126,7 +126,7 @@
 
 <section class="card">
   <h2>Entries and progress</h2>
-  {#if error}<p class="error">{error}</p>{/if}
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   <form class="row" onsubmit={add}>
     <label>
@@ -143,10 +143,11 @@
       </select>
     </label>
     <label>Lane <input type="number" min="1" bind:value={() => lane, (v) => (laneInput = v)} size="3" required /></label>
-    <button type="submit">Add entry</button>
+    <button type="submit" class="primary">Add entry</button>
     <a href="/admin/shooters">Manage shooters</a>
   </form>
 
+  <div class="scroll">
   <table>
     <thead>
       <tr>
@@ -172,27 +173,27 @@
             <td>{entry.category}</td>
           {/if}
           {#each entry.stages as st (st.stage_number)}
-            <td class={st.locked ? "locked" : "open"}>
+            <td class="row-actions">
               {#if st.locked}
-                <span title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
-                <button onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
+                <span class="badge success" title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
+                <button class="secondary" onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
               {:else}
-                Open
-                <button onclick={() => lock(entry, st.stage_number)}>Lock</button>
+                <span class="badge warning">Open</span>
+                <button class="secondary" onclick={() => lock(entry, st.stage_number)}>Lock</button>
               {/if}
-              <button onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
+              <button class="ghost" onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
             </td>
           {/each}
-          <td>
+          <td class="row-actions">
             {#if editing?.id === entry.id}
-              <button onclick={saveEdit}>Save</button>
-              <button onclick={() => (editing = null)}>Cancel</button>
+              <button class="primary" onclick={saveEdit}>Save</button>
+              <button class="secondary" onclick={() => (editing = null)}>Cancel</button>
             {:else}
-              <button onclick={() => (editing = { id: entry.id, category: entry.category, lane: entry.lane })}>
+              <button class="secondary" onclick={() => (editing = { id: entry.id, category: entry.category, lane: entry.lane })}>
                 Move
               </button>
-              {#if !entry.withdrawn}<button onclick={() => withdraw(entry)}>Withdraw</button>{/if}
-              <button onclick={() => remove(entry)}>Remove</button>
+              {#if !entry.withdrawn}<button class="secondary" onclick={() => withdraw(entry)}>Withdraw</button>{/if}
+              <button class="danger" onclick={() => remove(entry)}>Remove</button>
             {/if}
           </td>
         </tr>
@@ -201,6 +202,7 @@
       {/each}
     </tbody>
   </table>
+  </div>
 
   {#if scoring}
     <div class="card">
@@ -213,9 +215,9 @@
         {#each ringKeys as k (k)}
           <label>{k === "x" ? "X" : k} <input type="number" min="0" bind:value={scoring.counts[k]} size="3" /></label>
         {/each}
-        <button onclick={() => saveCounts()}>Save counts</button>
-        <button onclick={() => saveCounts(true)}>Save and lock</button>
-        <button onclick={() => (scoring = null)}>Cancel</button>
+        <button class="primary" onclick={() => saveCounts()}>Save counts</button>
+        <button class="secondary" onclick={() => saveCounts(true)}>Save and lock</button>
+        <button class="secondary" onclick={() => (scoring = null)}>Cancel</button>
       </div>
     </div>
   {/if}

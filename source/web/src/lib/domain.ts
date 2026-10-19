@@ -8,3 +8,5 @@ export const courses = [
 export const categories = ["Revolver", "Pistol", "Revolver OS", "Pistol OS", "Rifle"];
 
 export const nextStatus = { draft: "active", active: "finished", finished: null } as const;
+
+export const statusTone = { draft: "neutral", active: "success", finished: "info" } as const;

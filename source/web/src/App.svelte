@@ -6,6 +6,10 @@
   import NotFound from "./routes/NotFound.svelte";
 </script>
 
+<header class="site-header">
+  <a class="brand-name" href="/">MatchMark</a>
+</header>
+
 {#if router.path === "/"}
   <Spectator />
 {:else if router.path === "/score"}
