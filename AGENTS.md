@@ -69,6 +69,7 @@ Specification and decisions:
   npm test
   npm audit
   ```
+- For changes to user flows also run `npm run e2e` (Playwright, see ADR 0008).
 - Fix all high/critical findings reported by `npm audit` before considering the task done.
 
 ### Shell scripts
