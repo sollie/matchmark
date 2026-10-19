@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"testing"
 
@@ -16,19 +17,44 @@ import (
 type Env struct {
 	t      *testing.T
 	Server *httptest.Server
+	client *http.Client
 }
 
+const AdminPassword = "correct-horse-battery"
+
 func New(t *testing.T) *Env {
+	t.Helper()
+	return NewWithBaseURL(t, "http://localhost")
+}
+
+func NewWithBaseURL(t *testing.T, baseURL string) *Env {
 	t.Helper()
 	conn, err := db.Open(":memory:")
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { _ = conn.Close() })
-	svc := service.New(repository.New(conn))
-	srv := httptest.NewServer(handler.NewRouter(svc))
+	repo := repository.New(conn)
+	auth, err := service.NewAdminAuth(repo, AdminPassword)
+	if err != nil {
+		t.Fatalf("admin auth: %v", err)
+	}
+	srv := httptest.NewServer(handler.NewRouter(service.New(repo), handler.WithAdminAuth(auth, baseURL)))
 	t.Cleanup(srv.Close)
-	return &Env{t: t, Server: srv}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookie jar: %v", err)
+	}
+	return &Env{t: t, Server: srv, client: &http.Client{Jar: jar}}
+}
+
+func NewAdmin(t *testing.T) *Env {
+	t.Helper()
+	e := New(t)
+	if status, out := e.Do("POST", "/api/admin/login", map[string]string{"password": AdminPassword}); status != http.StatusNoContent {
+		t.Fatalf("admin login: %d %v", status, out)
+	}
+	return e
 }
 
 func (e *Env) Do(method, path string, body any) (int, map[string]any) {
@@ -44,7 +70,7 @@ func (e *Env) Do(method, path string, body any) (int, map[string]any) {
 		e.t.Fatalf("new request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := e.client.Do(req)
 	if err != nil {
 		e.t.Fatalf("do request: %v", err)
 	}

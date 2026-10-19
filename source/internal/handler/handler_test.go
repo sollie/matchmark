@@ -15,7 +15,7 @@ type fixture struct {
 
 func newFixture(t *testing.T, course string) *fixture {
 	t.Helper()
-	env := apitest.New(t)
+	env := apitest.NewAdmin(t)
 	comp := env.ID("POST", "/api/competitions", map[string]any{"name": "Club Match", "date": "2026-05-01", "course": course})
 	return &fixture{env: env, comp: comp}
 }
@@ -136,7 +136,7 @@ func TestStageExpectedShotsFollowCourse(t *testing.T) {
 }
 
 func TestCreateCompetitionRejectsUnknownCourse(t *testing.T) {
-	env := apitest.New(t)
+	env := apitest.NewAdmin(t)
 	status, _ := env.Do("POST", "/api/competitions", map[string]any{"name": "X", "date": "2026-05-01", "course": "99"})
 	if status != http.StatusUnprocessableEntity {
 		t.Fatalf("status %d", status)
