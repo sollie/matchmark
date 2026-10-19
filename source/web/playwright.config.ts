@@ -34,6 +34,7 @@ export default defineConfig({
           ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD ?? "e2e-admin-password-1234",
           DB_PATH: join(dbDir, "matchmark.db"),
           LISTEN_ADDR: `127.0.0.1:${port}`,
+          TRUSTED_PROXY: "127.0.0.1",
         },
       },
 });

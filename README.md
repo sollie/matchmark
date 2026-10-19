@@ -56,7 +56,7 @@ docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --
 
 Set `E2E_BASE_URL` (and `E2E_ADMIN_PASSWORD`) to test an already running instance instead of starting one. CI runs the suite on every pull request and uploads the report on failure.
 
-Current coverage is a smoke test: admin sign-in and competition creation. Planned expansion:
+Current coverage: admin sign-in and competition creation, and the auth flows (wrong password, login lockout, sign out, unauthenticated access, not-found page, unpaired scorer page). Tests seed data through the admin API with unique names and send a unique `X-Forwarded-For` per client; the e2e server and compose file set `TRUSTED_PROXY` for this. Planned expansion:
 
 - Shooter management and entries
 - Device pairing and scorer stage entry

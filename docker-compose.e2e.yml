@@ -3,6 +3,7 @@ services:
     build: .
     environment:
       ADMIN_PASSWORD: e2e-admin-password-1234
+      TRUSTED_PROXY: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
     tmpfs:
       - /data:uid=65532,gid=65532
     healthcheck:
