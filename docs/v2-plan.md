@@ -6,8 +6,8 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 2. Schema: new migrations for shooters, competitions, entries, stages (ring counts), device pairings, admin session. Service tests for score-lane derivation (empty lanes, wraparound, single lane, withdrawn entries) and ring-count validation.
 - [x] 3. Admin auth: password from env, cookie session, rate limiting on login.
 - [x] 4. Competition, shooter registry, entry and lane management APIs.
-- [ ] 5. Device pairing and scorer API (score lane derived server-side, lock, admin unlock).
 - [x] 6. Spectator API with per-competition visibility flags.
+- [x] 5. Device pairing and scorer API (score lane derived server-side, lock, admin unlock).
 - [ ] 7. Results report: embed template, generate `.xlsx` with excelize; detailed CSV. Tests against the template.
 - [ ] 8. OpenAPI spec and generated TypeScript client.
 - [ ] 9. `source/web/`: Svelte + Vite SPA: admin, scorer, spectator screens.
