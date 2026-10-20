@@ -106,6 +106,10 @@ To preview what a log would restore, run `matchmark restore [file]` (or pipe the
 
 To write the restore, run `matchmark restore --apply [file]` with the same `DB_PATH` the server uses (for example `docker compose run --rm -T matchmark restore --apply < scores.jsonl` while the server is stopped). It opens the database, runs migrations, and recreates competitions (as `finished`), shooters, entries and the locked stages with their ring counts, `locked_by` lane (or `Admin`), `scorer_name` and `locked_at`, keeping the original competition and entry ids. Flags may come before or after the file. If the database already contains competitions or shooters, it refuses and changes nothing; the whole restore is one transaction, so a failure leaves the database unchanged; add `--merge` to apply only data whose ids match or are new and list conflicts (differing competition, entry, or locked stage counts, `locked_by`, `scorer_name` or `locked_at`) without overwriting them. With `--merge` it is idempotent by ids: re-running changes nothing, and stages already locked are left untouched. The log has no sex or country, so restored shooters get sex `M` and an empty country. Unscored entries, devices and pairings are not restored; the command prints a note saying so.
 
+## Lockout recovery
+
+If every admin is locked out, stop the server and run `matchmark reset-password <username>` with the same `DB_PATH` the server uses, passing the new temporary password on stdin (so it stays out of the process list), for example `printf '%s\n' "$NEW_PASSWORD" | docker compose run --rm -T matchmark reset-password alice`. The username is case-insensitive. It needs no `ADMIN_USERNAME` or `ADMIN_PASSWORD`, rejects an unknown username, a missing database and a password outside 16-128 characters without changing anything, and on success sets the new password, ends all of that user's sessions and flags the account so the password must be changed at next login.
+
 ## TLS modes
 
 - **Plain HTTP (default):** for local networks or behind a TLS-terminating reverse proxy. Set `BASE_URL` to the public URL and `TRUSTED_PROXY` to the proxy address.

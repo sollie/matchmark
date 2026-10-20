@@ -82,3 +82,21 @@ func (r *Repository) DeleteExpiredSessions(now time.Time) error {
 	_, err := r.db.Exec(`DELETE FROM user_sessions WHERE expires_at <= ?`, now.UTC().Format(time.RFC3339))
 	return mapErr(err)
 }
+
+func (r *Repository) ResetPassword(userID int, hash string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return mapErr(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(
+		`UPDATE users SET password_hash = ?, must_change_password = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		hash, userID,
+	); err != nil {
+		return mapErr(err)
+	}
+	if _, err := tx.Exec(`DELETE FROM user_sessions WHERE user_id = ?`, userID); err != nil {
+		return mapErr(err)
+	}
+	return mapErr(tx.Commit())
+}

@@ -106,6 +106,26 @@ func (a *Auth) SeedAdmin(username, password string) error {
 	return err
 }
 
+var ErrUnknownUser = errors.New("unknown user")
+
+func (a *Auth) ResetPassword(username, password string) error {
+	if !ValidPassword(password) {
+		return ErrWeakPassword
+	}
+	user, err := a.repo.UserByUsername(strings.ToLower(username))
+	if errors.Is(err, repository.ErrNotFound) {
+		return ErrUnknownUser
+	}
+	if err != nil {
+		return err
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+	return a.repo.ResetPassword(user.ID, hash)
+}
+
 func derive(password string, salt []byte, memory, time uint32, threads uint8) []byte {
 	return argon2.IDKey([]byte(password), salt, time, memory, threads, argonKeyLen)
 }
