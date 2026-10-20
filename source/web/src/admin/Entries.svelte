@@ -180,7 +180,7 @@
               <div class="stage-cell">
                 <div class="stage-status">
                   {#if st.locked}
-                    <span class="badge success" title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
+                    <span class="badge success" title={st.scorer_lane != null ? `Scored by lane ${st.scorer_lane} ${st.scorer_name ?? ""}` : `Locked by ${st.scorer_name ?? ""}`}>Locked</span>
                   {:else if st.shots_entered >= st.expected_shots}
                     <span class="badge info">Scored, not locked</span>
                   {:else}

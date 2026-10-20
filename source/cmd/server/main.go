@@ -31,6 +31,13 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "reset-password" {
+		if err := runResetPassword(os.Args[2:], os.Getenv, os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "reset-password:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 	if err := run(logger); err != nil {
@@ -55,13 +62,15 @@ func run(logger *slog.Logger) error {
 	}
 	defer func() { _ = conn.Close() }()
 	repo := repository.New(conn)
-	auth, err := service.NewAdminAuth(repo, cfg.AdminPassword)
-	if err != nil {
+	audit := service.NewAudit(repo, logger)
+	auth := service.NewAuth(repo, service.WithAuthAudit(audit))
+	if err := auth.SeedAdmin(cfg.AdminUsername, cfg.AdminPassword); err != nil {
 		return err
 	}
-	svcOpts = append(svcOpts, service.WithScoreLog(logger))
+	svcOpts = append(svcOpts, service.WithScoreLog(logger), service.WithAudit(audit))
 	api := handler.NewRouter(service.New(repo, svcOpts...),
-		handler.WithAdminAuth(auth, cfg.BaseURL),
+		handler.WithAuth(auth, cfg.BaseURL),
+		handler.WithAudit(audit),
 		handler.WithBackupDir(filepath.Dir(cfg.DBPath)),
 	)
 	root := trustedProxyRealIP(cfg.TrustedProxy)(requestLogger(logger)(compression(!cfg.DisableCompression)(spaHandler(web.Dist(), api))))

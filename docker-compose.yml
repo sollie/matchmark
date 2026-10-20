@@ -8,6 +8,7 @@ services:
     volumes:
       - ./data:/data
     environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?set ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
       BASE_URL: ${BASE_URL:-}
       TRUSTED_PROXY: ${TRUSTED_PROXY:-}

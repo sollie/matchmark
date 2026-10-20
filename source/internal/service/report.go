@@ -59,7 +59,11 @@ func (s *Service) ResultsWorkbook(ctx context.Context, competitionID int64) (Dow
 		return Download{}, err
 	}
 	out, err := report.Workbook(data)
-	return Download{BaseName: downloadBaseName(data.Competition.Name, data.Competition.Date), Data: out}, err
+	if err != nil {
+		return Download{}, err
+	}
+	s.audit.Record(ctx, AuditEvent{Action: "report.download", Target: idTarget("competition", competitionID), Details: "xlsx"})
+	return Download{BaseName: downloadBaseName(data.Competition.Name, data.Competition.Date), Data: out}, nil
 }
 
 func (s *Service) ResultsCSV(ctx context.Context, competitionID int64) (Download, error) {
@@ -68,5 +72,9 @@ func (s *Service) ResultsCSV(ctx context.Context, competitionID int64) (Download
 		return Download{}, err
 	}
 	out, err := report.CSV(data)
-	return Download{BaseName: downloadBaseName(data.Competition.Name, data.Competition.Date), Data: out}, err
+	if err != nil {
+		return Download{}, err
+	}
+	s.audit.Record(ctx, AuditEvent{Action: "report.download", Target: idTarget("competition", competitionID), Details: "csv"})
+	return Download{BaseName: downloadBaseName(data.Competition.Name, data.Competition.Date), Data: out}, nil
 }

@@ -7,6 +7,8 @@ servers:
   - url: /
 tags:
   - name: admin-auth
+  - name: users
+  - name: audit
   - name: shooters
   - name: competitions
   - name: entries
@@ -19,7 +21,7 @@ paths:
     post:
       operationId: adminLogin
       tags: [admin-auth]
-      summary: Log in as admin and set the mm_session cookie
+      summary: Log in with username and password and set the mm_session cookie
       requestBody:
         required: true
         content:
@@ -51,23 +53,63 @@ paths:
       responses:
         '204':
           description: Logged out
+  /api/admin/password:
+    post:
+      operationId: adminChangePassword
+      tags: [admin-auth]
+      summary: Change the signed-in user's password and end their other sessions
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many attempts
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/admin/session:
     get:
       operationId: adminSession
       tags: [admin-auth]
-      summary: Check that the admin session is valid
+      summary: Check that the user session is valid
       security:
         - adminCookie: []
       responses:
-        '204':
-          description: Session is valid
+        '200':
+          description: The signed-in user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The user must change their password first (error is password_change_required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/admin/backup:
     get:
       operationId: adminBackup
       tags: [admin-auth]
-      summary: Download a consistent backup of the database
+      summary: Download a consistent backup of the database (admins with the backup permission only)
       security:
         - adminCookie: []
       responses:
@@ -80,6 +122,301 @@ paths:
                 format: binary
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin with the backup permission (error is backup_not_permitted), or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/audit-log:
+    get:
+      operationId: listAuditLog
+      tags: [audit]
+      summary: Browse the append-only audit log, newest first, paged and filterable (admin only)
+      security:
+        - adminCookie: []
+      parameters:
+        - name: user
+          in: query
+          description: Username as recorded at the time of the event
+          schema:
+            type: string
+        - name: action
+          in: query
+          description: Exact action, for example stage.lock or login_failed
+          schema:
+            type: string
+        - name: from
+          in: query
+          description: First day to include (UTC)
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: Last day to include (UTC)
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: One page of audit entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: A filter or paging parameter is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users with role and status (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user with a temporary password that must be changed at first login (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: The username is already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    post:
+      operationId: deactivateUser
+      tags: [users]
+      summary: Deactivate a user and end their sessions; the last active admin is refused (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    post:
+      operationId: reactivateUser
+      tags: [users]
+      summary: Reactivate a deactivated user (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/reset-password:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    post:
+      operationId: resetUserPassword
+      tags: [users]
+      summary: Set a temporary password that must be changed at next login and end the user's sessions (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Password reset
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/role:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    put:
+      operationId: setUserRole
+      tags: [users]
+      summary: Promote to admin or demote to user; demotion ends sessions and the last active admin is refused (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetRoleRequest'
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/backup-permission:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    put:
+      operationId: setUserBackupPermission
+      tags: [users]
+      summary: Allow or forbid an admin to download backups; refused for regular users (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetBackupPermissionRequest'
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/shooters:
     get:
       operationId: listShooters
@@ -1023,6 +1360,13 @@ components:
       schema:
         type: integer
         format: int64
+    UserID:
+      name: userID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     ShooterID:
       name: shooterID
       in: path
@@ -1161,10 +1505,125 @@ components:
           type: string
     LoginRequest:
       type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          minLength: 16
+          maxLength: 128
+    SessionUser:
+      type: object
+      required: [username, role, can_download_backup]
+      properties:
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        can_download_backup:
+          type: boolean
+    UserRole:
+      type: string
+      enum: [admin, user]
+    User:
+      type: object
+      required: [id, username, role, active, can_download_backup, must_change_password]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        active:
+          type: boolean
+        can_download_backup:
+          type: boolean
+        must_change_password:
+          type: boolean
+    AuditEntry:
+      type: object
+      required: [id, time, user_id, username, action, target, details, ip]
+      properties:
+        id:
+          type: integer
+          format: int64
+        time:
+          type: string
+          format: date-time
+        user_id:
+          type: integer
+          nullable: true
+          description: Null for devices and failed logins
+        username:
+          type: string
+          description: The username at the time of the event, or device
+        action:
+          type: string
+        target:
+          type: string
+        details:
+          type: string
+        ip:
+          type: string
+    AuditPage:
+      type: object
+      required: [entries, total, page, page_size]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntry'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+    ResetPasswordRequest:
+      type: object
       required: [password]
       properties:
         password:
           type: string
+          minLength: 16
+          maxLength: 128
+    SetRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRole'
+    SetBackupPermissionRequest:
+      type: object
+      required: [can_download_backup]
+      properties:
+        can_download_backup:
+          type: boolean
+    CreateUserRequest:
+      type: object
+      required: [username, role, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          pattern: '^[A-Za-z0-9._-]+$'
+        role:
+          $ref: '#/components/schemas/UserRole'
+        password:
+          type: string
+          minLength: 16
+          maxLength: 128
     CompetitionStatus:
       type: string
       enum: [draft, active, finished]

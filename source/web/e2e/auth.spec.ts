@@ -1,4 +1,4 @@
-import { adminPassword, expect, newApi, signInViaUi, test } from "./helpers";
+import { adminPassword, adminUsername, expect, newApi, signInViaUi, test } from "./helpers";
 
 test.describe("auth", () => {
   test("a wrong password shows an error and a correct one signs in", async ({ page }) => {
@@ -11,21 +11,29 @@ test.describe("auth", () => {
     await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
   });
 
+  test("an unknown username is rejected like a wrong password", async ({ page }) => {
+    await signInViaUi(page, adminPassword, "nobody-here");
+    await expect(page.getByRole("alert")).toHaveText(/unauthorized/i);
+    await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
+  });
+
   test("repeated failures lock out one client without affecting another", async ({ page, baseURL }) => {
     await page.goto("/admin");
     for (let attempt = 0; attempt < 5; attempt++) {
+      await page.getByLabel("Username").fill(adminUsername);
       await page.getByLabel("Password").fill(`wrong-password-${attempt}`);
       await page.getByRole("button", { name: "Sign in" }).click();
       await expect(page.getByRole("alert")).toHaveText(/unauthorized/i);
     }
 
+    await page.getByLabel("Username").fill(adminUsername);
     await page.getByLabel("Password").fill(adminPassword);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("alert")).toContainText("Too many attempts");
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
 
     const other = await newApi(baseURL!);
-    const response = await other.post("/api/admin/login", { data: { password: adminPassword } });
+    const response = await other.post("/api/admin/login", { data: { username: adminUsername, password: adminPassword } });
     expect(response.status()).toBe(204);
     await other.dispose();
   });

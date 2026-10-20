@@ -90,10 +90,10 @@ func (r *Repository) LockStage(ctx context.Context, stageID int64, scorerLane in
 	return nil
 }
 
-func (r *Repository) LockStageAsAdmin(ctx context.Context, stageID int64) error {
+func (r *Repository) LockStageAsUser(ctx context.Context, stageID int64, username string) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE stages SET locked = 1, scorer_lane = NULL, scorer_name = ?, locked_at = ? WHERE id = ? AND locked = 0`,
-		AdminName, lockTimestamp(), stageID)
+		username, lockTimestamp(), stageID)
 	if err != nil {
 		return mapErr(err)
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/restore"
@@ -99,7 +98,8 @@ func buildRestoreCompetition(c restore.RestoredCompetition) (repository.RestoreC
 				rs.Counts = ringCounts(st.RingCounts)
 				rs.ScorerName = st.ScorerName
 				rs.LockedAt = st.LockedAt
-				if lane, err := strconv.Atoi(st.LockedBy); err == nil {
+				if st.Lane > 0 {
+					lane := st.Lane
 					rs.ScorerLane = &lane
 				}
 			}
@@ -167,7 +167,7 @@ func sameLock(cur repository.Stage, st repository.RestoreStage) bool {
 
 func lockOwner(lane *int, name string) string {
 	if lane == nil {
-		return fmt.Sprintf("Admin (%s)", name)
+		return fmt.Sprintf("user %s", name)
 	}
 	return fmt.Sprintf("lane %d (%s)", *lane, name)
 }

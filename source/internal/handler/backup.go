@@ -12,7 +12,7 @@ func WithBackupDir(dir string) Option {
 }
 
 func (h *Handler) backup(w http.ResponseWriter, r *http.Request) {
-	path, cleanup, err := h.svc.Backup(r.Context(), h.backupDir)
+	path, cleanup, err := h.svc.Backup(r.Context(), currentUser(r), h.backupDir)
 	if err != nil {
 		writeError(w, err)
 		return

@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 )
 
-func (s *Service) Backup(ctx context.Context, dir string) (path string, cleanup func(), err error) {
+func (s *Service) Backup(ctx context.Context, user User, dir string) (path string, cleanup func(), err error) {
+	if !user.CanDownloadBackup {
+		return "", nil, ErrBackupNotPermitted
+	}
 	tmp, err := os.MkdirTemp(dir, "matchmark-backup-")
 	if err != nil {
 		return "", nil, err
@@ -17,5 +20,6 @@ func (s *Service) Backup(ctx context.Context, dir string) (path string, cleanup 
 		cleanup()
 		return "", nil, err
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "backup.download"})
 	return path, cleanup, nil
 }

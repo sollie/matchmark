@@ -9,7 +9,7 @@ trap 'docker rm -f "$name" >/dev/null 2>&1; docker volume rm "$volume" >/dev/nul
 
 docker volume create "$volume" >/dev/null
 docker run -d --name "$name" -v "${volume}:/data" \
-  -e ADMIN_PASSWORD=smoke-test-password-123 "$image" >/dev/null
+  -e ADMIN_USERNAME=smoke -e ADMIN_PASSWORD=smoke-test-password-123 "$image" >/dev/null
 
 for _ in $(seq 1 30); do
   if docker exec "$name" wget -q -O /dev/null http://127.0.0.1:8080/; then

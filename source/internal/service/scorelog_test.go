@@ -122,14 +122,14 @@ func TestStageLockedLines(t *testing.T) {
 func TestAdminLockLine(t *testing.T) {
 	f := newScoreFixture(t)
 	f.fillStage(t, f.entry1, 2)
-	if err := f.svc.AdminLockStage(context.Background(), f.compID, f.entry1, 2); err != nil {
+	if err := f.svc.AdminLockStage(service.WithActor(context.Background(), service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 2); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
 	if len(lines) != 1 {
 		t.Fatalf("lines = %d", len(lines))
 	}
-	if lines[0].LockedBy != "Admin" || lines[0].ScorerName != "Admin" || lines[0].Stage.Number != 2 || lines[0].Entry.ID != f.entry1 {
+	if lines[0].LockedBy != "carol" || lines[0].ScorerName != "carol" || lines[0].Stage.Number != 2 || lines[0].Entry.ID != f.entry1 {
 		t.Fatalf("line = %+v", lines[0])
 	}
 }
@@ -381,7 +381,7 @@ func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	edit := repository.RingCounts{X: 1, Ten: 1, Nine: 10}
-	if err := f.svc.AdminSetRingCounts(ctx, f.compID, f.entry2, 1, edit); err != nil {
+	if err := f.svc.AdminSetRingCounts(service.WithActor(ctx, service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry2, 1, edit); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
@@ -389,7 +389,7 @@ func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
 		t.Fatalf("lines = %d", len(lines))
 	}
 	first, second := lines[0], lines[1]
-	if second.Event != "stage_locked" || second.LockedBy != "Admin" || second.ScorerName != "Admin" ||
+	if second.Event != "stage_locked" || second.LockedBy != "carol" || second.ScorerName != "carol" ||
 		!equalInts(second.RingCounts, []int{1, 1, 10, 0, 0, 0, 0}) {
 		t.Fatalf("line = %+v", second)
 	}

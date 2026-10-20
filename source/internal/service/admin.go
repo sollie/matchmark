@@ -51,6 +51,7 @@ func (s *Service) UpdateShooter(ctx context.Context, sh repository.Shooter) erro
 	if err := s.repo.UpdateShooter(ctx, sh); err != nil {
 		return mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "shooter.update", Target: idTarget("shooter", sh.ID)})
 	s.reemitLockedStages(ctx, repository.LockedStageFilter{ShooterID: sh.ID})
 	s.bus.PublishAll()
 	return nil
@@ -60,6 +61,7 @@ func (s *Service) DeleteShooter(ctx context.Context, id int64) error {
 	if err := s.repo.DeleteShooter(ctx, id); err != nil {
 		return mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "shooter.delete", Target: idTarget("shooter", id)})
 	s.bus.PublishAll()
 	return nil
 }
@@ -99,6 +101,7 @@ func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competitio
 	if err := s.repo.UpdateCompetition(ctx, c); err != nil {
 		return mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "competition.update", Target: idTarget("competition", c.ID), Details: c.Name})
 	s.reemitLockedStages(ctx, repository.LockedStageFilter{CompetitionID: c.ID})
 	s.bus.Publish(c.ID)
 	return nil
@@ -118,6 +121,7 @@ func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status Com
 	if err := s.repo.SetCompetitionStatus(ctx, id, string(status)); err != nil {
 		return mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "competition.status", Target: idTarget("competition", id), Details: string(status)})
 	if status == StatusFinished {
 		if err := s.repo.RevokeCompetitionPairings(ctx, id); err != nil {
 			return mapRepoErr(err)
@@ -134,6 +138,7 @@ func (s *Service) DeleteCompetition(ctx context.Context, id int64) error {
 	if err := s.repo.DeleteCompetition(ctx, id); err != nil {
 		return mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "competition.delete", Target: idTarget("competition", id)})
 	s.bus.Publish(id)
 	return nil
 }
@@ -204,6 +209,7 @@ func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64,
 	if err := s.repo.UpdateEntry(ctx, competitionID, entryID, category, lane); err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "entry.update", Target: entryTarget(competitionID, entryID)})
 	s.reemitLockedStages(ctx, repository.LockedStageFilter{CompetitionID: competitionID, EntryID: entryID})
 	s.bus.Publish(competitionID)
 	e, err := s.repo.GetEntry(ctx, competitionID, entryID)
@@ -221,6 +227,7 @@ func (s *Service) DeleteEntry(ctx context.Context, competitionID, entryID int64)
 	if err := s.repo.DeleteEntry(ctx, competitionID, entryID); err != nil {
 		return mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "entry.delete", Target: entryTarget(competitionID, entryID)})
 	s.bus.Publish(competitionID)
 	return nil
 }

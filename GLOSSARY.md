@@ -122,5 +122,5 @@ A full copy of the database file, including password hashes, taken by an admin w
 _Avoid_: Export, dump
 
 **Audit log**:
-The record of who did what: every change by a user, plus logins, failed logins, report downloads and backup downloads. It is separate from the Score log, which records locked results.
+The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records locked results.
 _Avoid_: Activity log, history

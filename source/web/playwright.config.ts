@@ -32,6 +32,7 @@ export default defineConfig({
         timeout: 180_000,
         env: {
           CGO_ENABLED: "0",
+          ADMIN_USERNAME: process.env.E2E_ADMIN_USERNAME ?? "e2e-admin",
           ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD ?? "e2e-admin-password-1234",
           DB_PATH: join(dbDir, "matchmark.db"),
           LISTEN_ADDR: `127.0.0.1:${port}`,

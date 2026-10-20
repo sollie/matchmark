@@ -76,7 +76,7 @@ func (s *Service) stageEventAttrs(ctx context.Context, event string, competition
 	}
 	s.emitSeq++
 	c := stage.Counts
-	var lockedBy any = repository.AdminName
+	var lockedBy any = stage.ScorerName
 	if stage.ScorerLane != nil {
 		lockedBy = *stage.ScorerLane
 	}

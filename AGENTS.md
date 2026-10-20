@@ -73,7 +73,7 @@ Specification and decisions:
 
 ## Security Constraints
 
-- `ADMIN_PASSWORD` is required; the admin authenticates with a cookie session and login is rate limited.
+- `ADMIN_USERNAME` and `ADMIN_PASSWORD` are required only while there are no users and seed the first admin; users authenticate with username and password and a per-user cookie session, and login is rate limited.
 - Scorers are paired devices, not accounts (ADR 0001). A device may only submit hits for its computed score lane; the lane is derived server-side from the pairing and current entries, never trusted from the client.
 - Admins bypass lock checks and can unlock and overwrite any stage.
 - All SQL queries use `?` placeholders via `database/sql` — no string concatenation (the only exception is `VACUUM INTO`, which needs a literal path).
