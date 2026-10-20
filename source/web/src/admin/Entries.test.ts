@@ -65,20 +65,20 @@ describe("Entries", () => {
 
   it("unlocks a locked stage and reloads", async () => {
     const { calls, reload, user } = setup();
-    await user.click(screen.getByRole("button", { name: "Stage 1: Unlock" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 stage 1: Unlock" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/competitions/5/entries/1/stages/1/unlock"]);
     expect(reload).toHaveBeenCalledOnce();
   });
 
   it("locks an open stage", async () => {
     const { calls, user } = setup();
-    await user.click(screen.getByRole("button", { name: "Stage 2: Lock" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Lock" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/competitions/5/entries/1/stages/2/lock"]);
   });
 
   it("overwrites counts and locks the stage when asked", async () => {
     const { calls, user } = setup();
-    await user.click(screen.getByRole("button", { name: "Stage 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Edit" }));
     const x = screen.getByLabelText("X");
     await user.clear(x);
     await user.type(x, "30");
@@ -92,7 +92,7 @@ describe("Entries", () => {
 
   it("shows the entered total against the expected shots", async () => {
     const { user } = setup();
-    await user.click(screen.getByRole("button", { name: "Stage 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Edit" }));
     expect(screen.getByText("30 to go", { exact: false })).toBeTruthy();
     const x = screen.getByLabelText("X");
     await user.clear(x);
@@ -104,7 +104,7 @@ describe("Entries", () => {
 
   it("saves counts without locking", async () => {
     const { calls, user } = setup();
-    await user.click(screen.getByRole("button", { name: "Stage 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Edit" }));
     await user.click(screen.getByRole("button", { name: "Save counts" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["PUT /api/competitions/5/entries/1/stages/2"]);
   });
