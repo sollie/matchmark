@@ -9,7 +9,7 @@ An organisation that runs competitions and owns its own users, shooters and resu
 _Avoid_: Tenant, organisation
 
 **Competition**:
-A single match event run by a club on a given day.
+A single match event run by a club on a given day. Its name, date and course can be edited while it is a draft; the course is fixed once it has entries.
 _Avoid_: Match, event
 
 **Shooter**:
