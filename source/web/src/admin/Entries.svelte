@@ -194,12 +194,12 @@
                   <span class="muted">{st.shots_entered} / {st.expected_shots} shots</span>
                 {/if}
                 <span class="stage-actions">
+                  <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Edit`} onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
                   {#if st.locked}
                     <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Unlock`} onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
                   {:else}
                     <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Lock`} onclick={() => lock(entry, st.stage_number)}>Lock</button>
                   {/if}
-                  <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Edit`} onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
                 </span>
               </div>
             </td>
