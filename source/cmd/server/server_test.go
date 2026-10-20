@@ -1,6 +1,9 @@
 package main
 
 import (
+	"compress/flate"
+	"compress/gzip"
+	"github.com/andybalholm/brotli"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -144,5 +147,88 @@ func TestLoadConfigReplication(t *testing.T) {
 				t.Fatalf("url %q interval %v", c.ReplicationURL, c.ReplicationInterval)
 			}
 		})
+	}
+}
+
+func TestCompression(t *testing.T) {
+	body := strings.Repeat("hello matchmark ", 100)
+	h := compression(true)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/small":
+			w.Header().Set("Content-Type", "text/plain")
+			w.Header().Set("Content-Length", "2")
+			_, _ = w.Write([]byte("hi"))
+		case "/xlsx":
+			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+			_, _ = w.Write([]byte(body))
+		default:
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			_, _ = w.Write([]byte(body))
+		}
+	}))
+	tests := []struct {
+		name, path, accept, want string
+		method                   string
+	}{
+		{"br preferred", "/", "gzip, deflate, br", "br", "GET"},
+		{"gzip", "/", "gzip", "gzip", "GET"},
+		{"deflate", "/", "deflate", "deflate", "GET"},
+		{"q-value wins", "/", "br;q=0.1, gzip;q=0.9", "gzip", "GET"},
+		{"q=0 refuses", "/", "br;q=0, gzip;q=0", "", "GET"},
+		{"none", "/", "", "", "GET"},
+		{"small skipped", "/small", "gzip", "", "GET"},
+		{"xlsx skipped", "/xlsx", "gzip", "", "GET"},
+		{"head skipped", "/", "gzip", "", "HEAD"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, nil)
+			if tc.accept != "" {
+				req.Header.Set("Accept-Encoding", tc.accept)
+			}
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			res := rec.Result()
+			if got := res.Header.Get("Content-Encoding"); got != tc.want {
+				t.Fatalf("Content-Encoding = %q, want %q", got, tc.want)
+			}
+			if tc.want == "" {
+				return
+			}
+			if res.Header.Get("Vary") != "Accept-Encoding" || res.Header.Get("Content-Length") != "" {
+				t.Fatalf("bad headers: %v", res.Header)
+			}
+			var r io.Reader
+			switch tc.want {
+			case "br":
+				r = brotli.NewReader(res.Body)
+			case "gzip":
+				zr, err := gzip.NewReader(res.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				r = zr
+			default:
+				r = flate.NewReader(res.Body)
+			}
+			got, err := io.ReadAll(r)
+			if err != nil || string(got) != body {
+				t.Fatalf("round trip failed: %v", err)
+			}
+		})
+	}
+}
+
+func TestCompressionDisabled(t *testing.T) {
+	h := compression(false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte(strings.Repeat("x", 1000)))
+	}))
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Header().Get("Content-Encoding") != "" {
+		t.Fatal("compressed while disabled")
 	}
 }

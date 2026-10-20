@@ -3,6 +3,7 @@ module github.com/sollie/matchmark
 go 1.27.2
 
 require (
+	github.com/andybalholm/brotli v1.2.6
 	github.com/caddyserver/certmagic v0.25.6
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
