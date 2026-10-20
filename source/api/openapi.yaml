@@ -695,6 +695,42 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/competitions/{competitionID}/stream:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: streamAdminUpdates
+      tags: [competitions]
+      summary: Change notifications as server-sent events
+      description: >
+        Sends a `changed` event on connect and after every change to the
+        competition, coalesced over about 250 ms. The event carries an empty
+        JSON object; the client refetches the entries. A `: heartbeat` comment
+        is sent every 25 seconds and the server closes the stream after 30
+        minutes, so the client reconnects with backoff.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Event stream of `changed` events
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Too many open streams
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/competitions/{competitionID}/results.xlsx:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -756,6 +792,52 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/scorer/stream:
+    get:
+      operationId: streamScorerSession
+      tags: [scorer]
+      summary: The paired device's session as server-sent events
+      description: >
+        Sends a `snapshot` event with the ScorerSession on connect and again
+        after every change in the competition, coalesced over about 250 ms.
+        When the pairing is revoked or the competition finishes, a terminal
+        `revoked` event with an empty JSON object is sent and the stream ends;
+        the client must forget its token and not reconnect. A `: heartbeat`
+        comment is sent every 25 seconds and the server closes the stream
+        after 30 minutes. The device token is sent in the Authorization header,
+        so the client uses fetch instead of EventSource. Writes are always
+        applied to the score lane the server derives at write time, so a
+        client with a stale score lane cannot write to another lane's entry.
+      security:
+        - deviceBearer: []
+      responses:
+        '200':
+          description: Event stream; each `snapshot` event carries a ScorerSession as JSON data
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              x-event-schemas:
+                snapshot:
+                  $ref: '#/components/schemas/ScorerSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminScoringRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: Too many open streams
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/scorer/stages/{stage}:
     parameters:
       - $ref: '#/components/parameters/Stage'
@@ -888,6 +970,42 @@ paths:
                       $ref: '#/components/schemas/StageProgress'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/spectator/competitions/{competitionID}/stream:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: streamSpectatorUpdates
+      tags: [spectator]
+      summary: Live updates as server-sent events
+      description: >
+        Sends a `snapshot` event with the standings and progress on connect and
+        again after every change, coalesced over about 250 ms. A `: heartbeat`
+        comment is sent every 25 seconds. The server closes the stream after
+        30 minutes and the client reconnects, which yields a fresh snapshot, so
+        no replay or `Last-Event-ID` is needed. Visibility flags apply as for
+        the standings endpoint. At most 500 streams are served at once.
+      responses:
+        '200':
+          description: Event stream; each `snapshot` event carries a SpectatorSnapshot as JSON data
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              x-event-schemas:
+                snapshot:
+                  $ref: '#/components/schemas/SpectatorSnapshot'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Too many open streams
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     adminCookie:
@@ -1265,6 +1383,18 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StageScore'
+    SpectatorSnapshot:
+      type: object
+      required: [standings, stages]
+      properties:
+        standings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Standing'
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageProgress'
     StageProgress:
       type: object
       required: [stage, entries, locked]

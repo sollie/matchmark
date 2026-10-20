@@ -1,19 +1,19 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
+  import { openStream, type StreamState } from "../lib/sse";
   import type { components } from "../lib/api/schema";
 
   type Competition = components["schemas"]["Competition"];
   type Standing = components["schemas"]["Standing"];
   type Progress = components["schemas"]["StageProgress"];
-
-  const refreshMs = 5000;
+  type Snapshot = components["schemas"]["SpectatorSnapshot"];
 
   let competitions = $state<Competition[]>([]);
   let selected = $state<number | null>(null);
   let standings = $state<Standing[]>([]);
   let progress = $state<Progress[]>([]);
-  let error = $state("");
+  let connection = $state<StreamState>("connecting");
   let updated = $state<Date | null>(null);
 
   const showNames = $derived(standings.some((s) => s.last_name !== undefined));
@@ -35,34 +35,27 @@
     }
   }
 
-  async function refresh() {
-    if (selected === null) return;
-    const path = { competitionID: selected };
-    const [st, pr] = await Promise.all([
-      api.GET("/api/spectator/competitions/{competitionID}/standings", { params: { path } }),
-      api.GET("/api/spectator/competitions/{competitionID}/progress", { params: { path } }),
-    ]);
-    if (st.data && pr.data) {
-      standings = st.data.standings;
-      progress = pr.data.stages;
-      updated = new Date();
-      error = "";
-    } else {
-      error = "Could not refresh. Retrying…";
-    }
-  }
-
   $effect(() => {
     void loadCompetitions();
-    const id = setInterval(loadCompetitions, refreshMs * 6);
-    return () => clearInterval(id);
   });
 
   $effect(() => {
     if (selected === null) return;
-    void refresh();
-    const id = setInterval(refresh, refreshMs);
-    return () => clearInterval(id);
+    const stream = openStream({
+      url: `/api/spectator/competitions/${selected}/stream`,
+      onEvent: (event, data) => {
+        if (event !== "snapshot") return;
+        const snapshot: Snapshot = JSON.parse(data);
+        standings = snapshot.standings;
+        progress = snapshot.stages;
+        updated = new Date();
+      },
+      onState: (next) => {
+        connection = next;
+        if (next === "live") void loadCompetitions();
+      },
+    });
+    return () => stream.close();
   });
 
   function rank(i: number): number {
@@ -77,7 +70,7 @@
   {#if competitions.length === 0}
     <div class="card empty">
       <p>No competitions are live yet.</p>
-      <p class="muted">This page updates automatically when a competition starts.</p>
+      <p class="muted">Reload this page once a competition has started.</p>
     </div>
   {:else}
     <label class="picker">
@@ -90,8 +83,10 @@
     </label>
 
     <p class="status" role="status">
-      {#if error}
-        <span class="badge danger">Error</span> <span class="error">{error}</span>
+      {#if connection === "stale"}
+        <span class="badge danger">Offline</span>
+        <span class="error">Connection lost. Reconnecting…</span>
+        {#if updated}<span class="muted">Last update {clockTime(updated)}</span>{/if}
       {:else if updated}
         <span class="badge success">Live</span> <span class="muted">Updated {clockTime(updated)}</span>
       {:else}

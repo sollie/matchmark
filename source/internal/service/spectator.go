@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"sort"
+	"sync"
 
 	"github.com/sollie/matchmark/internal/repository"
 )
@@ -50,7 +51,11 @@ func (s *Service) GetVisibility(ctx context.Context, competitionID int64) (repos
 }
 
 func (s *Service) SetVisibility(ctx context.Context, competitionID int64, v repository.Visibility) error {
-	return mapRepoErr(s.repo.SetVisibility(ctx, competitionID, v))
+	if err := s.repo.SetVisibility(ctx, competitionID, v); err != nil {
+		return mapRepoErr(err)
+	}
+	s.bus.Publish(competitionID)
+	return nil
 }
 
 func (s *Service) ListPublicCompetitions(ctx context.Context) ([]repository.Competition, error) {
@@ -171,4 +176,57 @@ func (s *Service) Progress(ctx context.Context, competitionID int64) ([]StagePro
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Stage < out[j].Stage })
 	return out, nil
+}
+
+type SpectatorSnapshot struct {
+	Standings []StandingView  `json:"standings"`
+	Stages    []StageProgress `json:"stages"`
+}
+
+type cachedSnapshot struct {
+	version  uint64
+	snapshot SpectatorSnapshot
+}
+
+type snapSlot struct {
+	mu     sync.Mutex
+	cached *cachedSnapshot
+}
+
+func (s *Service) snapSlot(competitionID int64) *snapSlot {
+	s.snapMu.Lock()
+	defer s.snapMu.Unlock()
+	slot, ok := s.snaps[competitionID]
+	if !ok {
+		slot = &snapSlot{}
+		s.snaps[competitionID] = slot
+	}
+	return slot
+}
+
+func (s *Service) Subscribe(competitionID int64) *Subscription {
+	return s.bus.Subscribe(competitionID)
+}
+
+func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (SpectatorSnapshot, error) {
+	slot := s.snapSlot(competitionID)
+	slot.mu.Lock()
+	defer slot.mu.Unlock()
+	version := s.bus.Version(competitionID)
+	if c := slot.cached; c != nil && c.version == version {
+		return c.snapshot, nil
+	}
+	standings, err := s.Standings(ctx, competitionID)
+	if err != nil {
+		slot.cached = nil
+		return SpectatorSnapshot{}, err
+	}
+	stages, err := s.Progress(ctx, competitionID)
+	if err != nil {
+		slot.cached = nil
+		return SpectatorSnapshot{}, err
+	}
+	snap := SpectatorSnapshot{Standings: standings, Stages: stages}
+	slot.cached = &cachedSnapshot{version: version, snapshot: snap}
+	return snap, nil
 }
