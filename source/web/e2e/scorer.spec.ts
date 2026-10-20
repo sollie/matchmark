@@ -134,7 +134,7 @@ test.describe("pairing and scorer device", () => {
 
     await openCompetition(page, competition.id);
     const entryRow = row(page, entries[0].shooter.last_name);
-    await entryRow.getByRole("button", { name: "Stage 1: Edit" }).click();
+    await page.getByRole("button", { name: `Lane ${entries[0].lane} stage 1: Edit` }).click();
     await page.getByLabel("10", { exact: true }).fill("12");
     await expect(page.getByText("✓ Shots match")).toBeVisible();
     await page.getByRole("button", { name: "Save and lock" }).click();

@@ -72,7 +72,7 @@ test.describe("admin ring counts", () => {
     const entry = await seedEntry(admin, competition.id, 1);
     await openCompetition(page, competition.id);
 
-    await row(page, entry.shooter.last_name).locator("td.stage").first().getByRole("button", { name: "Stage 1: Edit" }).click();
+    await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Edit` }).click();
     const counts = page.locator(".counts");
     await expect(counts).toContainText(`must sum to ${course.stageOneShots} shots`);
 
@@ -98,7 +98,7 @@ test.describe("admin ring counts", () => {
 
     const entryRow = row(page, entry.shooter.last_name);
     const stage = entryRow.locator("td.stage").first();
-    await stage.getByRole("button", { name: "Stage 1: Edit" }).click();
+    await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Edit` }).click();
     const counts = page.locator(".counts");
     await counts.getByLabel("X", { exact: true }).fill("2");
     await counts.getByLabel("10", { exact: true }).fill("4");
@@ -114,9 +114,9 @@ test.describe("admin ring counts", () => {
     await expect(locked).toHaveAttribute("title", /Admin/);
     await expect(stage).toContainText("pts");
 
-    await stage.getByRole("button", { name: "Stage 1: Unlock" }).click();
+    await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Unlock` }).click();
     await expect(stage.getByText("Scored, not locked")).toBeVisible();
-    await expect(stage.getByRole("button", { name: "Stage 1: Lock" })).toBeVisible();
+    await expect(page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Lock` })).toBeVisible();
     await expect(stage.getByText("Locked", { exact: true })).toHaveCount(0);
   });
 
@@ -128,7 +128,7 @@ test.describe("admin ring counts", () => {
 
     const stage = row(page, entry.shooter.last_name).locator("td.stage").first();
     await expect(stage.locator(".score strong")).toHaveText("120");
-    await stage.getByRole("button", { name: "Stage 1: Edit" }).click();
+    await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Edit` }).click();
     const counts = page.locator(".counts");
     await counts.getByLabel("9", { exact: true }).fill(String(course.stageOneShots));
     await counts.getByRole("button", { name: "Save and lock" }).click();
