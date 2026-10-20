@@ -16,6 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: No comments
+        working-directory: .
+        run: scripts/check-no-comments.sh
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: source/go.mod
