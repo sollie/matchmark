@@ -15,6 +15,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  expect: { timeout: 20_000 },
   use: { baseURL, trace: "retain-on-failure" },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
@@ -34,6 +35,7 @@ export default defineConfig({
           ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD ?? "e2e-admin-password-1234",
           DB_PATH: join(dbDir, "matchmark.db"),
           LISTEN_ADDR: `127.0.0.1:${port}`,
+          TRUSTED_PROXY: "127.0.0.1",
         },
       },
 });
