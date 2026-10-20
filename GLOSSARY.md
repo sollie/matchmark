@@ -52,6 +52,14 @@ _Avoid_: Marker, judge
 The next manned lane after the scorer's own lane, wrapping around, whose shooter the scorer scores.
 _Avoid_: Target lane, neighbour lane
 
+**Discipline**:
+A family of matches shot to the same rulebook course: 1500, 60 or 48. A discipline can have more than one course.
+_Avoid_: Match type
+
+**Course**:
+The complete set of stages a competition is shot over, with a fixed total number of shots. A competition has exactly one course. The 5-shot revolver variant of the 48 discipline is its own course.
+_Avoid_: Course of fire (as a noun for the whole set), program
+
 **Stage**:
 One course-of-fire segment shot by a shooter, with a fixed number of shots.
 _Avoid_: String, round
