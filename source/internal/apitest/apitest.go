@@ -2,11 +2,17 @@ package apitest
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
+
+	"golang.org/x/crypto/argon2"
 
 	"github.com/sollie/matchmark/internal/db"
 	"github.com/sollie/matchmark/internal/handler"
@@ -18,9 +24,51 @@ type Env struct {
 	t      *testing.T
 	Server *httptest.Server
 	client *http.Client
+	repo   *repository.Repository
+
+	mu     sync.Mutex
+	offset time.Duration
 }
 
-const AdminPassword = "correct-horse-battery"
+const (
+	AdminUsername = "admin"
+	AdminPassword = "correct-horse-battery"
+)
+
+func (e *Env) Advance(d time.Duration) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.offset += d
+}
+
+func (e *Env) now() time.Time {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return time.Now().Add(e.offset)
+}
+
+func LegacyHash(password string) string {
+	salt := []byte("0123456789abcdef")
+	key := argon2.IDKey([]byte(password), salt, 1, 8*1024, 1, 32)
+	enc := base64.RawStdEncoding
+	return fmt.Sprintf("$argon2id$v=19$m=8192,t=1,p=1$%s$%s", enc.EncodeToString(salt), enc.EncodeToString(key))
+}
+
+func (e *Env) PasswordHash(username string) string {
+	e.t.Helper()
+	hash, err := e.repo.PasswordHash(username)
+	if err != nil {
+		e.t.Fatalf("password hash: %v", err)
+	}
+	return hash
+}
+
+func (e *Env) SetPasswordHash(username, hash string) {
+	e.t.Helper()
+	if err := e.repo.SetPasswordHash(username, hash); err != nil {
+		e.t.Fatalf("set password hash: %v", err)
+	}
+}
 
 func New(t *testing.T) *Env {
 	t.Helper()
@@ -35,23 +83,25 @@ func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	repo := repository.New(conn)
-	auth, err := service.NewAdminAuth(repo, AdminPassword)
-	if err != nil {
-		t.Fatalf("admin auth: %v", err)
+	e := &Env{t: t, repo: repo}
+	auth := service.NewAuth(repo, service.WithAuthClock(e.now))
+	if err := auth.SeedAdmin(AdminUsername, AdminPassword); err != nil {
+		t.Fatalf("seed admin: %v", err)
 	}
-	srv := httptest.NewServer(handler.NewRouter(service.New(repo), append([]handler.Option{handler.WithAdminAuth(auth, baseURL)}, opts...)...))
-	t.Cleanup(srv.Close)
+	e.Server = httptest.NewServer(handler.NewRouter(service.New(repo), append([]handler.Option{handler.WithAuth(auth, baseURL)}, opts...)...))
+	t.Cleanup(e.Server.Close)
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		t.Fatalf("cookie jar: %v", err)
 	}
-	return &Env{t: t, Server: srv, client: &http.Client{Jar: jar}}
+	e.client = &http.Client{Jar: jar}
+	return e
 }
 
 func NewAdmin(t *testing.T, opts ...handler.Option) *Env {
 	t.Helper()
 	e := NewWithBaseURL(t, "http://localhost", opts...)
-	if status, out := e.Do("POST", "/api/admin/login", map[string]string{"password": AdminPassword}); status != http.StatusNoContent {
+	if status, out := e.Do("POST", "/api/admin/login", map[string]string{"username": AdminUsername, "password": AdminPassword}); status != http.StatusNoContent {
 		t.Fatalf("admin login: %d %v", status, out)
 	}
 	return e

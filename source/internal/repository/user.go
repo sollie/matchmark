@@ -1,0 +1,84 @@
+package repository
+
+import "time"
+
+type User struct {
+	ID                 int
+	Username           string
+	Role               string
+	Active             bool
+	CanDownloadBackup  bool
+	MustChangePassword bool
+	PasswordHash       string
+}
+
+const userColumns = `id, username, role, active, can_download_backup, must_change_password, password_hash`
+
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanUser(s scanner) (User, error) {
+	var u User
+	err := s.Scan(&u.ID, &u.Username, &u.Role, &u.Active, &u.CanDownloadBackup, &u.MustChangePassword, &u.PasswordHash)
+	return u, mapErr(err)
+}
+
+func (r *Repository) CountUsers() (int, error) {
+	var n int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&n)
+	return n, mapErr(err)
+}
+
+func (r *Repository) CreateUser(username, role, passwordHash string, canDownloadBackup bool) (int, error) {
+	res, err := r.db.Exec(
+		`INSERT INTO users (username, role, can_download_backup, password_hash) VALUES (?, ?, ?, ?)`,
+		username, role, canDownloadBackup, passwordHash,
+	)
+	if err != nil {
+		return 0, mapErr(err)
+	}
+	id, err := res.LastInsertId()
+	return int(id), err
+}
+
+func (r *Repository) UserByUsername(username string) (User, error) {
+	return scanUser(r.db.QueryRow(`SELECT `+userColumns+` FROM users WHERE username = ?`, username))
+}
+
+func (r *Repository) PasswordHash(username string) (string, error) {
+	u, err := r.UserByUsername(username)
+	return u.PasswordHash, err
+}
+
+func (r *Repository) SetPasswordHash(username, hash string) error {
+	_, err := r.db.Exec(`UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?`, hash, username)
+	return mapErr(err)
+}
+
+func (r *Repository) CreateSession(tokenHash string, userID int, expiresAt time.Time) error {
+	_, err := r.db.Exec(
+		`INSERT INTO user_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)`,
+		tokenHash, userID, expiresAt.UTC().Format(time.RFC3339),
+	)
+	return mapErr(err)
+}
+
+func (r *Repository) SessionUser(tokenHash string, now time.Time) (User, error) {
+	return scanUser(r.db.QueryRow(
+		`SELECT u.id, u.username, u.role, u.active, u.can_download_backup, u.must_change_password, u.password_hash
+		 FROM user_sessions s JOIN users u ON u.id = s.user_id
+		 WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`,
+		tokenHash, now.UTC().Format(time.RFC3339),
+	))
+}
+
+func (r *Repository) DeleteSession(tokenHash string) error {
+	_, err := r.db.Exec(`DELETE FROM user_sessions WHERE token_hash = ?`, tokenHash)
+	return mapErr(err)
+}
+
+func (r *Repository) DeleteExpiredSessions(now time.Time) error {
+	_, err := r.db.Exec(`DELETE FROM user_sessions WHERE expires_at <= ?`, now.UTC().Format(time.RFC3339))
+	return mapErr(err)
+}

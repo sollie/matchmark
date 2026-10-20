@@ -19,7 +19,7 @@ paths:
     post:
       operationId: adminLogin
       tags: [admin-auth]
-      summary: Log in as admin and set the mm_session cookie
+      summary: Log in with username and password and set the mm_session cookie
       requestBody:
         required: true
         content:
@@ -55,7 +55,7 @@ paths:
     get:
       operationId: adminSession
       tags: [admin-auth]
-      summary: Check that the admin session is valid
+      summary: Check that the user session is valid
       security:
         - adminCookie: []
       responses:
@@ -1161,8 +1161,10 @@ components:
           type: string
     LoginRequest:
       type: object
-      required: [password]
+      required: [username, password]
       properties:
+        username:
+          type: string
         password:
           type: string
     CompetitionStatus:

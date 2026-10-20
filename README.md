@@ -19,13 +19,14 @@ The rulebook (courses, weapon classes, ring values) is public at `GET /api/ruleb
 
 ```sh
 mkdir -p data && sudo chown 65532:65532 data
+export ADMIN_USERNAME='admin'
 export ADMIN_PASSWORD='at-least-16-characters'
 docker compose up --build -d
 ```
 
 The app listens on plain HTTP at `http://localhost:8080` (override the host port with `HTTP_PORT`). The container runs as UID/GID 65532, so the `data` directory must be writable by that user. The database (a SQLite-format file opened through the tursogo driver), backups and ACME certificates live in `/data`.
 
-Sign in at `/` with the admin password. `ADMIN_PASSWORD` must be at least 16 characters and is the only required setting.
+Sign in at `/` with the seeded admin's username and password. On first start, when there are no users, an admin is created from `ADMIN_USERNAME` and `ADMIN_PASSWORD`; the server refuses to start if either is missing or invalid. Once any user exists both variables are ignored.
 
 ## Run without Docker
 
@@ -33,7 +34,7 @@ Prerequisites: Go 1.27+ and Node.js 24 LTS.
 
 ```sh
 cd source/web && npm ci && npm run build && cd ..
-ADMIN_PASSWORD='at-least-16-characters' CGO_ENABLED=0 go run ./cmd/server
+ADMIN_USERNAME='admin' ADMIN_PASSWORD='at-least-16-characters' CGO_ENABLED=0 go run ./cmd/server
 ```
 
 For frontend development run `npm run dev` in `source/web`; it proxies `/api` to `localhost:8080`. Run the frontend tests with `npm test` (Vitest, jsdom and Testing Library; dev-only).
@@ -56,11 +57,11 @@ Without local browsers or Go, run the suite in Docker against the built image:
 docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e
 ```
 
-Set `E2E_BASE_URL` (and `E2E_ADMIN_PASSWORD`) to test an already running instance instead of starting one. CI runs one job per browser in parallel on every pull request, gated by an aggregate `E2E` check, and uploads a per-browser report on failure.
+Set `E2E_BASE_URL` (and `E2E_ADMIN_USERNAME` and `E2E_ADMIN_PASSWORD`) to test an already running instance instead of starting one. CI runs one job per browser in parallel on every pull request, gated by an aggregate `E2E` check, and uploads a per-browser report on failure.
 
 Coverage, by area:
 
-- Auth: wrong and correct password, per-client login lockout, sign out, 401 on unauthenticated admin API calls, the not-found page, and the unpaired scorer page.
+- Auth: wrong password, unknown username and correct login, per-client login lockout, sign out, 401 on unauthenticated admin API calls, the not-found page, and the unpaired scorer page.
 - Shooters: add, edit, cancel an edit, delete with confirmation, and form validation.
 - Competitions: creation for each course of fire with its stage columns, the prefilled ISO 8601 date and invalid-date blocking, the list with statuses, start and finish with confirmation, finished competitions (revoked pairings, no new entries), editing a draft (name, date, course, locked course once entries exist, no edit once started), delete with confirmation, and visibility flags persisting.
 - Entries and admin scoring: adding entries with category and default lane, taken-lane rejection, move, withdraw and remove, live shot totals with rejection of wrong totals, and save and lock as "Admin" with unlock.
@@ -77,7 +78,8 @@ Tests seed data through the admin API with unique names and send a unique `X-For
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ADMIN_PASSWORD` | required | Admin password, minimum 16 characters |
+| `ADMIN_USERNAME` | required when there are no users | Username of the seeded admin: 3-32 characters from `a-z`, `0-9`, `.`, `_`, `-` (stored lowercase); ignored once users exist |
+| `ADMIN_PASSWORD` | required when there are no users | Password of the seeded admin, 16-128 characters; ignored once users exist |
 | `DB_PATH` | `data/matchmark.db` (`/data/matchmark.db` in the image) | SQLite file; its directory also holds backups and ACME certificates |
 | `LISTEN_ADDR` | `:8080` plain, `:8443` with TLS | Listen address |
 | `BASE_URL` | empty | Public URL, used for pairing links; an `https` URL marks the session cookie `Secure` |
@@ -100,7 +102,7 @@ The server writes structured JSON logs (`log/slog`) to stdout: one `request` lin
 
 Each time a stage is locked, unlocked, or edited by the admin while locked, a `stage_locked` or `stage_unlocked` line is also written to stdout with the competition, entry, shooter, ring counts and who locked it (see `docs/spec.md`). Keep your container logs: if the database is lost and there is no replica, they are the only record of the final scores. The lines contain personal data (WAID, names, club), so apply your club's retention policy to them.
 
-To preview what a log would restore, run `matchmark restore [file]` (or pipe the log on stdin, e.g. `docker compose logs --no-log-prefix matchmark | matchmark restore`). It needs no `ADMIN_PASSWORD`, skips non-score and malformed lines with a count, rejects an unknown `schema_version`, treats lines with an unknown course key, an invalid `locked_by` or an `emitted_at` outside the fixed-width layout as malformed, and prints the competitions, entries and scored stages it would restore. Without `--apply` it is a dry run and writes nothing.
+To preview what a log would restore, run `matchmark restore [file]` (or pipe the log on stdin, e.g. `docker compose logs --no-log-prefix matchmark | matchmark restore`). It needs no `ADMIN_USERNAME` or `ADMIN_PASSWORD`, skips non-score and malformed lines with a count, rejects an unknown `schema_version`, treats lines with an unknown course key, an invalid `locked_by` or an `emitted_at` outside the fixed-width layout as malformed, and prints the competitions, entries and scored stages it would restore. Without `--apply` it is a dry run and writes nothing.
 
 To write the restore, run `matchmark restore --apply [file]` with the same `DB_PATH` the server uses (for example `docker compose run --rm -T matchmark restore --apply < scores.jsonl` while the server is stopped). It opens the database, runs migrations, and recreates competitions (as `finished`), shooters, entries and the locked stages with their ring counts, `locked_by` lane (or `Admin`), `scorer_name` and `locked_at`, keeping the original competition and entry ids. Flags may come before or after the file. If the database already contains competitions or shooters, it refuses and changes nothing; the whole restore is one transaction, so a failure leaves the database unchanged; add `--merge` to apply only data whose ids match or are new and list conflicts (differing competition, entry, or locked stage counts, `locked_by`, `scorer_name` or `locked_at`) without overwriting them. With `--merge` it is idempotent by ids: re-running changes nothing, and stages already locked are left untouched. The log has no sex or country, so restored shooters get sex `M` and an empty country. Unscored entries, devices and pairings are not restored; the command prints a note saying so.
 

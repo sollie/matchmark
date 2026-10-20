@@ -2,9 +2,12 @@ package handler_test
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/sollie/matchmark/internal/apitest"
 )
@@ -18,9 +21,8 @@ func client(t *testing.T) *http.Client {
 	return &http.Client{Jar: jar}
 }
 
-func post(t *testing.T, c *http.Client, env *apitest.Env, path, password string) *http.Response {
+func postBody(t *testing.T, c *http.Client, env *apitest.Env, path, body string) (*http.Response, string) {
 	t.Helper()
-	body := `{"password":"` + password + `"}`
 	req, err := http.NewRequest("POST", env.Server.URL+path, bytes.NewBufferString(body))
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +32,22 @@ func post(t *testing.T, c *http.Client, env *apitest.Env, path, password string)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp, string(out)
+}
+
+func post(t *testing.T, c *http.Client, env *apitest.Env, path, password string) *http.Response {
+	t.Helper()
+	return login(t, c, env, path, apitest.AdminUsername, password)
+}
+
+func login(t *testing.T, c *http.Client, env *apitest.Env, path, username, password string) *http.Response {
+	t.Helper()
+	resp, _ := postBody(t, c, env, path, `{"username":"`+username+`","password":"`+password+`"}`)
 	return resp
 }
 
@@ -130,5 +147,76 @@ func TestLoginRateLimited(t *testing.T) {
 	}
 	if got := post(t, c, env, "/api/admin/login", apitest.AdminPassword).StatusCode; got != http.StatusTooManyRequests {
 		t.Fatalf("correct password while limited: status %d", got)
+	}
+}
+
+func TestUnknownUsernameAndWrongPasswordLookTheSame(t *testing.T) {
+	env := apitest.New(t)
+	wrongResp, wrongBody := postBody(t, client(t), env, "/api/admin/login", `{"username":"admin","password":"wrong-password-wrong"}`)
+	unknownResp, unknownBody := postBody(t, client(t), env, "/api/admin/login", `{"username":"nobody","password":"wrong-password-wrong"}`)
+	if wrongResp.StatusCode != http.StatusUnauthorized || unknownResp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("statuses %d, %d", wrongResp.StatusCode, unknownResp.StatusCode)
+	}
+	if wrongBody != unknownBody || len(unknownResp.Cookies()) != 0 || len(wrongResp.Cookies()) != 0 {
+		t.Fatalf("responses differ: %q vs %q", wrongBody, unknownBody)
+	}
+}
+
+func TestLoginUsernameIsCaseInsensitive(t *testing.T) {
+	env := apitest.New(t)
+	if got := login(t, client(t), env, "/api/admin/login", "ADMIN", apitest.AdminPassword).StatusCode; got != http.StatusNoContent {
+		t.Fatalf("status %d", got)
+	}
+}
+
+func TestSessionExpiresAfterTwelveHours(t *testing.T) {
+	env := apitest.New(t)
+	c := client(t)
+	resp := post(t, c, env, "/api/admin/login", apitest.AdminPassword)
+	if got := resp.Cookies()[0].MaxAge; got != int((12 * time.Hour).Seconds()) {
+		t.Fatalf("max age %d", got)
+	}
+	env.Advance(11*time.Hour + 59*time.Minute)
+	if got := sessionStatus(t, c, env); got != http.StatusNoContent {
+		t.Fatalf("before expiry: status %d", got)
+	}
+	env.Advance(2 * time.Minute)
+	if got := sessionStatus(t, c, env); got != http.StatusUnauthorized {
+		t.Fatalf("after expiry: status %d", got)
+	}
+}
+
+func TestStoredHashIsArgon2idWithPerUserSalt(t *testing.T) {
+	env := apitest.New(t)
+	hash := env.PasswordHash(apitest.AdminUsername)
+	if !strings.HasPrefix(hash, "$argon2id$v=19$m=19456,t=2,p=1$") || strings.Contains(hash, apitest.AdminPassword) {
+		t.Fatalf("hash %q", hash)
+	}
+	other := apitest.New(t)
+	if other.PasswordHash(apitest.AdminUsername) == hash {
+		t.Fatal("same password produced the same hash")
+	}
+}
+
+func TestWeakerStoredHashIsUpgradedAtLogin(t *testing.T) {
+	env := apitest.New(t)
+	weak := apitest.LegacyHash(apitest.AdminPassword)
+	env.SetPasswordHash(apitest.AdminUsername, weak)
+
+	if got := post(t, client(t), env, "/api/admin/login", "wrong-password-wrong").StatusCode; got != http.StatusUnauthorized {
+		t.Fatalf("wrong password against weak hash: status %d", got)
+	}
+	if env.PasswordHash(apitest.AdminUsername) != weak {
+		t.Fatal("hash changed after failed login")
+	}
+	if got := post(t, client(t), env, "/api/admin/login", apitest.AdminPassword).StatusCode; got != http.StatusNoContent {
+		t.Fatalf("login with weak hash: status %d", got)
+	}
+	upgraded := env.PasswordHash(apitest.AdminUsername)
+	if upgraded == weak || !strings.HasPrefix(upgraded, "$argon2id$v=19$m=19456,t=2,p=1$") {
+		t.Fatalf("hash not upgraded: %q", upgraded)
+	}
+	if got := post(t, client(t), env, "/api/admin/login", apitest.AdminPassword).StatusCode; got != http.StatusNoContent {
+		t.Fatalf("login after upgrade: status %d", got)
 	}
 }

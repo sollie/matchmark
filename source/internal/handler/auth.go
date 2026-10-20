@@ -14,7 +14,7 @@ const sessionCookie = "mm_session"
 
 type Option func(*Handler)
 
-func WithAdminAuth(auth *service.AdminAuth, baseURL string) Option {
+func WithAuth(auth *service.Auth, baseURL string) Option {
 	return func(h *Handler) {
 		h.auth = auth
 		h.secureCookie = strings.HasPrefix(strings.ToLower(baseURL), "https://")
@@ -28,12 +28,17 @@ func (h *Handler) RequireAdmin(next http.Handler) http.Handler {
 			writeUnauthorized(w)
 			return
 		}
-		if err := h.auth.Authenticate(c.Value); err != nil {
+		user, err := h.auth.Authenticate(c.Value)
+		if err != nil {
 			if errors.Is(err, service.ErrUnauthenticated) {
 				writeUnauthorized(w)
 				return
 			}
 			writeError(w, err)
+			return
+		}
+		if user.Role != service.RoleAdmin {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -67,13 +72,14 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, value string, expires 
 
 func (h *Handler) adminLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
+		Username string `json:"username"`
 		Password string `json:"password"`
 	}
 	if err := decode(r, &body); err != nil {
 		writeError(w, err)
 		return
 	}
-	token, expires, err := h.auth.Login(clientKey(r), body.Password)
+	token, expires, err := h.auth.Login(clientKey(r), body.Username, body.Password)
 	switch {
 	case errors.Is(err, service.ErrTooManyAttempts):
 		w.Header().Set("Retry-After", "900")

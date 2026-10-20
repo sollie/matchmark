@@ -55,13 +55,13 @@ func run(logger *slog.Logger) error {
 	}
 	defer func() { _ = conn.Close() }()
 	repo := repository.New(conn)
-	auth, err := service.NewAdminAuth(repo, cfg.AdminPassword)
-	if err != nil {
+	auth := service.NewAuth(repo)
+	if err := auth.SeedAdmin(cfg.AdminUsername, cfg.AdminPassword); err != nil {
 		return err
 	}
 	svcOpts = append(svcOpts, service.WithScoreLog(logger))
 	api := handler.NewRouter(service.New(repo, svcOpts...),
-		handler.WithAdminAuth(auth, cfg.BaseURL),
+		handler.WithAuth(auth, cfg.BaseURL),
 		handler.WithBackupDir(filepath.Dir(cfg.DBPath)),
 	)
 	root := trustedProxyRealIP(cfg.TrustedProxy)(requestLogger(logger)(compression(!cfg.DisableCompression)(spaHandler(web.Dist(), api))))

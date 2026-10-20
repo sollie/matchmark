@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { request, test as base, expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
+export const adminUsername = process.env.E2E_ADMIN_USERNAME ?? "e2e-admin";
 export const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? "e2e-admin-password-1234";
 
 interface RingCounts {
@@ -93,7 +94,7 @@ export async function newApi(baseURL: string, clientIp = uniqueClientIp()): Prom
 
 export async function adminApi(baseURL: string): Promise<APIRequestContext> {
   const api = await newApi(baseURL);
-  const response = await api.post("/api/admin/login", { data: { password: adminPassword } });
+  const response = await api.post("/api/admin/login", { data: { username: adminUsername, password: adminPassword } });
   await checked(response, "admin sign-in");
   return api;
 }
@@ -207,8 +208,9 @@ function pairingPath(token: string): string {
   return `/score#token=${encodeURIComponent(token)}`;
 }
 
-export async function signInViaUi(page: Page, password = adminPassword) {
+export async function signInViaUi(page: Page, password = adminPassword, username = adminUsername) {
   await page.goto("/admin");
+  await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
 }

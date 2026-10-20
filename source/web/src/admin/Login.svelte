@@ -3,6 +3,7 @@
   import { errorMessage } from "../lib/api/util";
   import { admin } from "../lib/session.svelte";
 
+  let username = $state("");
   let password = $state("");
   let error = $state("");
   let busy = $state(false);
@@ -11,7 +12,7 @@
     e.preventDefault();
     busy = true;
     error = "";
-    const { error: err, response } = await api.POST("/api/admin/login", { body: { password } });
+    const { error: err, response } = await api.POST("/api/admin/login", { body: { username, password } });
     busy = false;
     if (response.ok) {
       password = "";
@@ -29,6 +30,10 @@
   <div class="card">
     <h1>Admin sign in</h1>
     <form onsubmit={submit}>
+      <label>
+        Username
+        <input type="text" bind:value={username} autocomplete="username" required />
+      </label>
       <label>
         Password
         <input type="password" bind:value={password} autocomplete="current-password" required />

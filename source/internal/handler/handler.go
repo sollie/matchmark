@@ -14,7 +14,7 @@ import (
 
 type Handler struct {
 	svc          *service.Service
-	auth         *service.AdminAuth
+	auth         *service.Auth
 	secureCookie bool
 	backupDir    string
 	limits       streamLimits

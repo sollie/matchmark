@@ -13,7 +13,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Log in as admin and set the mm_session cookie */
+        /** Log in with username and password and set the mm_session cookie */
         post: operations["adminLogin"];
         delete?: never;
         options?: never;
@@ -45,7 +45,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Check that the admin session is valid */
+        /** Check that the user session is valid */
         get: operations["adminSession"];
         put?: never;
         post?: never;
@@ -611,6 +611,7 @@ export interface components {
             error: string;
         };
         LoginRequest: {
+            username: string;
             password: string;
         };
         /** @enum {string} */
