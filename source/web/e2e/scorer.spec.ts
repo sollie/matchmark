@@ -1,5 +1,5 @@
 import type { APIRequestContext } from "@playwright/test";
-import { createCompetition, createPairing, expect, openCompetition, row, section, seedEntry, test } from "./helpers";
+import { createCompetition, createPairing, expect, openCompetition, row, section, seedEntry, setCounts, test } from "./helpers";
 
 const deviceTokenKey = "mm_device_token";
 
@@ -93,7 +93,23 @@ test.describe("pairing and scorer device", () => {
     );
   });
 
-  test("revoking a pairing logs the device out on its next load", async ({ adminPage: page, admin, openDevice }) => {
+  test("the admin entries refresh when a scorer locks a stage without reloading", async ({ adminPage: page, admin, openDevice }) => {
+    const { competition, entries } = await seedActive(admin, [1, 2]);
+    const pairing = await createPairing(admin, competition.id, 1);
+    await openCompetition(page, competition.id);
+    const lockedBadge = row(page, entries[1].shooter.last_name).getByText("Locked", { exact: true });
+    await expect(lockedBadge).toHaveCount(0);
+
+    const scorer = await openDevice(pairing.token);
+    await scorer.getByLabel("10 count", { exact: true }).fill("12");
+    await scorer.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(scorer.getByRole("status")).toHaveText("Saved");
+    await scorer.getByRole("button", { name: "Lock stage", exact: true }).click();
+
+    await expect(lockedBadge.first()).toBeVisible();
+  });
+
+  test("revoking a pairing returns the device to the pairing screen without a reload", async ({ adminPage: page, admin, openDevice }) => {
     const { competition } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, competition.id, 1);
     const scorer = await openDevice(pairing.token);
@@ -106,9 +122,23 @@ test.describe("pairing and scorer device", () => {
     await pairings.getByRole("row").filter({ hasText: "paired" }).getByRole("button", { name: "Revoke" }).click();
     await expect(pairings.getByText("revoked", { exact: true })).toBeVisible();
 
-    await scorer.reload();
     await expect(scorer.getByText("Open a pairing link from the admin to score a lane.")).toBeVisible();
     expect(await scorer.evaluate((key) => localStorage.getItem(key), deviceTokenKey)).toBeNull();
+  });
+
+  test("an admin lock and unlock show on the scorer screen without a reload", async ({ admin, openDevice }) => {
+    const { competition, entries } = await seedActive(admin, [1, 2]);
+    const pairing = await createPairing(admin, competition.id, 1);
+    const scorer = await openDevice(pairing.token);
+    await expect(scorer.getByRole("heading", { name: /Scoring lane 2/ })).toBeVisible();
+
+    const base = `/api/competitions/${competition.id}/entries/${entries[1].entryId}/stages/1`;
+    await setCounts(admin, competition.id, entries[1].entryId, 1, { "10": 12 }, true);
+    await expect(scorer.getByText("🔒 Stage 1 is locked.")).toBeVisible();
+    await expect(scorer.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+
+    await admin.post(`${base}/unlock`);
+    await expect(scorer.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   });
 
   test("unpairing a device forgets the pairing and a reload stays unpaired", async ({ admin, openDevice }) => {

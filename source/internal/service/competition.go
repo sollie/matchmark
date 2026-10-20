@@ -52,14 +52,22 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 		seeds = append(seeds, repository.StageSeed{Number: st.StageNumber, ExpectedShots: st.ExpectedShots})
 	}
 	id, err := s.repo.CreateEntry(ctx, e, seeds)
-	return id, mapRepoErr(err)
+	if err != nil {
+		return id, mapRepoErr(err)
+	}
+	s.bus.Publish(e.CompetitionID)
+	return id, nil
 }
 
 func (s *Service) WithdrawEntry(ctx context.Context, competitionID, entryID int64) error {
 	if _, err := s.requireEntryChangeAllowed(ctx, competitionID); err != nil {
 		return err
 	}
-	return mapRepoErr(s.repo.WithdrawEntry(ctx, competitionID, entryID))
+	if err := s.repo.WithdrawEntry(ctx, competitionID, entryID); err != nil {
+		return mapRepoErr(err)
+	}
+	s.bus.Publish(competitionID)
+	return nil
 }
 
 func contains(list []string, v string) bool {

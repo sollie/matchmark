@@ -118,6 +118,10 @@ To write the restore, run `matchmark restore --apply [file]` with the same `DB_P
 
   If public port 80 does not reach `:8080`, certificate issuance and renewal fail.
 
+### Live updates
+
+Spectator, admin and scorer screens receive live updates over server-sent events (`text/event-stream`): `GET /api/spectator/competitions/{id}/stream`, `GET /api/competitions/{id}/stream` and `GET /api/scorer/stream`. A reverse proxy must not buffer or cache these responses and must allow them to stay open: the server sends `X-Accel-Buffering: no` and `Cache-Control: no-cache`, a heartbeat every 25 seconds, and closes each stream after 30 minutes, so keep the proxy read timeout above 25 seconds (nginx: `proxy_buffering off`, `proxy_read_timeout 1h`). At most 500 streams are served at once.
+
 ## Pairing flow
 
 1. Admin creates a competition, adds entries and assigns lanes.

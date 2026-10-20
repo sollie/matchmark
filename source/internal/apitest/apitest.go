@@ -27,7 +27,7 @@ func New(t *testing.T) *Env {
 	return NewWithBaseURL(t, "http://localhost")
 }
 
-func NewWithBaseURL(t *testing.T, baseURL string) *Env {
+func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	t.Helper()
 	conn, err := db.Open(":memory:")
 	if err != nil {
@@ -39,7 +39,7 @@ func NewWithBaseURL(t *testing.T, baseURL string) *Env {
 	if err != nil {
 		t.Fatalf("admin auth: %v", err)
 	}
-	srv := httptest.NewServer(handler.NewRouter(service.New(repo), handler.WithAdminAuth(auth, baseURL)))
+	srv := httptest.NewServer(handler.NewRouter(service.New(repo), append([]handler.Option{handler.WithAdminAuth(auth, baseURL)}, opts...)...))
 	t.Cleanup(srv.Close)
 	jar, err := cookiejar.New(nil)
 	if err != nil {
@@ -48,9 +48,9 @@ func NewWithBaseURL(t *testing.T, baseURL string) *Env {
 	return &Env{t: t, Server: srv, client: &http.Client{Jar: jar}}
 }
 
-func NewAdmin(t *testing.T) *Env {
+func NewAdmin(t *testing.T, opts ...handler.Option) *Env {
 	t.Helper()
-	e := New(t)
+	e := NewWithBaseURL(t, "http://localhost", opts...)
 	if status, out := e.Do("POST", "/api/admin/login", map[string]string{"password": AdminPassword}); status != http.StatusNoContent {
 		t.Fatalf("admin login: %d %v", status, out)
 	}

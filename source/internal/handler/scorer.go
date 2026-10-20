@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -15,6 +16,7 @@ type deviceKey struct{}
 
 func (h *Handler) scorerRoutes(r chi.Router) {
 	r.Get("/scorer/session", h.scorerSession)
+	r.Get("/scorer/stream", h.scorerStream)
 	r.Put("/scorer/stages/{stage}", h.scorerSetCounts)
 	r.Post("/scorer/stages/{stage}/lock", h.scorerLock)
 }
@@ -40,19 +42,37 @@ func deviceFrom(r *http.Request) service.Device {
 	return d
 }
 
+func scorerSessionJSON(sess service.ScorerSession) map[string]any {
+	stages := make([]map[string]any, 0, len(sess.Stages))
+	for _, s := range sess.Stages {
+		stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "locked": s.Locked})
+	}
+	return map[string]any{
+		"lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
+		"shooter_name": sess.ShooterName, "stages": stages,
+	}
+}
+
 func (h *Handler) scorerSession(w http.ResponseWriter, r *http.Request) {
 	sess, err := h.svc.DeviceSession(r.Context(), deviceFrom(r))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	stages := make([]map[string]any, 0, len(sess.Stages))
-	for _, s := range sess.Stages {
-		stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "locked": s.Locked})
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
-		"shooter_name": sess.ShooterName, "stages": stages,
+	writeJSON(w, http.StatusOK, scorerSessionJSON(sess))
+}
+
+func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
+	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	h.serveStream(w, r, h.svc.Subscribe(deviceFrom(r).CompetitionID), func(ctx context.Context) (streamEvent, error) {
+		sess, err := h.svc.DeviceSnapshot(ctx, token)
+		if errors.Is(err, service.ErrUnauthenticated) {
+			return streamEvent{Name: "revoked", Data: struct{}{}, Final: true}, nil
+		}
+		if err != nil {
+			return streamEvent{}, err
+		}
+		return streamEvent{Name: "snapshot", Data: scorerSessionJSON(sess)}, nil
 	})
 }
 

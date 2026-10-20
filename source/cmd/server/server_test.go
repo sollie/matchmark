@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"github.com/andybalholm/brotli"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -230,5 +231,55 @@ func TestCompressionDisabled(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Header().Get("Content-Encoding") != "" {
 		t.Fatal("compressed while disabled")
+	}
+}
+
+func TestCompressionFlushesEventStream(t *testing.T) {
+	release := make(chan struct{})
+	h := requestLogger(slog.New(slog.DiscardHandler))(compression(true)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("event: snapshot\ndata: {}\n\n"))
+		_ = http.NewResponseController(w).Flush()
+		<-release
+	})))
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	defer close(release)
+
+	for _, enc := range []string{"br", "gzip", "deflate"} {
+		t.Run(enc, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+			req.Header.Set("Accept-Encoding", enc)
+			tr := &http.Transport{DisableCompression: true}
+			resp, err := tr.RoundTrip(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			if got := resp.Header.Get("Content-Encoding"); got != enc {
+				t.Fatalf("encoding %q", got)
+			}
+			var zr io.Reader
+			switch enc {
+			case "br":
+				zr = brotli.NewReader(resp.Body)
+			case "gzip":
+				g, err := gzip.NewReader(resp.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				zr = g
+			default:
+				zr = flate.NewReader(resp.Body)
+			}
+			buf := make([]byte, len("event: snapshot\ndata: {}\n\n"))
+			if _, err := io.ReadFull(zr, buf); err != nil {
+				t.Fatalf("event not flushed: %v", err)
+			}
+			if string(buf) != "event: snapshot\ndata: {}\n\n" {
+				t.Fatalf("got %q", buf)
+			}
+		})
 	}
 }
