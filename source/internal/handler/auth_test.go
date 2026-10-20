@@ -315,3 +315,55 @@ func TestFlaggedUserCanLogOut(t *testing.T) {
 		t.Fatalf("logout: status %d", got)
 	}
 }
+
+func TestUsernameFailuresFromManyClientsAreDelayed(t *testing.T) {
+	env := apitest.New(t)
+	c := client(t)
+	for batch := 0; batch < 3; batch++ {
+		for i := 0; i < 4; i++ {
+			if got := post(t, c, env, "/api/admin/login", "wrong-password-wrong").StatusCode; got != http.StatusUnauthorized {
+				t.Fatalf("batch %d attempt %d: status %d", batch, i, got)
+			}
+		}
+		env.Advance(16 * time.Minute)
+	}
+	delays := env.Delays()
+	if len(delays) == 0 {
+		t.Fatal("no delay applied after repeated failures for one username")
+	}
+	for i := 1; i < len(delays); i++ {
+		if delays[i] <= delays[i-1] && delays[i] < 30*time.Second {
+			t.Fatalf("delays do not grow: %v", delays)
+		}
+	}
+	before := len(env.Delays())
+	if got := post(t, c, env, "/api/admin/login", apitest.AdminPassword).StatusCode; got != http.StatusNoContent {
+		t.Fatalf("correct password after failures: status %d", got)
+	}
+	if len(env.Delays()) != before {
+		t.Fatal("correct login was delayed")
+	}
+}
+
+func TestUsernameDelayDoesNotAffectOtherUsernamesAndExpires(t *testing.T) {
+	env := apitest.New(t)
+	c := client(t)
+	for batch := 0; batch < 3; batch++ {
+		for i := 0; i < 4; i++ {
+			post(t, c, env, "/api/admin/login", "wrong-password-wrong")
+		}
+		env.Advance(16 * time.Minute)
+	}
+	before := len(env.Delays())
+	if got := login(t, c, env, "/api/admin/login", "someone-else", "wrong-password-wrong").StatusCode; got != http.StatusUnauthorized {
+		t.Fatalf("other username: status %d", got)
+	}
+	if len(env.Delays()) != before {
+		t.Fatal("other username was delayed")
+	}
+	env.Advance(2 * time.Hour)
+	post(t, c, env, "/api/admin/login", "wrong-password-wrong")
+	if len(env.Delays()) != before {
+		t.Fatal("expired failures still delay")
+	}
+}
