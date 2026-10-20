@@ -63,6 +63,7 @@ Coverage, by area:
 
 - Password change: wrong current password, other sessions ended, change and revert.
 - Users: an admin creates a user with a temporary password, the user is forced to change it at first login and then works as a regular user without the Users or Backup links. Admins can allow or forbid backup downloads per admin (the Backup link shows only for admins with the permission), and can also deactivate and reactivate users, reset a password to a new temporary one, and promote or demote; deactivation, reset and demotion end that user's sessions, and the last active admin is protected.
+- Audit log: an admin finds entries filtered by user, action and date and pages through them; regular users never see the screen.
 - Auth: wrong password, unknown username and correct login, per-client login lockout, sign out, 401 on unauthenticated admin API calls, the not-found page, and the unpaired scorer page.
 - Shooters: add, edit, cancel an edit, delete with confirmation, and form validation.
 - Competitions: creation for each course of fire with its stage columns, the prefilled ISO 8601 date and invalid-date blocking, the list with statuses, start and finish with confirmation, finished competitions (revoked pairings, no new entries), editing a draft (name, date, course, locked course once entries exist, no edit once started), delete with confirmation, and visibility flags persisting.
@@ -99,6 +100,10 @@ Static and ACME modes are mutually exclusive.
 Text responses (SPA assets, JSON, CSV) of at least 256 bytes are compressed with Brotli, gzip or deflate according to the request `Accept-Encoding` (preference: `br`, `gzip`, `deflate`). `.xlsx` reports, other binary types, HEAD and Range requests are left alone. Browsers only offer Brotli over HTTPS.
 
 The server writes structured JSON logs (`log/slog`) to stdout: one `request` line per HTTP request with `method`, `path` (no query string), `status`, `bytes`, `duration_ms`, `remote` (the client IP, honouring `TRUSTED_PROXY`) and `user_agent`. Level is `INFO` for 1xx-3xx, `WARN` for 4xx and `ERROR` for 5xx. In ACME mode certmagic's certificate and renewal messages are written to stdout as JSON in the same shape (`time`, `level`, `msg`). Use `docker compose logs -f` to follow them.
+
+### Audit log
+
+Every change, login, failed login, report download and backup download is also written to stdout as an `audit` JSON line (`username`, `action`, `target`, `details`, `ip`, and `user_id` when known) and stored in the database, where admins browse it at `/admin/audit` (paged, filterable by user, action and date). Locks made by a paired device have the username `device`. The log is append-only and kept forever, so it grows with use; it contains usernames and client IP addresses, so apply your club's retention policy to the stdout lines. See `docs/spec.md`.
 
 ### Score log
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,7 +22,11 @@ func (s *Service) CreateShooter(ctx context.Context, sh repository.Shooter) (int
 		return 0, ErrInvalid
 	}
 	id, err := s.repo.CreateShooter(ctx, sh)
-	return id, mapRepoErr(err)
+	if err != nil {
+		return id, mapRepoErr(err)
+	}
+	s.audit.Record(ctx, AuditEvent{Action: "shooter.create", Target: idTarget("shooter", id)})
+	return id, nil
 }
 
 func (s *Service) CreateCompetition(ctx context.Context, c repository.Competition) (int64, error) {
@@ -32,7 +37,11 @@ func (s *Service) CreateCompetition(ctx context.Context, c repository.Competitio
 		return 0, ErrInvalid
 	}
 	id, err := s.repo.CreateCompetition(ctx, c)
-	return id, mapRepoErr(err)
+	if err != nil {
+		return id, mapRepoErr(err)
+	}
+	s.audit.Record(ctx, AuditEvent{Action: "competition.create", Target: idTarget("competition", id), Details: c.Name})
+	return id, nil
 }
 
 func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, error) {
@@ -55,6 +64,7 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if err != nil {
 		return id, mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "entry.add", Target: entryTarget(e.CompetitionID, id)})
 	s.bus.Publish(e.CompetitionID)
 	return id, nil
 }
@@ -66,8 +76,21 @@ func (s *Service) WithdrawEntry(ctx context.Context, competitionID, entryID int6
 	if err := s.repo.WithdrawEntry(ctx, competitionID, entryID); err != nil {
 		return mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "entry.withdraw", Target: entryTarget(competitionID, entryID)})
 	s.bus.Publish(competitionID)
 	return nil
+}
+
+func idTarget(kind string, id int64) string {
+	return kind + ":" + strconv.FormatInt(id, 10)
+}
+
+func entryTarget(competitionID, entryID int64) string {
+	return "competition:" + strconv.FormatInt(competitionID, 10) + "/entry:" + strconv.FormatInt(entryID, 10)
+}
+
+func stageTarget(competitionID, entryID int64, stage int) string {
+	return entryTarget(competitionID, entryID) + "/stage:" + strconv.Itoa(stage)
 }
 
 func contains(list []string, v string) bool {

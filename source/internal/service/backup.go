@@ -17,5 +17,6 @@ func (s *Service) Backup(ctx context.Context, dir string) (path string, cleanup 
 		cleanup()
 		return "", nil, err
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "backup.download"})
 	return path, cleanup, nil
 }

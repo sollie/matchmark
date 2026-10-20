@@ -8,6 +8,7 @@
   import Competitions from "./Competitions.svelte";
   import Competition from "./Competition.svelte";
   import Users from "./Users.svelte";
+  import AuditLog from "./AuditLog.svelte";
 
   onMount(refreshAdminSession);
 
@@ -18,7 +19,9 @@
       ? "shooters"
       : router.path.startsWith("/admin/users")
         ? "users"
-        : "competitions",
+        : router.path.startsWith("/admin/audit")
+          ? "audit"
+          : "competitions",
   );
 
   async function signOut() {
@@ -39,6 +42,7 @@
     <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}>Shooters</a>
     {#if admin.isAdmin}
       <a href="/admin/users" aria-current={activeSection === "users" ? "page" : undefined}>Users</a>
+      <a href="/admin/audit" aria-current={activeSection === "audit" ? "page" : undefined}>Audit log</a>
     {/if}
     {#if admin.isAdmin && admin.canDownloadBackup}
       <a href="/api/admin/backup" download>Backup</a>
@@ -59,6 +63,13 @@
       {:else}
         <h1>Not allowed</h1>
         <p>Only admins can manage users.</p>
+      {/if}
+    {:else if router.path === "/admin/audit"}
+      {#if admin.isAdmin}
+        <AuditLog />
+      {:else}
+        <h1>Not allowed</h1>
+        <p>Only admins can read the audit log.</p>
       {/if}
     {:else if router.path === "/admin/password"}
       <ChangePassword />

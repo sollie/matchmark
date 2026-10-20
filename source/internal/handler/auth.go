@@ -22,6 +22,10 @@ func WithAuth(auth *service.Auth, baseURL string) Option {
 	}
 }
 
+func WithAudit(a *service.Audit) Option {
+	return func(h *Handler) { h.audit = a }
+}
+
 type userContextKey struct{}
 
 func (h *Handler) RequireUser(next http.Handler) http.Handler {
@@ -61,7 +65,9 @@ func (h *Handler) requireUser(next http.Handler, adminOnly bool) http.Handler {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userContextKey{}, user)))
+		ctx := context.WithValue(r.Context(), userContextKey{}, user)
+		ctx = service.WithActor(ctx, service.Actor{UserID: user.ID, Username: user.Username, IP: clientKey(r)})
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -146,7 +152,7 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		writeUnauthorized(w)
 		return
 	}
-	err = h.auth.ChangePassword(c.Value, body.CurrentPassword, body.NewPassword)
+	err = h.auth.ChangePassword(service.WithActor(r.Context(), service.Actor{IP: clientKey(r)}), c.Value, body.CurrentPassword, body.NewPassword)
 	switch {
 	case errors.Is(err, service.ErrTooManyAttempts):
 		w.Header().Set("Retry-After", "900")

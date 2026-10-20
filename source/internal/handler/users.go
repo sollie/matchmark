@@ -49,7 +49,7 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	u, err := h.auth.CreateUser(body.Username, body.Role, body.Password)
+	u, err := h.auth.CreateUser(r.Context(), body.Username, body.Role, body.Password)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -63,7 +63,7 @@ func (h *Handler) setActive(w http.ResponseWriter, r *http.Request, active bool)
 		writeError(w, err)
 		return
 	}
-	u, err := h.auth.SetActive(int(id), active)
+	u, err := h.auth.SetActive(r.Context(), int(id), active)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -92,7 +92,7 @@ func (h *Handler) resetUserPassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if err := h.auth.ResetUserPassword(int(id), body.Password); err != nil {
+	if err := h.auth.ResetUserPassword(r.Context(), int(id), body.Password); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -112,7 +112,7 @@ func (h *Handler) setUserRole(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	u, err := h.auth.SetRole(int(id), body.Role)
+	u, err := h.auth.SetRole(r.Context(), int(id), body.Role)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -133,7 +133,7 @@ func (h *Handler) setBackupPermission(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	u, err := h.auth.SetCanDownloadBackup(int(id), body.CanDownloadBackup)
+	u, err := h.auth.SetCanDownloadBackup(r.Context(), int(id), body.CanDownloadBackup)
 	if err != nil {
 		writeError(w, err)
 		return

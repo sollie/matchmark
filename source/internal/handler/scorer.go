@@ -33,7 +33,9 @@ func (h *Handler) RequireDevice(next http.Handler) http.Handler {
 			writeError(w, err)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), deviceKey{}, d)))
+		ctx := context.WithValue(r.Context(), deviceKey{}, d)
+		ctx = service.WithActor(ctx, service.Actor{Username: service.DeviceActor, IP: clientKey(r)})
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

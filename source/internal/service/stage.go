@@ -58,6 +58,7 @@ func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID
 	if err := s.repo.OverwriteRingCounts(ctx, stage.ID, c, stage.Locked); err != nil {
 		return mapRepoErr(err)
 	}
+	s.audit.Record(ctx, AuditEvent{Action: "stage.set_counts", Target: stageTarget(competitionID, entryID, stageNumber)})
 	if stage.Locked {
 		s.emitStageEvent(ctx, eventStageLocked, competitionID, entryID, stageNumber)
 	}

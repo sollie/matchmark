@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -9,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -61,6 +63,7 @@ type Auth struct {
 	repo      *repository.Repository
 	now       func() time.Time
 	dummyHash string
+	audit     *Audit
 
 	adminMu  sync.Mutex
 	mu       sync.Mutex
@@ -77,6 +80,10 @@ func WithAuthClock(now func() time.Time) AuthOption {
 
 func WithAuthSleep(sleep func(time.Duration)) AuthOption {
 	return func(a *Auth) { a.sleep = sleep }
+}
+
+func WithAuthAudit(audit *Audit) AuthOption {
+	return func(a *Auth) { a.audit = audit }
 }
 
 func NewAuth(repo *repository.Repository, opts ...AuthOption) *Auth {
@@ -121,7 +128,7 @@ func (a *Auth) SeedAdmin(username, password string) error {
 	return err
 }
 
-func (a *Auth) CreateUser(username, role, password string) (User, error) {
+func (a *Auth) CreateUser(ctx context.Context, username, role, password string) (User, error) {
 	username = strings.ToLower(username)
 	if !usernamePattern.MatchString(username) {
 		return User{}, ErrInvalidUsername
@@ -136,9 +143,11 @@ func (a *Auth) CreateUser(username, role, password string) (User, error) {
 	if err != nil {
 		return User{}, err
 	}
-	if _, err := a.repo.CreateUser(username, role, hash, false, true); err != nil {
+	id, err := a.repo.CreateUser(username, role, hash, false, true)
+	if err != nil {
 		return User{}, mapRepoErr(err)
 	}
+	a.audit.Record(ctx, AuditEvent{Action: "user.create", Target: userTarget(id), Details: username + " " + role})
 	return a.repo.UserByUsername(username)
 }
 
@@ -188,7 +197,7 @@ func (a *Auth) guardLastAdmin(user User) error {
 	return nil
 }
 
-func (a *Auth) SetActive(id int, active bool) (User, error) {
+func (a *Auth) SetActive(ctx context.Context, id int, active bool) (User, error) {
 	a.adminMu.Lock()
 	defer a.adminMu.Unlock()
 	user, err := a.lifecycleUser(id)
@@ -203,10 +212,15 @@ func (a *Auth) SetActive(id int, active bool) (User, error) {
 	if err := a.repo.SetActive(id, active); err != nil {
 		return User{}, err
 	}
+	action := "user.reactivate"
+	if !active {
+		action = "user.deactivate"
+	}
+	a.audit.Record(ctx, AuditEvent{Action: action, Target: userTarget(id), Details: user.Username})
 	return a.repo.UserByID(id)
 }
 
-func (a *Auth) SetRole(id int, role string) (User, error) {
+func (a *Auth) SetRole(ctx context.Context, id int, role string) (User, error) {
 	if role != RoleAdmin && role != RoleUser {
 		return User{}, ErrInvalid
 	}
@@ -227,10 +241,11 @@ func (a *Auth) SetRole(id int, role string) (User, error) {
 	if err := a.repo.SetRole(id, role); err != nil {
 		return User{}, err
 	}
+	a.audit.Record(ctx, AuditEvent{Action: "user.set_role", Target: userTarget(id), Details: user.Username + " " + role})
 	return a.repo.UserByID(id)
 }
 
-func (a *Auth) SetCanDownloadBackup(id int, allowed bool) (User, error) {
+func (a *Auth) SetCanDownloadBackup(ctx context.Context, id int, allowed bool) (User, error) {
 	a.adminMu.Lock()
 	defer a.adminMu.Unlock()
 	user, err := a.lifecycleUser(id)
@@ -243,10 +258,11 @@ func (a *Auth) SetCanDownloadBackup(id int, allowed bool) (User, error) {
 	if err := a.repo.SetCanDownloadBackup(id, allowed); err != nil {
 		return User{}, err
 	}
+	a.audit.Record(ctx, AuditEvent{Action: "user.set_backup_permission", Target: userTarget(id), Details: user.Username + " " + strconv.FormatBool(allowed)})
 	return a.repo.UserByID(id)
 }
 
-func (a *Auth) ResetUserPassword(id int, password string) error {
+func (a *Auth) ResetUserPassword(ctx context.Context, id int, password string) error {
 	user, err := a.lifecycleUser(id)
 	if err != nil {
 		return err
@@ -258,10 +274,18 @@ func (a *Auth) ResetUserPassword(id int, password string) error {
 	if err != nil {
 		return err
 	}
-	return a.repo.ResetPassword(user.ID, hash)
+	if err := a.repo.ResetPassword(user.ID, hash); err != nil {
+		return err
+	}
+	a.audit.Record(ctx, AuditEvent{Action: "user.reset_password", Target: userTarget(id), Details: user.Username})
+	return nil
 }
 
-func (a *Auth) ChangePassword(token, current, next string) error {
+func userTarget(id int) string {
+	return "user:" + strconv.Itoa(id)
+}
+
+func (a *Auth) ChangePassword(ctx context.Context, token, current, next string) error {
 	user, err := a.Authenticate(token)
 	if err != nil {
 		return err
@@ -282,7 +306,11 @@ func (a *Auth) ChangePassword(token, current, next string) error {
 	if err != nil {
 		return err
 	}
-	return a.repo.ChangePassword(user.ID, hash, hashToken(token))
+	if err := a.repo.ChangePassword(user.ID, hash, hashToken(token)); err != nil {
+		return err
+	}
+	a.audit.RecordAs(ctx, Actor{UserID: user.ID, Username: user.Username, IP: ActorFrom(ctx).IP}, AuditEvent{Action: "user.change_password", Target: userTarget(user.ID), Details: user.Username})
+	return nil
 }
 
 func derive(password string, salt []byte, memory, time uint32, threads uint8) []byte {
@@ -354,6 +382,7 @@ func hashToken(token string) string {
 func (a *Auth) Login(clientKey, username, password string) (token string, expires time.Time, err error) {
 	now := a.now()
 	if a.limited(clientKey, now) {
+		a.auditFailedLogin(clientKey, username, "throttled")
 		return "", time.Time{}, ErrTooManyAttempts
 	}
 	user, lookupErr := a.repo.UserByUsername(strings.ToLower(username))
@@ -371,6 +400,7 @@ func (a *Auth) Login(clientKey, username, password string) (token string, expire
 		if delay := a.recordUsernameFailure(strings.ToLower(username), now); delay > 0 {
 			a.sleep(delay)
 		}
+		a.auditFailedLogin(clientKey, username, "")
 		return "", time.Time{}, ErrInvalidCredentials
 	}
 	a.clearUsernameFailures(strings.ToLower(username))
@@ -395,7 +425,12 @@ func (a *Auth) Login(clientKey, username, password string) (token string, expire
 	if err := a.repo.CreateSession(hashToken(token), user.ID, expires); err != nil {
 		return "", time.Time{}, err
 	}
+	a.audit.RecordAs(context.Background(), Actor{UserID: user.ID, Username: user.Username, IP: clientKey}, AuditEvent{Action: "login", Target: userTarget(user.ID)})
 	return token, expires, nil
+}
+
+func (a *Auth) auditFailedLogin(clientKey, username, details string) {
+	a.audit.RecordAs(context.Background(), Actor{Username: strings.ToLower(username), IP: clientKey}, AuditEvent{Action: "login_failed", Details: details})
 }
 
 func (a *Auth) Authenticate(token string) (User, error) {

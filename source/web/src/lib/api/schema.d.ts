@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Browse the append-only audit log, newest first, paged and filterable (admin only) */
+        get: operations["listAuditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users": {
         parameters: {
             query?: never;
@@ -763,6 +780,26 @@ export interface components {
             can_download_backup: boolean;
             must_change_password: boolean;
         };
+        AuditEntry: {
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            time: string;
+            /** @description Null for devices and failed logins */
+            user_id: number | null;
+            /** @description The username at the time of the event, or device */
+            username: string;
+            action: string;
+            target: string;
+            details: string;
+            ip: string;
+        };
+        AuditPage: {
+            entries: components["schemas"]["AuditEntry"][];
+            total: number;
+            page: number;
+            page_size: number;
+        };
         ResetPasswordRequest: {
             password: string;
         };
@@ -1112,6 +1149,56 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description The caller is not an admin with the backup permission (error is backup_not_permitted), or must change their password first */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listAuditLog: {
+        parameters: {
+            query?: {
+                /** @description Username as recorded at the time of the event */
+                user?: string;
+                /** @description Exact action, for example stage.lock or login_failed */
+                action?: string;
+                /** @description First day to include (UTC) */
+                from?: string;
+                /** @description Last day to include (UTC) */
+                to?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of audit entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The caller is not an admin, or must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A filter or paging parameter is invalid */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

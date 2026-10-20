@@ -15,6 +15,7 @@ import (
 type Handler struct {
 	svc          *service.Service
 	auth         *service.Auth
+	audit        *service.Audit
 	secureCookie bool
 	backupDir    string
 	limits       streamLimits
@@ -34,6 +35,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.Post("/admin/password", h.changePassword)
 			r.With(h.RequireUser).Get("/admin/session", h.adminSession)
 			r.With(h.RequireAdmin).Get("/admin/backup", h.backup)
+			r.With(h.RequireAdmin).Get("/audit-log", h.listAudit)
 			r.With(h.RequireAdmin).Get("/users", h.listUsers)
 			r.With(h.RequireAdmin).Post("/users", h.createUser)
 			r.With(h.RequireAdmin).Post("/users/{userID}/deactivate", h.deactivateUser)

@@ -5,9 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -30,6 +32,42 @@ type Env struct {
 	mu     sync.Mutex
 	offset time.Duration
 	delays []time.Duration
+	audit  syncBuffer
+}
+
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+func (e *Env) AuditLines() []map[string]any {
+	e.t.Helper()
+	var out []map[string]any
+	for _, line := range strings.Split(e.audit.String(), "\n") {
+		if line == "" {
+			continue
+		}
+		var m map[string]any
+		if err := json.Unmarshal([]byte(line), &m); err != nil {
+			e.t.Fatalf("audit line %q: %v", line, err)
+		}
+		if m["msg"] == "audit" {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 const (
@@ -54,6 +92,10 @@ func (e *Env) Delays() []time.Duration {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return append([]time.Duration(nil), e.delays...)
+}
+
+func (e *Env) Today() string {
+	return e.now().UTC().Format(time.DateOnly)
 }
 
 func (e *Env) now() time.Time {
@@ -106,12 +148,13 @@ func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	t.Cleanup(func() { _ = conn.Close() })
 	repo := repository.New(conn)
 	e := &Env{t: t, repo: repo}
-	auth := service.NewAuth(repo, service.WithAuthClock(e.now), service.WithAuthSleep(e.sleep))
+	audit := service.NewAudit(repo, slog.New(slog.NewJSONHandler(&e.audit, nil)))
+	auth := service.NewAuth(repo, service.WithAuthClock(e.now), service.WithAuthSleep(e.sleep), service.WithAuthAudit(audit))
 	e.auth = auth
 	if err := auth.SeedAdmin(AdminUsername, AdminPassword); err != nil {
 		t.Fatalf("seed admin: %v", err)
 	}
-	e.Server = httptest.NewServer(handler.NewRouter(service.New(repo), append([]handler.Option{handler.WithAuth(auth, baseURL)}, opts...)...))
+	e.Server = httptest.NewServer(handler.NewRouter(service.New(repo, service.WithAudit(audit)), append([]handler.Option{handler.WithAuth(auth, baseURL), handler.WithAudit(audit)}, opts...)...))
 	t.Cleanup(e.Server.Close)
 	jar, err := cookiejar.New(nil)
 	if err != nil {
