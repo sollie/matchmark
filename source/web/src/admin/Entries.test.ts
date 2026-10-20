@@ -38,7 +38,7 @@ afterEach(() => vi.restoreAllMocks());
 describe("Entries", () => {
   it("labels each stage as Locked or Open", () => {
     setup();
-    const row = screen.getByRole("row", { name: /Doe, Jane/ });
+    const row = screen.getByRole("row", { name: /Jane Doe/ });
     expect(within(row).getByText("Locked")).toBeTruthy();
     expect(within(row).getByText("Open")).toBeTruthy();
   });
@@ -54,7 +54,7 @@ describe("Entries", () => {
       shots_entered: shots,
     });
     setup([entry({ stages: [stage(1, true, 287, 30), stage(2, false, 295, 30), stage(3, false, 0, 0)] })]);
-    const row = screen.getByRole("row", { name: /Doe, Jane/ });
+    const row = screen.getByRole("row", { name: /Jane Doe/ });
     expect(within(row).getByText("Locked")).toBeTruthy();
     expect(within(row).getByText("287")).toBeTruthy();
     expect(within(row).getByText("Scored, not locked")).toBeTruthy();

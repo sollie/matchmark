@@ -21,7 +21,7 @@ test.describe("shooters", () => {
 
     const added = row(page, lastName);
     await expect(added).toBeVisible();
-    await expect(added.getByRole("cell", { name: `${lastName}, Ada` })).toBeVisible();
+    await expect(added.getByRole("cell", { name: `Ada ${lastName}` })).toBeVisible();
     await expect(added.getByRole("cell", { name: "F", exact: true })).toBeVisible();
     await expect(added.getByRole("cell", { name: "SWE" })).toBeVisible();
     await expect(added.getByRole("cell", { name: "Added Club" })).toBeVisible();

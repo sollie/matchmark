@@ -85,7 +85,7 @@
   <tbody>
     {#each shooters as s (s.id)}
       <tr>
-        <td>{s.last_name}, {s.first_name}</td>
+        <td>{s.first_name} {s.last_name}</td>
         <td>{s.sex}</td>
         <td>{s.country}</td>
         <td>{s.club}</td>

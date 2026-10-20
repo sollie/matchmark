@@ -14,7 +14,7 @@ test.describe("entries", () => {
 
     const form = addForm(page);
     await expect(page.getByLabel("Entry lane")).toHaveValue("2");
-    await form.getByLabel("Shooter").selectOption({ label: `${shooter.last_name}, ${shooter.first_name}` });
+    await form.getByLabel("Shooter").selectOption({ label: `${shooter.first_name} ${shooter.last_name}` });
     await form.getByLabel("Entry category").selectOption("Pistol");
     await form.getByRole("button", { name: "Add entry" }).click();
 
@@ -34,7 +34,7 @@ test.describe("entries", () => {
     const shooterSelect = form.getByLabel("Shooter");
     await expect(shooterSelect.locator("option", { hasText: taken.shooter.last_name })).toHaveCount(0);
 
-    await shooterSelect.selectOption({ label: `${other.last_name}, ${other.first_name}` });
+    await shooterSelect.selectOption({ label: `${other.first_name} ${other.last_name}` });
     await page.getByLabel("Entry lane").fill("1");
     await form.getByRole("button", { name: "Add entry" }).click();
 

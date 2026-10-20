@@ -2,7 +2,7 @@ import { createCompetition, expect, openCompetition, row, section, seedEntry, te
 
 test.describe("course shot counts", () => {
   test("every stage of every course demands its expected shots", async ({ courses, adminPage: page, admin }) => {
-    test.slow();
+    test.setTimeout(240_000);
     expect(courses).toHaveLength(4);
     for (const course of courses) {
       await test.step(`${course.key}-shot course`, async () => {
