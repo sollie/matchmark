@@ -29,6 +29,7 @@ type Env struct {
 
 	mu     sync.Mutex
 	offset time.Duration
+	delays []time.Duration
 }
 
 const (
@@ -40,6 +41,19 @@ func (e *Env) Advance(d time.Duration) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.offset += d
+}
+
+func (e *Env) sleep(d time.Duration) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.delays = append(e.delays, d)
+	e.offset += d
+}
+
+func (e *Env) Delays() []time.Duration {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]time.Duration(nil), e.delays...)
 }
 
 func (e *Env) now() time.Time {
@@ -92,7 +106,7 @@ func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	t.Cleanup(func() { _ = conn.Close() })
 	repo := repository.New(conn)
 	e := &Env{t: t, repo: repo}
-	auth := service.NewAuth(repo, service.WithAuthClock(e.now))
+	auth := service.NewAuth(repo, service.WithAuthClock(e.now), service.WithAuthSleep(e.sleep))
 	e.auth = auth
 	if err := auth.SeedAdmin(AdminUsername, AdminPassword); err != nil {
 		t.Fatalf("seed admin: %v", err)

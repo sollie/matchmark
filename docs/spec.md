@@ -48,7 +48,7 @@ JSON REST API under `/api`, documented with OpenAPI; admin and spectator endpoin
 
 ## Backend
 
-Go, chi, SQLite-format storage via Turso Database and `turso.tech/database/tursogo` (`CGO_ENABLED=0`, native library loaded at runtime; see ADR 0005), embedded ordered migrations, strict handler → service → repository layering, `excelize` for xlsx, `certmagic` for ACME. Passwords hashed with argon2id (random salt per user, PHC string, m=19456 KiB, t=2, p=1, rehashed at login when weaker, constant-time comparison, dummy verification for unknown usernames; login answers wrong password and unknown username identically); session cookie `HttpOnly`, `SameSite=Lax`, `Secure` when `BASE_URL` is https.
+Go, chi, SQLite-format storage via Turso Database and `turso.tech/database/tursogo` (`CGO_ENABLED=0`, native library loaded at runtime; see ADR 0005), embedded ordered migrations, strict handler → service → repository layering, `excelize` for xlsx, `certmagic` for ACME. Passwords hashed with argon2id (random salt per user, PHC string, m=19456 KiB, t=2, p=1, rehashed at login when weaker, constant-time comparison, dummy verification for unknown usernames; login answers wrong password and unknown username identically; failed logins are limited per IP and delayed per username, never hard-locked); session cookie `HttpOnly`, `SameSite=Lax`, `Secure` when `BASE_URL` is https.
 
 ## Configuration (environment only)
 

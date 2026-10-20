@@ -26,6 +26,12 @@ const (
 	loginMaxFailures  = 5
 	loginWindow       = 15 * time.Minute
 
+	usernameWindow       = time.Hour
+	usernameFreeFailures = 3
+	usernameBaseDelay    = time.Second
+	usernameMaxDelay     = 30 * time.Second
+	usernameMaxTracked   = 10000
+
 	argonMemory  = 19 * 1024
 	argonTime    = 2
 	argonThreads = 1
@@ -56,6 +62,8 @@ type Auth struct {
 
 	mu       sync.Mutex
 	failures map[string][]time.Time
+	sleep    func(time.Duration)
+	userFail map[string][]time.Time
 }
 
 type AuthOption func(*Auth)
@@ -64,8 +72,12 @@ func WithAuthClock(now func() time.Time) AuthOption {
 	return func(a *Auth) { a.now = now }
 }
 
+func WithAuthSleep(sleep func(time.Duration)) AuthOption {
+	return func(a *Auth) { a.sleep = sleep }
+}
+
 func NewAuth(repo *repository.Repository, opts ...AuthOption) *Auth {
-	a := &Auth{repo: repo, now: time.Now, failures: map[string][]time.Time{}}
+	a := &Auth{repo: repo, now: time.Now, sleep: time.Sleep, failures: map[string][]time.Time{}, userFail: map[string][]time.Time{}}
 	for _, opt := range opts {
 		opt(a)
 	}
@@ -258,8 +270,12 @@ func (a *Auth) Login(clientKey, username, password string) (token string, expire
 	ok, needsRehash := verifyPassword(password, hash)
 	if !known || !ok || !user.Active {
 		a.recordFailure(clientKey, now)
+		if delay := a.recordUsernameFailure(strings.ToLower(username), now); delay > 0 {
+			a.sleep(delay)
+		}
 		return "", time.Time{}, ErrInvalidCredentials
 	}
+	a.clearUsernameFailures(strings.ToLower(username))
 	if needsRehash {
 		upgraded, err := hashPassword(password)
 		if err != nil {
@@ -327,4 +343,48 @@ func (a *Auth) recordFailure(clientKey string, now time.Time) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.failures[clientKey] = append(a.recent(clientKey, now), now)
+}
+
+func (a *Auth) recentUsername(username string, now time.Time) []time.Time {
+	kept := a.userFail[username][:0]
+	for _, t := range a.userFail[username] {
+		if now.Sub(t) < usernameWindow {
+			kept = append(kept, t)
+		}
+	}
+	if len(kept) == 0 {
+		delete(a.userFail, username)
+	} else {
+		a.userFail[username] = kept
+	}
+	return kept
+}
+
+func (a *Auth) recordUsernameFailure(username string, now time.Time) time.Duration {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if _, tracked := a.userFail[username]; !tracked && len(a.userFail) >= usernameMaxTracked {
+		for name := range a.userFail {
+			a.recentUsername(name, now)
+		}
+		if len(a.userFail) >= usernameMaxTracked {
+			return usernameMaxDelay
+		}
+	}
+	failures := append(a.recentUsername(username, now), now)
+	a.userFail[username] = failures
+	excess := len(failures) - usernameFreeFailures
+	if excess <= 0 {
+		return 0
+	}
+	if excess > 6 {
+		excess = 6
+	}
+	return min(usernameBaseDelay<<(excess-1), usernameMaxDelay)
+}
+
+func (a *Auth) clearUsernameFailures(username string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.userFail, username)
 }
