@@ -82,6 +82,7 @@ Tests seed data through the admin API with unique names and send a unique `X-For
 | `LISTEN_ADDR` | `:8080` plain, `:8443` with TLS | Listen address |
 | `BASE_URL` | empty | Public URL, used for pairing links; an `https` URL marks the session cookie `Secure` |
 | `TRUSTED_PROXY` | empty | Comma-separated IPs or CIDRs of reverse proxies whose forwarded client IP headers are trusted |
+| `DISABLE_COMPRESSION` | `false` | Set to `true` to turn off response compression (for example behind a proxy that already compresses) |
 | `TLS_CERT_FILE`, `TLS_KEY_FILE` | empty | Static certificate mode; set both |
 | `ACME_DOMAIN`, `ACME_EMAIL` | empty | Automatic certificates (Let's Encrypt); both required together |
 | `REPLICATION_URL` | empty | Base URL of a `tursodb --sync-server`; empty disables [Replication](#replication) |
@@ -90,6 +91,8 @@ Tests seed data through the admin API with unique names and send a unique `X-For
 Static and ACME modes are mutually exclusive.
 
 ## Logging
+
+Text responses (SPA assets, JSON, CSV) of at least 256 bytes are compressed with Brotli, gzip or deflate according to the request `Accept-Encoding` (preference: `br`, `gzip`, `deflate`). `.xlsx` reports, other binary types, HEAD and Range requests are left alone. Browsers only offer Brotli over HTTPS.
 
 The server writes structured JSON logs (`log/slog`) to stdout: one `request` line per HTTP request with `method`, `path` (no query string), `status`, `bytes`, `duration_ms`, `remote` (the client IP, honouring `TRUSTED_PROXY`) and `user_agent`. Level is `INFO` for 1xx-3xx, `WARN` for 4xx and `ERROR` for 5xx. In ACME mode certmagic's certificate and renewal messages are written to stdout as JSON in the same shape (`time`, `level`, `msg`). Use `docker compose logs -f` to follow them.
 

@@ -64,7 +64,7 @@ func run(logger *slog.Logger) error {
 		handler.WithAdminAuth(auth, cfg.BaseURL),
 		handler.WithBackupDir(filepath.Dir(cfg.DBPath)),
 	)
-	root := trustedProxyRealIP(cfg.TrustedProxy)(requestLogger(logger)(spaHandler(web.Dist(), api)))
+	root := trustedProxyRealIP(cfg.TrustedProxy)(requestLogger(logger)(compression(!cfg.DisableCompression)(spaHandler(web.Dist(), api))))
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
 		Handler:           root,

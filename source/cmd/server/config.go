@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,6 +29,8 @@ type Config struct {
 	ACMEDomain    string
 	ACMEEmail     string
 	TLSMode       TLSMode
+
+	DisableCompression bool
 
 	ReplicationURL      string
 	ReplicationInterval time.Duration
@@ -62,6 +65,11 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	c.TrustedProxy = proxies
+	disable, err := parseBoolEnv(getenv("DISABLE_COMPRESSION"))
+	if err != nil {
+		return Config{}, fmt.Errorf("DISABLE_COMPRESSION: %w", err)
+	}
+	c.DisableCompression = disable
 	c.TLSMode, err = selectTLSMode(c)
 	if err != nil {
 		return Config{}, err
@@ -129,4 +137,11 @@ func peerAddr(remoteAddr string) (netip.Addr, bool) {
 		return netip.Addr{}, false
 	}
 	return addr.Unmap(), true
+}
+
+func parseBoolEnv(raw string) (bool, error) {
+	if raw == "" {
+		return false, nil
+	}
+	return strconv.ParseBool(raw)
 }
