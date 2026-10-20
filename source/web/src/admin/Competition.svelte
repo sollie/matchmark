@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
+  import { openStream } from "../lib/sse";
   import { failure } from "../lib/api/util";
   import { nextStatus, statusTone } from "../lib/domain";
   import { courseLabel, loadRulebook } from "../lib/rulebook.svelte";
@@ -47,9 +48,16 @@
     loadRulebook();
     loadCompetition();
     loadShooters();
-    loadEntries();
-    const timer = setInterval(loadEntries, 3000);
-    return () => clearInterval(timer);
+  });
+
+  $effect(() => {
+    const stream = openStream({
+      url: `/api/competitions/${id}/stream`,
+      onEvent: (event) => {
+        if (event === "changed") void loadEntries();
+      },
+    });
+    return () => stream.close();
   });
 
   async function advance() {

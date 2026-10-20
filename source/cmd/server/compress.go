@@ -150,9 +150,7 @@ func (c *compressWriter) Flush() {
 	if f, ok := c.zw.(interface{ Flush() error }); ok {
 		_ = f.Flush()
 	}
-	if f, ok := c.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
-	}
+	_ = http.NewResponseController(c.ResponseWriter).Flush()
 }
 
 func (c *compressWriter) close() {

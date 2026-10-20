@@ -57,6 +57,10 @@ func (r *Replicator) push(ctx context.Context) {
 
 type Option func(*Service)
 
+func WithBroadcaster(b *Broadcaster) Option {
+	return func(s *Service) { s.bus = b }
+}
+
 func WithReplicator(r ReplicationRequester) Option {
 	return func(s *Service) { s.replicator = r }
 }

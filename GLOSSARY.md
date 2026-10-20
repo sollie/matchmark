@@ -98,3 +98,7 @@ _Avoid_: Audit log, scoring log
 **Restore**:
 Rebuilding competitions, entries and locked stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
 _Avoid_: Backup, replication
+
+**Live update**:
+A change notice the server pushes for a competition to the spectator, admin and scorer screens, so they refresh without asking.
+_Avoid_: Poll, refresh, push notification

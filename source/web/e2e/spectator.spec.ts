@@ -70,6 +70,59 @@ test.describe("spectator", () => {
     await expect(progress.getByText("2/4 locked")).toBeVisible();
   });
 
+  test("a locked stage appears live without polling requests", async ({ page, admin }) => {
+    const { competition, entries } = await seedScored(admin);
+    const polled: string[] = [];
+    page.on("request", (request) => {
+      const path = new URL(request.url()).pathname;
+      if (/\/spectator\/competitions\/\d+\/(standings|progress)$/.test(path)) polled.push(path);
+    });
+    await openCompetition(page, competition.name);
+    const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
+    await expect(progress.getByText("2/4 locked")).toBeVisible();
+
+    const entryId = (
+      await (await admin.get(`/api/competitions/${competition.id}/entries`)).json()
+    ).entries.find((e: { lane: number }) => e.lane === 3).id;
+    await setCounts(admin, competition.id, entryId, 1, { "9": 12 }, true);
+
+    await expect(progress.getByText("3/4 locked")).toBeVisible();
+    await expect(row(page, entries[2].last_name)).toBeVisible();
+    expect(polled).toEqual([]);
+  });
+
+  test("a hidden tab closes the stream and a visible one reconnects with a fresh snapshot", async ({ page, admin }) => {
+    const { competition, entries } = await seedScored(admin);
+    let streams = 0;
+    page.on("request", (request) => {
+      if (/\/spectator\/competitions\/\d+\/stream$/.test(new URL(request.url()).pathname)) streams++;
+    });
+    await openCompetition(page, competition.name);
+    const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
+    await expect(progress.getByText("2/4 locked")).toBeVisible();
+    await expect.poll(() => streams).toBe(1);
+
+    const setHidden = (hidden: boolean) =>
+      page.evaluate((value) => {
+        Object.defineProperty(document, "hidden", { configurable: true, get: () => value });
+        document.dispatchEvent(new Event("visibilitychange"));
+      }, hidden);
+
+    await setHidden(true);
+    const entryId = (
+      await (await admin.get(`/api/competitions/${competition.id}/entries`)).json()
+    ).entries.find((e: { lane: number }) => e.lane === 3).id;
+    await setCounts(admin, competition.id, entryId, 1, { "9": 12 }, true);
+    await page.waitForTimeout(1000);
+    await expect(progress.getByText("2/4 locked")).toBeVisible();
+    expect(streams).toBe(1);
+
+    await setHidden(false);
+    await expect(progress.getByText("3/4 locked")).toBeVisible();
+    await expect(row(page, entries[2].last_name)).toBeVisible();
+    expect(streams).toBe(2);
+  });
+
   test("draft competitions are hidden and finished ones keep results", async ({ page, admin }) => {
     const { competition: active, entries } = await seedScored(admin, true);
     const draft = await createCompetition(admin, { name: uniqueName("Hidden draft") });

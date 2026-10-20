@@ -1,5 +1,10 @@
 import { mount } from "svelte";
-import "./app.css";
 import App from "./App.svelte";
 
-mount(App, { target: document.getElementById("app")! });
+const start = () => mount(App, { target: document.getElementById("app")! });
+
+if (document.readyState === "complete") {
+  start();
+} else {
+  window.addEventListener("load", start, { once: true });
+}

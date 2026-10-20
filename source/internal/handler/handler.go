@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 
 	"github.com/go-chi/chi/v5"
 
@@ -16,10 +17,12 @@ type Handler struct {
 	auth         *service.AdminAuth
 	secureCookie bool
 	backupDir    string
+	limits       streamLimits
+	streams      atomic.Int64
 }
 
 func NewRouter(svc *service.Service, opts ...Option) http.Handler {
-	h := &Handler{svc: svc}
+	h := &Handler{svc: svc, limits: streamLimits{heartbeat: defaultHeartbeat, lifetime: defaultStreamLife, max: defaultMaxStreams}}
 	for _, opt := range opts {
 		opt(h)
 	}
@@ -69,6 +72,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusConflict, "stage is locked"
 	case errors.Is(err, service.ErrUnauthenticated):
 		status, msg = http.StatusUnauthorized, "unauthorized"
+	case errors.Is(err, errTooManyStreams):
+		status, msg = http.StatusServiceUnavailable, "too many streams"
 	case errors.Is(err, service.ErrAdminScoringNeeded):
 		status, msg = http.StatusForbidden, "admin scoring required"
 	}

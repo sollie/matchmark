@@ -6,7 +6,7 @@ Scoring for WA1500/PPC competitions at a single club. Vocabulary is in `GLOSSARY
 
 In: competitions, a persistent shooter registry, lane-paired scoring devices, live spectator view, results report (`.xlsx`), internal detailed CSV, admin database backup.
 
-Out for v1: classification and ranking, relays, Rifle, 60/48 beyond course data, offline operation, PDF/JSON export, SSE, multi-club hosting, accounts for scorers.
+Out for v1: classification and ranking, relays, Rifle, 60/48 beyond course data, offline operation, PDF/JSON export, multi-club hosting, accounts for scorers.
 
 Future: relays; Rifle; DNS-01 and other ACME challenge methods; CDN-hosted frontend; multi-club tenancy; offline queue; classification.
 
@@ -42,7 +42,7 @@ An internal detailed CSV lists ring counts per stage per entry for the club's ow
 
 ## API and frontend
 
-JSON REST API under `/api`, documented with OpenAPI; admin and spectator endpoints separated; spectator endpoints are unauthenticated and polled every few seconds. Frontend is a Svelte + Vite + TypeScript SPA with a typed client generated from the OpenAPI spec, no service worker or IndexedDB. All strings in English.
+JSON REST API under `/api`, documented with OpenAPI; admin and spectator endpoints separated; spectator endpoints are unauthenticated. Spectator, admin and scorer screens receive live updates over server-sent events (one stream per role and competition, see ADR 0010) instead of polling. Frontend is a Svelte + Vite + TypeScript SPA with a typed client generated from the OpenAPI spec, no service worker or IndexedDB. All strings in English.
 
 `GET /api/rulebook` is read-only and unauthenticated. It returns the courses keyed `150`, `60`, `48` and `40` (label, discipline, total shots, stages with distance, expected shots, time and position), the weapon classes per discipline and the ring values. `internal/rulebook` is its only source, including the course labels; the SPA course dropdowns read from it.
 

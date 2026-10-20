@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -12,6 +13,7 @@ func (h *Handler) spectatorRoutes(r chi.Router) {
 	r.Get("/spectator/competitions", h.spectatorCompetitions)
 	r.Get("/spectator/competitions/{competitionID}/standings", h.spectatorStandings)
 	r.Get("/spectator/competitions/{competitionID}/progress", h.spectatorProgress)
+	r.Get("/spectator/competitions/{competitionID}/stream", h.spectatorStream)
 }
 
 func (h *Handler) visibilityRoutes(r chi.Router) {
@@ -103,4 +105,16 @@ func (h *Handler) spectatorProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"stages": stages})
+}
+
+func (h *Handler) spectatorStream(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	h.serveStream(w, r, h.svc.Subscribe(id), func(ctx context.Context) (streamEvent, error) {
+		snap, err := h.svc.SpectatorSnapshot(ctx, id)
+		return streamEvent{Name: "snapshot", Data: snap}, err
+	})
 }

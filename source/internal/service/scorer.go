@@ -44,6 +44,7 @@ func (s *Service) CreatePairing(ctx context.Context, competitionID int64, lane i
 	if err != nil {
 		return 0, "", mapRepoErr(err)
 	}
+	s.bus.Publish(competitionID)
 	return id, token, nil
 }
 
@@ -56,7 +57,11 @@ func (s *Service) ListPairings(ctx context.Context, competitionID int64) ([]repo
 }
 
 func (s *Service) RevokePairing(ctx context.Context, competitionID, pairingID int64) error {
-	return mapRepoErr(s.repo.RevokePairing(ctx, competitionID, pairingID))
+	if err := s.repo.RevokePairing(ctx, competitionID, pairingID); err != nil {
+		return mapRepoErr(err)
+	}
+	s.bus.Publish(competitionID)
+	return nil
 }
 
 func (s *Service) AuthenticateDevice(ctx context.Context, token string) (Device, error) {
@@ -156,6 +161,7 @@ func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int
 		return mapRepoErr(err)
 	}
 	s.emitStageEvent(ctx, eventStageLocked, d.CompetitionID, t.entry.ID, stageNumber)
+	s.bus.Publish(d.CompetitionID)
 	return nil
 }
 
@@ -177,6 +183,7 @@ func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int
 		return mapRepoErr(err)
 	}
 	s.emitStageEvent(ctx, eventStageLocked, competitionID, entryID, stageNumber)
+	s.bus.Publish(competitionID)
 	return nil
 }
 
@@ -189,5 +196,14 @@ func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64,
 		return mapRepoErr(err)
 	}
 	s.emitStageSnapshot(ctx, eventStageUnlocked, competitionID, entryID, stage)
+	s.bus.Publish(competitionID)
 	return nil
+}
+
+func (s *Service) DeviceSnapshot(ctx context.Context, token string) (ScorerSession, error) {
+	d, err := s.AuthenticateDevice(ctx, token)
+	if err != nil {
+		return ScorerSession{}, err
+	}
+	return s.DeviceSession(ctx, d)
 }

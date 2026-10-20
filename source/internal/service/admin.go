@@ -52,11 +52,16 @@ func (s *Service) UpdateShooter(ctx context.Context, sh repository.Shooter) erro
 		return mapRepoErr(err)
 	}
 	s.reemitLockedStages(ctx, repository.LockedStageFilter{ShooterID: sh.ID})
+	s.bus.PublishAll()
 	return nil
 }
 
 func (s *Service) DeleteShooter(ctx context.Context, id int64) error {
-	return mapRepoErr(s.repo.DeleteShooter(ctx, id))
+	if err := s.repo.DeleteShooter(ctx, id); err != nil {
+		return mapRepoErr(err)
+	}
+	s.bus.PublishAll()
+	return nil
 }
 
 func (s *Service) ListCompetitions(ctx context.Context) ([]repository.Competition, error) {
@@ -95,6 +100,7 @@ func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competitio
 		return mapRepoErr(err)
 	}
 	s.reemitLockedStages(ctx, repository.LockedStageFilter{CompetitionID: c.ID})
+	s.bus.Publish(c.ID)
 	return nil
 }
 
@@ -120,11 +126,16 @@ func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status Com
 			s.replicator.Request()
 		}
 	}
+	s.bus.Publish(id)
 	return nil
 }
 
 func (s *Service) DeleteCompetition(ctx context.Context, id int64) error {
-	return mapRepoErr(s.repo.DeleteCompetition(ctx, id))
+	if err := s.repo.DeleteCompetition(ctx, id); err != nil {
+		return mapRepoErr(err)
+	}
+	s.bus.Publish(id)
+	return nil
 }
 
 type StageScoring struct {
@@ -194,6 +205,7 @@ func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64,
 		return repository.Entry{}, mapRepoErr(err)
 	}
 	s.reemitLockedStages(ctx, repository.LockedStageFilter{CompetitionID: competitionID, EntryID: entryID})
+	s.bus.Publish(competitionID)
 	e, err := s.repo.GetEntry(ctx, competitionID, entryID)
 	return e, mapRepoErr(err)
 }
@@ -206,5 +218,9 @@ func (s *Service) DeleteEntry(ctx context.Context, competitionID, entryID int64)
 	if CompetitionStatus(comp.Status) != StatusDraft {
 		return ErrConflict
 	}
-	return mapRepoErr(s.repo.DeleteEntry(ctx, competitionID, entryID))
+	if err := s.repo.DeleteEntry(ctx, competitionID, entryID); err != nil {
+		return mapRepoErr(err)
+	}
+	s.bus.Publish(competitionID)
+	return nil
 }

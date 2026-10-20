@@ -353,6 +353,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/competitions/{competitionID}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Change notifications as server-sent events
+         * @description Sends a `changed` event on connect and after every change to the competition, coalesced over about 250 ms. The event carries an empty JSON object; the client refetches the entries. A `: heartbeat` comment is sent every 25 seconds and the server closes the stream after 30 minutes, so the client reconnects with backoff.
+         */
+        get: operations["streamAdminUpdates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/competitions/{competitionID}/results.xlsx": {
         parameters: {
             query?: never;
@@ -398,6 +420,26 @@ export interface paths {
         };
         /** The paired device's lane, score lane and stages */
         get: operations["getScorerSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scorer/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The paired device's session as server-sent events
+         * @description Sends a `snapshot` event with the ScorerSession on connect and again after every change in the competition, coalesced over about 250 ms. When the pairing is revoked or the competition finishes, a terminal `revoked` event with an empty JSON object is sent and the stream ends; the client must forget its token and not reconnect. A `: heartbeat` comment is sent every 25 seconds and the server closes the stream after 30 minutes. The device token is sent in the Authorization header, so the client uses fetch instead of EventSource. Writes are always applied to the score lane the server derives at write time, so a client with a stale score lane cannot write to another lane's entry.
+         */
+        get: operations["streamScorerSession"];
         put?: never;
         post?: never;
         delete?: never;
@@ -506,6 +548,28 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getSpectatorProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/spectator/competitions/{competitionID}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Live updates as server-sent events
+         * @description Sends a `snapshot` event with the standings and progress on connect and again after every change, coalesced over about 250 ms. A `: heartbeat` comment is sent every 25 seconds. The server closes the stream after 30 minutes and the client reconnects, which yields a fresh snapshot, so no replay or `Last-Event-ID` is needed. Visibility flags apply as for the standings endpoint. At most 500 streams are served at once.
+         */
+        get: operations["streamSpectatorUpdates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -653,6 +717,10 @@ export interface components {
             x_count?: number;
             ring_counts?: components["schemas"]["RingCounts"];
             stages?: components["schemas"]["StageScore"][];
+        };
+        SpectatorSnapshot: {
+            standings: components["schemas"]["Standing"][];
+            stages: components["schemas"]["StageProgress"][];
         };
         StageProgress: {
             stage: number;
@@ -1481,6 +1549,40 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    streamAdminUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event stream of `changed` events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description Too many open streams */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     downloadResultsWorkbook: {
         parameters: {
             query?: never;
@@ -1551,6 +1653,40 @@ export interface operations {
             403: components["responses"]["AdminScoringRequired"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    streamScorerSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event stream; each `snapshot` event carries a ScorerSession as JSON data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["AdminScoringRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Too many open streams */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     scorerSetCounts: {
@@ -1702,6 +1838,39 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    streamSpectatorUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event stream; each `snapshot` event carries a SpectatorSnapshot as JSON data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description Too many open streams */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
 }

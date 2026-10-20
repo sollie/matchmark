@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -35,6 +36,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Post("/competitions/{competitionID}/pairings", h.createPairing)
 	r.Get("/competitions/{competitionID}/pairings", h.listPairings)
 	r.Delete("/competitions/{competitionID}/pairings/{pairingID}", h.revokePairing)
+	r.Get("/competitions/{competitionID}/stream", h.adminStream)
 }
 
 type shooterBody struct {
@@ -281,4 +283,18 @@ func (h *Handler) deleteEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}
+
+func (h *Handler) adminStream(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	h.serveStream(w, r, h.svc.Subscribe(id), func(ctx context.Context) (streamEvent, error) {
+		if _, err := h.svc.GetCompetition(ctx, id); err != nil {
+			return streamEvent{}, err
+		}
+		return streamEvent{Name: "changed", Data: struct{}{}}, nil
+	})
 }
