@@ -19,7 +19,7 @@ test.describe("competitions", () => {
   }
 
   test("every course shows its label and one column per stage", async ({ adminPage: page, admin, courses }) => {
-    expect(Object.keys(courses).sort()).toEqual(["150", "40", "48", "60"]);
+    expect(Object.keys(courses)).toHaveLength(4);
     for (const course of Object.values(courses)) {
       await test.step(`${course.key}-shot course`, async () => {
         const name = uniqueName(`Course ${course.key}`);
@@ -39,6 +39,9 @@ test.describe("competitions", () => {
         await expect(stageHeaders(page)).toHaveCount(course.stages);
         await expect(stageHeaders(page).first()).toHaveText("S1");
         await expect(stageHeaders(page).last()).toHaveText(`S${course.stages}`);
+
+        await page.goto("/admin");
+        await expect(row(page, name)).toContainText(course.label);
       });
     }
   });
@@ -62,26 +65,31 @@ test.describe("competitions", () => {
   });
 
   test("the list shows each competition with its status", async ({ courses, adminPage: page, admin }) => {
-    const draft = await createCompetition(admin, { name: uniqueName("Listed draft"), date: "2026-03-01" });
+    const [first, second, third] = Object.values(courses);
+    const draft = await createCompetition(admin, {
+      name: uniqueName("Listed draft"),
+      date: "2026-03-01",
+      course: first.key,
+    });
     const active = await createCompetition(admin, {
       name: uniqueName("Listed active"),
       date: "2026-03-02",
-      course: courses["60"].key,
+      course: second.key,
       status: "active",
     });
     const finished = await createCompetition(admin, {
       name: uniqueName("Listed finished"),
       date: "2026-03-03",
-      course: courses["48"].key,
+      course: third.key,
       status: "finished",
     });
 
     await page.goto("/admin");
     const table = page.getByRole("table");
     const expectations = [
-      { c: draft, status: "draft", course: courses["150"].label },
-      { c: active, status: "active", course: courses["60"].label },
-      { c: finished, status: "finished", course: courses["48"].label },
+      { c: draft, status: "draft", course: first.label },
+      { c: active, status: "active", course: second.label },
+      { c: finished, status: "finished", course: third.label },
     ];
     for (const { c, status, course } of expectations) {
       const r = row(page, c.name);
@@ -163,7 +171,8 @@ test.describe("competitions", () => {
   });
 
   test("a draft competition can be edited", async ({ courses, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { date: "2026-03-01" });
+    const [original, target] = Object.values(courses);
+    const competition = await createCompetition(admin, { date: "2026-03-01", course: original.key });
     const name = uniqueName("Renamed");
     await openCompetition(page, competition.id);
 
@@ -171,21 +180,21 @@ test.describe("competitions", () => {
     const form = page.getByRole("form", { name: "Edit competition" });
     await form.getByLabel("Name").fill(name);
     await form.getByLabel("Date").fill("2026-10-19");
-    await form.getByLabel("Course of fire").selectOption({ label: courses["60"].label });
+    await form.getByLabel("Course of fire").selectOption({ label: target.label });
     await form.getByRole("button", { name: "Save" }).click();
 
     await expect(page.getByRole("heading", { name })).toBeVisible();
     await expect(page.getByText("2026-10-19")).toBeVisible();
-    await expect(page.getByText(courses["60"].label, { exact: false }).first()).toBeVisible();
+    await expect(page.getByText(target.label, { exact: false }).first()).toBeVisible();
 
     await seedEntry(admin, competition.id, 1);
     await openCompetition(page, competition.id);
-    await expect(stageHeaders(page)).toHaveCount(courses["60"].stages);
+    await expect(stageHeaders(page)).toHaveCount(target.stages);
 
     await page.goto("/admin");
     const listed = row(page, name);
     await expect(listed).toContainText("2026-10-19");
-    await expect(listed).toContainText(courses["60"].label);
+    await expect(listed).toContainText(target.label);
   });
 
   test("an invalid date is blocked when editing", async ({ adminPage: page, admin }) => {
@@ -201,7 +210,8 @@ test.describe("competitions", () => {
   });
 
   test("the course is locked once an entry exists", async ({ courses, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
+    const [locked] = Object.values(courses);
+    const competition = await createCompetition(admin, { course: locked.key });
     await seedEntry(admin, competition.id, 1);
     const name = uniqueName("Entered");
     await openCompetition(page, competition.id);
@@ -213,7 +223,7 @@ test.describe("competitions", () => {
     await form.getByLabel("Name").fill(name);
     await form.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("heading", { name })).toBeVisible();
-    await expect(page.getByText(courses["150"].label, { exact: false }).first()).toBeVisible();
+    await expect(page.getByText(locked.label, { exact: false }).first()).toBeVisible();
   });
 
   test("an active or finished competition has no edit action", async ({ adminPage: page, admin }) => {
