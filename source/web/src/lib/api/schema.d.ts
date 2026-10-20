@@ -89,6 +89,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List users with role and status (admin only) */
+        get: operations["listUsers"];
+        put?: never;
+        /** Create a user with a temporary password that must be changed at first login (admin only) */
+        post: operations["createUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/shooters": {
         parameters: {
             query?: never;
@@ -635,6 +653,25 @@ export interface components {
             current_password: string;
             new_password: string;
         };
+        SessionUser: {
+            username: string;
+            role: components["schemas"]["UserRole"];
+        };
+        /** @enum {string} */
+        UserRole: "admin" | "user";
+        User: {
+            id: number;
+            username: string;
+            role: components["schemas"]["UserRole"];
+            active: boolean;
+            can_download_backup: boolean;
+            must_change_password: boolean;
+        };
+        CreateUserRequest: {
+            username: string;
+            role: components["schemas"]["UserRole"];
+            password: string;
+        };
         /** @enum {string} */
         CompetitionStatus: "draft" | "active" | "finished";
         Shooter: {
@@ -927,12 +964,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Session is valid */
-            204: {
+            /** @description The signed-in user */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SessionUser"];
+                };
             };
             401: components["responses"]["Unauthorized"];
             /** @description The user must change their password first (error is password_change_required) */
@@ -965,6 +1004,82 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All users */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        users: components["schemas"]["User"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The caller is not an admin, or must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The caller is not an admin, or must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The username is already taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["Invalid"];
         };
     };
     listShooters: {

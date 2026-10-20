@@ -102,8 +102,33 @@ func (a *Auth) SeedAdmin(username, password string) error {
 	if err != nil {
 		return err
 	}
-	_, err = a.repo.CreateUser(username, RoleAdmin, hash, true)
+	_, err = a.repo.CreateUser(username, RoleAdmin, hash, true, false)
 	return err
+}
+
+func (a *Auth) CreateUser(username, role, password string) (User, error) {
+	username = strings.ToLower(username)
+	if !usernamePattern.MatchString(username) {
+		return User{}, ErrInvalidUsername
+	}
+	if role != RoleAdmin && role != RoleUser {
+		return User{}, ErrInvalid
+	}
+	if !ValidPassword(password) {
+		return User{}, ErrWeakPassword
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return User{}, err
+	}
+	if _, err := a.repo.CreateUser(username, role, hash, false, true); err != nil {
+		return User{}, mapRepoErr(err)
+	}
+	return a.repo.UserByUsername(username)
+}
+
+func (a *Auth) ListUsers() ([]User, error) {
+	return a.repo.ListUsers()
 }
 
 var ErrUnknownUser = errors.New("unknown user")

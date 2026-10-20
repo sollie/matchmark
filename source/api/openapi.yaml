@@ -7,6 +7,7 @@ servers:
   - url: /
 tags:
   - name: admin-auth
+  - name: users
   - name: shooters
   - name: competitions
   - name: entries
@@ -89,8 +90,12 @@ paths:
       security:
         - adminCookie: []
       responses:
-        '204':
-          description: Session is valid
+        '200':
+          description: The signed-in user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -116,6 +121,69 @@ paths:
                 format: binary
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users with role and status (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user with a temporary password that must be changed at first login (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: The username is already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/shooters:
     get:
       operationId: listShooters
@@ -1210,6 +1278,48 @@ components:
         current_password:
           type: string
         new_password:
+          type: string
+          minLength: 16
+          maxLength: 128
+    SessionUser:
+      type: object
+      required: [username, role]
+      properties:
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+    UserRole:
+      type: string
+      enum: [admin, user]
+    User:
+      type: object
+      required: [id, username, role, active, can_download_backup, must_change_password]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        active:
+          type: boolean
+        can_download_backup:
+          type: boolean
+        must_change_password:
+          type: boolean
+    CreateUserRequest:
+      type: object
+      required: [username, role, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          pattern: '^[A-Za-z0-9._-]+$'
+        role:
+          $ref: '#/components/schemas/UserRole'
+        password:
           type: string
           minLength: 16
           maxLength: 128

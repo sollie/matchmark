@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { errorMessage } from "../lib/api/util";
-  import { admin, logout } from "../lib/session.svelte";
+  import { logout, refreshAdminSession } from "../lib/session.svelte";
 
   let { forced = false, ondone = () => {} }: { forced?: boolean; ondone?: () => void } = $props();
 
@@ -28,7 +28,7 @@
     if (response.ok) {
       current = next = confirm = "";
       done = true;
-      admin.mustChangePassword = false;
+      await refreshAdminSession();
       ondone();
     } else if (response.status === 401) {
       error = "The current password is incorrect";

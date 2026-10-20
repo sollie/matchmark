@@ -62,6 +62,7 @@ Set `E2E_BASE_URL` (and `E2E_ADMIN_USERNAME` and `E2E_ADMIN_PASSWORD`) to test a
 Coverage, by area:
 
 - Password change: wrong current password, other sessions ended, change and revert.
+- Users: an admin creates a user with a temporary password, the user is forced to change it at first login and then works as a regular user without the Users or Backup links.
 - Auth: wrong password, unknown username and correct login, per-client login lockout, sign out, 401 on unauthenticated admin API calls, the not-found page, and the unpaired scorer page.
 - Shooters: add, edit, cancel an edit, delete with confirmation, and form validation.
 - Competitions: creation for each course of fire with its stage columns, the prefilled ISO 8601 date and invalid-date blocking, the list with statuses, start and finish with confirmation, finished competitions (revoked pairings, no new entries), editing a draft (name, date, course, locked course once entries exist, no edit once started), delete with confirmation, and visibility flags persisting.

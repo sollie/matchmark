@@ -79,7 +79,7 @@ func TestAdminLoginLogout(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("login: status %d", resp.StatusCode)
 	}
-	if got := sessionStatus(t, c, env); got != http.StatusNoContent {
+	if got := sessionStatus(t, c, env); got != http.StatusOK {
 		t.Fatalf("after login: status %d", got)
 	}
 
@@ -177,7 +177,7 @@ func TestSessionExpiresAfterTwelveHours(t *testing.T) {
 		t.Fatalf("max age %d", got)
 	}
 	env.Advance(11*time.Hour + 59*time.Minute)
-	if got := sessionStatus(t, c, env); got != http.StatusNoContent {
+	if got := sessionStatus(t, c, env); got != http.StatusOK {
 		t.Fatalf("before expiry: status %d", got)
 	}
 	env.Advance(2 * time.Minute)
@@ -241,14 +241,14 @@ func TestChangePassword(t *testing.T) {
 	if resp, _ := changePassword(t, c, env, apitest.AdminPassword, "short"); resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("weak new: status %d", resp.StatusCode)
 	}
-	if got := sessionStatus(t, other, env); got != http.StatusNoContent {
+	if got := sessionStatus(t, other, env); got != http.StatusOK {
 		t.Fatalf("other session after rejected changes: %d", got)
 	}
 
 	if resp, _ := changePassword(t, c, env, apitest.AdminPassword, newPassword); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("change: status %d", resp.StatusCode)
 	}
-	if got := sessionStatus(t, c, env); got != http.StatusNoContent {
+	if got := sessionStatus(t, c, env); got != http.StatusOK {
 		t.Fatalf("own session after change: %d", got)
 	}
 	if got := sessionStatus(t, other, env); got != http.StatusUnauthorized {
@@ -293,7 +293,7 @@ func TestTemporaryPasswordRestrictsUserUntilChanged(t *testing.T) {
 	if resp, _ := changePassword(t, c, env, "temporary-password-12", newPassword); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("change: status %d", resp.StatusCode)
 	}
-	if got := sessionStatus(t, c, env); got != http.StatusNoContent {
+	if got := sessionStatus(t, c, env); got != http.StatusOK {
 		t.Fatalf("session after change: %d", got)
 	}
 	resp, err := c.Get(env.Server.URL + "/api/shooters")

@@ -30,16 +30,33 @@ func (r *Repository) CountUsers() (int, error) {
 	return n, mapErr(err)
 }
 
-func (r *Repository) CreateUser(username, role, passwordHash string, canDownloadBackup bool) (int, error) {
+func (r *Repository) CreateUser(username, role, passwordHash string, canDownloadBackup, mustChangePassword bool) (int, error) {
 	res, err := r.db.Exec(
-		`INSERT INTO users (username, role, can_download_backup, password_hash) VALUES (?, ?, ?, ?)`,
-		username, role, canDownloadBackup, passwordHash,
+		`INSERT INTO users (username, role, can_download_backup, must_change_password, password_hash) VALUES (?, ?, ?, ?, ?)`,
+		username, role, canDownloadBackup, mustChangePassword, passwordHash,
 	)
 	if err != nil {
 		return 0, mapErr(err)
 	}
 	id, err := res.LastInsertId()
 	return int(id), err
+}
+
+func (r *Repository) ListUsers() ([]User, error) {
+	rows, err := r.db.Query(`SELECT ` + userColumns + ` FROM users ORDER BY id`)
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	defer func() { _ = rows.Close() }()
+	var users []User
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, mapErr(rows.Err())
 }
 
 func (r *Repository) UserByUsername(username string) (User, error) {

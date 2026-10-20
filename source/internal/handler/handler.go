@@ -32,8 +32,10 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.Post("/admin/login", h.adminLogin)
 			r.Post("/admin/logout", h.adminLogout)
 			r.Post("/admin/password", h.changePassword)
-			r.With(h.RequireAdmin).Get("/admin/session", h.adminSession)
+			r.With(h.RequireUser).Get("/admin/session", h.adminSession)
 			r.With(h.RequireAdmin).Get("/admin/backup", h.backup)
+			r.With(h.RequireAdmin).Get("/users", h.listUsers)
+			r.With(h.RequireAdmin).Post("/users", h.createUser)
 		}
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
@@ -42,7 +44,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			h.scorerRoutes(r)
 		})
 		r.Group(func(r chi.Router) {
-			r.Use(h.RequireAdmin)
+			r.Use(h.RequireUser)
 			h.adminRoutes(r)
 			h.visibilityRoutes(r)
 		})
@@ -63,6 +65,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusNotFound, "not found"
 	case errors.Is(err, service.ErrInvalid):
 		status, msg = http.StatusUnprocessableEntity, "invalid input"
+	case errors.Is(err, service.ErrInvalidUsername), errors.Is(err, service.ErrWeakPassword):
+		status, msg = http.StatusUnprocessableEntity, err.Error()
 	case errors.Is(err, service.ErrConflict):
 		status, msg = http.StatusConflict, "conflict"
 	case errors.Is(err, service.ErrLaneNotManned):

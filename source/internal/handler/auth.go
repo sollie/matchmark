@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/http"
@@ -21,8 +22,19 @@ func WithAuth(auth *service.Auth, baseURL string) Option {
 	}
 }
 
+type userContextKey struct{}
+
+func (h *Handler) RequireUser(next http.Handler) http.Handler {
+	return h.requireUser(next, false)
+}
+
 func (h *Handler) RequireAdmin(next http.Handler) http.Handler {
 	return h.requireUser(next, true)
+}
+
+func currentUser(r *http.Request) service.User {
+	u, _ := r.Context().Value(userContextKey{}).(service.User)
+	return u
 }
 
 func (h *Handler) requireUser(next http.Handler, adminOnly bool) http.Handler {
@@ -49,7 +61,7 @@ func (h *Handler) requireUser(next http.Handler, adminOnly bool) http.Handler {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userContextKey{}, user)))
 	})
 }
 
@@ -115,8 +127,9 @@ func (h *Handler) adminLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) adminSession(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
+func (h *Handler) adminSession(w http.ResponseWriter, r *http.Request) {
+	u := currentUser(r)
+	writeJSON(w, http.StatusOK, map[string]string{"username": u.Username, "role": u.Role})
 }
 
 func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
