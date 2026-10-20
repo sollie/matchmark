@@ -14,7 +14,7 @@ export type StreamOptions = {
 
 export type StreamHandle = { close: () => void };
 
-const terminalStatuses = new Set([401, 403, 404]);
+const terminalStatuses = new Set([401, 403, 404, 409]);
 
 export function createSseParser(emit: (event: string, data: string) => void) {
   let buffer = "";

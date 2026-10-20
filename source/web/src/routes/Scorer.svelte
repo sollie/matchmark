@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api, deviceHeaders } from "../lib/api/client";
   import { errorMessage } from "../lib/api/util";
+  import { openStream, type StreamState } from "../lib/sse";
   import { forgetDeviceToken, loadDeviceToken } from "../lib/pairing";
   import type { components } from "../lib/api/schema";
 
@@ -28,6 +29,9 @@
   let message = $state("");
   let error = $state("");
   let busy = $state(false);
+  let notice = $state("");
+  let connection = $state<StreamState>("connecting");
+  let connectAttempt = $state(0);
 
   const current = $derived(session?.stages.find((s) => s.stage_number === stage) ?? null);
   const sum = $derived(rings.reduce((n, r) => n + counts[r.key], 0));
@@ -42,27 +46,70 @@
       headers: auth(),
     });
     if (data) {
-      session = data;
+      apply(data);
       loadError = "";
-      if (stage === null || !data.stages.some((s) => s.stage_number === stage)) {
-        stage = (data.stages.find((s) => !s.locked) ?? data.stages[0])?.stage_number ?? null;
-      }
     } else if (response.status === 401) {
-      forgetDeviceToken();
-      token = null;
-      session = null;
+      forget();
     } else {
       loadError = errorMessage(err, `Request failed (${response.status})`);
     }
   }
 
+  function forget() {
+    forgetDeviceToken();
+    token = null;
+    session = null;
+  }
+
+  function apply(next: Session) {
+    const previous = session;
+    session = next;
+    if (previous && previous.score_lane !== next.score_lane) {
+      counts = emptyCounts();
+      message = "";
+      error = "";
+      notice = `Score lane changed to lane ${next.score_lane}. Your unsaved ring counts were reset.`;
+    }
+    if (stage === null || !next.stages.some((s) => s.stage_number === stage)) {
+      stage = (next.stages.find((s) => !s.locked) ?? next.stages[0])?.stage_number ?? null;
+    }
+  }
+
+  function reconnect() {
+    loadError = "";
+    connectAttempt++;
+  }
+
   $effect(() => {
-    void load();
+    void connectAttempt;
+    if (!token) return;
+    let disposed = false;
+    const stream = openStream({
+      url: "/api/scorer/stream",
+      headers: auth(),
+      onEvent: (event, data) => {
+        if (event === "snapshot") {
+          loadError = "";
+          apply(JSON.parse(data));
+        } else if (event === "revoked") {
+          forget();
+        }
+      },
+      onState: (next) => {
+        connection = next;
+        if (next === "ended" && !disposed) void load();
+      },
+    });
+    return () => {
+      disposed = true;
+      stream.close();
+    };
   });
 
   function selectStage(n: number) {
     stage = n;
     counts = emptyCounts();
+    notice = "";
     message = "";
     error = "";
   }
@@ -74,6 +121,7 @@
   async function save() {
     if (stage === null) return;
     busy = true;
+    notice = "";
     message = "";
     error = "";
     const { error: err, response } = await api.PUT("/api/scorer/stages/{stage}", {
@@ -99,6 +147,7 @@
   async function lock() {
     if (stage === null) return;
     busy = true;
+    notice = "";
     message = "";
     error = "";
     const { error: err, response } = await api.POST("/api/scorer/stages/{stage}/lock", {
@@ -108,7 +157,6 @@
     busy = false;
     if (response.ok) {
       message = "Stage locked";
-      await load();
     } else if (response.status === 422) {
       error = "Save valid ring counts before locking the stage.";
     } else {
@@ -117,9 +165,7 @@
   }
 
   function unpair() {
-    forgetDeviceToken();
-    token = null;
-    session = null;
+    forget();
   }
 </script>
 
@@ -131,7 +177,7 @@
     <h1>Scorer</h1>
     {#if loadError}
       <p class="error" role="alert">{loadError}</p>
-      <button onclick={load}>Retry</button>
+      <button onclick={reconnect}>Retry</button>
       <button onclick={unpair}>Unpair device</button>
     {:else}
       <p class="muted">Loading…</p>
@@ -198,6 +244,8 @@
       {/if}
     {/if}
 
+    {#if connection === "stale"}<p class="muted">Connection lost. Reconnecting…</p>{/if}
+    {#if notice}<p role="status">{notice}</p>{/if}
     {#if message}<p role="status">{message}</p>{/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <p><button onclick={unpair}>Unpair device</button></p>

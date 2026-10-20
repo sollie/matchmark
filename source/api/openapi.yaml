@@ -792,6 +792,52 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/scorer/stream:
+    get:
+      operationId: streamScorerSession
+      tags: [scorer]
+      summary: The paired device's session as server-sent events
+      description: >
+        Sends a `snapshot` event with the ScorerSession on connect and again
+        after every change in the competition, coalesced over about 250 ms.
+        When the pairing is revoked or the competition finishes, a terminal
+        `revoked` event with an empty JSON object is sent and the stream ends;
+        the client must forget its token and not reconnect. A `: heartbeat`
+        comment is sent every 25 seconds and the server closes the stream
+        after 30 minutes. The device token is sent in the Authorization header,
+        so the client uses fetch instead of EventSource. Writes are always
+        applied to the score lane the server derives at write time, so a
+        client with a stale score lane cannot write to another lane's entry.
+      security:
+        - deviceBearer: []
+      responses:
+        '200':
+          description: Event stream; each `snapshot` event carries a ScorerSession as JSON data
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              x-event-schemas:
+                snapshot:
+                  $ref: '#/components/schemas/ScorerSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/AdminScoringRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: Too many open streams
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/scorer/stages/{stage}:
     parameters:
       - $ref: '#/components/parameters/Stage'

@@ -121,9 +121,9 @@ describe("openStream", () => {
     expect(server.conns).toHaveLength(1);
   });
 
-  it("does not retry on 401 or 404", async () => {
+  it("does not retry on 401, 403, 404 or 409", async () => {
     const server = fakeServer();
-    server.statuses.push(404);
+    server.statuses.push(409);
     const { states } = open(server);
     await tick(60000);
     expect(states.at(-1)).toBe("ended");

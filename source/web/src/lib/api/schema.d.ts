@@ -428,6 +428,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scorer/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The paired device's session as server-sent events
+         * @description Sends a `snapshot` event with the ScorerSession on connect and again after every change in the competition, coalesced over about 250 ms. When the pairing is revoked or the competition finishes, a terminal `revoked` event with an empty JSON object is sent and the stream ends; the client must forget its token and not reconnect. A `: heartbeat` comment is sent every 25 seconds and the server closes the stream after 30 minutes. The device token is sent in the Authorization header, so the client uses fetch instead of EventSource. Writes are always applied to the score lane the server derives at write time, so a client with a stale score lane cannot write to another lane's entry.
+         */
+        get: operations["streamScorerSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scorer/stages/{stage}": {
         parameters: {
             query?: never;
@@ -1633,6 +1653,40 @@ export interface operations {
             403: components["responses"]["AdminScoringRequired"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    streamScorerSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event stream; each `snapshot` event carries a ScorerSession as JSON data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["AdminScoringRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description Too many open streams */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     scorerSetCounts: {
