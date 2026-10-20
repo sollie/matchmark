@@ -160,6 +160,72 @@ test.describe("competitions", () => {
     await expect(row(page, extra.last_name)).toHaveCount(0);
   });
 
+  test("a draft competition can be edited", async ({ adminPage: page, admin }) => {
+    const competition = await createCompetition(admin, { date: "2026-03-01" });
+    const name = uniqueName("Renamed");
+    await openCompetition(page, competition.id);
+
+    await page.getByRole("button", { name: "Edit competition" }).click();
+    const form = page.getByRole("form", { name: "Edit competition" });
+    await form.getByLabel("Name").fill(name);
+    await form.getByLabel("Date").fill("2026-10-19");
+    await form.getByLabel("Course of fire").selectOption({ label: courses.sixty.label });
+    await form.getByRole("button", { name: "Save" }).click();
+
+    await expect(page.getByRole("heading", { name })).toBeVisible();
+    await expect(page.getByText("2026-10-19")).toBeVisible();
+    await expect(page.getByText(courses.sixty.label, { exact: false }).first()).toBeVisible();
+
+    await seedEntry(admin, competition.id, 1);
+    await openCompetition(page, competition.id);
+    await expect(stageHeaders(page)).toHaveCount(courses.sixty.stages);
+
+    await page.goto("/admin");
+    const listed = row(page, name);
+    await expect(listed).toContainText("2026-10-19");
+    await expect(listed).toContainText(courses.sixty.label);
+  });
+
+  test("an invalid date is blocked when editing", async ({ adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
+    await openCompetition(page, competition.id);
+
+    await page.getByRole("button", { name: "Edit competition" }).click();
+    const form = page.getByRole("form", { name: "Edit competition" });
+    await form.getByLabel("Date").fill("19/10/2026");
+    await form.getByRole("button", { name: "Save" }).click();
+    await expect(form.getByLabel("Date")).toHaveJSProperty("validity.valid", false);
+    await expect(page.getByRole("heading", { name: competition.name })).toBeVisible();
+  });
+
+  test("the course is locked once an entry exists", async ({ adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
+    await seedEntry(admin, competition.id, 1);
+    const name = uniqueName("Entered");
+    await openCompetition(page, competition.id);
+
+    await page.getByRole("button", { name: "Edit competition" }).click();
+    const form = page.getByRole("form", { name: "Edit competition" });
+    await expect(form.getByLabel("Course of fire")).toBeDisabled();
+    await expect(form.getByText("The course cannot change once the competition has entries.")).toBeVisible();
+    await form.getByLabel("Name").fill(name);
+    await form.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("heading", { name })).toBeVisible();
+    await expect(page.getByText(courses.wa1500.label, { exact: false }).first()).toBeVisible();
+  });
+
+  test("an active or finished competition has no edit action", async ({ adminPage: page, admin }) => {
+    const active = await createCompetition(admin, { status: "active" });
+    await openCompetition(page, active.id);
+    await expect(page.getByRole("button", { name: "Delete competition" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit competition" })).toHaveCount(0);
+
+    const finished = await createCompetition(admin, { status: "finished" });
+    await openCompetition(page, finished.id);
+    await expect(page.getByRole("button", { name: "Delete competition" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit competition" })).toHaveCount(0);
+  });
+
   test("deleting a competition requires confirmation", async ({ adminPage: page, admin }) => {
     const competition = await createCompetition(admin);
     await openCompetition(page, competition.id);
