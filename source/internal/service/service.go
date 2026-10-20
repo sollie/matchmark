@@ -23,10 +23,13 @@ type Service struct {
 	scoreLog   *slog.Logger
 	emitMu     sync.Mutex
 	emitSeq    int64
+	bus        *Broadcaster
+	snapMu     sync.Mutex
+	snaps      map[int64]cachedSnapshot
 }
 
 func New(repo *repository.Repository, opts ...Option) *Service {
-	s := &Service{repo: repo}
+	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]cachedSnapshot{}}
 	for _, opt := range opts {
 		opt(s)
 	}

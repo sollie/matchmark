@@ -46,6 +46,7 @@ func (s *Service) SetRingCounts(ctx context.Context, competitionID, entryID int6
 		}
 		return mapRepoErr(err)
 	}
+	s.bus.Publish(competitionID)
 	return nil
 }
 
@@ -60,5 +61,6 @@ func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID
 	if stage.Locked {
 		s.emitStageEvent(ctx, eventStageLocked, competitionID, entryID, stageNumber)
 	}
+	s.bus.Publish(competitionID)
 	return nil
 }

@@ -514,6 +514,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/spectator/competitions/{competitionID}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Live updates as server-sent events
+         * @description Sends a `snapshot` event with the standings and progress on connect and again after every change, coalesced over about 250 ms. A `: heartbeat` comment is sent every 25 seconds. The server closes the stream after 30 minutes and the client reconnects, which yields a fresh snapshot, so no replay or `Last-Event-ID` is needed. Visibility flags apply as for the standings endpoint. At most 500 streams are served at once.
+         */
+        get: operations["streamSpectatorUpdates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -653,6 +675,10 @@ export interface components {
             x_count?: number;
             ring_counts?: components["schemas"]["RingCounts"];
             stages?: components["schemas"]["StageScore"][];
+        };
+        SpectatorSnapshot: {
+            standings: components["schemas"]["Standing"][];
+            stages: components["schemas"]["StageProgress"][];
         };
         StageProgress: {
             stage: number;
@@ -1702,6 +1728,39 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    streamSpectatorUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event stream; each `snapshot` event carries a SpectatorSnapshot as JSON data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description Too many open streams */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
 }

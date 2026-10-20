@@ -888,6 +888,42 @@ paths:
                       $ref: '#/components/schemas/StageProgress'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/spectator/competitions/{competitionID}/stream:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: streamSpectatorUpdates
+      tags: [spectator]
+      summary: Live updates as server-sent events
+      description: >
+        Sends a `snapshot` event with the standings and progress on connect and
+        again after every change, coalesced over about 250 ms. A `: heartbeat`
+        comment is sent every 25 seconds. The server closes the stream after
+        30 minutes and the client reconnects, which yields a fresh snapshot, so
+        no replay or `Last-Event-ID` is needed. Visibility flags apply as for
+        the standings endpoint. At most 500 streams are served at once.
+      responses:
+        '200':
+          description: Event stream; each `snapshot` event carries a SpectatorSnapshot as JSON data
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              x-event-schemas:
+                snapshot:
+                  $ref: '#/components/schemas/SpectatorSnapshot'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Too many open streams
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     adminCookie:
@@ -1265,6 +1301,18 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StageScore'
+    SpectatorSnapshot:
+      type: object
+      required: [standings, stages]
+      properties:
+        standings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Standing'
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageProgress'
     StageProgress:
       type: object
       required: [stage, entries, locked]

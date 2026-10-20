@@ -50,7 +50,11 @@ func (s *Service) GetVisibility(ctx context.Context, competitionID int64) (repos
 }
 
 func (s *Service) SetVisibility(ctx context.Context, competitionID int64, v repository.Visibility) error {
-	return mapRepoErr(s.repo.SetVisibility(ctx, competitionID, v))
+	if err := s.repo.SetVisibility(ctx, competitionID, v); err != nil {
+		return mapRepoErr(err)
+	}
+	s.bus.Publish(competitionID)
+	return nil
 }
 
 func (s *Service) ListPublicCompetitions(ctx context.Context) ([]repository.Competition, error) {
@@ -171,4 +175,39 @@ func (s *Service) Progress(ctx context.Context, competitionID int64) ([]StagePro
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Stage < out[j].Stage })
 	return out, nil
+}
+
+type SpectatorSnapshot struct {
+	Standings []StandingView  `json:"standings"`
+	Stages    []StageProgress `json:"stages"`
+}
+
+type cachedSnapshot struct {
+	version  uint64
+	snapshot SpectatorSnapshot
+}
+
+func (s *Service) Subscribe(competitionID int64) *Subscription {
+	return s.bus.Subscribe(competitionID)
+}
+
+func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (SpectatorSnapshot, error) {
+	s.snapMu.Lock()
+	defer s.snapMu.Unlock()
+	version := s.bus.Version(competitionID)
+	if c, ok := s.snaps[competitionID]; ok && c.version == version {
+		return c.snapshot, nil
+	}
+	standings, err := s.Standings(ctx, competitionID)
+	if err != nil {
+		delete(s.snaps, competitionID)
+		return SpectatorSnapshot{}, err
+	}
+	stages, err := s.Progress(ctx, competitionID)
+	if err != nil {
+		return SpectatorSnapshot{}, err
+	}
+	snap := SpectatorSnapshot{Standings: standings, Stages: stages}
+	s.snaps[competitionID] = cachedSnapshot{version: version, snapshot: snap}
+	return snap, nil
 }
