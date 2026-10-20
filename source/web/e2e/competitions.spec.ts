@@ -163,7 +163,7 @@ test.describe("competitions", () => {
     await expect(pairings.getByRole("button", { name: "Revoke" })).toHaveCount(0);
 
     const entries = page.getByRole("form", { name: "Add entry" });
-    await entries.getByLabel("Shooter").selectOption({ label: `${extra.last_name}, ${extra.first_name}` });
+    await entries.getByLabel("Shooter").selectOption({ label: `${extra.first_name} ${extra.last_name}` });
     await page.getByLabel("Entry lane").fill("3");
     await entries.getByRole("button", { name: "Add entry" }).click();
     await expect(section(page, "Entries and progress").getByRole("alert")).toHaveText("conflict");
