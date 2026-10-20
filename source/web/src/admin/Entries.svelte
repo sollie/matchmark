@@ -128,7 +128,7 @@
   <h2>Entries and progress</h2>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
-  <form class="row add-form" onsubmit={add}>
+  <form class="row add-form" aria-label="Add entry" onsubmit={add}>
     <label>
       Shooter
       <select bind:value={shooterId} required>
@@ -138,11 +138,11 @@
     </label>
     <label>
       Category
-      <select bind:value={category}>
+      <select aria-label="Entry category" bind:value={category}>
         {#each categories as c (c)}<option value={c}>{c}</option>{/each}
       </select>
     </label>
-    <label>Lane <input type="number" min="1" bind:value={() => lane, (v) => (laneInput = v)} size="3" required /></label>
+    <label>Lane <input type="number" min="1" aria-label="Entry lane" bind:value={() => lane, (v) => (laneInput = v)} size="3" required /></label>
     <button type="submit" class="primary">Add entry</button>
     <a href="/admin/shooters">Manage shooters</a>
   </form>
@@ -160,10 +160,10 @@
       {#each ordered as entry (entry.id)}
         <tr class:muted={entry.withdrawn}>
           {#if editing?.id === entry.id}
-            <td class="lane"><input type="number" min="1" aria-label="Lane" bind:value={editing.lane} size="3" /></td>
+            <td class="lane"><input type="number" min="1" aria-label="Move lane" bind:value={editing.lane} size="3" /></td>
             <td class="shooter">{shooterName(entry.shooter_id)}</td>
             <td class="category">
-              <select aria-label="Category" bind:value={editing.category}>
+              <select aria-label="Move category" bind:value={editing.category}>
                 {#each categories as c (c)}<option value={c}>{c}</option>{/each}
               </select>
             </td>
@@ -193,11 +193,11 @@
                 {/if}
                 <span class="stage-actions">
                   {#if st.locked}
-                    <button class="secondary" onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
+                    <button class="secondary" aria-label={`Stage ${st.stage_number}: Unlock`} onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
                   {:else}
-                    <button class="secondary" onclick={() => lock(entry, st.stage_number)}>Lock</button>
+                    <button class="secondary" aria-label={`Stage ${st.stage_number}: Lock`} onclick={() => lock(entry, st.stage_number)}>Lock</button>
                   {/if}
-                  <button class="ghost" onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
+                  <button class="ghost" aria-label={`Stage ${st.stage_number}: Edit`} onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
                 </span>
               </div>
             </td>

@@ -152,11 +152,11 @@ test.describe("competitions", () => {
     await expect(pairings.getByRole("row", { name: /revoked/ })).toHaveCount(1);
     await expect(pairings.getByRole("button", { name: "Revoke" })).toHaveCount(0);
 
-    const entries = section(page, "Entries and progress");
+    const entries = page.getByRole("form", { name: "Add entry" });
     await entries.getByLabel("Shooter").selectOption({ label: `${extra.last_name}, ${extra.first_name}` });
-    await entries.getByLabel("Lane").fill("3");
+    await entries.getByLabel("Entry lane").fill("3");
     await entries.getByRole("button", { name: "Add entry" }).click();
-    await expect(entries.getByRole("alert")).toHaveText("conflict");
+    await expect(section(page, "Entries and progress").getByRole("alert")).toHaveText("conflict");
     await expect(row(page, extra.last_name)).toHaveCount(0);
   });
 

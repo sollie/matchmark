@@ -16,7 +16,7 @@ test.describe("pairing and scorer device", () => {
     await openCompetition(page, competition.id);
 
     const pairing = section(page, "Scorer pairing");
-    await pairing.getByRole("combobox").selectOption({ label: "Lane 1" });
+    await pairing.getByLabel("Pairing lane").selectOption({ label: "Lane 1" });
     await pairing.getByRole("button", { name: "Create pairing link" }).click();
     await expect(pairing.getByRole("img", { name: "QR code pairing lane 1" })).toBeVisible();
     const link = await pairing.getByLabel("Pairing link").inputValue();
@@ -134,7 +134,7 @@ test.describe("pairing and scorer device", () => {
 
     await openCompetition(page, competition.id);
     const entryRow = row(page, entries[0].shooter.last_name);
-    await entryRow.locator("td.stage").first().getByRole("button", { name: "Edit" }).click();
+    await entryRow.getByRole("button", { name: "Stage 1: Edit" }).click();
     await page.getByLabel("10", { exact: true }).fill("12");
     await expect(page.getByText("✓ Shots match")).toBeVisible();
     await page.getByRole("button", { name: "Save and lock" }).click();
