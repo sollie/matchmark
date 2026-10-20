@@ -56,7 +56,7 @@ Without local browsers or Go, run the suite in Docker against the built image:
 docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e
 ```
 
-Set `E2E_BASE_URL` (and `E2E_ADMIN_PASSWORD`) to test an already running instance instead of starting one. CI runs the suite on every pull request and uploads the report on failure.
+Set `E2E_BASE_URL` (and `E2E_ADMIN_PASSWORD`) to test an already running instance instead of starting one. CI runs one job per browser in parallel on every pull request, gated by an aggregate `E2E` check, and uploads a per-browser report on failure.
 
 Coverage, by area:
 
