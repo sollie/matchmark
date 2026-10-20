@@ -25,6 +25,7 @@ type Env struct {
 	Server *httptest.Server
 	client *http.Client
 	repo   *repository.Repository
+	auth   *service.Auth
 
 	mu     sync.Mutex
 	offset time.Duration
@@ -70,6 +71,13 @@ func (e *Env) SetPasswordHash(username, hash string) {
 	}
 }
 
+func (e *Env) SetTemporaryPassword(username, password string) {
+	e.t.Helper()
+	if err := e.auth.ResetPassword(username, password); err != nil {
+		e.t.Fatalf("set temporary password: %v", err)
+	}
+}
+
 func New(t *testing.T) *Env {
 	t.Helper()
 	return NewWithBaseURL(t, "http://localhost")
@@ -85,6 +93,7 @@ func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	repo := repository.New(conn)
 	e := &Env{t: t, repo: repo}
 	auth := service.NewAuth(repo, service.WithAuthClock(e.now))
+	e.auth = auth
 	if err := auth.SeedAdmin(AdminUsername, AdminPassword); err != nil {
 		t.Fatalf("seed admin: %v", err)
 	}

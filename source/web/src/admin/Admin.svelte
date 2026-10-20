@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { router, matchRoute, navigate } from "../lib/router.svelte";
   import { admin, refreshAdminSession, logout } from "../lib/session.svelte";
+  import ChangePassword from "./ChangePassword.svelte";
   import Login from "./Login.svelte";
   import Shooters from "./Shooters.svelte";
   import Competitions from "./Competitions.svelte";
@@ -25,11 +26,14 @@
   <main><p class="muted">Loading…</p></main>
 {:else if !admin.authed}
   <Login />
+{:else if admin.mustChangePassword}
+  <ChangePassword forced />
 {:else}
   <nav>
     <a href="/admin" aria-current={activeSection === "competitions" ? "page" : undefined}>Competitions</a>
     <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}>Shooters</a>
     <a href="/api/admin/backup" download>Backup</a>
+    <a href="/admin/password" aria-current={router.path === "/admin/password" ? "page" : undefined}>Change password</a>
     <a href="/">Spectator view</a>
     <span class="spacer"></span>
     <button onclick={signOut}>Sign out</button>
@@ -39,6 +43,8 @@
       <Competitions />
     {:else if router.path === "/admin/shooters"}
       <Shooters />
+    {:else if router.path === "/admin/password"}
+      <ChangePassword />
     {:else if competitionRoute}
       {#key competitionRoute.id}
         <Competition id={Number(competitionRoute.id)} />

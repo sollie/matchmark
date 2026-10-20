@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { errorMessage } from "../lib/api/util";
-  import { admin } from "../lib/session.svelte";
+  import { refreshAdminSession } from "../lib/session.svelte";
 
   let username = $state("");
   let password = $state("");
@@ -16,7 +16,7 @@
     busy = false;
     if (response.ok) {
       password = "";
-      admin.authed = true;
+      await refreshAdminSession();
     } else {
       error =
         response.status === 429

@@ -31,6 +31,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 		if h.auth != nil {
 			r.Post("/admin/login", h.adminLogin)
 			r.Post("/admin/logout", h.adminLogout)
+			r.Post("/admin/password", h.changePassword)
 			r.With(h.RequireAdmin).Get("/admin/session", h.adminSession)
 			r.With(h.RequireAdmin).Get("/admin/backup", h.backup)
 		}

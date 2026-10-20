@@ -220,3 +220,98 @@ func TestWeakerStoredHashIsUpgradedAtLogin(t *testing.T) {
 		t.Fatalf("login after upgrade: status %d", got)
 	}
 }
+
+const newPassword = "another-long-password-1"
+
+func changePassword(t *testing.T, c *http.Client, env *apitest.Env, current, next string) (*http.Response, string) {
+	t.Helper()
+	return postBody(t, c, env, "/api/admin/password", `{"current_password":"`+current+`","new_password":"`+next+`"}`)
+}
+
+func TestChangePassword(t *testing.T) {
+	env := apitest.New(t)
+	c := client(t)
+	other := client(t)
+	post(t, c, env, "/api/admin/login", apitest.AdminPassword)
+	post(t, other, env, "/api/admin/login", apitest.AdminPassword)
+
+	if resp, _ := changePassword(t, c, env, "wrong-current-password", newPassword); resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("wrong current: status %d", resp.StatusCode)
+	}
+	if resp, _ := changePassword(t, c, env, apitest.AdminPassword, "short"); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("weak new: status %d", resp.StatusCode)
+	}
+	if got := sessionStatus(t, other, env); got != http.StatusNoContent {
+		t.Fatalf("other session after rejected changes: %d", got)
+	}
+
+	if resp, _ := changePassword(t, c, env, apitest.AdminPassword, newPassword); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("change: status %d", resp.StatusCode)
+	}
+	if got := sessionStatus(t, c, env); got != http.StatusNoContent {
+		t.Fatalf("own session after change: %d", got)
+	}
+	if got := sessionStatus(t, other, env); got != http.StatusUnauthorized {
+		t.Fatalf("other session after change: %d", got)
+	}
+	fresh := client(t)
+	if got := post(t, fresh, env, "/api/admin/login", apitest.AdminPassword).StatusCode; got != http.StatusUnauthorized {
+		t.Fatalf("old password: status %d", got)
+	}
+	if got := post(t, fresh, env, "/api/admin/login", newPassword).StatusCode; got != http.StatusNoContent {
+		t.Fatalf("new password: status %d", got)
+	}
+}
+
+func TestChangePasswordRequiresLogin(t *testing.T) {
+	env := apitest.New(t)
+	resp, _ := changePassword(t, client(t), env, apitest.AdminPassword, newPassword)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+}
+
+func TestTemporaryPasswordRestrictsUserUntilChanged(t *testing.T) {
+	env := apitest.New(t)
+	env.SetTemporaryPassword(apitest.AdminUsername, "temporary-password-12")
+	c := client(t)
+	if got := post(t, c, env, "/api/admin/login", "temporary-password-12").StatusCode; got != http.StatusNoContent {
+		t.Fatalf("login: status %d", got)
+	}
+	for _, path := range []string{"/api/admin/session", "/api/shooters", "/api/competitions", "/api/admin/backup"} {
+		resp, err := c.Get(env.Server.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden || !strings.Contains(string(body), "password_change_required") {
+			t.Fatalf("%s: status %d body %s", path, resp.StatusCode, body)
+		}
+	}
+
+	if resp, _ := changePassword(t, c, env, "temporary-password-12", newPassword); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("change: status %d", resp.StatusCode)
+	}
+	if got := sessionStatus(t, c, env); got != http.StatusNoContent {
+		t.Fatalf("session after change: %d", got)
+	}
+	resp, err := c.Get(env.Server.URL + "/api/shooters")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("shooters after change: %d", resp.StatusCode)
+	}
+}
+
+func TestFlaggedUserCanLogOut(t *testing.T) {
+	env := apitest.New(t)
+	env.SetTemporaryPassword(apitest.AdminUsername, "temporary-password-12")
+	c := client(t)
+	post(t, c, env, "/api/admin/login", "temporary-password-12")
+	if got := post(t, c, env, "/api/admin/logout", "").StatusCode; got != http.StatusNoContent {
+		t.Fatalf("logout: status %d", got)
+	}
+}

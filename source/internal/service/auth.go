@@ -126,6 +126,30 @@ func (a *Auth) ResetPassword(username, password string) error {
 	return a.repo.ResetPassword(user.ID, hash)
 }
 
+func (a *Auth) ChangePassword(token, current, next string) error {
+	user, err := a.Authenticate(token)
+	if err != nil {
+		return err
+	}
+	key := fmt.Sprintf("user:%d", user.ID)
+	now := a.now()
+	if a.limited(key, now) {
+		return ErrTooManyAttempts
+	}
+	if ok, _ := verifyPassword(current, user.PasswordHash); !ok {
+		a.recordFailure(key, now)
+		return ErrInvalidCredentials
+	}
+	if !ValidPassword(next) {
+		return ErrWeakPassword
+	}
+	hash, err := hashPassword(next)
+	if err != nil {
+		return err
+	}
+	return a.repo.ChangePassword(user.ID, hash, hashToken(token))
+}
+
 func derive(password string, salt []byte, memory, time uint32, threads uint8) []byte {
 	return argon2.IDKey([]byte(password), salt, time, memory, threads, argonKeyLen)
 }

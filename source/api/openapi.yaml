@@ -51,6 +51,36 @@ paths:
       responses:
         '204':
           description: Logged out
+  /api/admin/password:
+    post:
+      operationId: adminChangePassword
+      tags: [admin-auth]
+      summary: Change the signed-in user's password and end their other sessions
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many attempts
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/admin/session:
     get:
       operationId: adminSession
@@ -63,6 +93,12 @@ paths:
           description: Session is valid
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The user must change their password first (error is password_change_required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/admin/backup:
     get:
       operationId: adminBackup
@@ -1167,6 +1203,16 @@ components:
           type: string
         password:
           type: string
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          minLength: 16
+          maxLength: 128
     CompetitionStatus:
       type: string
       enum: [draft, active, finished]

@@ -12,7 +12,7 @@ Future: relays; Rifle; DNS-01 and other ACME challenge methods; CDN-hosted front
 
 ## Users and flow
 
-- Admin (named user with username and password, 12-hour cookie session; the first admin is seeded from `ADMIN_USERNAME` and `ADMIN_PASSWORD` when there are no users): creates a competition, picks the course of fire, adds entries from the shooter registry (or creates new shooters), assigns lanes and categories, opens pairing, sets spectator visibility, watches progress, unlocks and corrects stages, finishes the competition, downloads the results report.
+- Admin (named user with username and password, 12-hour cookie session; the first admin is seeded from `ADMIN_USERNAME` and `ADMIN_PASSWORD` when there are no users): creates a competition, picks the course of fire, adds entries from the shooter registry (or creates new shooters), assigns lanes and categories, opens pairing, sets spectator visibility, watches progress, unlocks and corrects stages, finishes the competition, downloads the results report. A user changes their own password at `/admin/password` by supplying the current one (new password 16-128 characters); this ends their other sessions. A user whose password was reset (temporary password) is flagged and can reach only change-password and logout (other endpoints answer 403 `password_change_required`) until it is changed.
 - Scorer (device): opens a pairing link once, then sees only "Scoring lane N: name", enters ring counts for the current stage and locks it.
 - Spectator (no login): live standings and per-stage progress, subject to admin's per-competition field visibility.
 

@@ -22,6 +22,10 @@ func WithAuth(auth *service.Auth, baseURL string) Option {
 }
 
 func (h *Handler) RequireAdmin(next http.Handler) http.Handler {
+	return h.requireUser(next, true)
+}
+
+func (h *Handler) requireUser(next http.Handler, adminOnly bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(sessionCookie)
 		if err != nil {
@@ -37,7 +41,11 @@ func (h *Handler) RequireAdmin(next http.Handler) http.Handler {
 			writeError(w, err)
 			return
 		}
-		if user.Role != service.RoleAdmin {
+		if user.MustChangePassword {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "password_change_required"})
+			return
+		}
+		if adminOnly && user.Role != service.RoleAdmin {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
@@ -109,4 +117,34 @@ func (h *Handler) adminLogout(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) adminSession(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := decode(r, &body); err != nil {
+		writeError(w, err)
+		return
+	}
+	c, err := r.Cookie(sessionCookie)
+	if err != nil {
+		writeUnauthorized(w)
+		return
+	}
+	err = h.auth.ChangePassword(c.Value, body.CurrentPassword, body.NewPassword)
+	switch {
+	case errors.Is(err, service.ErrTooManyAttempts):
+		w.Header().Set("Retry-After", "900")
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts"})
+	case errors.Is(err, service.ErrInvalidCredentials), errors.Is(err, service.ErrUnauthenticated):
+		writeUnauthorized(w)
+	case errors.Is(err, service.ErrWeakPassword):
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": service.ErrWeakPassword.Error()})
+	case err != nil:
+		writeError(w, err)
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
