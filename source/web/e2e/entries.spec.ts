@@ -66,6 +66,21 @@ test.describe("entries", () => {
   });
 });
 
+test.describe("entries layout", () => {
+  test("every stage is reachable without horizontal scrolling", async ({ course, adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
+    const entry = await seedEntry(admin, competition.id, 1);
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await openCompetition(page, competition.id);
+
+    const stages = row(page, entry.shooter.last_name).locator("td.stage");
+    await expect(stages).toHaveCount(course.stages);
+    const scroll = page.locator(".scroll", { has: page.locator("table.entries") });
+    expect(await scroll.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await expect(stages.last()).toBeInViewport();
+  });
+});
+
 test.describe("admin ring counts", () => {
   test("a live shot total flags a wrong total and the save is rejected", async ({ course, adminPage: page, admin }) => {
     const competition = await createCompetition(admin, { status: "active" });
