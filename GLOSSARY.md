@@ -93,7 +93,7 @@ _Avoid_: Sync, backup
 
 **Score log**:
 The JSON `stage_locked` and `stage_unlocked` lines the server writes to stdout whenever a stage is locked or its locked state changes. Each line is self-contained, so a competition's scored results can be rebuilt by taking the latest line per stage.
-_Avoid_: Audit log, scoring log
+_Avoid_: Scoring log
 
 **Restore**:
 Rebuilding competitions, entries and locked stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
@@ -102,3 +102,25 @@ _Avoid_: Backup, replication
 **Live update**:
 A change notice the server pushes for a competition to the spectator, admin and scorer screens, so they refresh without asking.
 _Avoid_: Poll, refresh, push notification
+
+## Accounts
+
+**User**:
+A person with a login who manages the club's competitions and data. A user is not a shooter and not a scorer.
+_Avoid_: Account, operator, member
+
+**Admin**:
+A user who can also manage other users. Only an admin can be allowed to download a backup.
+_Avoid_: Superuser, owner
+
+**Deactivated user**:
+A user who can no longer log in but whose history stays attributed to them. An admin can reactivate them.
+_Avoid_: Deleted user, disabled user, banned user
+
+**Backup download**:
+A full copy of the database file, including password hashes, taken by an admin who has been allowed to. It is not Replication and not Restore.
+_Avoid_: Export, dump
+
+**Audit log**:
+The record of who did what: every change by a user, plus logins, failed logins, report downloads and backup downloads. It is separate from the Score log, which records locked results.
+_Avoid_: Activity log, history
