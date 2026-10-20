@@ -166,3 +166,37 @@ func TestSpectatorCompetitionList(t *testing.T) {
 		t.Fatalf("list %v", list)
 	}
 }
+
+func TestRulebookIsPublic(t *testing.T) {
+	f := newFixture(t, "150")
+	status, out := publicGet(t, f, "/api/rulebook")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d", status)
+	}
+	courses, _ := out["courses"].([]any)
+	keys := []string{"150", "60", "48", "40"}
+	shots := []float64{150, 60, 48, 40}
+	if len(courses) != len(keys) {
+		t.Fatalf("courses = %d, want %d", len(courses), len(keys))
+	}
+	for i, c := range courses {
+		course := c.(map[string]any)
+		if course["key"] != keys[i] || course["total_shots"] != shots[i] || course["label"] == "" {
+			t.Errorf("course %d = %v", i, course)
+		}
+		sum := 0.0
+		for _, st := range course["stages"].([]any) {
+			sum += st.(map[string]any)["expected_shots"].(float64)
+		}
+		if sum != shots[i] {
+			t.Errorf("course %s stage shots = %v, want %v", keys[i], sum, shots[i])
+		}
+	}
+	classes := out["weapon_classes"].(map[string]any)
+	if len(classes["1500"].([]any)) != 4 || len(classes["60"].([]any)) != 3 || len(classes["48"].([]any)) != 6 {
+		t.Errorf("weapon_classes = %v", classes)
+	}
+	if rings := out["rings"].([]any); len(rings) != 7 {
+		t.Errorf("rings = %v", rings)
+	}
+}

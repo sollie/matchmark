@@ -443,6 +443,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rulebook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Courses of fire, weapon classes and ring values */
+        get: operations["getRulebook"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/spectator/competitions": {
         parameters: {
             query?: never;
@@ -501,6 +518,31 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Rulebook: {
+            courses: components["schemas"]["RulebookCourse"][];
+            weapon_classes: {
+                [key: string]: string[];
+            };
+            rings: components["schemas"]["RulebookRing"][];
+        };
+        RulebookCourse: {
+            key: string;
+            label: string;
+            discipline: string;
+            total_shots: number;
+            stages: components["schemas"]["RulebookStage"][];
+        };
+        RulebookStage: {
+            stage_number: number;
+            distance: string;
+            expected_shots: number;
+            time_seconds: number;
+            position: string;
+        };
+        RulebookRing: {
+            ring: string;
+            points: number;
+        };
         Error: {
             error: string;
         };
@@ -1568,6 +1610,26 @@ export interface operations {
             403: components["responses"]["AdminScoringRequired"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getRulebook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rulebook */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rulebook"];
+                };
+            };
         };
     };
     listSpectatorCompetitions: {

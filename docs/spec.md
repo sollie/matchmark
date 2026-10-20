@@ -44,6 +44,8 @@ An internal detailed CSV lists ring counts per stage per entry for the club's ow
 
 JSON REST API under `/api`, documented with OpenAPI; admin and spectator endpoints separated; spectator endpoints are unauthenticated and polled every few seconds. Frontend is a Svelte + Vite + TypeScript SPA with a typed client generated from the OpenAPI spec, no service worker or IndexedDB. All strings in English.
 
+`GET /api/rulebook` is read-only and unauthenticated. It returns the courses keyed `150`, `60`, `48` and `40` (label, discipline, total shots, stages with distance, expected shots, time and position), the weapon classes per discipline and the ring values. `internal/rulebook` is its only source, including the course labels; the SPA course dropdowns read from it.
+
 ## Backend
 
 Go, chi, SQLite-format storage via Turso Database and `turso.tech/database/tursogo` (`CGO_ENABLED=0`, native library loaded at runtime; see ADR 0005), embedded ordered migrations, strict handler → service → repository layering, `excelize` for xlsx, `certmagic` for ACME. Admin password hashed with argon2id; session cookie `HttpOnly`, `SameSite=Lax`, `Secure` when `BASE_URL` is https.

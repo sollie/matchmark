@@ -16,3 +16,4 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 10b. Optional push-only Replication (timer plus on competition finish), `REPLICATION_*` config, `tursodb --sync-server` compose snippet and private-network warning in `README.md`.
 - [x] 11. Root `Dockerfile` (Alpine Node and Go stages, Alpine 3.24 final with `-tags musl`, non-root, `TURSO_GO_CACHE_DIR`), `docker-compose.yml`, `README.md`, and native-runner CI (amd64, arm64, darwin/arm64 build-only) with an in-image database smoke test.
 - [x] 12. Manual QA: full flow on a phone, results report opened in Excel, Pi run. Then delete `docs/plan/`, update `AGENTS.md`, `docs/STATUS.md`, and merge.
+- [x] 13. `GET /api/rulebook` (#140): courses with labels, weapon classes and ring values from `internal/rulebook`; the SPA course dropdowns read from it.

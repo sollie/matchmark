@@ -1,7 +1,6 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 import {
   addEntry,
-  courses,
   createCompetition,
   createShooter,
   expect,
@@ -85,7 +84,7 @@ test.describe("spectator", () => {
     await expect(row(page, entries[1].last_name)).toBeVisible();
   });
 
-  test("each visibility flag hides its fields and values", async ({ page, admin }) => {
+  test("each visibility flag hides its fields and values", async ({ courses, page, admin }) => {
     const { competition, entries } = await seedScored(admin);
     const shooter = entries[1];
     const winnerCells = (shown: { names?: boolean; clubs?: boolean; countries?: boolean; stage?: boolean; x?: boolean }) =>
@@ -96,7 +95,7 @@ test.describe("spectator", () => {
         ...(shown.clubs ? [shooter.club] : []),
         ...(shown.countries ? [shooter.country] : []),
         "Revolver",
-        ...(shown.stage ? ["120", ...Array<string>(courses.wa1500.stages - 1).fill("0")] : []),
+        ...(shown.stage ? ["120", ...Array<string>(courses["150"].stages - 1).fill("0")] : []),
         "120",
         ...(shown.x ? ["6"] : []),
       ];

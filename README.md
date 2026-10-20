@@ -2,6 +2,8 @@
 
 WA1500/PPC competition scoring system: one Go binary (REST API + embedded Svelte SPA) backed by a single SQLite file. See [`docs/spec.md`](docs/spec.md) and [`docs/v2-plan.md`](docs/v2-plan.md).
 
+The rulebook (courses, weapon classes, ring values) is public at `GET /api/rulebook`; the SPA reads its course labels from it.
+
 ## Layout
 
 | Path | Description |

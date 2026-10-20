@@ -11,6 +11,7 @@ type Stage struct {
 }
 
 type Course struct {
+	Label      string
 	Discipline string
 	TotalShots int
 	Stages     []Stage
@@ -41,6 +42,7 @@ var weaponClasses = map[string][]string{
 const fiveShotWeaponClass = "Standard Revolver 2.75\" 5-Shot"
 
 var course1500 = Course{
+	Label:      "150 shots (WA1500)",
 	Discipline: "1500",
 	TotalShots: 150,
 	Stages: []Stage{
@@ -58,6 +60,7 @@ var course1500 = Course{
 }
 
 var course60 = Course{
+	Label:      "60 shots",
 	Discipline: "60",
 	TotalShots: 60,
 	Stages: []Stage{
@@ -69,6 +72,7 @@ var course60 = Course{
 }
 
 var course48 = Course{
+	Label:      "48 shots",
 	Discipline: "48",
 	TotalShots: 48,
 	Stages: []Stage{
@@ -80,6 +84,7 @@ var course48 = Course{
 }
 
 var course48FiveShot = Course{
+	Label:      "40 shots (5-shot revolver)",
 	Discipline: "48",
 	TotalShots: 40,
 	Stages: []Stage{
@@ -88,6 +93,28 @@ var course48FiveShot = Course{
 		{3, "15 yd", 10, 20, "Standing without support"},
 		{4, "25 yd", 15, 90, "5 kneeling + 5 L-barricade + 5 R-barricade"},
 	},
+}
+
+var courseKeys = []string{"150", "60", "48", "40"}
+
+var disciplines = []string{"1500", "60", "48"}
+
+var ringValues = []string{"X", "10", "9", "8", "7", "0", "M"}
+
+func CourseKeys() []string {
+	return append([]string(nil), courseKeys...)
+}
+
+func Disciplines() []string {
+	return append([]string(nil), disciplines...)
+}
+
+func WeaponClasses(discipline string) []string {
+	return append([]string(nil), weaponClasses[discipline]...)
+}
+
+func RingValues() []string {
+	return append([]string(nil), ringValues...)
 }
 
 func ValidateWeaponClass(discipline, weaponClass string) error {

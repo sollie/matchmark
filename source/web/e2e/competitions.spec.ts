@@ -1,7 +1,5 @@
 import type { Page } from "@playwright/test";
 import {
-  allCourses,
-  courses,
   createCompetition,
   createPairing,
   createShooter,
@@ -20,26 +18,30 @@ test.describe("competitions", () => {
     return section(page, "Entries and progress").getByRole("columnheader", { name: /^S\d+$/ });
   }
 
-  for (const course of allCourses) {
-    test(`creating a ${course.key}-shot competition shows ${course.stages} stage columns`, async ({ adminPage: page, admin }) => {
-      const name = uniqueName(`Course ${course.key}`);
+  test("every course shows its label and one column per stage", async ({ adminPage: page, admin, courses }) => {
+    expect(Object.keys(courses).sort()).toEqual(["150", "40", "48", "60"]);
+    for (const course of Object.values(courses)) {
+      await test.step(`${course.key}-shot course`, async () => {
+        const name = uniqueName(`Course ${course.key}`);
 
-      await page.getByLabel("Name").fill(name);
-      await page.getByLabel("Course of fire").selectOption({ label: course.label });
-      await page.getByRole("button", { name: "Create competition" }).click();
+        await page.goto("/admin");
+        await page.getByLabel("Name").fill(name);
+        await page.getByLabel("Course of fire").selectOption({ label: course.label });
+        await page.getByRole("button", { name: "Create competition" }).click();
 
-      await expect(page.getByRole("heading", { name })).toBeVisible();
-      await expect(page.getByText(course.label, { exact: false }).first()).toBeVisible();
-      await expect(page.getByText("draft", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name })).toBeVisible();
+        await expect(page.getByText(course.label, { exact: false }).first()).toBeVisible();
+        await expect(page.getByText("draft", { exact: true })).toBeVisible();
 
-      const id = Number(page.url().split("/").pop());
-      await seedEntry(admin, id, 1);
-      await openCompetition(page, id);
-      await expect(stageHeaders(page)).toHaveCount(course.stages);
-      await expect(stageHeaders(page).first()).toHaveText("S1");
-      await expect(stageHeaders(page).last()).toHaveText(`S${course.stages}`);
-    });
-  }
+        const id = Number(page.url().split("/").pop());
+        await seedEntry(admin, id, 1);
+        await openCompetition(page, id);
+        await expect(stageHeaders(page)).toHaveCount(course.stages);
+        await expect(stageHeaders(page).first()).toHaveText("S1");
+        await expect(stageHeaders(page).last()).toHaveText(`S${course.stages}`);
+      });
+    }
+  });
 
   test("the date is prefilled in ISO 8601 and an invalid date is blocked", async ({ adminPage: page }) => {
     const name = uniqueName("Bad date");
@@ -59,27 +61,27 @@ test.describe("competitions", () => {
     await expect(page.getByText("2026-10-19")).toBeVisible();
   });
 
-  test("the list shows each competition with its status", async ({ adminPage: page, admin }) => {
+  test("the list shows each competition with its status", async ({ courses, adminPage: page, admin }) => {
     const draft = await createCompetition(admin, { name: uniqueName("Listed draft"), date: "2026-03-01" });
     const active = await createCompetition(admin, {
       name: uniqueName("Listed active"),
       date: "2026-03-02",
-      course: courses.sixty.key,
+      course: courses["60"].key,
       status: "active",
     });
     const finished = await createCompetition(admin, {
       name: uniqueName("Listed finished"),
       date: "2026-03-03",
-      course: courses.fortyEight.key,
+      course: courses["48"].key,
       status: "finished",
     });
 
     await page.goto("/admin");
     const table = page.getByRole("table");
     const expectations = [
-      { c: draft, status: "draft", course: courses.wa1500.label },
-      { c: active, status: "active", course: courses.sixty.label },
-      { c: finished, status: "finished", course: courses.fortyEight.label },
+      { c: draft, status: "draft", course: courses["150"].label },
+      { c: active, status: "active", course: courses["60"].label },
+      { c: finished, status: "finished", course: courses["48"].label },
     ];
     for (const { c, status, course } of expectations) {
       const r = row(page, c.name);
@@ -160,7 +162,7 @@ test.describe("competitions", () => {
     await expect(row(page, extra.last_name)).toHaveCount(0);
   });
 
-  test("a draft competition can be edited", async ({ adminPage: page, admin }) => {
+  test("a draft competition can be edited", async ({ courses, adminPage: page, admin }) => {
     const competition = await createCompetition(admin, { date: "2026-03-01" });
     const name = uniqueName("Renamed");
     await openCompetition(page, competition.id);
@@ -169,21 +171,21 @@ test.describe("competitions", () => {
     const form = page.getByRole("form", { name: "Edit competition" });
     await form.getByLabel("Name").fill(name);
     await form.getByLabel("Date").fill("2026-10-19");
-    await form.getByLabel("Course of fire").selectOption({ label: courses.sixty.label });
+    await form.getByLabel("Course of fire").selectOption({ label: courses["60"].label });
     await form.getByRole("button", { name: "Save" }).click();
 
     await expect(page.getByRole("heading", { name })).toBeVisible();
     await expect(page.getByText("2026-10-19")).toBeVisible();
-    await expect(page.getByText(courses.sixty.label, { exact: false }).first()).toBeVisible();
+    await expect(page.getByText(courses["60"].label, { exact: false }).first()).toBeVisible();
 
     await seedEntry(admin, competition.id, 1);
     await openCompetition(page, competition.id);
-    await expect(stageHeaders(page)).toHaveCount(courses.sixty.stages);
+    await expect(stageHeaders(page)).toHaveCount(courses["60"].stages);
 
     await page.goto("/admin");
     const listed = row(page, name);
     await expect(listed).toContainText("2026-10-19");
-    await expect(listed).toContainText(courses.sixty.label);
+    await expect(listed).toContainText(courses["60"].label);
   });
 
   test("an invalid date is blocked when editing", async ({ adminPage: page, admin }) => {
@@ -198,7 +200,7 @@ test.describe("competitions", () => {
     await expect(page.getByRole("heading", { name: competition.name })).toBeVisible();
   });
 
-  test("the course is locked once an entry exists", async ({ adminPage: page, admin }) => {
+  test("the course is locked once an entry exists", async ({ courses, adminPage: page, admin }) => {
     const competition = await createCompetition(admin);
     await seedEntry(admin, competition.id, 1);
     const name = uniqueName("Entered");
@@ -211,7 +213,7 @@ test.describe("competitions", () => {
     await form.getByLabel("Name").fill(name);
     await form.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("heading", { name })).toBeVisible();
-    await expect(page.getByText(courses.wa1500.label, { exact: false }).first()).toBeVisible();
+    await expect(page.getByText(courses["150"].label, { exact: false }).first()).toBeVisible();
   });
 
   test("an active or finished competition has no edit action", async ({ adminPage: page, admin }) => {

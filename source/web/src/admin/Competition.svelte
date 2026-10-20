@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
-  import { courses, nextStatus, statusTone } from "../lib/domain";
+  import { nextStatus, statusTone } from "../lib/domain";
+  import { courseLabel, loadRulebook } from "../lib/rulebook.svelte";
   import { navigate } from "../lib/router.svelte";
   import type { components } from "../lib/api/schema";
   import Visibility from "./Visibility.svelte";
@@ -43,6 +44,7 @@
   }
 
   onMount(() => {
+    loadRulebook();
     loadCompetition();
     loadShooters();
     loadEntries();
@@ -80,7 +82,7 @@
 {#if competition}
   <h1>{competition.name}</h1>
   <p>
-    {competition.date} · {courses.find((c) => c.key === competition?.course)?.label ?? competition.course} ·
+    {competition.date} · {courseLabel(competition.course)} ·
     <span class="badge {statusTone[competition.status]}">{competition.status}</span>
   </p>
   <div class="row">

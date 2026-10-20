@@ -815,6 +815,18 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/rulebook:
+    get:
+      operationId: getRulebook
+      tags: [spectator]
+      summary: Courses of fire, weapon classes and ring values
+      responses:
+        '200':
+          description: The rulebook
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rulebook'
   /api/spectator/competitions:
     get:
       operationId: listSpectatorCompetitions
@@ -967,6 +979,62 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    Rulebook:
+      type: object
+      required: [courses, weapon_classes, rings]
+      properties:
+        courses:
+          type: array
+          items:
+            $ref: '#/components/schemas/RulebookCourse'
+        weapon_classes:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        rings:
+          type: array
+          items:
+            $ref: '#/components/schemas/RulebookRing'
+    RulebookCourse:
+      type: object
+      required: [key, label, discipline, total_shots, stages]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        discipline:
+          type: string
+        total_shots:
+          type: integer
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/RulebookStage'
+    RulebookStage:
+      type: object
+      required: [stage_number, distance, expected_shots, time_seconds, position]
+      properties:
+        stage_number:
+          type: integer
+        distance:
+          type: string
+        expected_shots:
+          type: integer
+        time_seconds:
+          type: integer
+        position:
+          type: string
+    RulebookRing:
+      type: object
+      required: [ring, points]
+      properties:
+        ring:
+          type: string
+        points:
+          type: integer
     Error:
       type: object
       required: [error]

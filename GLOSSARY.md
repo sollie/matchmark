@@ -57,7 +57,7 @@ A family of matches shot to the same rulebook course: 1500, 60 or 48. A discipli
 _Avoid_: Match type
 
 **Course**:
-The complete set of stages a competition is shot over, with a fixed total number of shots. A competition has exactly one course. The 5-shot revolver variant of the 48 discipline is its own course.
+The complete set of stages a competition is shot over, with a fixed total number of shots. A competition has exactly one course. The 5-shot revolver variant of the 48 discipline is its own course. Courses are keyed `150`, `60`, `48` and `40`, carry their UI label, and are served by `GET /api/rulebook`.
 _Avoid_: Course of fire (as a noun for the whole set), program
 
 **Stage**:

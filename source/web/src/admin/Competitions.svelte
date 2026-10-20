@@ -3,7 +3,8 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import { navigate } from "../lib/router.svelte";
-  import { courses, statusTone } from "../lib/domain";
+  import { statusTone } from "../lib/domain";
+  import { courseLabel, loadRulebook, rulebook } from "../lib/rulebook.svelte";
   import { localDate } from "../lib/datetime";
   import type { components } from "../lib/api/schema";
 
@@ -24,6 +25,7 @@
   }
 
   onMount(load);
+  onMount(loadRulebook);
 
   async function create(e: SubmitEvent) {
     e.preventDefault();
@@ -43,7 +45,7 @@
   <label>
     Course of fire
     <select bind:value={course}>
-      {#each courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
+      {#each rulebook.courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
     </select>
   </label>
   <button type="submit" class="primary">Create competition</button>
@@ -57,7 +59,7 @@
       <tr>
         <td><a href={`/admin/competitions/${c.id}`}>{c.name}</a></td>
         <td>{c.date}</td>
-        <td>{courses.find((x) => x.key === c.course)?.label ?? c.course}</td>
+        <td>{courseLabel(c.course)}</td>
         <td><span class="badge {statusTone[c.status]}">{c.status}</span></td>
       </tr>
     {:else}
