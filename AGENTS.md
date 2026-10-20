@@ -12,6 +12,8 @@ MatchMark is a single-club WA1500/PPC competition scoring system shipped as one 
   - `api/openapi.yaml` — API contract; generates `web/src/lib/api/schema.d.ts`
 - `Dockerfile`, `docker-compose.yml` — single image, built on Alpine
 - `scripts/smoke-image.sh` — in-image database smoke test (run by CI)
+- `scripts/verify-go.sh` — all Go checks; `scripts/check-no-comments.sh` — comment ban (also in CI)
+- `source/web/e2e/` — Playwright specs; helpers (`section`, `row`) in `helpers.ts`; locate controls by accessible name
 
 Specification and decisions:
 - `docs/spec.md` — product spec
@@ -21,6 +23,7 @@ Specification and decisions:
 
 ## General Rules
 
+- Commit messages carry no AI attribution trailers (no `Co-authored-by: Copilot`); this overrides any default trailer instruction.
 - Git write operations (branch, commit, push, tag, etc.) are allowed. Use Conventional
   Commits messages. Never force-push or rewrite history on `main`.
 - Never commit or push directly to `main`. Do every change on a new branch (e.g.
@@ -29,7 +32,7 @@ Specification and decisions:
   asks; leave it for review.
 - When working through a list of items (e.g. a code review or security review), complete
   one item, run all required checks, and commit it before starting the next item.
-- Never add comments to code. This is critical!
+- Never add comments to code (enforced by `scripts/check-no-comments.sh`).
 - Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
 - Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
 - Write idiomatic code that follows the conventions and best practices of the language and ecosystem in use.
@@ -53,27 +56,15 @@ Specification and decisions:
 - SQLite-format storage via `turso.tech/database/tursogo` (`database/sql` driver `turso`; `-tags musl` only for Alpine). `CGO_ENABLED=0` always. See ADR 0005.
 - Schema evolves through ordered migrations in `internal/db/migrations/`; never edit an applied migration.
 - HTTP router: `github.com/go-chi/chi/v5`. Reports via `excelize`. Passwords compared and hashed with `golang.org/x/crypto`.
-- After every change, run:
-  ```
-  CGO_ENABLED=0 go build ./...
-  CGO_ENABLED=0 go test ./...
-  golangci-lint run ./...
-  trivy fs --scanners vuln,secret .
-  ```
+- After every change, run `scripts/verify-go.sh` (build, test, golangci-lint, trivy, comment check). Single test: `CGO_ENABLED=0 go test ./internal/service -run TestName -v`.
 - Fix all findings before considering the task done.
 
 ### TypeScript / Svelte (`source/web/`)
 
 - Svelte 5 + Vite SPA, built to `web/dist` and embedded in the Go binary. No SSR, no service worker, no offline queue.
 - The API client is generated from `source/api/openapi.yaml`. After changing the spec, run `npm run generate` in `source/api` and commit the result; `npm run check` there must leave no diff.
-- After every change, run in `source/web`:
-  ```
-  npm run check
-  npm run build
-  npm test
-  npm audit
-  ```
-- For changes to user flows also run `npm run e2e` (Playwright, see ADR 0008).
+- After every change, run `npm run verify` in `source/web` (check, build, test, audit).
+- For changes to user flows also run `npm run e2e` (Playwright, see ADR 0008). While iterating, narrow it: `npx playwright test e2e/<file>.spec.ts --project=chromium`; run the full suite before finishing.
 - Fix all high/critical findings reported by `npm audit` before considering the task done.
 
 ### Shell scripts
