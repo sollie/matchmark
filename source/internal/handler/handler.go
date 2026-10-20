@@ -31,6 +31,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.With(h.RequireAdmin).Get("/admin/session", h.adminSession)
 			r.With(h.RequireAdmin).Get("/admin/backup", h.backup)
 		}
+		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireDevice)
