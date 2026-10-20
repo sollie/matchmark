@@ -25,7 +25,7 @@ function addForm(page: Page) {
 }
 
 test.describe("entries", () => {
-  test("adding an entry uses the chosen category and the default free lane", async ({ page, baseURL }) => {
+  test("adding an entry uses the chosen category and the default lane", async ({ page, baseURL }) => {
     const api = await adminApi(baseURL!);
     const competition = await createCompetition(api, { course: "60" });
     await seedEntry(api, competition.id, 1);

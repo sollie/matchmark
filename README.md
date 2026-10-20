@@ -56,14 +56,19 @@ docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit --
 
 Set `E2E_BASE_URL` (and `E2E_ADMIN_PASSWORD`) to test an already running instance instead of starting one. CI runs the suite on every pull request and uploads the report on failure.
 
-Current coverage: admin sign-in and competition creation, and the auth flows (wrong password, login lockout, sign out, unauthenticated access, not-found page, unpaired scorer page). Tests seed data through the admin API with unique names and send a unique `X-Forwarded-For` per client; the e2e server and compose file set `TRUSTED_PROXY` for this. Planned expansion:
+Coverage, by area:
 
-- Shooter management and entries
-- Device pairing and scorer stage entry
-- Score lane, locks and admin unlock
-- Spectator views and visibility flags
-- Reports (`.xlsx` and CSV downloads) and backup
-- Phone and tablet viewport projects
+- Auth: wrong and correct password, per-client login lockout, sign out, 401 on unauthenticated admin API calls, the not-found page, and the unpaired scorer page.
+- Shooters: add, edit, cancel an edit, delete with confirmation, and form validation.
+- Competitions: creation for each course of fire with its stage columns, the prefilled ISO 8601 date and invalid-date blocking, the list with statuses, start and finish with confirmation, finished competitions (revoked pairings, no new entries), delete with confirmation, and visibility flags persisting.
+- Entries and admin scoring: adding entries with category and default lane, taken-lane rejection, move, withdraw and remove, live shot totals with rejection of wrong totals, and save and lock as "Admin" with unlock.
+- Pairing and scorer device: pairing link creation, the device's lane and score lane, score lane wrap-around, running total and mismatch message, save and lock, read-only locked stages, revoked pairings, the admin-scoring requirement with one manned lane, and refusal to score a draft competition.
+- Spectator: ranking by total then X count with stage progress, draft and finished visibility, each visibility flag, the empty state, and 404 for a draft standings API.
+- Reports and backup: `.xlsx` results report, detailed CSV, database backup, and 401 without a session.
+
+Not covered by the browser suite: the score log (Go tests, ADR 0007), the competition edit UI (#128), accessible-name cleanup (#129), and phone and tablet viewports.
+
+Tests seed data through the admin API with unique names and send a unique `X-Forwarded-For` per client; the e2e server and compose file set `TRUSTED_PROXY` for this.
 
 
 ## Environment variables
