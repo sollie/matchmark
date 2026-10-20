@@ -55,7 +55,7 @@ func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID
 	if err != nil {
 		return err
 	}
-	if err := s.repo.OverwriteRingCounts(ctx, stage.ID, c, stage.Locked); err != nil {
+	if err := s.repo.OverwriteRingCounts(ctx, stage.ID, c, lockedByUser(ctx, stage.Locked)); err != nil {
 		return mapRepoErr(err)
 	}
 	s.audit.Record(ctx, AuditEvent{Action: "stage.set_counts", Target: stageTarget(competitionID, entryID, stageNumber)})
@@ -64,4 +64,11 @@ func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID
 	}
 	s.bus.Publish(competitionID)
 	return nil
+}
+
+func lockedByUser(ctx context.Context, locked bool) string {
+	if !locked {
+		return ""
+	}
+	return ActorFrom(ctx).Username
 }

@@ -184,7 +184,7 @@ func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int
 	if err := ValidateRingCounts(stage.Counts, stage.ExpectedShots); err != nil {
 		return err
 	}
-	if err := s.repo.LockStageAsAdmin(ctx, stage.ID); err != nil {
+	if err := s.repo.LockStageAsUser(ctx, stage.ID, ActorFrom(ctx).Username); err != nil {
 		if err == repository.ErrConflict {
 			return ErrStageLocked
 		}

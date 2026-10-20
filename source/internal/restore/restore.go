@@ -16,10 +16,7 @@ import (
 
 const SchemaVersion = 1
 
-const (
-	emittedAtLayout = "2006-01-02T15:04:05.000Z"
-	adminLockedBy   = "Admin"
-)
+const emittedAtLayout = "2006-01-02T15:04:05.000Z"
 
 const (
 	eventStageLocked   = "stage_locked"
@@ -84,6 +81,7 @@ type ScoredStage struct {
 	ExpectedShots int
 	RingCounts    [7]int
 	LockedBy      string
+	Lane          int
 	ScorerName    string
 	LockedAt      string
 }
@@ -171,7 +169,7 @@ func valid(ev Event) bool {
 	if _, err := rulebook.CourseByKey(ev.Competition.CourseOfFire.Key); err != nil {
 		return false
 	}
-	if _, ok := parseLockedBy(ev.LockedBy); !ok {
+	if _, _, ok := parseLockedBy(ev.LockedBy); !ok {
 		return false
 	}
 	if t, err := time.Parse(emittedAtLayout, ev.EmittedAt); err != nil || t.Format(emittedAtLayout) != ev.EmittedAt {
@@ -183,16 +181,16 @@ func valid(ev Event) bool {
 		ev.Stage.Number > 0
 }
 
-func parseLockedBy(raw json.RawMessage) (string, bool) {
+func parseLockedBy(raw json.RawMessage) (string, int, bool) {
 	var name string
 	if err := json.Unmarshal(raw, &name); err == nil {
-		return name, name == adminLockedBy
+		return name, 0, name != ""
 	}
 	var lane int
 	if err := json.Unmarshal(raw, &lane); err == nil && lane > 0 {
-		return strconv.Itoa(lane), true
+		return strconv.Itoa(lane), lane, true
 	}
-	return "", false
+	return "", 0, false
 }
 
 func ringCountsFromSlice(s []int) [7]int {
@@ -233,13 +231,14 @@ func Fold(events []Event) Plan {
 
 	byEntry := map[[2]int64][]ScoredStage{}
 	for k, ev := range stages {
-		lockedBy, _ := parseLockedBy(ev.LockedBy)
+		lockedBy, lane, _ := parseLockedBy(ev.LockedBy)
 		ek := [2]int64{k.competition, k.entry}
 		byEntry[ek] = append(byEntry[ek], ScoredStage{
 			Number:        k.stage,
 			ExpectedShots: ev.Stage.ExpectedShots,
 			RingCounts:    ringCountsFromSlice(ev.RingCounts),
 			LockedBy:      lockedBy,
+			Lane:          lane,
 			ScorerName:    ev.ScorerName,
 			LockedAt:      ev.LockedAt,
 		})

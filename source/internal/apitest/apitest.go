@@ -33,6 +33,7 @@ type Env struct {
 	offset time.Duration
 	delays []time.Duration
 	audit  syncBuffer
+	scores syncBuffer
 }
 
 type syncBuffer struct {
@@ -50,6 +51,22 @@ func (b *syncBuffer) String() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.buf.String()
+}
+
+func (e *Env) ScoreLogLines() []map[string]any {
+	e.t.Helper()
+	var out []map[string]any
+	for _, line := range strings.Split(e.scores.String(), "\n") {
+		if line == "" {
+			continue
+		}
+		var m map[string]any
+		if err := json.Unmarshal([]byte(line), &m); err != nil {
+			e.t.Fatalf("score log line %q: %v", line, err)
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 func (e *Env) AuditLines() []map[string]any {
@@ -154,7 +171,7 @@ func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	if err := auth.SeedAdmin(AdminUsername, AdminPassword); err != nil {
 		t.Fatalf("seed admin: %v", err)
 	}
-	e.Server = httptest.NewServer(handler.NewRouter(service.New(repo, service.WithAudit(audit)), append([]handler.Option{handler.WithAuth(auth, baseURL), handler.WithAudit(audit)}, opts...)...))
+	e.Server = httptest.NewServer(handler.NewRouter(service.New(repo, service.WithAudit(audit), service.WithScoreLog(slog.New(slog.NewJSONHandler(&e.scores, nil)))), append([]handler.Option{handler.WithAuth(auth, baseURL), handler.WithAudit(audit)}, opts...)...))
 	t.Cleanup(e.Server.Close)
 	jar, err := cookiejar.New(nil)
 	if err != nil {

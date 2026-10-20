@@ -36,7 +36,7 @@ func (l line) String() string {
 	return fmt.Sprintf(`{"time":"x","level":"INFO","msg":"%s","schema_version":1,"event":"%s","emitted_at":"%s","seq":%d,`+
 		`"competition":{"id":7,"name":"%s","date":"2026-10-19","course_of_fire":{"key":"150","discipline":"WA1500","total_shots":60}},`+
 		`"entry":{"id":%d,"lane":2,"category":"%s","shooter":{"waid":"W1","first_name":"Ann","last_name":"Lee","club":"SK"}},`+
-		`"stage":{"number":%d,"expected_shots":10},"ring_counts":%s,"locked_by":"Admin","scorer_name":"Admin","locked_at":"2026-10-19T10:00:00Z"}`,
+		`"stage":{"number":%d,"expected_shots":10},"ring_counts":%s,"locked_by":"bob","scorer_name":"bob","locked_at":"2026-10-19T10:00:00Z"}`,
 		l.event, l.event, l.emittedAt, l.seq, l.compName, l.entryID, l.category, l.stage, l.counts)
 }
 
@@ -160,9 +160,9 @@ func TestParseTreatsInvalidFieldsAsMalformed(t *testing.T) {
 	good := lockedAt("01", 1).String()
 	tests := []struct{ name, from, to string }{
 		{"unknown course", `"key":"150"`, `"key":"nope"`},
-		{"locked_by text", `"locked_by":"Admin"`, `"locked_by":"bob"`},
-		{"locked_by zero", `"locked_by":"Admin"`, `"locked_by":0`},
-		{"locked_by negative", `"locked_by":"Admin"`, `"locked_by":-2`},
+		{"locked_by empty", `"locked_by":"bob"`, `"locked_by":""`},
+		{"locked_by zero", `"locked_by":"bob"`, `"locked_by":0`},
+		{"locked_by negative", `"locked_by":"bob"`, `"locked_by":-2`},
 		{"emitted_at layout", `.000Z`, `Z`},
 	}
 	for _, tt := range tests {
@@ -173,7 +173,7 @@ func TestParseTreatsInvalidFieldsAsMalformed(t *testing.T) {
 			}
 		})
 	}
-	ok := strings.Replace(good, `"locked_by":"Admin"`, `"locked_by":3`, 1)
+	ok := strings.Replace(good, `"locked_by":"bob"`, `"locked_by":3`, 1)
 	if _, stats := run(t, ok); stats.Events != 1 {
 		t.Fatalf("stats = %+v", stats)
 	}

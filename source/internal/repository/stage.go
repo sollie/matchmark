@@ -56,8 +56,8 @@ func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCou
 	return nil
 }
 
-func (r *Repository) OverwriteRingCounts(ctx context.Context, stageID int64, c RingCounts, asAdmin bool) error {
-	if !asAdmin {
+func (r *Repository) OverwriteRingCounts(ctx context.Context, stageID int64, c RingCounts, username string) error {
+	if username == "" {
 		res, err := r.db.ExecContext(ctx,
 			`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ? WHERE id = ?`,
 			c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
@@ -65,7 +65,7 @@ func (r *Repository) OverwriteRingCounts(ctx context.Context, stageID int64, c R
 	}
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, scorer_lane = NULL, scorer_name = ? WHERE id = ?`,
-		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, AdminName, stageID)
+		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, username, stageID)
 	return affected(res, err)
 }
 
@@ -105,8 +105,6 @@ func (r *Repository) ListLockedStages(ctx context.Context, f LockedStageFilter) 
 	}
 	return refs, rows.Err()
 }
-
-const AdminName = "Admin"
 
 func lockTimestamp() string {
 	return time.Now().UTC().Format("2006-01-02T15:04:05Z")
