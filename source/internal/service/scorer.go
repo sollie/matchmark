@@ -139,7 +139,15 @@ func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber
 	if err != nil {
 		return err
 	}
-	return s.SetRingCounts(ctx, d.CompetitionID, t.entry.ID, stageNumber, c)
+	if err := s.SetRingCounts(ctx, d.CompetitionID, t.entry.ID, stageNumber, c); err != nil {
+		return err
+	}
+	s.audit.RecordAs(ctx, Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP}, AuditEvent{
+		Action:  "stage.set_counts",
+		Target:  stageTarget(d.CompetitionID, t.entry.ID, stageNumber),
+		Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
+	})
+	return nil
 }
 
 func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int) error {

@@ -103,7 +103,7 @@ The server writes structured JSON logs (`log/slog`) to stdout: one `request` lin
 
 ### Audit log
 
-Every change, login, failed login, report download and backup download is also written to stdout as an `audit` JSON line (`username`, `action`, `target`, `details`, `ip`, and `user_id` when known) and stored in the database, where admins browse it at `/admin/audit` (paged, filterable by user, action and date). Locks made by a paired device have the username `device`. The log is append-only and kept forever, so it grows with use; it contains usernames and client IP addresses, so apply your club's retention policy to the stdout lines. See `docs/spec.md`.
+Every change, login, failed login, failed password change, report download, backup download and `reset-password` run is also written to stdout as an `audit` JSON line (`username`, `action`, `target`, `details`, `ip`, and `user_id` when known) and stored in the database, where admins browse it at `/admin/audit` (paged, filterable by user, action and date). Counts entered and locks made by a paired device have the username `device`; the `reset-password` command uses `cli`. The log is append-only and kept forever, so it grows with use; it contains usernames and client IP addresses, so apply your club's retention policy to the stdout lines. See `docs/spec.md`.
 
 ### Score log
 
@@ -115,7 +115,7 @@ To write the restore, run `matchmark restore --apply [file]` with the same `DB_P
 
 ## Lockout recovery
 
-If every admin is locked out, stop the server and run `matchmark reset-password <username>` with the same `DB_PATH` the server uses, passing the new temporary password on stdin (so it stays out of the process list), for example `printf '%s\n' "$NEW_PASSWORD" | docker compose run --rm -T matchmark reset-password alice`. The username is case-insensitive. It needs no `ADMIN_USERNAME` or `ADMIN_PASSWORD`, rejects an unknown username, a missing database and a password outside 16-128 characters without changing anything, and on success sets the new password, ends all of that user's sessions and flags the account so the password must be changed at next login.
+If every admin is locked out, stop the server and run `matchmark reset-password <username>` with the same `DB_PATH` the server uses, passing the new temporary password on stdin (so it stays out of the process list), for example `printf '%s\n' "$NEW_PASSWORD" | docker compose run --rm -T matchmark reset-password alice`. The username is case-insensitive. It needs no `ADMIN_USERNAME` or `ADMIN_PASSWORD`, rejects an unknown username, a missing database and a password outside 16-128 characters without changing anything, and on success sets the new password, ends all of that user's sessions and flags the account so the password must be changed at next login. The run is audited (actor `cli`, an `audit` line on stdout).
 
 ## TLS modes
 

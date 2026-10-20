@@ -74,6 +74,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusUnprocessableEntity, "invalid input"
 	case errors.Is(err, service.ErrInvalidUsername), errors.Is(err, service.ErrWeakPassword):
 		status, msg = http.StatusUnprocessableEntity, err.Error()
+	case errors.Is(err, service.ErrForbidden):
+		status, msg = http.StatusForbidden, "forbidden"
 	case errors.Is(err, service.ErrBackupNotPermitted):
 		status, msg = http.StatusForbidden, "backup_not_permitted"
 	case errors.Is(err, service.ErrLastAdmin):

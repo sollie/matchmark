@@ -8,8 +8,6 @@ import (
 	"github.com/sollie/matchmark/internal/service"
 )
 
-const maxAuditPage = 1_000_000
-
 type auditEntryResponse struct {
 	ID       int64  `json:"id"`
 	Time     string `json:"time"`
@@ -27,7 +25,7 @@ func queryInt(r *http.Request, name string, fallback int) (int, error) {
 		return fallback, nil
 	}
 	n, err := strconv.Atoi(v)
-	if err != nil || n < 1 || n > maxAuditPage {
+	if err != nil {
 		return 0, service.ErrInvalid
 	}
 	return n, nil
@@ -65,9 +63,6 @@ func (h *Handler) listAudit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, err)
 		return
-	}
-	if !to.IsZero() {
-		to = to.AddDate(0, 0, 1)
 	}
 	result, err := h.audit.List(r.Context(), service.AuditQuery{
 		Username: r.URL.Query().Get("user"),

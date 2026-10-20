@@ -23,8 +23,8 @@ func (h *Handler) scorerRoutes(r chi.Router) {
 
 func (h *Handler) RequireDevice(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if !ok || token == "" {
+		token := bearerToken(r)
+		if token == "" {
 			writeUnauthorized(w)
 			return
 		}
@@ -34,9 +34,14 @@ func (h *Handler) RequireDevice(next http.Handler) http.Handler {
 			return
 		}
 		ctx := context.WithValue(r.Context(), deviceKey{}, d)
-		ctx = service.WithActor(ctx, service.Actor{Username: service.DeviceActor, IP: clientKey(r)})
+		ctx = withActor(ctx, r, 0, service.DeviceActor)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func bearerToken(r *http.Request) string {
+	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	return token
 }
 
 func deviceFrom(r *http.Request) service.Device {
@@ -65,7 +70,7 @@ func (h *Handler) scorerSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
-	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	token := bearerToken(r)
 	h.serveStream(w, r, h.svc.Subscribe(deviceFrom(r).CompetitionID), func(ctx context.Context) (streamEvent, error) {
 		sess, err := h.svc.DeviceSnapshot(ctx, token)
 		if errors.Is(err, service.ErrUnauthenticated) {

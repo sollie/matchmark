@@ -2,6 +2,7 @@ package apitest
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -146,7 +147,7 @@ func (e *Env) SetPasswordHash(username, hash string) {
 
 func (e *Env) SetTemporaryPassword(username, password string) {
 	e.t.Helper()
-	if err := e.auth.ResetPassword(username, password); err != nil {
+	if err := e.auth.ResetPassword(context.Background(), username, password); err != nil {
 		e.t.Fatalf("set temporary password: %v", err)
 	}
 }

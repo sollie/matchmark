@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/sollie/matchmark/internal/service"
 )
 
 func WithBackupDir(dir string) Option {
@@ -14,11 +12,7 @@ func WithBackupDir(dir string) Option {
 }
 
 func (h *Handler) backup(w http.ResponseWriter, r *http.Request) {
-	if !currentUser(r).CanDownloadBackup {
-		writeError(w, service.ErrBackupNotPermitted)
-		return
-	}
-	path, cleanup, err := h.svc.Backup(r.Context(), h.backupDir)
+	path, cleanup, err := h.svc.Backup(r.Context(), currentUser(r), h.backupDir)
 	if err != nil {
 		writeError(w, err)
 		return

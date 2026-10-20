@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -39,7 +41,11 @@ func runResetPassword(args []string, getenv func(string) string, stdin io.Reader
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	if err := service.NewAuth(repository.New(conn)).ResetPassword(args[0], password); err != nil {
+	repo := repository.New(conn)
+	audit := service.NewAudit(repo, slog.New(slog.NewJSONHandler(stdout, nil)))
+	auth := service.NewAuth(repo, service.WithAuthAudit(audit))
+	ctx := service.WithActor(context.Background(), service.Actor{Username: service.CLIActor})
+	if err := auth.ResetPassword(ctx, args[0], password); err != nil {
 		return err
 	}
 	_, err = fmt.Fprintf(stdout, "password reset for %s; their sessions ended and they must change it at next login\n", strings.ToLower(args[0]))

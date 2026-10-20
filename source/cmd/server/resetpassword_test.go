@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -112,5 +113,20 @@ func TestResetPasswordCommandRefusesMissingDatabase(t *testing.T) {
 	}
 	if _, err := os.Stat(dbPath); !os.IsNotExist(err) {
 		t.Fatalf("stat err = %v", err)
+	}
+}
+
+func TestResetPasswordCommandWritesAuditRowAndLine(t *testing.T) {
+	getenv, _, repo := resetFixture(t)
+	var out bytes.Buffer
+	if err := runResetPassword([]string{"admin"}, getenv, strings.NewReader(newPassword+"\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"msg":"audit"`) || !strings.Contains(out.String(), `"action":"user.reset_password"`) || !strings.Contains(out.String(), `"username":"cli"`) {
+		t.Fatalf("output = %s", out.String())
+	}
+	entries, _, err := repo.ListAudit(context.Background(), repository.AuditFilter{Action: "user.reset_password", Limit: 10})
+	if err != nil || len(entries) != 1 || entries[0].Username != "cli" || entries[0].Details != "admin" {
+		t.Fatalf("entries = %+v, %v", entries, err)
 	}
 }

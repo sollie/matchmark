@@ -43,12 +43,7 @@ func currentUser(r *http.Request) service.User {
 
 func (h *Handler) requireUser(next http.Handler, adminOnly bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie(sessionCookie)
-		if err != nil {
-			writeUnauthorized(w)
-			return
-		}
-		user, err := h.auth.Authenticate(c.Value)
+		user, err := h.auth.Authenticate(sessionToken(r))
 		if err != nil {
 			if errors.Is(err, service.ErrUnauthenticated) {
 				writeUnauthorized(w)
@@ -61,14 +56,32 @@ func (h *Handler) requireUser(next http.Handler, adminOnly bool) http.Handler {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "password_change_required"})
 			return
 		}
-		if adminOnly && user.Role != service.RoleAdmin {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
-			return
+		if adminOnly {
+			if err := service.RequireAdmin(user); err != nil {
+				writeError(w, err)
+				return
+			}
 		}
 		ctx := context.WithValue(r.Context(), userContextKey{}, user)
-		ctx = service.WithActor(ctx, service.Actor{UserID: user.ID, Username: user.Username, IP: clientKey(r)})
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(withActor(ctx, r, user.ID, user.Username)))
 	})
+}
+
+func sessionToken(r *http.Request) string {
+	c, err := r.Cookie(sessionCookie)
+	if err != nil {
+		return ""
+	}
+	return c.Value
+}
+
+func withActor(ctx context.Context, r *http.Request, userID int, username string) context.Context {
+	return service.WithActor(ctx, service.Actor{UserID: userID, Username: username, IP: clientKey(r)})
+}
+
+func writeTooManyAttempts(w http.ResponseWriter, msg string) {
+	w.Header().Set("Retry-After", "900")
+	writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": msg})
 }
 
 func writeUnauthorized(w http.ResponseWriter) {
@@ -108,8 +121,7 @@ func (h *Handler) adminLogin(w http.ResponseWriter, r *http.Request) {
 	token, expires, err := h.auth.Login(clientKey(r), body.Username, body.Password)
 	switch {
 	case errors.Is(err, service.ErrTooManyAttempts):
-		w.Header().Set("Retry-After", "900")
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many login attempts"})
+		writeTooManyAttempts(w, "too many login attempts")
 		return
 	case errors.Is(err, service.ErrInvalidCredentials):
 		writeUnauthorized(w)
@@ -123,11 +135,9 @@ func (h *Handler) adminLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) adminLogout(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(sessionCookie); err == nil {
-		if err := h.auth.Logout(c.Value); err != nil {
-			writeError(w, err)
-			return
-		}
+	if err := h.auth.Logout(sessionToken(r)); err != nil {
+		writeError(w, err)
+		return
 	}
 	h.setSessionCookie(w, "", time.Unix(0, 0), -1)
 	w.WriteHeader(http.StatusNoContent)
@@ -147,16 +157,10 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	c, err := r.Cookie(sessionCookie)
-	if err != nil {
-		writeUnauthorized(w)
-		return
-	}
-	err = h.auth.ChangePassword(service.WithActor(r.Context(), service.Actor{IP: clientKey(r)}), c.Value, body.CurrentPassword, body.NewPassword)
+	err := h.auth.ChangePassword(withActor(r.Context(), r, 0, ""), sessionToken(r), body.CurrentPassword, body.NewPassword)
 	switch {
 	case errors.Is(err, service.ErrTooManyAttempts):
-		w.Header().Set("Retry-After", "900")
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts"})
+		writeTooManyAttempts(w, "too many attempts")
 	case errors.Is(err, service.ErrInvalidCredentials), errors.Is(err, service.ErrUnauthenticated):
 		writeUnauthorized(w)
 	case errors.Is(err, service.ErrWeakPassword):

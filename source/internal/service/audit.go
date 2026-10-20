@@ -12,8 +12,10 @@ import (
 
 const (
 	DeviceActor      = "device"
+	CLIActor         = "cli"
 	AuditDefaultPage = 50
 	AuditMaxPage     = 200
+	AuditMaxPageNo   = 1_000_000
 	maxAuditText     = 128
 )
 
@@ -118,13 +120,13 @@ func (a *Audit) List(ctx context.Context, q AuditQuery) (AuditPage, error) {
 	if a == nil {
 		return AuditPage{}, ErrNotFound
 	}
-	if q.Page < 1 {
-		q.Page = 1
-	}
-	if q.PageSize < 1 {
-		q.PageSize = AuditDefaultPage
+	if q.Page < 1 || q.Page > AuditMaxPageNo || q.PageSize < 1 {
+		return AuditPage{}, ErrInvalid
 	}
 	q.PageSize = min(q.PageSize, AuditMaxPage)
+	if !q.To.IsZero() {
+		q.To = q.To.AddDate(0, 0, 1)
+	}
 	entries, total, err := a.repo.ListAudit(ctx, repository.AuditFilter{
 		Username: strings.TrimSpace(q.Username),
 		Action:   strings.TrimSpace(q.Action),

@@ -68,6 +68,9 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	stage := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", comp, e3)
 	env.Do("PUT", stage, counts(10, 2))
 	token := f.pair(t, 1)
+	if status, out := env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(10, 2)); status != http.StatusOK {
+		t.Fatalf("device counts: %d %v", status, out)
+	}
 	if status, out := env.DoToken(token, "POST", "/api/scorer/stages/1/lock", nil); status != http.StatusOK {
 		t.Fatalf("device lock: %d %v", status, out)
 	}
@@ -92,6 +95,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	env.Do("POST", userPath+"/reactivate", nil)
 	env.Do("POST", "/api/admin/login", map[string]any{"username": "anna", "password": "wrong-password-123456"})
 	env.Do("POST", "/api/admin/login", map[string]any{"username": "anna", "password": "another-temporary-pw"})
+	env.Do("POST", "/api/admin/password", map[string]any{"current_password": "wrong-password-123456", "new_password": "a-brand-new-password"})
 	env.Do("POST", "/api/admin/password", map[string]any{"current_password": "another-temporary-pw", "new_password": "a-brand-new-password"})
 
 	env.Do("POST", "/api/admin/login", map[string]any{"username": apitest.AdminUsername, "password": apitest.AdminPassword})
@@ -105,13 +109,13 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 		"competition.visibility": apitest.AdminUsername,
 		"entry.add":              apitest.AdminUsername, "entry.update": apitest.AdminUsername,
 		"entry.withdraw": apitest.AdminUsername, "entry.delete": apitest.AdminUsername,
-		"stage.set_counts": apitest.AdminUsername, "stage.lock": "", "stage.unlock": apitest.AdminUsername,
+		"stage.set_counts": "", "stage.lock": "", "stage.unlock": apitest.AdminUsername,
 		"device.pair": apitest.AdminUsername, "device.revoke": apitest.AdminUsername,
 		"report.download": apitest.AdminUsername, "backup.download": apitest.AdminUsername,
 		"user.create": apitest.AdminUsername, "user.reset_password": apitest.AdminUsername,
 		"user.set_role": apitest.AdminUsername, "user.set_backup_permission": apitest.AdminUsername,
 		"user.deactivate": apitest.AdminUsername, "user.reactivate": apitest.AdminUsername,
-		"user.change_password": "anna", "login": apitest.AdminUsername, "login_failed": "anna",
+		"user.change_password": "anna", "user.change_password_failed": "anna", "login": apitest.AdminUsername, "login_failed": "anna",
 	}
 	for action, username := range want {
 		row, line := findAudit(rows, action), findAuditLine(lines, action)
@@ -145,6 +149,18 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	}
 	if deviceLocks != 1 {
 		t.Errorf("device locks = %d", deviceLocks)
+	}
+	var deviceCounts int
+	for _, r := range rows {
+		if r["action"] == "stage.set_counts" && r["username"] == "device" {
+			deviceCounts++
+			if r["user_id"] != nil {
+				t.Errorf("device counts row: %v", r)
+			}
+		}
+	}
+	if deviceCounts != 1 {
+		t.Errorf("device counts = %d", deviceCounts)
 	}
 	for _, l := range lines {
 		if l["action"] == "stage.lock" && l["username"] == "device" && l["details"] != fmt.Sprintf("lane 1 competition %d", comp) {

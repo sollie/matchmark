@@ -52,6 +52,7 @@ var (
 	ErrUnauthenticated    = errors.New("unauthenticated")
 	ErrTooManyAttempts    = errors.New("too many login attempts")
 	ErrBackupNotPermitted = errors.New("backup download is not permitted for this admin")
+	ErrForbidden          = errors.New("forbidden")
 	ErrLastAdmin          = errors.New("the last active admin cannot be demoted or deactivated")
 
 	usernamePattern = regexp.MustCompile(`^[a-z0-9._-]{3,32}$`)
@@ -157,7 +158,7 @@ func (a *Auth) ListUsers() ([]User, error) {
 
 var ErrUnknownUser = errors.New("unknown user")
 
-func (a *Auth) ResetPassword(username, password string) error {
+func (a *Auth) ResetPassword(ctx context.Context, username, password string) error {
 	if !ValidPassword(password) {
 		return ErrWeakPassword
 	}
@@ -172,7 +173,18 @@ func (a *Auth) ResetPassword(username, password string) error {
 	if err != nil {
 		return err
 	}
-	return a.repo.ResetPassword(user.ID, hash)
+	if err := a.repo.ResetPassword(user.ID, hash); err != nil {
+		return err
+	}
+	a.audit.Record(ctx, AuditEvent{Action: "user.reset_password", Target: userTarget(user.ID), Details: user.Username})
+	return nil
+}
+
+func RequireAdmin(user User) error {
+	if user.Role != RoleAdmin {
+		return ErrForbidden
+	}
+	return nil
 }
 
 func (a *Auth) lifecycleUser(id int) (User, error) {
@@ -297,6 +309,7 @@ func (a *Auth) ChangePassword(ctx context.Context, token, current, next string) 
 	}
 	if ok, _ := verifyPassword(current, user.PasswordHash); !ok {
 		a.recordFailure(key, now)
+		a.audit.RecordAs(ctx, Actor{UserID: user.ID, Username: user.Username, IP: ActorFrom(ctx).IP}, AuditEvent{Action: "user.change_password_failed", Target: userTarget(user.ID), Details: user.Username})
 		return ErrInvalidCredentials
 	}
 	if !ValidPassword(next) {
@@ -493,16 +506,28 @@ func (a *Auth) recentUsername(username string, now time.Time) []time.Time {
 	return kept
 }
 
+func (a *Auth) makeRoomForUsername(now time.Time) {
+	for name := range a.userFail {
+		a.recentUsername(name, now)
+	}
+	if len(a.userFail) < usernameMaxTracked {
+		return
+	}
+	var oldest string
+	var oldestAt time.Time
+	for name, failures := range a.userFail {
+		if last := failures[len(failures)-1]; oldest == "" || last.Before(oldestAt) {
+			oldest, oldestAt = name, last
+		}
+	}
+	delete(a.userFail, oldest)
+}
+
 func (a *Auth) recordUsernameFailure(username string, now time.Time) time.Duration {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if _, tracked := a.userFail[username]; !tracked && len(a.userFail) >= usernameMaxTracked {
-		for name := range a.userFail {
-			a.recentUsername(name, now)
-		}
-		if len(a.userFail) >= usernameMaxTracked {
-			return usernameMaxDelay
-		}
+		a.makeRoomForUsername(now)
 	}
 	failures := append(a.recentUsername(username, now), now)
 	a.userFail[username] = failures
