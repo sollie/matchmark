@@ -19,8 +19,8 @@ test.describe("competitions", () => {
   }
 
   test("every course shows its label and one column per stage", async ({ adminPage: page, admin, courses }) => {
-    expect(Object.keys(courses)).toHaveLength(4);
-    for (const course of Object.values(courses)) {
+    expect(courses).toHaveLength(4);
+    for (const course of courses) {
       await test.step(`${course.key}-shot course`, async () => {
         const name = uniqueName(`Course ${course.key}`);
 
@@ -65,7 +65,7 @@ test.describe("competitions", () => {
   });
 
   test("the list shows each competition with its status", async ({ courses, adminPage: page, admin }) => {
-    const [first, second, third] = Object.values(courses);
+    const [first, second, third] = courses;
     const draft = await createCompetition(admin, {
       name: uniqueName("Listed draft"),
       date: "2026-03-01",
@@ -171,7 +171,7 @@ test.describe("competitions", () => {
   });
 
   test("a draft competition can be edited", async ({ courses, adminPage: page, admin }) => {
-    const [original, target] = Object.values(courses);
+    const [original, target] = courses;
     const competition = await createCompetition(admin, { date: "2026-03-01", course: original.key });
     const name = uniqueName("Renamed");
     await openCompetition(page, competition.id);
@@ -210,7 +210,7 @@ test.describe("competitions", () => {
   });
 
   test("the course is locked once an entry exists", async ({ courses, adminPage: page, admin }) => {
-    const [locked] = Object.values(courses);
+    const [locked] = courses;
     const competition = await createCompetition(admin, { course: locked.key });
     await seedEntry(admin, competition.id, 1);
     const name = uniqueName("Entered");
