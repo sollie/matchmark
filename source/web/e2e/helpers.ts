@@ -25,14 +25,30 @@ type CompetitionStatus = "draft" | "active" | "finished";
 
 export type Category = "Revolver" | "Pistol" | "Revolver OS" | "Pistol OS" | "Rifle";
 
-export const courses = {
-  wa1500: { key: "150", label: "150 shots (WA1500)", stages: 10, stageOneShots: 12 },
-  sixty: { key: "60", label: "60 shots", stages: 4, stageOneShots: 12 },
-  fortyEight: { key: "48", label: "48 shots", stages: 4, stageOneShots: 6 },
-  fiveShotRevolver: { key: "40", label: "40 shots (5-shot revolver)", stages: 4, stageOneShots: 5 },
-} as const;
+export interface Course {
+  key: string;
+  label: string;
+  stages: number;
+  stageOneShots: number;
+}
 
-export const allCourses = Object.values(courses);
+interface RulebookResponse {
+  courses: { key: string; label: string; stages: { expected_shots: number }[] }[];
+}
+
+let rulebook: Promise<Record<string, Course>> | undefined;
+
+async function fetchCourses(baseURL: string): Promise<Record<string, Course>> {
+  const api = await newApi(baseURL);
+  try {
+    const body = await checked<RulebookResponse>(await api.get("/api/rulebook"), "get rulebook");
+    return Object.fromEntries(
+      body.courses.map((c) => [c.key, { key: c.key, label: c.label, stages: c.stages.length, stageOneShots: c.stages[0].expected_shots }]),
+    );
+  } finally {
+    await api.dispose();
+  }
+}
 
 export function uniqueName(prefix: string): string {
   return `${prefix} ${randomBytes(4).toString("hex")}`;
@@ -101,7 +117,7 @@ export async function createCompetition(
   seed: { name?: string; date?: string; course?: string; status?: CompetitionStatus } = {},
 ) {
   const { status, ...rest } = seed;
-  const competition = { name: uniqueName("Competition"), date: todayIso(), course: courses.wa1500.key, ...rest };
+  const competition = { name: uniqueName("Competition"), date: todayIso(), course: "150", ...rest };
   const { id } = await checked<{ id: number }>(
     await api.post("/api/competitions", { data: competition }),
     "create competition",
@@ -203,6 +219,7 @@ export async function openCompetition(page: Page, id: number) {
 }
 
 interface Fixtures {
+  courses: Record<string, Course>;
   admin: APIRequestContext;
   adminPage: Page;
   openDevice: (token: string) => Promise<Page>;
@@ -212,6 +229,10 @@ export const test = base.extend<Fixtures>({
   page: async ({ page }, use) => {
     await page.setExtraHTTPHeaders({ "X-Forwarded-For": uniqueClientIp() });
     await use(page);
+  },
+  courses: async ({ baseURL }, use) => {
+    rulebook ??= fetchCourses(baseURL!);
+    await use(await rulebook);
   },
   admin: async ({ baseURL }, use) => {
     const api = await adminApi(baseURL!);
