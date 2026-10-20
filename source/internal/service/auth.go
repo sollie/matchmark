@@ -49,6 +49,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrUnauthenticated    = errors.New("unauthenticated")
 	ErrTooManyAttempts    = errors.New("too many login attempts")
+	ErrLastAdmin          = errors.New("the last active admin cannot be demoted or deactivated")
 
 	usernamePattern = regexp.MustCompile(`^[a-z0-9._-]{3,32}$`)
 )
@@ -60,6 +61,7 @@ type Auth struct {
 	now       func() time.Time
 	dummyHash string
 
+	adminMu  sync.Mutex
 	mu       sync.Mutex
 	failures map[string][]time.Time
 	sleep    func(time.Duration)
@@ -155,6 +157,85 @@ func (a *Auth) ResetPassword(username, password string) error {
 	}
 	if err != nil {
 		return err
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+	return a.repo.ResetPassword(user.ID, hash)
+}
+
+func (a *Auth) lifecycleUser(id int) (User, error) {
+	user, err := a.repo.UserByID(id)
+	if errors.Is(err, repository.ErrNotFound) {
+		return User{}, ErrNotFound
+	}
+	return user, err
+}
+
+func (a *Auth) guardLastAdmin(user User) error {
+	if user.Role != RoleAdmin || !user.Active {
+		return nil
+	}
+	n, err := a.repo.CountActiveAdmins()
+	if err != nil {
+		return err
+	}
+	if n <= 1 {
+		return ErrLastAdmin
+	}
+	return nil
+}
+
+func (a *Auth) SetActive(id int, active bool) (User, error) {
+	a.adminMu.Lock()
+	defer a.adminMu.Unlock()
+	user, err := a.lifecycleUser(id)
+	if err != nil {
+		return User{}, err
+	}
+	if !active {
+		if err := a.guardLastAdmin(user); err != nil {
+			return User{}, err
+		}
+	}
+	if err := a.repo.SetActive(id, active); err != nil {
+		return User{}, err
+	}
+	return a.repo.UserByID(id)
+}
+
+func (a *Auth) SetRole(id int, role string) (User, error) {
+	if role != RoleAdmin && role != RoleUser {
+		return User{}, ErrInvalid
+	}
+	a.adminMu.Lock()
+	defer a.adminMu.Unlock()
+	user, err := a.lifecycleUser(id)
+	if err != nil {
+		return User{}, err
+	}
+	if role == user.Role {
+		return user, nil
+	}
+	if role == RoleUser {
+		if err := a.guardLastAdmin(user); err != nil {
+			return User{}, err
+		}
+	}
+	if err := a.repo.SetRole(id, role); err != nil {
+		return User{}, err
+	}
+	return a.repo.UserByID(id)
+}
+
+func (a *Auth) ResetUserPassword(id int, password string) error {
+	user, err := a.lifecycleUser(id)
+	if err != nil {
+		return err
+	}
+	if !ValidPassword(password) {
+		return ErrWeakPassword
 	}
 	hash, err := hashPassword(password)
 	if err != nil {

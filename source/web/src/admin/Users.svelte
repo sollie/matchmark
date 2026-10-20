@@ -13,6 +13,8 @@
   let password = $state("");
   let error = $state("");
   let created = $state("");
+  let resetFor = $state<number | null>(null);
+  let resetPassword = $state("");
 
   async function load() {
     const result = await api.GET("/api/users");
@@ -36,6 +38,44 @@
     password = "";
     role = "user";
     await load();
+  }
+
+  async function act(request: Promise<{ response: Response }>, message: string) {
+    error = "";
+    created = "";
+    const result = await request;
+    if (!result.response.ok) {
+      error = failure(result as Parameters<typeof failure>[0]);
+      return;
+    }
+    created = message;
+    await load();
+  }
+
+  const params = (u: User) => ({ params: { path: { userID: u.id } } });
+
+  const setActive = (u: User, active: boolean) =>
+    act(
+      api.POST(active ? "/api/users/{userID}/reactivate" : "/api/users/{userID}/deactivate", params(u)),
+      `User ${u.username} ${active ? "reactivated" : "deactivated"}.`,
+    );
+
+  const setRole = (u: User, next: Role) =>
+    act(
+      api.PUT("/api/users/{userID}/role", { params: { path: { userID: u.id } }, body: { role: next } }),
+      `User ${u.username} is now ${next === "admin" ? "an admin" : "a user"}.`,
+    );
+
+  async function reset(e: SubmitEvent, u: User) {
+    e.preventDefault();
+    await act(
+      api.POST("/api/users/{userID}/reset-password", { params: { path: { userID: u.id } }, body: { password: resetPassword } }),
+      `Password for ${u.username} reset. They must change it at next login.`,
+    );
+    if (!error) {
+      resetFor = null;
+      resetPassword = "";
+    }
   }
 </script>
 
@@ -69,7 +109,7 @@
 <div class="card scroll">
   <table>
     <thead>
-      <tr><th>Username</th><th>Role</th><th>Status</th></tr>
+      <tr><th>Username</th><th>Role</th><th>Status</th><th>Actions</th></tr>
     </thead>
     <tbody>
       {#each users as u (u.id)}
@@ -77,6 +117,24 @@
           <td>{u.username}</td>
           <td>{u.role === "admin" ? "Admin" : "User"}</td>
           <td>{!u.active ? "Deactivated" : u.must_change_password ? "Must change password" : "Active"}</td>
+          <td>
+            {#if resetFor === u.id}
+              <form class="row" onsubmit={(e) => reset(e, u)}>
+                <label>
+                  Temporary password for {u.username}
+                  <input type="password" bind:value={resetPassword} minlength="16" maxlength="128" autocomplete="new-password" required />
+                </label>
+                <button type="submit" class="primary">Confirm reset</button>
+                <button type="button" onclick={() => (resetFor = null)}>Cancel</button>
+              </form>
+            {:else}
+              <button type="button" onclick={() => setActive(u, !u.active)}>{u.active ? "Deactivate" : "Reactivate"}</button>
+              <button type="button" onclick={() => setRole(u, u.role === "admin" ? "user" : "admin")}>
+                {u.role === "admin" ? "Make user" : "Make admin"}
+              </button>
+              <button type="button" onclick={() => { resetFor = u.id; resetPassword = ""; }}>Reset password</button>
+            {/if}
+          </td>
         </tr>
       {/each}
     </tbody>

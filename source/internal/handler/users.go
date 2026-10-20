@@ -56,3 +56,66 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusCreated, toUserResponse(u))
 }
+
+func (h *Handler) setActive(w http.ResponseWriter, r *http.Request, active bool) {
+	id, err := pathInt(r, "userID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	u, err := h.auth.SetActive(int(id), active)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toUserResponse(u))
+}
+
+func (h *Handler) deactivateUser(w http.ResponseWriter, r *http.Request) {
+	h.setActive(w, r, false)
+}
+
+func (h *Handler) reactivateUser(w http.ResponseWriter, r *http.Request) {
+	h.setActive(w, r, true)
+}
+
+func (h *Handler) resetUserPassword(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "userID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	var body struct {
+		Password string `json:"password"`
+	}
+	if err := decode(r, &body); err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := h.auth.ResetUserPassword(int(id), body.Password); err != nil {
+		writeError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) setUserRole(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "userID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	var body struct {
+		Role string `json:"role"`
+	}
+	if err := decode(r, &body); err != nil {
+		writeError(w, err)
+		return
+	}
+	u, err := h.auth.SetRole(int(id), body.Role)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toUserResponse(u))
+}

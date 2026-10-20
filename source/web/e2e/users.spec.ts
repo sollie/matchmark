@@ -74,3 +74,40 @@ test.describe("user management", () => {
     await api.dispose();
   });
 });
+
+test.describe("user lifecycle", () => {
+  test("an admin resets, demotes, deactivates and reactivates a user", async ({ adminPage: page, baseURL }) => {
+    const username = newUsername();
+    await page.getByRole("link", { name: "Users" }).click();
+    await page.getByLabel("New username").fill(username);
+    await page.getByLabel("Role").selectOption("admin");
+    await page.getByLabel("Temporary password").fill(temporaryPassword);
+    await page.getByRole("button", { name: "Create user" }).click();
+    await expect(row(page, username)).toContainText("Admin");
+
+    const api = await newApi(baseURL!);
+    expect((await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })).status()).toBe(204);
+    expect(
+      (await api.post("/api/admin/password", { data: { current_password: temporaryPassword, new_password: chosenPassword } })).status(),
+    ).toBe(204);
+    expect((await api.get("/api/users")).status()).toBe(200);
+
+    await row(page, username).getByRole("button", { name: "Make user" }).click();
+    await expect(row(page, username)).toContainText("User");
+    expect((await api.get("/api/admin/session")).status()).toBe(401);
+
+    await row(page, username).getByRole("button", { name: "Reset password" }).click();
+    await page.getByLabel(`Temporary password for ${username}`).fill(temporaryPassword);
+    await page.getByRole("button", { name: "Confirm reset" }).click();
+    await expect(row(page, username)).toContainText("Must change password");
+
+    await row(page, username).getByRole("button", { name: "Deactivate" }).click();
+    await expect(row(page, username)).toContainText("Deactivated");
+    expect((await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })).status()).toBe(401);
+
+    await row(page, username).getByRole("button", { name: "Reactivate" }).click();
+    await expect(row(page, username)).toContainText("Must change password");
+    expect((await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })).status()).toBe(204);
+    await api.dispose();
+  });
+});

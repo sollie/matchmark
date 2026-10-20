@@ -135,3 +135,50 @@ func (r *Repository) ChangePassword(userID int, hash, keepTokenHash string) erro
 	}
 	return mapErr(tx.Commit())
 }
+
+func (r *Repository) UserByID(id int) (User, error) {
+	return scanUser(r.db.QueryRow(`SELECT `+userColumns+` FROM users WHERE id = ?`, id))
+}
+
+func (r *Repository) CountActiveAdmins() (int, error) {
+	var n int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = 1`).Scan(&n)
+	return n, mapErr(err)
+}
+
+func (r *Repository) SetActive(userID int, active bool) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return mapErr(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(`UPDATE users SET active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, active, userID); err != nil {
+		return mapErr(err)
+	}
+	if !active {
+		if _, err := tx.Exec(`DELETE FROM user_sessions WHERE user_id = ?`, userID); err != nil {
+			return mapErr(err)
+		}
+	}
+	return mapErr(tx.Commit())
+}
+
+func (r *Repository) SetRole(userID int, role string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return mapErr(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(
+		`UPDATE users SET role = ?, can_download_backup = CASE WHEN ? = 'admin' THEN can_download_backup ELSE 0 END, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		role, role, userID,
+	); err != nil {
+		return mapErr(err)
+	}
+	if role != "admin" {
+		if _, err := tx.Exec(`DELETE FROM user_sessions WHERE user_id = ?`, userID); err != nil {
+			return mapErr(err)
+		}
+	}
+	return mapErr(tx.Commit())
+}

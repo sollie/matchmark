@@ -184,6 +184,134 @@ paths:
                 $ref: '#/components/schemas/Error'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    post:
+      operationId: deactivateUser
+      tags: [users]
+      summary: Deactivate a user and end their sessions; the last active admin is refused (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    post:
+      operationId: reactivateUser
+      tags: [users]
+      summary: Reactivate a deactivated user (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/reset-password:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    post:
+      operationId: resetUserPassword
+      tags: [users]
+      summary: Set a temporary password that must be changed at next login and end the user's sessions (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Password reset
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/role:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    put:
+      operationId: setUserRole
+      tags: [users]
+      summary: Promote to admin or demote to user; demotion ends sessions and the last active admin is refused (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetRoleRequest'
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/shooters:
     get:
       operationId: listShooters
@@ -1127,6 +1255,13 @@ components:
       schema:
         type: integer
         format: int64
+    UserID:
+      name: userID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     ShooterID:
       name: shooterID
       in: path
@@ -1308,6 +1443,20 @@ components:
           type: boolean
         must_change_password:
           type: boolean
+    ResetPasswordRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          minLength: 16
+          maxLength: 128
+    SetRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRole'
     CreateUserRequest:
       type: object
       required: [username, role, password]
