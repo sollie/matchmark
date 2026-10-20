@@ -140,7 +140,7 @@
               <tr class:muted={s.withdrawn} class:leader={!s.withdrawn && rank(i) === 1}>
                 <td class="num rank">{s.withdrawn ? "" : rank(i)}</td>
                 <td class="num">{s.lane}</td>
-                {#if showNames}<td>{s.last_name} {s.first_name}{s.withdrawn ? " (withdrawn)" : ""}</td>{/if}
+                {#if showNames}<td>{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td>{/if}
                 {#if showClubs}<td class="optional">{s.club}</td>{/if}
                 {#if showCountries}<td class="optional">{s.country}</td>{/if}
                 <td class="optional">{s.category}</td>

@@ -277,29 +277,30 @@
   .count-actions button { flex: 1 1 8rem; min-height: var(--touch); }
   tr.muted td { color: var(--text-muted); }
 
+  .entries, .entries tbody, .entries tr, .entries td { display: block; }
+  .entries thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .entries tbody tr { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+  .entries tbody tr:hover > td { background: transparent; }
+  .entries td { padding: 0; border: 0; }
+  .entries .lane { order: 1; }
+  .entries .shooter { order: 2; flex: 1 1 8rem; }
+  .entries .category { order: 3; color: var(--text-muted); }
+  .entries .lane::before { content: "Lane "; color: var(--text-muted); font-weight: 600; }
+  .entries .lane, .entries .category { align-self: center; }
+  .entries .stage { order: 4; flex: 1 1 11rem; padding: var(--space-2); background: var(--surface-alt); border-radius: var(--radius); }
+  .entries .stage::before { content: attr(data-label); display: block; margin-bottom: var(--space-1); font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
+  .entries .entry-actions { order: 5; flex: 1 1 100%; padding-top: var(--space-2); border-top: 1px solid var(--border); }
+  .entries .entry-buttons { align-items: center; }
+  .entries .entry-buttons .remove { margin-left: auto; }
+  .entries button { min-height: var(--touch); min-width: var(--touch); }
+  .entries input, .entries select { min-height: var(--touch); }
+  .entries .empty { display: block; padding: 0; border: 1px dashed var(--border); border-radius: var(--radius-lg); }
+  .entries .empty td { padding: var(--space-5); }
+  .scroll { overflow: visible; border: 0; }
+
   @media (max-width: 47.99rem) {
     .add-form { flex-direction: column; align-items: stretch; }
     .add-form :is(input, select, button) { width: 100%; min-height: var(--touch); }
     .add-form a { display: inline-flex; align-items: center; min-height: var(--touch); }
-    .entries, .entries tbody, .entries tr, .entries td { display: block; }
-    .entries thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-    .entries tbody tr { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
-    .entries tbody tr:hover > td { background: transparent; }
-    .entries td { padding: 0; border: 0; }
-    .entries .lane { order: 1; }
-    .entries .shooter { order: 2; flex: 1 1 8rem; }
-    .entries .category { order: 3; color: var(--text-muted); }
-    .entries .lane::before { content: "Lane "; color: var(--text-muted); font-weight: 600; }
-    .entries .lane, .entries .category { align-self: center; }
-    .entries .stage { order: 4; flex: 1 1 11rem; padding: var(--space-2); background: var(--surface-alt); border-radius: var(--radius); }
-    .entries .stage::before { content: attr(data-label); display: block; margin-bottom: var(--space-1); font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
-    .entries .entry-actions { order: 5; flex: 1 1 100%; padding-top: var(--space-2); border-top: 1px solid var(--border); }
-    .entries .entry-buttons { align-items: center; }
-    .entries .entry-buttons .remove { margin-left: auto; }
-    .entries button { min-height: var(--touch); min-width: var(--touch); }
-    .entries input, .entries select { min-height: var(--touch); }
-    .entries .empty { display: block; padding: 0; border: 1px dashed var(--border); border-radius: var(--radius-lg); }
-    .entries .empty td { padding: var(--space-5); }
-    .scroll { overflow: visible; border: 0; }
   }
 </style>

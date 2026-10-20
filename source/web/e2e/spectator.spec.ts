@@ -91,7 +91,7 @@ test.describe("spectator", () => {
       [
         "1",
         "2",
-        ...(shown.names ? [`${shooter.last_name} ${shooter.first_name}`] : []),
+        ...(shown.names ? [`${shooter.first_name} ${shooter.last_name}`] : []),
         ...(shown.clubs ? [shooter.club] : []),
         ...(shown.countries ? [shooter.country] : []),
         "Revolver",
