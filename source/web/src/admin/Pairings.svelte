@@ -64,7 +64,7 @@
     <form class="row" onsubmit={pair}>
       <label>
         Lane
-        <select bind:value={lane} required>
+        <select aria-label="Pairing lane" bind:value={lane} required>
           <option value={null} disabled>Select lane</option>
           {#each lanes as l (l)}<option value={l}>Lane {l}</option>{/each}
         </select>
