@@ -17,3 +17,12 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 11. Root `Dockerfile` (Alpine Node and Go stages, Alpine 3.24 final with `-tags musl`, non-root, `TURSO_GO_CACHE_DIR`), `docker-compose.yml`, `README.md`, and native-runner CI (amd64, arm64, darwin/arm64 build-only) with an in-image database smoke test.
 - [x] 12. Manual QA: full flow on a phone, results report opened in Excel, Pi run. Then delete `docs/plan/`, update `AGENTS.md`, `docs/STATUS.md`, and merge.
 - [x] 13. `GET /api/rulebook` (#140): courses with labels, weapon classes and ring values from `internal/rulebook`; the SPA course dropdowns read from it.
+
+## Live updates (ADR 0010)
+
+- [ ] 14. Broadcaster in `service` (per-competition topic, 250 ms coalescing, drop slow subscribers) fired after each successful write; shared SSE writer in `handler` (heartbeat 25 s, 30 min lifetime, global cap 500, `Cache-Control: no-cache`, `X-Accel-Buffering: no`, flushing through compression). Tests for broadcaster, stream handler and compression flush.
+- [ ] 15. Shared `fetch`-based SSE client in the SPA (backoff reconnect, close while the tab is hidden, stale indicator, terminal `revoked`). Vitest for parser and reconnect.
+- [ ] 16. Spectator stream (`snapshot` with standings and progress, built once per change) replacing the 5 s and 30 s polling; OpenAPI `text/event-stream`; e2e asserts a change appears without a poll.
+- [ ] 17. Admin stream (`changed` ping, SPA refetches entries) replacing the 3 s polling.
+- [ ] 18. Scorer stream (`snapshot` with the session, `revoked` on unpair or finish; the unsaved ring counts are kept, a changed score lane shows a notice and resets them, a locked stage disables save) via the device-token header.
+- [ ] 19. Update `README.md` (reverse proxies must not buffer `text/event-stream`), `docs/spec.md` (SSE no longer out, polling text) and set ADR 0010 to accepted.
