@@ -117,23 +117,23 @@ test.describe("spectator", () => {
     );
     await expect(table).not.toContainText(shooter.club);
 
-    await setVisibility(admin, competition.id, { show_countries: false });
+    await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false });
     await openCompetition(page, competition.name);
     await expect(table.getByRole("columnheader", { name: "Country" })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, stage: true, x: true }));
     await expect(table).not.toContainText(shooter.country);
 
-    await setVisibility(admin, competition.id, { show_stage_scores: false });
+    await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false, show_stage_scores: false });
     await openCompetition(page, competition.name);
     await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, x: true }));
 
-    await setVisibility(admin, competition.id, { show_stage_scores: false, show_ring_counts: false });
+    await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false, show_stage_scores: false, show_ring_counts: false });
     await openCompetition(page, competition.name);
     await expect(table.getByRole("columnheader", { name: "X", exact: true })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true }));
 
-    await setVisibility(admin, competition.id, { show_names: false, show_stage_scores: false, show_ring_counts: false });
+    await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false, show_names: false, show_stage_scores: false, show_ring_counts: false });
     await openCompetition(page, competition.name);
     await expect(table.getByRole("columnheader", { name: "Name" })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({}));
