@@ -25,4 +25,4 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 16. Spectator stream (`snapshot` with standings and progress, built once per change) replacing the 5 s and 30 s polling; OpenAPI `text/event-stream`; e2e asserts a change appears without a poll.
 - [x] 17. Admin stream (`changed` ping, SPA refetches entries) replacing the 3 s polling.
 - [x] 18. Scorer stream (`snapshot` with the session, `revoked` on unpair or finish; the unsaved ring counts are kept, a changed score lane shows a notice and resets them, a locked stage disables save) via the device-token header.
-- [ ] 19. Update `README.md` (reverse proxies must not buffer `text/event-stream`), `docs/spec.md` (SSE no longer out, polling text) and set ADR 0010 to accepted.
+- [x] 19. Update `README.md` (reverse proxies must not buffer `text/event-stream`), `docs/spec.md` (SSE no longer out, polling text) and set ADR 0010 to accepted.

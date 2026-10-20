@@ -107,6 +107,10 @@ To write the restore, run `matchmark restore --apply [file]` with the same `DB_P
 ## TLS modes
 
 - **Plain HTTP (default):** for local networks or behind a TLS-terminating reverse proxy. Set `BASE_URL` to the public URL and `TRUSTED_PROXY` to the proxy address.
+
+### Live updates
+
+Spectator, admin and scorer screens receive live updates over server-sent events (`text/event-stream`): `GET /api/spectator/competitions/{id}/stream`, `GET /api/competitions/{id}/stream` and `GET /api/scorer/stream`. A reverse proxy must not buffer or cache these responses and must allow them to stay open: the server sends `X-Accel-Buffering: no` and `Cache-Control: no-cache`, a heartbeat every 25 seconds, and closes each stream after 30 minutes, so keep the proxy read timeout above 25 seconds (nginx: `proxy_buffering off`, `proxy_read_timeout 1h`). At most 500 streams are served at once.
 - **Static certificate:** mount the files and set `TLS_CERT_FILE` and `TLS_KEY_FILE`; the server listens on `:8443`. Map the port in compose, e.g. `"443:8443"`.
 - **ACME:** set `ACME_DOMAIN` and `ACME_EMAIL`. The server obtains and renews certificates itself using the HTTP-01 challenge, which needs the public port 80 forwarded to the container's `:8080`, with HTTPS served on `:8443` (map `"80:8080"` and `"443:8443"`). Certificates are stored under `/data/certs`. Set `BASE_URL` to `https://<domain>`. The default compose file only publishes `8080` (as `HTTP_PORT`), so in ACME mode replace its `ports` entry with:
 
