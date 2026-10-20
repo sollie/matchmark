@@ -1,8 +1,22 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import CompetitionEdit from "./CompetitionEdit.svelte";
 import { stubFetch } from "../test/fetch";
+import { loadRulebook } from "../lib/rulebook.svelte";
+
+const course = (key: string, label: string) => ({ key, label, discipline: "1500", total_shots: 0, stages: [] });
+
+beforeAll(async () => {
+  stubFetch(() => ({
+    body: {
+      courses: [course("150", "150 shots (WA1500)"), course("60", "60 shots")],
+      weapon_classes: {},
+      rings: [],
+    },
+  }));
+  await loadRulebook();
+});
 
 const competition = { id: 5, name: "Spring", date: "2026-03-01", course: "150", status: "draft" as const };
 

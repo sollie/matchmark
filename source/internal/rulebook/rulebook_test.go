@@ -150,3 +150,25 @@ func TestRingPoints(t *testing.T) {
 		}
 	}
 }
+
+func TestCourseLabelsAndKeys(t *testing.T) {
+	want := map[string]string{
+		"150": "150 shots (WA1500)",
+		"60":  "60 shots",
+		"48":  "48 shots",
+		"40":  "40 shots (5-shot revolver)",
+	}
+	keys := rulebook.CourseKeys()
+	if len(keys) != len(want) {
+		t.Fatalf("CourseKeys() = %v", keys)
+	}
+	for _, key := range keys {
+		c, err := rulebook.CourseByKey(key)
+		if err != nil {
+			t.Fatalf("CourseByKey(%q): %v", key, err)
+		}
+		if c.Label != want[key] {
+			t.Errorf("label for %q = %q, want %q", key, c.Label, want[key])
+		}
+	}
+}

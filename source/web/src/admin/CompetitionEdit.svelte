@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { untrack } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
-  import { courses } from "../lib/domain";
+  import { loadRulebook, rulebook } from "../lib/rulebook.svelte";
   import type { components } from "../lib/api/schema";
 
   type Competition = components["schemas"]["Competition"];
@@ -26,6 +26,8 @@
   let course = $state(untrack(() => competition.course));
   let error = $state("");
 
+  onMount(loadRulebook);
+
   async function save(e: SubmitEvent) {
     e.preventDefault();
     error = "";
@@ -44,7 +46,7 @@
   <label>
     Course of fire
     <select bind:value={course} disabled={hasEntries}>
-      {#each courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
+      {#each rulebook.courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
     </select>
   </label>
   {#if hasEntries}<p class="muted">The course cannot change once the competition has entries.</p>{/if}
