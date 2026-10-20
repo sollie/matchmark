@@ -15,7 +15,7 @@ import (
 const restoreLine = `{"msg":"stage_locked","schema_version":1,"event":"stage_locked","emitted_at":"2026-10-19T10:00:01.000Z","seq":1,` +
 	`"competition":{"id":7,"name":"Club Match","date":"2026-10-19","course_of_fire":{"key":"150"}},` +
 	`"entry":{"id":1,"lane":2,"category":"Pistol","shooter":{"first_name":"Ann","last_name":"Lee"}},` +
-	`"stage":{"number":1,"expected_shots":10},"ring_counts":[1,2,3,4,0,0,0],"locked_by":"Admin"}`
+	`"stage":{"number":1,"expected_shots":10},"ring_counts":[1,2,3,4,0,0,0],"locked_by":"bob","scorer_name":"bob"}`
 
 func TestRestoreCommandReadsStdinWithoutAdminPassword(t *testing.T) {
 	t.Setenv("ADMIN_PASSWORD", "")
@@ -84,7 +84,7 @@ func TestRestoreCommandApplyRefusesNonEmptyUnlessMerge(t *testing.T) {
 	}
 	defer func() { _ = conn.Close() }()
 	st, err := repository.New(conn).GetStage(context.Background(), 7, 1, 1)
-	if err != nil || !st.Locked || st.Counts.Ten != 2 || st.ScorerName != "" {
+	if err != nil || !st.Locked || st.Counts.Ten != 2 || st.ScorerName != "bob" || st.ScorerLane != nil {
 		t.Fatalf("stage = %+v, %v", st, err)
 	}
 }

@@ -19,7 +19,7 @@ This writes `source/web/src/lib/api/schema.d.ts` (committed) using `openapi-type
 ```ts
 import { api, deviceHeaders } from "./lib/api/client";
 
-await api.POST("/api/admin/login", { body: { password } });
+await api.POST("/api/admin/login", { body: { username, password } });
 const { data } = await api.GET("/api/competitions/{competitionID}/entries", {
   params: { path: { competitionID: 1 } },
 });

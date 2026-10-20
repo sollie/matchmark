@@ -21,6 +21,7 @@ type Service struct {
 	repo       *repository.Repository
 	replicator ReplicationRequester
 	scoreLog   *slog.Logger
+	audit      *Audit
 	emitMu     sync.Mutex
 	emitSeq    int64
 	bus        *Broadcaster

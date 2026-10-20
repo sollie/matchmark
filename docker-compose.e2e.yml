@@ -2,6 +2,7 @@ services:
   matchmark:
     build: .
     environment:
+      ADMIN_USERNAME: e2e-admin
       ADMIN_PASSWORD: e2e-admin-password-1234
       TRUSTED_PROXY: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
     tmpfs:
@@ -21,6 +22,7 @@ services:
     environment:
       CI: "true"
       E2E_BASE_URL: http://matchmark:8080
+      E2E_ADMIN_USERNAME: e2e-admin
       E2E_ADMIN_PASSWORD: e2e-admin-password-1234
     command: sh -c "npm ci && npx playwright test"
     depends_on:

@@ -19,6 +19,7 @@ const (
 )
 
 type Config struct {
+	AdminUsername string
 	AdminPassword string
 	DBPath        string
 	ListenAddr    string
@@ -38,6 +39,7 @@ type Config struct {
 
 func LoadConfig(getenv func(string) string) (Config, error) {
 	c := Config{
+		AdminUsername: getenv("ADMIN_USERNAME"),
 		AdminPassword: getenv("ADMIN_PASSWORD"),
 		DBPath:        getenv("DB_PATH"),
 		ListenAddr:    getenv("LISTEN_ADDR"),

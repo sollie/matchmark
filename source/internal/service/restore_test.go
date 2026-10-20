@@ -29,7 +29,7 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if err := f.svc.AdminLockStage(service.WithActor(ctx, service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	events, _, err := restore.Parse(strings.NewReader(f.buf.String()))
@@ -115,7 +115,7 @@ func normalizedReport(t *testing.T, repo *repository.Repository, compID int64) [
 func mergePlan(name string, counts [7]int, stages ...int) restore.Plan {
 	var scored []restore.ScoredStage
 	for _, n := range stages {
-		scored = append(scored, restore.ScoredStage{Number: n, ExpectedShots: 10, RingCounts: counts, LockedBy: "Admin", LockedAt: "2026-10-19T10:00:00Z"})
+		scored = append(scored, restore.ScoredStage{Number: n, ExpectedShots: 10, RingCounts: counts, LockedBy: "bob", ScorerName: "bob", LockedAt: "2026-10-19T10:00:00Z"})
 	}
 	return restore.Plan{Competitions: []restore.RestoredCompetition{{
 		ID: 7, Name: name, Date: "2026-10-19", CourseOfFire: restore.CourseOfFire{Key: "150"},

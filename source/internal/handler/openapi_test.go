@@ -54,11 +54,7 @@ func routerOperations(t *testing.T) map[string]bool {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	repo := repository.New(conn)
-	auth, err := service.NewAdminAuth(repo, "correct-horse-battery")
-	if err != nil {
-		t.Fatalf("admin auth: %v", err)
-	}
-	router := handler.NewRouter(service.New(repo), handler.WithAdminAuth(auth, "http://localhost"))
+	router := handler.NewRouter(service.New(repo), handler.WithAuth(service.NewAuth(repo), "http://localhost"))
 	ops := map[string]bool{}
 	err = chi.Walk(router.(chi.Routes), func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		ops[method+" "+strings.TrimSuffix(route, "/")] = true

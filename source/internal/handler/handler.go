@@ -14,7 +14,8 @@ import (
 
 type Handler struct {
 	svc          *service.Service
-	auth         *service.AdminAuth
+	auth         *service.Auth
+	audit        *service.Audit
 	secureCookie bool
 	backupDir    string
 	limits       streamLimits
@@ -31,8 +32,17 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 		if h.auth != nil {
 			r.Post("/admin/login", h.adminLogin)
 			r.Post("/admin/logout", h.adminLogout)
-			r.With(h.RequireAdmin).Get("/admin/session", h.adminSession)
+			r.Post("/admin/password", h.changePassword)
+			r.With(h.RequireUser).Get("/admin/session", h.adminSession)
 			r.With(h.RequireAdmin).Get("/admin/backup", h.backup)
+			r.With(h.RequireAdmin).Get("/audit-log", h.listAudit)
+			r.With(h.RequireAdmin).Get("/users", h.listUsers)
+			r.With(h.RequireAdmin).Post("/users", h.createUser)
+			r.With(h.RequireAdmin).Post("/users/{userID}/deactivate", h.deactivateUser)
+			r.With(h.RequireAdmin).Post("/users/{userID}/reactivate", h.reactivateUser)
+			r.With(h.RequireAdmin).Post("/users/{userID}/reset-password", h.resetUserPassword)
+			r.With(h.RequireAdmin).Put("/users/{userID}/role", h.setUserRole)
+			r.With(h.RequireAdmin).Put("/users/{userID}/backup-permission", h.setBackupPermission)
 		}
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
@@ -41,7 +51,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			h.scorerRoutes(r)
 		})
 		r.Group(func(r chi.Router) {
-			r.Use(h.RequireAdmin)
+			r.Use(h.RequireUser)
 			h.adminRoutes(r)
 			h.visibilityRoutes(r)
 		})
@@ -62,6 +72,14 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusNotFound, "not found"
 	case errors.Is(err, service.ErrInvalid):
 		status, msg = http.StatusUnprocessableEntity, "invalid input"
+	case errors.Is(err, service.ErrInvalidUsername), errors.Is(err, service.ErrWeakPassword):
+		status, msg = http.StatusUnprocessableEntity, err.Error()
+	case errors.Is(err, service.ErrForbidden):
+		status, msg = http.StatusForbidden, "forbidden"
+	case errors.Is(err, service.ErrBackupNotPermitted):
+		status, msg = http.StatusForbidden, "backup_not_permitted"
+	case errors.Is(err, service.ErrLastAdmin):
+		status, msg = http.StatusConflict, err.Error()
 	case errors.Is(err, service.ErrConflict):
 		status, msg = http.StatusConflict, "conflict"
 	case errors.Is(err, service.ErrLaneNotManned):
