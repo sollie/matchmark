@@ -1,6 +1,6 @@
 # Scorers use lane-paired devices, not accounts
 
-Scorers are shooters at a single club, 2–20 per event, and the old JWT/refresh-token/user-account system was far heavier than that needs. Each manned lane gets a pairing link/QR; a device that opens it receives a cookie bound to that competition and lane and can only score that lane's score lane. The admin is the only account (one password) and can revoke, re-pair, or score any lane.
+Scorers are shooters at a single club, 2–20 per event, and the old JWT/refresh-token/user-account system was far heavier than that needs. Each manned lane gets a pairing link/QR; a device that opens it receives a cookie bound to that competition and lane and can only score that lane's score lane. Users (see ADR 0011) are the only accounts, and an admin can revoke, re-pair, or score any lane.
 
 ## Considered Options
 
