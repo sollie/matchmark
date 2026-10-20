@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -64,12 +65,12 @@ func (h *Handler) scorerSession(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
 	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	h.serveStream(w, r, h.svc.Subscribe(deviceFrom(r).CompetitionID), func(ctx context.Context) (streamEvent, error) {
-		sess, revoked, err := h.svc.DeviceSnapshot(ctx, token)
+		sess, err := h.svc.DeviceSnapshot(ctx, token)
+		if errors.Is(err, service.ErrUnauthenticated) {
+			return streamEvent{Name: "revoked", Data: struct{}{}, Final: true}, nil
+		}
 		if err != nil {
 			return streamEvent{}, err
-		}
-		if revoked {
-			return streamEvent{Name: "revoked", Data: struct{}{}, Final: true}, nil
 		}
 		return streamEvent{Name: "snapshot", Data: scorerSessionJSON(sess)}, nil
 	})

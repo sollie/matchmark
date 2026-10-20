@@ -25,9 +25,15 @@ type Conn = { url: string; headers: Headers; push(text: string): void; end(): vo
 function fakeServer() {
   const conns: Conn[] = [];
   const statuses: number[] = [];
+  const retryAfter: string[] = [];
   const fetchFn = ((input: RequestInfo | URL, init?: RequestInit) => {
     const status = statuses.shift() ?? 200;
-    if (status !== 200) return Promise.resolve(new Response(null, { status }));
+    if (status !== 200) {
+      const headers: Record<string, string> = {};
+      const after = retryAfter.shift();
+      if (after) headers["Retry-After"] = after;
+      return Promise.resolve(new Response(null, { status, headers }));
+    }
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     const body = new ReadableStream<Uint8Array>({ start: (c) => (controller = c) });
     const enc = new TextEncoder();
@@ -46,7 +52,7 @@ function fakeServer() {
     });
     return Promise.resolve(new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } }));
   }) as typeof fetch;
-  return { conns, statuses, fetchFn };
+  return { conns, statuses, retryAfter, fetchFn };
 }
 
 const tick = (ms = 0) => vi.advanceTimersByTimeAsync(ms);
@@ -109,6 +115,18 @@ describe("openStream", () => {
     await tick(1);
     expect(server.conns).toHaveLength(2);
     expect(states.at(-1)).toBe("live");
+  });
+
+  it("waits at least the Retry-After of a 503 before reconnecting", async () => {
+    const server = fakeServer();
+    server.statuses.push(503);
+    server.retryAfter.push("5");
+    open(server, { backoff: { initialMs: 100, maxMs: 1000 } });
+    await tick();
+    await tick(4999);
+    expect(server.conns).toHaveLength(0);
+    await tick(1);
+    expect(server.conns).toHaveLength(1);
   });
 
   it("stops without retrying on a terminal revoked event", async () => {

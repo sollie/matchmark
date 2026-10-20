@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"sort"
+	"sync"
 
 	"github.com/sollie/matchmark/internal/repository"
 )
@@ -187,27 +188,45 @@ type cachedSnapshot struct {
 	snapshot SpectatorSnapshot
 }
 
+type snapSlot struct {
+	mu     sync.Mutex
+	cached *cachedSnapshot
+}
+
+func (s *Service) snapSlot(competitionID int64) *snapSlot {
+	s.snapMu.Lock()
+	defer s.snapMu.Unlock()
+	slot, ok := s.snaps[competitionID]
+	if !ok {
+		slot = &snapSlot{}
+		s.snaps[competitionID] = slot
+	}
+	return slot
+}
+
 func (s *Service) Subscribe(competitionID int64) *Subscription {
 	return s.bus.Subscribe(competitionID)
 }
 
 func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (SpectatorSnapshot, error) {
-	s.snapMu.Lock()
-	defer s.snapMu.Unlock()
+	slot := s.snapSlot(competitionID)
+	slot.mu.Lock()
+	defer slot.mu.Unlock()
 	version := s.bus.Version(competitionID)
-	if c, ok := s.snaps[competitionID]; ok && c.version == version {
+	if c := slot.cached; c != nil && c.version == version {
 		return c.snapshot, nil
 	}
 	standings, err := s.Standings(ctx, competitionID)
 	if err != nil {
-		delete(s.snaps, competitionID)
+		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
 	stages, err := s.Progress(ctx, competitionID)
 	if err != nil {
+		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
 	snap := SpectatorSnapshot{Standings: standings, Stages: stages}
-	s.snaps[competitionID] = cachedSnapshot{version: version, snapshot: snap}
+	slot.cached = &cachedSnapshot{version: version, snapshot: snap}
 	return snap, nil
 }

@@ -200,14 +200,10 @@ func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64,
 	return nil
 }
 
-func (s *Service) DeviceSnapshot(ctx context.Context, token string) (ScorerSession, bool, error) {
+func (s *Service) DeviceSnapshot(ctx context.Context, token string) (ScorerSession, error) {
 	d, err := s.AuthenticateDevice(ctx, token)
 	if err != nil {
-		if err == ErrUnauthenticated {
-			return ScorerSession{}, true, nil
-		}
-		return ScorerSession{}, false, err
+		return ScorerSession{}, err
 	}
-	sess, err := s.DeviceSession(ctx, d)
-	return sess, false, err
+	return s.DeviceSession(ctx, d)
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,6 +18,8 @@ const (
 	defaultMaxStreams   = 500
 	streamRetryAfterSec = "5"
 )
+
+var errTooManyStreams = errors.New("too many streams")
 
 type streamLimits struct {
 	heartbeat time.Duration
@@ -43,7 +46,7 @@ func (h *Handler) serveStream(w http.ResponseWriter, r *http.Request, sub *servi
 	if h.streams.Add(1) > h.limits.max {
 		h.streams.Add(-1)
 		w.Header().Set("Retry-After", streamRetryAfterSec)
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "too many streams"})
+		writeError(w, errTooManyStreams)
 		return
 	}
 	defer h.streams.Add(-1)

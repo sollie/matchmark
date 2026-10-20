@@ -72,6 +72,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusConflict, "stage is locked"
 	case errors.Is(err, service.ErrUnauthenticated):
 		status, msg = http.StatusUnauthorized, "unauthorized"
+	case errors.Is(err, errTooManyStreams):
+		status, msg = http.StatusServiceUnavailable, "too many streams"
 	case errors.Is(err, service.ErrAdminScoringNeeded):
 		status, msg = http.StatusForbidden, "admin scoring required"
 	}

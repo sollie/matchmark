@@ -83,17 +83,18 @@ export function openStream(opts: StreamOptions): StreamHandle {
     setState(next);
   }
 
-  function scheduleRetry() {
+  function scheduleRetry(retryAfterMs = 0) {
     const ceiling = Math.min(backoff.maxMs, backoff.initialMs * 2 ** failures);
     failures++;
     clearTimeout(retryTimer);
-    retryTimer = setTimeout(connect, Math.round(ceiling * (0.5 + 0.5 * random())));
+    const delay = Math.max(retryAfterMs, Math.round(ceiling * (0.5 + 0.5 * random())));
+    retryTimer = setTimeout(connect, delay);
   }
 
-  function lost() {
+  function lost(retryAfterMs = 0) {
     if (closed || document.hidden) return;
     setState("stale");
-    scheduleRetry();
+    scheduleRetry(retryAfterMs);
   }
 
   async function connect() {
@@ -103,6 +104,7 @@ export function openStream(opts: StreamOptions): StreamHandle {
     if (state !== "stale") setState("connecting");
     armStale();
     let ended = false;
+    let retryAfterMs = 0;
     try {
       const response = await (opts.fetch ?? globalThis.fetch)(opts.url, {
         headers: { Accept: "text/event-stream", ...opts.headers },
@@ -113,6 +115,10 @@ export function openStream(opts: StreamOptions): StreamHandle {
         ended = true;
         stop("ended");
         return;
+      }
+      if (response.status === 503) {
+        const seconds = Number(response.headers.get("Retry-After"));
+        if (Number.isFinite(seconds) && seconds > 0) retryAfterMs = seconds * 1000;
       }
       if (!response.ok || !response.body) throw new Error(`stream status ${response.status}`);
       failures = 0;
@@ -140,7 +146,7 @@ export function openStream(opts: StreamOptions): StreamHandle {
     }
     if (ended || controller !== own) return;
     clearTimeout(staleTimer);
-    lost();
+    lost(retryAfterMs);
   }
 
   function onVisibility() {

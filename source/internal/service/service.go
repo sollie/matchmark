@@ -25,11 +25,11 @@ type Service struct {
 	emitSeq    int64
 	bus        *Broadcaster
 	snapMu     sync.Mutex
-	snaps      map[int64]cachedSnapshot
+	snaps      map[int64]*snapSlot
 }
 
 func New(repo *repository.Repository, opts ...Option) *Service {
-	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]cachedSnapshot{}}
+	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]*snapSlot{}}
 	for _, opt := range opts {
 		opt(s)
 	}
