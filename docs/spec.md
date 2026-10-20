@@ -28,7 +28,7 @@ Future: relays; Rifle; DNS-01 and other ACME challenge methods; CDN-hosted front
 
 ## Competition model
 
-- Competition: name, date, course of fire (150 default; 60 and 48/40 selectable; no partial courses), status draft/active/finished, spectator visibility flags.
+- Competition: name, date, course of fire (150 default; 60 and 48/40 selectable; no partial courses), status draft/active/finished, spectator visibility flags. A draft competition can be edited from its page (name, date and course); the course is locked once it has entries, and an active or finished competition cannot be edited.
 - Shooter: last name, first name, sex, country, club, optional WAID. Persistent. A shooter without a WAID is a new shooter.
 - Entry: shooter, category (Revolver, Pistol, Revolver OS, Pistol OS, Rifle), lane, withdrawn flag.
 - Stage per entry, created when the entry is added: expected shots, seven ring counts, locked state, scorer.
