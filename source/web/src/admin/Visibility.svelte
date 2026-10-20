@@ -13,7 +13,7 @@
     ["show_clubs", "Clubs"],
     ["show_countries", "Countries"],
     ["show_stage_scores", "Stage scores"],
-    ["show_ring_counts", "Ring counts"],
+    ["show_ring_counts", "X count"],
   ];
 
   let visibility = $state<Visibility | null>(null);
