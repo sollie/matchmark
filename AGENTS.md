@@ -23,6 +23,10 @@ Specification and decisions:
 
 - Git write operations (branch, commit, push, tag, etc.) are allowed. Use Conventional
   Commits messages. Never force-push or rewrite history on `main`.
+- Never commit or push directly to `main`. Do every change on a new branch (e.g.
+  `feat/...`, `fix/...`, `test/...`, `docs/...`) and open a pull request with `gh pr create`.
+  Reference the issue it closes (`Closes #N`). Do not merge your own PR unless the user
+  asks; leave it for review.
 - When working through a list of items (e.g. a code review or security review), complete
   one item, run all required checks, and commit it before starting the next item.
 - Never add comments to code. This is critical!
