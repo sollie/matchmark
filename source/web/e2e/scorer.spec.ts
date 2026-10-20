@@ -93,6 +93,22 @@ test.describe("pairing and scorer device", () => {
     );
   });
 
+  test("the admin entries refresh when a scorer locks a stage without reloading", async ({ adminPage: page, admin, openDevice }) => {
+    const { competition, entries } = await seedActive(admin, [1, 2]);
+    const pairing = await createPairing(admin, competition.id, 1);
+    await openCompetition(page, competition.id);
+    const lockedBadge = row(page, entries[1].shooter.last_name).getByText("Locked", { exact: true });
+    await expect(lockedBadge).toHaveCount(0);
+
+    const scorer = await openDevice(pairing.token);
+    await scorer.getByLabel("10 count", { exact: true }).fill("12");
+    await scorer.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(scorer.getByRole("status")).toHaveText("Saved");
+    await scorer.getByRole("button", { name: "Lock stage", exact: true }).click();
+
+    await expect(lockedBadge.first()).toBeVisible();
+  });
+
   test("revoking a pairing logs the device out on its next load", async ({ adminPage: page, admin, openDevice }) => {
     const { competition } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, competition.id, 1);
