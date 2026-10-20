@@ -8,6 +8,7 @@
   import Visibility from "./Visibility.svelte";
   import Entries from "./Entries.svelte";
   import Pairings from "./Pairings.svelte";
+  import CompetitionEdit from "./CompetitionEdit.svelte";
 
   type Competition = components["schemas"]["Competition"];
   type Shooter = components["schemas"]["Shooter"];
@@ -19,6 +20,7 @@
   let shooters = $state<Shooter[]>([]);
   let entries = $state<EntryWithStages[]>([]);
   let error = $state("");
+  let editing = $state(false);
 
   async function loadCompetition() {
     const result = await api.GET("/api/competitions/{competitionID}", { params: { path: { competitionID: id } } });
@@ -87,11 +89,25 @@
         {competition.status === "draft" ? "Start competition" : "Finish competition"}
       </button>
     {/if}
+    {#if competition.status === "draft" && !editing}
+      <button onclick={() => (editing = true)}>Edit competition</button>
+    {/if}
     <a href={`/api/competitions/${id}/results.xlsx`} download>Results report (.xlsx)</a>
     <a href={`/api/competitions/${id}/results.csv`} download>Detailed CSV</a>
     <button class="danger" onclick={remove}>Delete competition</button>
   </div>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if editing && competition.status === "draft"}
+    <CompetitionEdit
+      {competition}
+      hasEntries={entries.length > 0}
+      saved={(updated) => {
+        competition = updated;
+        editing = false;
+      }}
+      cancel={() => (editing = false)}
+    />
+  {/if}
 
   <Entries competitionId={id} {entries} {shooters} reload={loadEntries} />
   <Pairings competitionId={id} {entries} finished={competition.status === "finished"} />
