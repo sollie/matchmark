@@ -41,7 +41,7 @@
   const stageNumbers = $derived(entries[0]?.stages.map((s) => s.stage_number) ?? []);
   const shooterName = (id: number) => {
     const s = shooters.find((x) => x.id === id);
-    return s ? `${s.last_name}, ${s.first_name}` : `#${id}`;
+    return s ? `${s.first_name} ${s.last_name}` : `#${id}`;
   };
   const ordered = $derived([...entries].sort((a, b) => a.lane - b.lane || a.id - b.id));
   const path = (e: EntryWithStages) => ({ competitionID: competitionId, entryID: e.id });
@@ -133,7 +133,7 @@
       Shooter
       <select bind:value={shooterId} required>
         <option value={null} disabled>Select shooter</option>
-        {#each available as s (s.id)}<option value={s.id}>{s.last_name}, {s.first_name}</option>{/each}
+        {#each available as s (s.id)}<option value={s.id}>{s.first_name} {s.last_name}</option>{/each}
       </select>
     </label>
     <label>
@@ -176,18 +176,20 @@
             <td class="category">{entry.category}</td>
           {/if}
           {#each entry.stages as st (st.stage_number)}
-            <td class="stage" data-label={`Stage ${st.stage_number}`}>
+            <td class="stage" class:state-locked={st.locked} class:state-scored={!st.locked && st.shots_entered >= st.expected_shots} class:state-open={!st.locked && st.shots_entered < st.expected_shots} data-label={`Stage ${st.stage_number}`}>
               <div class="stage-cell">
-                {#if st.locked}
-                  <span class="badge success" title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
-                {:else if st.shots_entered >= st.expected_shots}
-                  <span class="badge info">Scored, not locked</span>
-                {:else}
-                  <span class="badge warning">Open</span>
-                {/if}
-                {#if st.locked || st.shots_entered > 0}
-                  <span class="score"><strong>{st.score}</strong> pts</span>
-                {/if}
+                <div class="stage-status">
+                  {#if st.locked}
+                    <span class="badge success" title={`Scored by lane ${st.scorer_lane ?? "?"} ${st.scorer_name ?? ""}`}>Locked</span>
+                  {:else if st.shots_entered >= st.expected_shots}
+                    <span class="badge info">Scored, not locked</span>
+                  {:else}
+                    <span class="badge warning">Open</span>
+                  {/if}
+                  {#if st.locked || st.shots_entered > 0}
+                    <span class="score"><strong>{st.score}</strong> pts</span>
+                  {/if}
+                </div>
                 {#if !st.locked && st.shots_entered > 0 && st.shots_entered < st.expected_shots}
                   <span class="muted">{st.shots_entered} / {st.expected_shots} shots</span>
                 {/if}
@@ -197,7 +199,7 @@
                   {:else}
                     <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Lock`} onclick={() => lock(entry, st.stage_number)}>Lock</button>
                   {/if}
-                  <button class="ghost" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Edit`} onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
+                  <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Edit`} onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
                 </span>
               </div>
             </td>
@@ -259,7 +261,8 @@
 
 <style>
   .add-form label { min-width: 0; }
-  .entries .stage-cell { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .entries .stage-cell { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+  .entries .stage-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .entries .stage-actions, .entries .entry-buttons { display: flex; flex-wrap: wrap; gap: var(--space-1); }
   .entries .entry-buttons .remove { margin-left: var(--space-3); }
   .entries .shooter { font-weight: 600; }
@@ -282,12 +285,18 @@
   .entries tbody tr { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
   .entries tbody tr:hover > td { background: transparent; }
   .entries td { padding: 0; border: 0; }
+  .entries tbody tr { --cols: 2; align-items: baseline; }
+  .entries tbody tr::after { content: ""; order: 3; flex: 0 0 100%; height: 0; }
   .entries .lane { order: 1; }
-  .entries .shooter { order: 2; flex: 1 1 8rem; }
+  .entries .shooter { order: 2; flex: 1 1 0; min-width: 0; font-size: var(--text-lg); }
   .entries .category { order: 3; color: var(--text-muted); }
   .entries .lane::before { content: "Lane "; color: var(--text-muted); font-weight: 600; }
   .entries .lane, .entries .category { align-self: center; }
-  .entries .stage { order: 4; flex: 1 1 11rem; padding: var(--space-2); background: var(--surface-alt); border-radius: var(--radius); }
+  .entries .stage { order: 4; flex: 0 0 calc((100% - (var(--cols) - 1) * var(--space-2)) / var(--cols)); box-sizing: border-box; padding: var(--space-2); background: var(--surface-alt); border-left: 4px solid var(--border); border-radius: var(--radius); }
+  .entries .stage.state-locked { background: var(--success-bg); border-left-color: var(--success-fg); }
+  .entries .stage.state-scored { background: var(--brand-tint); border-left-color: var(--link); }
+  .entries .stage.state-open { border-left-color: var(--warning-fg); }
+  .entries .stage.state-locked::before { color: var(--success-fg); }
   .entries .stage::before { content: attr(data-label); display: block; margin-bottom: var(--space-1); font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
   .entries .entry-actions { order: 5; flex: 1 1 100%; padding-top: var(--space-2); border-top: 1px solid var(--border); }
   .entries .entry-buttons { align-items: center; }
@@ -297,6 +306,8 @@
   .entries .empty { display: block; padding: 0; border: 1px dashed var(--border); border-radius: var(--radius-lg); }
   .entries .empty td { padding: var(--space-5); }
   .scroll { overflow: visible; border: 0; }
+  @media (min-width: 30rem) { .entries tbody tr { --cols: 3; } }
+  @media (min-width: 48rem) { .entries tbody tr { --cols: 5; } }
 
   @media (max-width: 47.99rem) {
     .add-form { flex-direction: column; align-items: stretch; }
