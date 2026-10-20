@@ -39,6 +39,8 @@
     <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}>Shooters</a>
     {#if admin.isAdmin}
       <a href="/admin/users" aria-current={activeSection === "users" ? "page" : undefined}>Users</a>
+    {/if}
+    {#if admin.isAdmin && admin.canDownloadBackup}
       <a href="/api/admin/backup" download>Backup</a>
     {/if}
     <a href="/admin/password" aria-current={router.path === "/admin/password" ? "page" : undefined}>Change password</a>

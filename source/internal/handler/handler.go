@@ -40,6 +40,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.With(h.RequireAdmin).Post("/users/{userID}/reactivate", h.reactivateUser)
 			r.With(h.RequireAdmin).Post("/users/{userID}/reset-password", h.resetUserPassword)
 			r.With(h.RequireAdmin).Put("/users/{userID}/role", h.setUserRole)
+			r.With(h.RequireAdmin).Put("/users/{userID}/backup-permission", h.setBackupPermission)
 		}
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
@@ -71,6 +72,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusUnprocessableEntity, "invalid input"
 	case errors.Is(err, service.ErrInvalidUsername), errors.Is(err, service.ErrWeakPassword):
 		status, msg = http.StatusUnprocessableEntity, err.Error()
+	case errors.Is(err, service.ErrBackupNotPermitted):
+		status, msg = http.StatusForbidden, "backup_not_permitted"
 	case errors.Is(err, service.ErrLastAdmin):
 		status, msg = http.StatusConflict, err.Error()
 	case errors.Is(err, service.ErrConflict):

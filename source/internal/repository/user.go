@@ -163,6 +163,11 @@ func (r *Repository) SetActive(userID int, active bool) error {
 	return mapErr(tx.Commit())
 }
 
+func (r *Repository) SetCanDownloadBackup(userID int, allowed bool) error {
+	_, err := r.db.Exec(`UPDATE users SET can_download_backup = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, allowed, userID)
+	return mapErr(err)
+}
+
 func (r *Repository) SetRole(userID int, role string) error {
 	tx, err := r.db.Begin()
 	if err != nil {

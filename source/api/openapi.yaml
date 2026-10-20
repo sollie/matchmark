@@ -108,7 +108,7 @@ paths:
     get:
       operationId: adminBackup
       tags: [admin-auth]
-      summary: Download a consistent backup of the database
+      summary: Download a consistent backup of the database (admins with the backup permission only)
       security:
         - adminCookie: []
       responses:
@@ -121,6 +121,12 @@ paths:
                 format: binary
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin with the backup permission (error is backup_not_permitted), or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/users:
     get:
       operationId: listUsers
@@ -310,6 +316,40 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/backup-permission:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    put:
+      operationId: setUserBackupPermission
+      tags: [users]
+      summary: Allow or forbid an admin to download backups; refused for regular users (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetBackupPermissionRequest'
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/Invalid'
   /api/shooters:
@@ -1418,12 +1458,14 @@ components:
           maxLength: 128
     SessionUser:
       type: object
-      required: [username, role]
+      required: [username, role, can_download_backup]
       properties:
         username:
           type: string
         role:
           $ref: '#/components/schemas/UserRole'
+        can_download_backup:
+          type: boolean
     UserRole:
       type: string
       enum: [admin, user]
@@ -1457,6 +1499,12 @@ components:
       properties:
         role:
           $ref: '#/components/schemas/UserRole'
+    SetBackupPermissionRequest:
+      type: object
+      required: [can_download_backup]
+      properties:
+        can_download_backup:
+          type: boolean
     CreateUserRequest:
       type: object
       required: [username, role, password]

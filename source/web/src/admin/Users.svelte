@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
+  import { refreshAdminSession } from "../lib/session.svelte";
   import type { components } from "../lib/api/schema";
 
   type User = components["schemas"]["User"];
@@ -60,6 +61,12 @@
       `User ${u.username} ${active ? "reactivated" : "deactivated"}.`,
     );
 
+  const setBackup = (u: User, allowed: boolean) =>
+    act(
+      api.PUT("/api/users/{userID}/backup-permission", { params: { path: { userID: u.id } }, body: { can_download_backup: allowed } }),
+      `Backup download ${allowed ? "allowed" : "forbidden"} for ${u.username}.`,
+    ).then(refreshAdminSession);
+
   const setRole = (u: User, next: Role) =>
     act(
       api.PUT("/api/users/{userID}/role", { params: { path: { userID: u.id } }, body: { role: next } }),
@@ -109,7 +116,7 @@
 <div class="card scroll">
   <table>
     <thead>
-      <tr><th>Username</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+      <tr><th>Username</th><th>Role</th><th>Status</th><th>Backup</th><th>Actions</th></tr>
     </thead>
     <tbody>
       {#each users as u (u.id)}
@@ -117,6 +124,7 @@
           <td>{u.username}</td>
           <td>{u.role === "admin" ? "Admin" : "User"}</td>
           <td>{!u.active ? "Deactivated" : u.must_change_password ? "Must change password" : "Active"}</td>
+          <td>{u.role !== "admin" ? "-" : u.can_download_backup ? "Allowed" : "Not allowed"}</td>
           <td>
             {#if resetFor === u.id}
               <form class="row" onsubmit={(e) => reset(e, u)}>
@@ -132,6 +140,11 @@
               <button type="button" onclick={() => setRole(u, u.role === "admin" ? "user" : "admin")}>
                 {u.role === "admin" ? "Make user" : "Make admin"}
               </button>
+              {#if u.role === "admin"}
+                <button type="button" onclick={() => setBackup(u, !u.can_download_backup)}>
+                  {u.can_download_backup ? "Forbid backup" : "Allow backup"}
+                </button>
+              {/if}
               <button type="button" onclick={() => { resetFor = u.id; resetPassword = ""; }}>Reset password</button>
             {/if}
           </td>

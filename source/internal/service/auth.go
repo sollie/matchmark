@@ -49,6 +49,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrUnauthenticated    = errors.New("unauthenticated")
 	ErrTooManyAttempts    = errors.New("too many login attempts")
+	ErrBackupNotPermitted = errors.New("backup download is not permitted for this admin")
 	ErrLastAdmin          = errors.New("the last active admin cannot be demoted or deactivated")
 
 	usernamePattern = regexp.MustCompile(`^[a-z0-9._-]{3,32}$`)
@@ -224,6 +225,22 @@ func (a *Auth) SetRole(id int, role string) (User, error) {
 		}
 	}
 	if err := a.repo.SetRole(id, role); err != nil {
+		return User{}, err
+	}
+	return a.repo.UserByID(id)
+}
+
+func (a *Auth) SetCanDownloadBackup(id int, allowed bool) (User, error) {
+	a.adminMu.Lock()
+	defer a.adminMu.Unlock()
+	user, err := a.lifecycleUser(id)
+	if err != nil {
+		return User{}, err
+	}
+	if user.Role != RoleAdmin {
+		return User{}, ErrInvalid
+	}
+	if err := a.repo.SetCanDownloadBackup(id, allowed); err != nil {
 		return User{}, err
 	}
 	return a.repo.UserByID(id)

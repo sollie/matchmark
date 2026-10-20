@@ -129,7 +129,7 @@ func (h *Handler) adminLogout(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) adminSession(w http.ResponseWriter, r *http.Request) {
 	u := currentUser(r)
-	writeJSON(w, http.StatusOK, map[string]string{"username": u.Username, "role": u.Role})
+	writeJSON(w, http.StatusOK, map[string]any{"username": u.Username, "role": u.Role, "can_download_backup": u.CanDownloadBackup})
 }
 
 func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {

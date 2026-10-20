@@ -79,7 +79,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download a consistent backup of the database */
+        /** Download a consistent backup of the database (admins with the backup permission only) */
         get: operations["adminBackup"];
         put?: never;
         post?: never;
@@ -176,6 +176,25 @@ export interface paths {
         get?: never;
         /** Promote to admin or demote to user; demotion ends sessions and the last active admin is refused (admin only) */
         put: operations["setUserRole"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{userID}/backup-permission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Allow or forbid an admin to download backups; refused for regular users (admin only) */
+        put: operations["setUserBackupPermission"];
         post?: never;
         delete?: never;
         options?: never;
@@ -732,6 +751,7 @@ export interface components {
         SessionUser: {
             username: string;
             role: components["schemas"]["UserRole"];
+            can_download_backup: boolean;
         };
         /** @enum {string} */
         UserRole: "admin" | "user";
@@ -748,6 +768,9 @@ export interface components {
         };
         SetRoleRequest: {
             role: components["schemas"]["UserRole"];
+        };
+        SetBackupPermissionRequest: {
+            can_download_backup: boolean;
         };
         CreateUserRequest: {
             username: string;
@@ -1087,6 +1110,15 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            /** @description The caller is not an admin with the backup permission (error is backup_not_permitted), or must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     listUsers: {
@@ -1308,6 +1340,44 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    setUserBackupPermission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBackupPermissionRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The caller is not an admin, or must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            404: components["responses"]["NotFound"];
             422: components["responses"]["Invalid"];
         };
     };

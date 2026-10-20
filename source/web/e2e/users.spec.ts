@@ -56,6 +56,36 @@ test.describe("user management", () => {
     await expect(page.getByText("Only admins can manage users.")).toBeVisible();
   });
 
+  test("an admin grants and revokes the backup permission and the Backup link follows", async ({ adminPage: page, baseURL }) => {
+    const username = newUsername();
+    await page.getByRole("link", { name: "Users" }).click();
+    await page.getByLabel("New username").fill(username);
+    await page.getByLabel("Role").selectOption("admin");
+    await page.getByLabel("Temporary password").fill(temporaryPassword);
+    await page.getByRole("button", { name: "Create user" }).click();
+    await expect(row(page, username)).toContainText("Not allowed");
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await signInViaUi(page, temporaryPassword, username);
+    await page.getByLabel("Current password").fill(temporaryPassword);
+    await page.getByLabel("New password", { exact: true }).fill(chosenPassword);
+    await page.getByLabel("Confirm new password").fill(chosenPassword);
+    await page.getByRole("button", { name: "Change password" }).click();
+    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Backup" })).toHaveCount(0);
+    expect((await page.request.get("/api/admin/backup")).status()).toBe(403);
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await signInViaUi(page);
+    await page.getByRole("link", { name: "Users" }).click();
+    await row(page, username).getByRole("button", { name: "Allow backup" }).click();
+    await expect(row(page, username)).toContainText("Allowed");
+    await expect(row(page, username).getByRole("button", { name: "Forbid backup" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Backup" })).toBeVisible();
+    await row(page, username).getByRole("button", { name: "Forbid backup" }).click();
+    await expect(row(page, username)).toContainText("Not allowed");
+  });
+
   test("a regular user can create a shooter", async ({ admin, baseURL }) => {
     const username = newUsername();
     const created = await admin.post("/api/users", { data: { username, role: "user", password: temporaryPassword } });

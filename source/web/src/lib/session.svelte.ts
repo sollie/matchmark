@@ -6,12 +6,14 @@ export const admin = $state<{
   mustChangePassword: boolean;
   username: string;
   isAdmin: boolean;
+  canDownloadBackup: boolean;
 }>({
   checked: false,
   authed: false,
   mustChangePassword: false,
   username: "",
   isAdmin: false,
+  canDownloadBackup: false,
 });
 
 export async function refreshAdminSession(): Promise<void> {
@@ -20,6 +22,7 @@ export async function refreshAdminSession(): Promise<void> {
   admin.authed = response.ok || admin.mustChangePassword;
   admin.username = data?.username ?? "";
   admin.isAdmin = data?.role === "admin";
+  admin.canDownloadBackup = data?.can_download_backup ?? false;
   admin.checked = true;
 }
 
@@ -28,6 +31,7 @@ function clear(): void {
   admin.mustChangePassword = false;
   admin.username = "";
   admin.isAdmin = false;
+  admin.canDownloadBackup = false;
 }
 
 export function markLoggedOut(): void {

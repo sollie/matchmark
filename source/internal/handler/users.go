@@ -119,3 +119,24 @@ func (h *Handler) setUserRole(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, toUserResponse(u))
 }
+
+func (h *Handler) setBackupPermission(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "userID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	var body struct {
+		CanDownloadBackup bool `json:"can_download_backup"`
+	}
+	if err := decode(r, &body); err != nil {
+		writeError(w, err)
+		return
+	}
+	u, err := h.auth.SetCanDownloadBackup(int(id), body.CanDownloadBackup)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toUserResponse(u))
+}
