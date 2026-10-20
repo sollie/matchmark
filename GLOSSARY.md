@@ -68,6 +68,9 @@ _Avoid_: String, round
 The recorded ring value of one shot.
 _Avoid_: Shot result
 
+**X count**:
+The number of inner-ten (X) hits across an entry's stages. It breaks ties in the ranking and is the spectator column the visibility setting of the same name shows or hides.
+
 **Lock**:
 The scorer's confirmation that a stage's hits are final.
 _Avoid_: Submit, sign-off

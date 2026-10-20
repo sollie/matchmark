@@ -262,9 +262,9 @@ test.describe("competitions", () => {
 
     const visibility = section(page, "Spectator visibility");
     await expect(visibility.getByLabel("Clubs")).toBeChecked();
-    await expect(visibility.getByLabel("Ring counts")).not.toBeChecked();
+    await expect(visibility.getByLabel("X count")).not.toBeChecked();
     await visibility.getByLabel("Clubs").uncheck();
-    await visibility.getByLabel("Ring counts").check();
+    await visibility.getByLabel("X count").check();
     await visibility.getByRole("button", { name: "Save" }).click();
     await expect(visibility.getByRole("status")).toHaveText("Saved");
 
@@ -274,6 +274,6 @@ test.describe("competitions", () => {
     await expect(reloaded.getByLabel("Clubs")).not.toBeChecked();
     await expect(reloaded.getByLabel("Countries")).toBeChecked();
     await expect(reloaded.getByLabel("Stage scores")).toBeChecked();
-    await expect(reloaded.getByLabel("Ring counts")).toBeChecked();
+    await expect(reloaded.getByLabel("X count")).toBeChecked();
   });
 });
