@@ -2,8 +2,9 @@ import { createCompetition, expect, openCompetition, row, section, seedEntry, te
 
 test.describe("course shot counts", () => {
   test("every stage of every course demands its expected shots", async ({ courses, adminPage: page, admin }) => {
-    expect(Object.keys(courses)).toHaveLength(4);
-    for (const course of Object.values(courses)) {
+    test.slow();
+    expect(courses).toHaveLength(4);
+    for (const course of courses) {
       await test.step(`${course.key}-shot course`, async () => {
         const competition = await createCompetition(admin, { course: course.key, status: "active" });
         const entry = await seedEntry(admin, competition.id, 1);

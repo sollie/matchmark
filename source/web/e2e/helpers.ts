@@ -37,18 +37,26 @@ interface RulebookResponse {
   courses: { key: string; label: string; stages: { expected_shots: number }[] }[];
 }
 
-let rulebook: Promise<Record<string, Course>> | undefined;
+let rulebook: Promise<Course[]> | undefined;
 
-async function fetchCourses(baseURL: string): Promise<Record<string, Course>> {
-  const api = await newApi(baseURL);
-  try {
-    const body = await checked<RulebookResponse>(await api.get("/api/rulebook"), "get rulebook");
-    return Object.fromEntries(
-      body.courses.map((c) => [c.key, { key: c.key, label: c.label, stages: c.stages.length, stageOneShots: c.stages[0].expected_shots, stageShots: c.stages.map((st) => st.expected_shots) }]),
-    );
-  } finally {
-    await api.dispose();
-  }
+async function fetchCourses(api: APIRequestContext): Promise<Course[]> {
+  const body = await checked<RulebookResponse>(await api.get("/api/rulebook"), "get rulebook");
+  return body.courses.map((c) => ({
+    key: c.key,
+    label: c.label,
+    stages: c.stages.length,
+    stageOneShots: c.stages[0].expected_shots,
+    stageShots: c.stages.map((st) => st.expected_shots),
+  }));
+}
+
+export async function loadCourses(api: APIRequestContext): Promise<Course[]> {
+  rulebook ??= fetchCourses(api);
+  return rulebook;
+}
+
+export async function defaultCourse(api: APIRequestContext): Promise<Course> {
+  return (await loadCourses(api))[0];
 }
 
 export function uniqueName(prefix: string): string {
@@ -118,7 +126,8 @@ export async function createCompetition(
   seed: { name?: string; date?: string; course?: string; status?: CompetitionStatus } = {},
 ) {
   const { status, ...rest } = seed;
-  const competition = { name: uniqueName("Competition"), date: todayIso(), course: "150", ...rest };
+  const course = (await defaultCourse(api)).key;
+  const competition = { name: uniqueName("Competition"), date: todayIso(), course, ...rest };
   const { id } = await checked<{ id: number }>(
     await api.post("/api/competitions", { data: competition }),
     "create competition",
@@ -220,7 +229,8 @@ export async function openCompetition(page: Page, id: number) {
 }
 
 interface Fixtures {
-  courses: Record<string, Course>;
+  courses: Course[];
+  course: Course;
   admin: APIRequestContext;
   adminPage: Page;
   openDevice: (token: string) => Promise<Page>;
@@ -231,9 +241,11 @@ export const test = base.extend<Fixtures>({
     await page.setExtraHTTPHeaders({ "X-Forwarded-For": uniqueClientIp() });
     await use(page);
   },
-  courses: async ({ baseURL }, use) => {
-    rulebook ??= fetchCourses(baseURL!);
-    await use(await rulebook);
+  courses: async ({ admin }, use) => {
+    await use(await loadCourses(admin));
+  },
+  course: async ({ admin }, use) => {
+    await use(await defaultCourse(admin));
   },
   admin: async ({ baseURL }, use) => {
     const api = await adminApi(baseURL!);

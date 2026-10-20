@@ -6,8 +6,8 @@ function addForm(page: Page) {
 }
 
 test.describe("entries", () => {
-  test("adding an entry uses the chosen category and the default lane", async ({ courses, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { course: courses["60"].key });
+  test("adding an entry uses the chosen category and the default lane", async ({ course, adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
     await seedEntry(admin, competition.id, 1);
     const shooter = await createShooter(admin);
     await openCompetition(page, competition.id);
@@ -24,8 +24,8 @@ test.describe("entries", () => {
     await expect(added.locator("td.category")).toHaveText("Pistol");
   });
 
-  test("a taken lane is rejected and an entered shooter is not offered again", async ({ courses, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { course: courses["60"].key });
+  test("a taken lane is rejected and an entered shooter is not offered again", async ({ course, adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
     const taken = await seedEntry(admin, competition.id, 1);
     const other = await createShooter(admin);
     await openCompetition(page, competition.id);
@@ -43,8 +43,8 @@ test.describe("entries", () => {
     await expect(shooterSelect.locator("option", { hasText: other.last_name })).toHaveCount(1);
   });
 
-  test("an entry can be moved, withdrawn and removed", async ({ courses, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { course: courses["60"].key });
+  test("an entry can be moved, withdrawn and removed", async ({ course, adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
     const entry = await seedEntry(admin, competition.id, 1);
     await openCompetition(page, competition.id);
     page.on("dialog", (dialog) => dialog.accept());
@@ -67,14 +67,14 @@ test.describe("entries", () => {
 });
 
 test.describe("admin ring counts", () => {
-  test("a live shot total flags a wrong total and the save is rejected", async ({ courses, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { course: courses["60"].key, status: "active" });
+  test("a live shot total flags a wrong total and the save is rejected", async ({ course, adminPage: page, admin }) => {
+    const competition = await createCompetition(admin, { status: "active" });
     const entry = await seedEntry(admin, competition.id, 1);
     await openCompetition(page, competition.id);
 
     await row(page, entry.shooter.last_name).locator("td.stage").first().getByRole("button", { name: "Stage 1: Edit" }).click();
     const counts = page.locator(".counts");
-    await expect(counts).toContainText(`must sum to ${courses["60"].stageOneShots} shots`);
+    await expect(counts).toContainText(`must sum to ${course.stageOneShots} shots`);
 
     await counts.getByLabel("10", { exact: true }).fill("5");
     await counts.getByLabel("9", { exact: true }).fill("4");
@@ -91,8 +91,8 @@ test.describe("admin ring counts", () => {
     await expect(counts.locator(".total")).toContainText("Shots match");
   });
 
-  test("save and lock records the stage as locked by Admin and unlock reopens it", async ({ courses, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { course: courses["60"].key, status: "active" });
+  test("save and lock records the stage as locked by Admin and unlock reopens it", async ({ course, adminPage: page, admin }) => {
+    const competition = await createCompetition(admin, { status: "active" });
     const entry = await seedEntry(admin, competition.id, 1);
     await openCompetition(page, competition.id);
 
@@ -120,17 +120,17 @@ test.describe("admin ring counts", () => {
     await expect(stage.getByText("Locked", { exact: true })).toHaveCount(0);
   });
 
-  test("an admin overwrite replaces the counts of a stage that already has them", async ({ courses, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { course: courses["60"].key, status: "active" });
+  test("an admin overwrite replaces the counts of a stage that already has them", async ({ course, adminPage: page, admin }) => {
+    const competition = await createCompetition(admin, { status: "active" });
     const entry = await seedEntry(admin, competition.id, 1);
-    await setCounts(admin, competition.id, entry.entryId, 1, { "10": courses["60"].stageOneShots }, true);
+    await setCounts(admin, competition.id, entry.entryId, 1, { "10": course.stageOneShots }, true);
     await openCompetition(page, competition.id);
 
     const stage = row(page, entry.shooter.last_name).locator("td.stage").first();
     await expect(stage.locator(".score strong")).toHaveText("120");
     await stage.getByRole("button", { name: "Stage 1: Edit" }).click();
     const counts = page.locator(".counts");
-    await counts.getByLabel("9", { exact: true }).fill(String(courses["60"].stageOneShots));
+    await counts.getByLabel("9", { exact: true }).fill(String(course.stageOneShots));
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
     await expect(counts).toHaveCount(0);
