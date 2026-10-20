@@ -16,7 +16,7 @@ test.describe("pairing and scorer device", () => {
     await openCompetition(page, competition.id);
 
     const pairing = section(page, "Scorer pairing");
-    await pairing.getByLabel("Pairing lane").selectOption({ label: "Lane 1" });
+    await page.getByLabel("Pairing lane").selectOption({ label: "Lane 1" });
     await pairing.getByRole("button", { name: "Create pairing link" }).click();
     await expect(pairing.getByRole("img", { name: "QR code pairing lane 1" })).toBeVisible();
     const link = await pairing.getByLabel("Pairing link").inputValue();

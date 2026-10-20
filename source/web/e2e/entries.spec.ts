@@ -13,7 +13,7 @@ test.describe("entries", () => {
     await openCompetition(page, competition.id);
 
     const form = addForm(page);
-    await expect(form.getByLabel("Entry lane")).toHaveValue("2");
+    await expect(page.getByLabel("Entry lane")).toHaveValue("2");
     await form.getByLabel("Shooter").selectOption({ label: `${shooter.last_name}, ${shooter.first_name}` });
     await form.getByLabel("Entry category").selectOption("Pistol");
     await form.getByRole("button", { name: "Add entry" }).click();
@@ -35,7 +35,7 @@ test.describe("entries", () => {
     await expect(shooterSelect.locator("option", { hasText: taken.shooter.last_name })).toHaveCount(0);
 
     await shooterSelect.selectOption({ label: `${other.last_name}, ${other.first_name}` });
-    await form.getByLabel("Entry lane").fill("1");
+    await page.getByLabel("Entry lane").fill("1");
     await form.getByRole("button", { name: "Add entry" }).click();
 
     await expect(section(page, "Entries and progress").getByRole("alert")).toHaveText("conflict");
