@@ -1,47 +1,27 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import {
-  adminApi,
+  allCourses,
+  courses,
   createCompetition,
   createPairing,
   createShooter,
+  expect,
+  openCompetition,
   row,
   section,
   seedEntry,
-  signInViaUi,
+  test,
   todayIso,
-  uniqueClientIp,
   uniqueName,
 } from "./helpers";
 
-const courses = [
-  { label: "150 shots (WA1500)", key: "150", stages: 10 },
-  { label: "60 shots", key: "60", stages: 4 },
-  { label: "48 shots", key: "48", stages: 4 },
-  { label: "40 shots (5-shot revolver)", key: "40", stages: 4 },
-];
-
 test.describe("competitions", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.setExtraHTTPHeaders({ "X-Forwarded-For": uniqueClientIp() });
-  });
-
-  async function signedIn(page: Page, baseURL: string) {
-    await signInViaUi(page);
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
-    return adminApi(baseURL);
-  }
-
-  async function openCompetition(page: Page, id: number) {
-    await page.goto(`/admin/competitions/${id}`);
-  }
-
   function stageHeaders(page: Page) {
     return section(page, "Entries and progress").getByRole("columnheader", { name: /^S\d+$/ });
   }
 
-  for (const course of courses) {
-    test(`creating a ${course.key}-shot competition shows ${course.stages} stage columns`, async ({ page, baseURL }) => {
-      const api = await signedIn(page, baseURL!);
+  for (const course of allCourses) {
+    test(`creating a ${course.key}-shot competition shows ${course.stages} stage columns`, async ({ adminPage: page, admin }) => {
       const name = uniqueName(`Course ${course.key}`);
 
       await page.getByLabel("Name").fill(name);
@@ -53,17 +33,15 @@ test.describe("competitions", () => {
       await expect(page.getByText("draft", { exact: true })).toBeVisible();
 
       const id = Number(page.url().split("/").pop());
-      await seedEntry(api, id, 1);
+      await seedEntry(admin, id, 1);
       await openCompetition(page, id);
       await expect(stageHeaders(page)).toHaveCount(course.stages);
       await expect(stageHeaders(page).first()).toHaveText("S1");
       await expect(stageHeaders(page).last()).toHaveText(`S${course.stages}`);
-      await api.dispose();
     });
   }
 
-  test("the date is prefilled in ISO 8601 and an invalid date is blocked", async ({ page, baseURL }) => {
-    const api = await signedIn(page, baseURL!);
+  test("the date is prefilled in ISO 8601 and an invalid date is blocked", async ({ adminPage: page }) => {
     const name = uniqueName("Bad date");
 
     await expect(page.getByLabel("Date")).toHaveValue(todayIso());
@@ -79,31 +57,29 @@ test.describe("competitions", () => {
     await page.getByRole("button", { name: "Create competition" }).click();
     await expect(page.getByRole("heading", { name })).toBeVisible();
     await expect(page.getByText("2026-10-19")).toBeVisible();
-    await api.dispose();
   });
 
-  test("the list shows each competition with its status", async ({ page, baseURL }) => {
-    const api = await adminApi(baseURL!);
-    const draft = await createCompetition(api, { name: uniqueName("Listed draft"), date: "2026-03-01" });
-    const active = await createCompetition(api, {
+  test("the list shows each competition with its status", async ({ adminPage: page, admin }) => {
+    const draft = await createCompetition(admin, { name: uniqueName("Listed draft"), date: "2026-03-01" });
+    const active = await createCompetition(admin, {
       name: uniqueName("Listed active"),
       date: "2026-03-02",
-      course: "60",
+      course: courses.sixty.key,
       status: "active",
     });
-    const finished = await createCompetition(api, {
+    const finished = await createCompetition(admin, {
       name: uniqueName("Listed finished"),
       date: "2026-03-03",
-      course: "48",
+      course: courses.fortyEight.key,
       status: "finished",
     });
 
-    await signInViaUi(page);
+    await page.goto("/admin");
     const table = page.getByRole("table");
     const expectations = [
-      { c: draft, status: "draft", course: "150 shots (WA1500)" },
-      { c: active, status: "active", course: "60 shots" },
-      { c: finished, status: "finished", course: "48 shots" },
+      { c: draft, status: "draft", course: courses.wa1500.label },
+      { c: active, status: "active", course: courses.sixty.label },
+      { c: finished, status: "finished", course: courses.fortyEight.label },
     ];
     for (const { c, status, course } of expectations) {
       const r = row(page, c.name);
@@ -117,14 +93,10 @@ test.describe("competitions", () => {
 
     await row(page, active.name).getByRole("link").click();
     await expect(page.getByRole("heading", { name: active.name })).toBeVisible();
-    await api.dispose();
   });
 
-  test("start and finish ask for confirmation and declining changes nothing", async ({ page, baseURL }) => {
-    const api = await adminApi(baseURL!);
-    const competition = await createCompetition(api);
-    await signInViaUi(page);
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+  test("start and finish ask for confirmation and declining changes nothing", async ({ adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
     await openCompetition(page, competition.id);
     await expect(page.getByRole("heading", { name: competition.name })).toBeVisible();
 
@@ -158,19 +130,15 @@ test.describe("competitions", () => {
       expect.stringContaining("Finish this competition?"),
       expect.stringContaining("Finish this competition?"),
     ]);
-    await api.dispose();
   });
 
-  test("a finished competition shows revoked pairings and refuses new entries", async ({ page, baseURL }) => {
-    const api = await adminApi(baseURL!);
-    const competition = await createCompetition(api, { status: "active" });
-    await seedEntry(api, competition.id, 1);
-    await seedEntry(api, competition.id, 2);
-    await createPairing(api, competition.id, 1);
-    const extra = await createShooter(api);
+  test("a finished competition shows revoked pairings and refuses new entries", async ({ adminPage: page, admin }) => {
+    const competition = await createCompetition(admin, { status: "active" });
+    await seedEntry(admin, competition.id, 1);
+    await seedEntry(admin, competition.id, 2);
+    await createPairing(admin, competition.id, 1);
+    const extra = await createShooter(admin);
 
-    await signInViaUi(page);
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
     await openCompetition(page, competition.id);
     const pairings = section(page, "Scorer pairing");
     await expect(pairings.getByRole("row", { name: /paired/ })).toHaveCount(1);
@@ -188,16 +156,12 @@ test.describe("competitions", () => {
     await entries.getByLabel("Shooter").selectOption({ label: `${extra.last_name}, ${extra.first_name}` });
     await entries.getByLabel("Lane").fill("3");
     await entries.getByRole("button", { name: "Add entry" }).click();
-    await expect(entries.getByRole("alert")).toBeVisible();
+    await expect(entries.getByRole("alert")).toHaveText("conflict");
     await expect(row(page, extra.last_name)).toHaveCount(0);
-    await api.dispose();
   });
 
-  test("deleting a competition requires confirmation", async ({ page, baseURL }) => {
-    const api = await adminApi(baseURL!);
-    const competition = await createCompetition(api);
-    await signInViaUi(page);
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+  test("deleting a competition requires confirmation", async ({ adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
     await openCompetition(page, competition.id);
 
     page.once("dialog", (dialog) => dialog.dismiss());
@@ -212,14 +176,10 @@ test.describe("competitions", () => {
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
     await expect(row(page, competition.name)).toHaveCount(0);
-    await api.dispose();
   });
 
-  test("visibility flags persist after saving and reloading", async ({ page, baseURL }) => {
-    const api = await adminApi(baseURL!);
-    const competition = await createCompetition(api, { status: "active" });
-    await signInViaUi(page);
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+  test("visibility flags persist after saving and reloading", async ({ adminPage: page, admin }) => {
+    const competition = await createCompetition(admin, { status: "active" });
     await openCompetition(page, competition.id);
 
     const visibility = section(page, "Spectator visibility");
@@ -237,6 +197,5 @@ test.describe("competitions", () => {
     await expect(reloaded.getByLabel("Countries")).toBeChecked();
     await expect(reloaded.getByLabel("Stage scores")).toBeChecked();
     await expect(reloaded.getByLabel("Ring counts")).toBeChecked();
-    await api.dispose();
   });
 });

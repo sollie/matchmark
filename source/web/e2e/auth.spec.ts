@@ -1,11 +1,6 @@
-import { expect, test } from "@playwright/test";
-import { adminPassword, newApi, signInViaUi, uniqueClientIp } from "./helpers";
+import { adminPassword, expect, newApi, signInViaUi, test } from "./helpers";
 
 test.describe("auth", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.setExtraHTTPHeaders({ "X-Forwarded-For": uniqueClientIp() });
-  });
-
   test("a wrong password shows an error and a correct one signs in", async ({ page }) => {
     await signInViaUi(page, "wrong-password-value");
     await expect(page.getByRole("alert")).toBeVisible();
@@ -35,9 +30,8 @@ test.describe("auth", () => {
     await other.dispose();
   });
 
-  test("sign out ends the session and admin pages show the sign-in form", async ({ page }) => {
-    await signInViaUi(page);
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+  test("sign out ends the session and admin pages show the sign-in form", async ({ adminPage: page }) => {
+    expect((await page.request.get("/api/shooters")).status()).toBe(200);
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
@@ -47,6 +41,7 @@ test.describe("auth", () => {
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Competitions" })).toHaveCount(0);
+    expect((await page.request.get("/api/shooters")).status()).toBe(401);
   });
 
   test("unauthenticated admin API calls return 401", async ({ baseURL }) => {

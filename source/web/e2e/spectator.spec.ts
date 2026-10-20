@@ -1,29 +1,28 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import {
-  adminApi,
   addEntry,
+  courses,
   createCompetition,
   createShooter,
+  expect,
   newApi,
   row,
   setCounts,
   setStatus,
   setVisibility,
+  test,
   uniqueName,
 } from "./helpers";
-
-const refresh = { timeout: 20_000 };
 
 async function openCompetition(page: Page, name: string) {
   await page.goto("/");
   const option = page.locator("select option").filter({ hasText: name });
-  await expect(option).toHaveCount(1, refresh);
+  await expect(option).toHaveCount(1);
   const value = await option.getAttribute("value");
   await page.getByLabel("Competition").selectOption(value!);
 }
 
-async function seedScored(finish = false) {
-  const api = await adminApi(test.info().project.use.baseURL!);
+async function seedScored(api: APIRequestContext, finish = false) {
   const competition = await createCompetition(api, { name: uniqueName("Spectator"), status: "active" });
   await setVisibility(api, competition.id, {});
   const club = uniqueName("Club");
@@ -45,17 +44,17 @@ async function seedScored(finish = false) {
     entries.push({ lane: plan.lane, ...shooters[i] });
   }
   if (finish) await setStatus(api, competition.id, "finished");
-  return { api, competition, entries };
+  return { competition, entries };
 }
 
 test.describe("spectator", () => {
-  test("standings are ranked by total then X count with stage progress", async ({ page }) => {
-    const { api, competition, entries } = await seedScored();
+  test("standings are ranked by total then X count with stage progress", async ({ page, admin }) => {
+    const { competition, entries } = await seedScored(admin);
     await openCompetition(page, competition.name);
 
     const table = page.getByRole("table");
     const byLane = (lane: number) => row(page, entries[lane - 1].last_name);
-    await expect(byLane(2)).toBeVisible(refresh);
+    await expect(byLane(2)).toBeVisible();
     await expect(byLane(2).getByRole("cell").first()).toHaveText("1");
     await expect(byLane(4).getByRole("cell").first()).toHaveText("1");
     await expect(byLane(1).getByRole("cell").first()).toHaveText("3");
@@ -69,77 +68,87 @@ test.describe("spectator", () => {
     await expect(rows.last()).toContainText(entries[2].last_name);
 
     const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
-    await expect(progress.getByText("2/4 locked")).toBeVisible(refresh);
-    await api.dispose();
+    await expect(progress.getByText("2/4 locked")).toBeVisible();
   });
 
-  test("draft competitions are hidden and finished ones keep results", async ({ page }) => {
-    const { api, competition: active, entries } = await seedScored(true);
-    const draft = await createCompetition(api, { name: uniqueName("Hidden draft") });
+  test("draft competitions are hidden and finished ones keep results", async ({ page, admin }) => {
+    const { competition: active, entries } = await seedScored(admin, true);
+    const draft = await createCompetition(admin, { name: uniqueName("Hidden draft") });
 
     await page.goto("/");
-    await expect(page.locator("select option").filter({ hasText: active.name })).toHaveCount(1, refresh);
+    await expect(page.locator("select option").filter({ hasText: active.name })).toHaveCount(1);
     await expect(page.locator("select option").filter({ hasText: draft.name })).toHaveCount(0);
 
     await openCompetition(page, active.name);
     await expect(page.locator("select option").filter({ hasText: active.name })).toContainText("finished");
-    await expect(row(page, entries[0].last_name)).toBeVisible(refresh);
+    await expect(row(page, entries[0].last_name)).toBeVisible();
     await expect(row(page, entries[1].last_name)).toBeVisible();
-    await api.dispose();
   });
 
-  test("each visibility flag hides its fields", async ({ page }) => {
-    const { api, competition, entries } = await seedScored();
+  test("each visibility flag hides its fields and values", async ({ page, admin }) => {
+    const { competition, entries } = await seedScored(admin);
     const shooter = entries[1];
+    const winnerCells = (shown: { names?: boolean; clubs?: boolean; countries?: boolean; stage?: boolean; x?: boolean }) =>
+      [
+        "1",
+        "2",
+        ...(shown.names ? [`${shooter.last_name} ${shooter.first_name}`] : []),
+        ...(shown.clubs ? [shooter.club] : []),
+        ...(shown.countries ? [shooter.country] : []),
+        "Revolver",
+        ...(shown.stage ? ["120", ...Array<string>(courses.wa1500.stages - 1).fill("0")] : []),
+        "120",
+        ...(shown.x ? ["6"] : []),
+      ];
     const table = page.getByRole("table");
+    const winner = table.locator("tbody tr").first();
 
     await openCompetition(page, competition.name);
-    await expect(row(page, shooter.last_name)).toContainText(shooter.club, refresh);
-    await expect(row(page, shooter.last_name)).toContainText(shooter.country);
+    await expect(table.locator("tbody tr")).toHaveCount(4);
+    await expect(winner.getByRole("cell")).toHaveText(
+      winnerCells({ names: true, clubs: true, countries: true, stage: true, x: true }),
+    );
 
-    await setVisibility(api, competition.id, { show_clubs: false });
-    await page.reload();
+    await setVisibility(admin, competition.id, { show_clubs: false });
     await openCompetition(page, competition.name);
-    await expect(row(page, shooter.last_name)).toBeVisible(refresh);
     await expect(table.getByRole("columnheader", { name: "Club", exact: true })).toHaveCount(0);
+    await expect(winner.getByRole("cell")).toHaveText(
+      winnerCells({ names: true, countries: true, stage: true, x: true }),
+    );
     await expect(table).not.toContainText(shooter.club);
-    await expect(table.getByRole("columnheader", { name: "Country" })).toBeVisible();
 
-    await setVisibility(api, competition.id, { show_countries: false });
+    await setVisibility(admin, competition.id, { show_countries: false });
     await openCompetition(page, competition.name);
-    await expect(table.locator("tbody tr")).toHaveCount(4, refresh);
-    await expect(table.getByRole("columnheader", { name: "Country" })).toHaveCount(0, refresh);
+    await expect(table.getByRole("columnheader", { name: "Country" })).toHaveCount(0);
+    await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, stage: true, x: true }));
+    await expect(table).not.toContainText(shooter.country);
 
-    await setVisibility(api, competition.id, { show_stage_scores: false });
+    await setVisibility(admin, competition.id, { show_stage_scores: false });
     await openCompetition(page, competition.name);
-    await expect(table.locator("tbody tr")).toHaveCount(4, refresh);
-    await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toHaveCount(0, refresh);
-    await expect(table.getByRole("columnheader", { name: "Total" })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toHaveCount(0);
+    await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, x: true }));
 
-    await setVisibility(api, competition.id, { show_stage_scores: false, show_ring_counts: false });
+    await setVisibility(admin, competition.id, { show_stage_scores: false, show_ring_counts: false });
     await openCompetition(page, competition.name);
-    await expect(table.locator("tbody tr")).toHaveCount(4, refresh);
-    await expect(table.getByRole("columnheader", { name: "X", exact: true })).toHaveCount(0, refresh);
+    await expect(table.getByRole("columnheader", { name: "X", exact: true })).toHaveCount(0);
+    await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true }));
 
-    await setVisibility(api, competition.id, { show_names: false, show_stage_scores: false, show_ring_counts: false });
+    await setVisibility(admin, competition.id, { show_names: false, show_stage_scores: false, show_ring_counts: false });
     await openCompetition(page, competition.name);
-    await expect(table.locator("tbody tr")).toHaveCount(4, refresh);
-    await expect(table.getByRole("columnheader", { name: "Name" })).toHaveCount(0, refresh);
+    await expect(table.getByRole("columnheader", { name: "Name" })).toHaveCount(0);
+    await expect(winner.getByRole("cell")).toHaveText(winnerCells({}));
     await expect(table).not.toContainText(shooter.last_name);
-    await api.dispose();
+    await expect(table).not.toContainText(shooter.first_name);
   });
 
-  test("a competition without results shows the empty state", async ({ page }) => {
-    const api = await adminApi(test.info().project.use.baseURL!);
-    const competition = await createCompetition(api, { name: uniqueName("Empty"), status: "active" });
+  test("a competition without results shows the empty state", async ({ page, admin }) => {
+    const competition = await createCompetition(admin, { name: uniqueName("Empty"), status: "active" });
     await openCompetition(page, competition.name);
-    await expect(page.getByText("No results yet.")).toBeVisible(refresh);
+    await expect(page.getByText("No results yet.")).toBeVisible();
     await expect(page.getByRole("table")).toHaveCount(0);
-    await api.dispose();
   });
 
-  test("the standings API returns 404 for a draft competition", async ({ baseURL }) => {
-    const admin = await adminApi(baseURL!);
+  test("the standings API returns 404 for a draft competition", async ({ admin, baseURL }) => {
     const draft = await createCompetition(admin, { name: uniqueName("API draft") });
     const anonymous = await newApi(baseURL!);
     const response = await anonymous.get(`/api/spectator/competitions/${draft.id}/standings`);
@@ -148,6 +157,5 @@ test.describe("spectator", () => {
     await setStatus(admin, draft.id, "active");
     expect((await anonymous.get(`/api/spectator/competitions/${draft.id}/standings`)).status()).toBe(200);
     await anonymous.dispose();
-    await admin.dispose();
   });
 });

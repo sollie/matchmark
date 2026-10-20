@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
-import { expect, request, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { request, test as base, expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 export const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? "e2e-admin-password-1234";
 
-export interface RingCounts {
+interface RingCounts {
   x: number;
   "10": number;
   "9": number;
@@ -13,7 +13,7 @@ export interface RingCounts {
   miss: number;
 }
 
-export interface Visibility {
+interface Visibility {
   show_names: boolean;
   show_clubs: boolean;
   show_countries: boolean;
@@ -21,13 +21,24 @@ export interface Visibility {
   show_ring_counts: boolean;
 }
 
-export type CompetitionStatus = "draft" | "active" | "finished";
+type CompetitionStatus = "draft" | "active" | "finished";
+
+export type Category = "Revolver" | "Pistol" | "Revolver OS" | "Pistol OS" | "Rifle";
+
+export const courses = {
+  wa1500: { key: "150", label: "150 shots (WA1500)", stages: 10, stageOneShots: 12 },
+  sixty: { key: "60", label: "60 shots", stages: 4, stageOneShots: 12 },
+  fortyEight: { key: "48", label: "48 shots", stages: 4, stageOneShots: 6 },
+  fiveShotRevolver: { key: "40", label: "40 shots (5-shot revolver)", stages: 4, stageOneShots: 5 },
+} as const;
+
+export const allCourses = Object.values(courses);
 
 export function uniqueName(prefix: string): string {
   return `${prefix} ${randomBytes(4).toString("hex")}`;
 }
 
-export function uniqueClientIp(): string {
+function uniqueClientIp(): string {
   const [a, b] = randomBytes(2);
   return `198.18.${a}.${b}`;
 }
@@ -39,7 +50,7 @@ export function todayIso(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-export function ringCounts(partial: Partial<RingCounts> = {}): RingCounts {
+function ringCounts(partial: Partial<RingCounts> = {}): RingCounts {
   return { x: 0, "10": 0, "9": 0, "8": 0, "7": 0, "0": 0, miss: 0, ...partial };
 }
 
@@ -62,7 +73,7 @@ export async function adminApi(baseURL: string): Promise<APIRequestContext> {
   return api;
 }
 
-export interface ShooterSeed {
+interface ShooterSeed {
   last_name?: string;
   first_name?: string;
   sex?: "M" | "F";
@@ -90,7 +101,7 @@ export async function createCompetition(
   seed: { name?: string; date?: string; course?: string; status?: CompetitionStatus } = {},
 ) {
   const { status, ...rest } = seed;
-  const competition = { name: uniqueName("Match"), date: todayIso(), course: "150", ...rest };
+  const competition = { name: uniqueName("Competition"), date: todayIso(), course: courses.wa1500.key, ...rest };
   const { id } = await checked<{ id: number }>(
     await api.post("/api/competitions", { data: competition }),
     "create competition",
@@ -129,7 +140,7 @@ export async function addEntry(
   competitionId: number,
   shooterId: number,
   lane: number,
-  category = "Revolver",
+  category: Category = "Revolver",
 ) {
   const { id } = await checked<{ id: number }>(
     await api.post(`/api/competitions/${competitionId}/entries`, {
@@ -140,7 +151,7 @@ export async function addEntry(
   return id;
 }
 
-export async function seedEntry(api: APIRequestContext, competitionId: number, lane: number, category = "Revolver") {
+export async function seedEntry(api: APIRequestContext, competitionId: number, lane: number, category: Category = "Revolver") {
   const shooter = await createShooter(api);
   const entryId = await addEntry(api, competitionId, shooter.id, lane, category);
   return { shooter, entryId, lane };
@@ -159,13 +170,6 @@ export async function setCounts(
   if (lock) await checked(await api.post(`${base}/lock`), "lock stage");
 }
 
-export async function unlockStage(api: APIRequestContext, competitionId: number, entryId: number, stage: number) {
-  await checked(
-    await api.post(`/api/competitions/${competitionId}/entries/${entryId}/stages/${stage}/unlock`),
-    "unlock stage",
-  );
-}
-
 export async function createPairing(api: APIRequestContext, competitionId: number, lane: number) {
   return checked<{ id: number; lane: number; token: string }>(
     await api.post(`/api/competitions/${competitionId}/pairings`, { data: { lane } }),
@@ -173,7 +177,7 @@ export async function createPairing(api: APIRequestContext, competitionId: numbe
   );
 }
 
-export function pairingPath(token: string): string {
+function pairingPath(token: string): string {
   return `/score#token=${encodeURIComponent(token)}`;
 }
 
@@ -193,6 +197,43 @@ export function section(page: Page, heading: string | RegExp): Locator {
     .filter({ has: page.getByRole("heading", { name: heading }) });
 }
 
-export async function expectVisible(locator: Locator, timeout = 15_000) {
-  await expect(locator).toBeVisible({ timeout });
+export async function openCompetition(page: Page, id: number) {
+  await page.goto(`/admin/competitions/${id}`);
+  await expect(section(page, "Entries and progress")).toBeVisible();
 }
+
+interface Fixtures {
+  admin: APIRequestContext;
+  adminPage: Page;
+  openDevice: (token: string) => Promise<Page>;
+}
+
+export const test = base.extend<Fixtures>({
+  page: async ({ page }, use) => {
+    await page.setExtraHTTPHeaders({ "X-Forwarded-For": uniqueClientIp() });
+    await use(page);
+  },
+  admin: async ({ baseURL }, use) => {
+    const api = await adminApi(baseURL!);
+    await use(api);
+    await api.dispose();
+  },
+  adminPage: async ({ page }, use) => {
+    await signInViaUi(page);
+    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+    await use(page);
+  },
+  openDevice: async ({ browser, baseURL }, use) => {
+    const contexts: { close: () => Promise<void> }[] = [];
+    await use(async (token) => {
+      const context = await browser.newContext({ baseURL });
+      contexts.push(context);
+      const device = await context.newPage();
+      await device.goto(pairingPath(token));
+      return device;
+    });
+    for (const context of contexts) await context.close();
+  },
+});
+
+export { expect };

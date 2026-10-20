@@ -1,19 +1,13 @@
-import { expect, test, type Page } from "@playwright/test";
-import { adminApi, createShooter, row, signInViaUi, uniqueClientIp, uniqueName } from "./helpers";
+import type { Page } from "@playwright/test";
+import { createShooter, expect, row, test, uniqueName } from "./helpers";
 
 async function openShooters(page: Page) {
-  await signInViaUi(page);
-  await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
   await page.goto("/admin/shooters");
   await expect(page.getByRole("heading", { name: "Shooters" })).toBeVisible();
 }
 
 test.describe("shooters", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.setExtraHTTPHeaders({ "X-Forwarded-For": uniqueClientIp() });
-  });
-
-  test("adding a shooter lists it", async ({ page }) => {
+  test("adding a shooter lists it", async ({ adminPage: page }) => {
     const lastName = uniqueName("Added");
     await openShooters(page);
 
@@ -34,11 +28,9 @@ test.describe("shooters", () => {
     await expect(form.getByLabel("Last name")).toHaveValue("");
   });
 
-  test("editing a shooter saves the change and cancelling restores the add form", async ({ page, baseURL }) => {
-    const api = await adminApi(baseURL!);
-    const shooter = await createShooter(api, { last_name: uniqueName("Editable"), club: "Old Club" });
-    const other = await createShooter(api, { last_name: uniqueName("Untouched") });
-    await api.dispose();
+  test("editing a shooter saves the change and cancelling restores the add form", async ({ adminPage: page, admin }) => {
+    const shooter = await createShooter(admin, { last_name: uniqueName("Editable"), club: "Old Club" });
+    const other = await createShooter(admin, { last_name: uniqueName("Untouched") });
     await openShooters(page);
 
     const form = page.locator("form");
@@ -67,10 +59,8 @@ test.describe("shooters", () => {
     await expect(row(page, other.last_name)).toBeVisible();
   });
 
-  test("deleting asks for confirmation and keeps the shooter when declined", async ({ page, baseURL }) => {
-    const api = await adminApi(baseURL!);
-    const shooter = await createShooter(api, { last_name: uniqueName("Doomed") });
-    await api.dispose();
+  test("deleting asks for confirmation and keeps the shooter when declined", async ({ adminPage: page, admin }) => {
+    const shooter = await createShooter(admin, { last_name: uniqueName("Doomed") });
     await openShooters(page);
 
     const dialogs: string[] = [];
@@ -94,7 +84,7 @@ test.describe("shooters", () => {
     await expect(row(page, shooter.last_name)).toHaveCount(0);
   });
 
-  test("an incomplete form is blocked", async ({ page }) => {
+  test("an incomplete form is blocked", async ({ adminPage: page }) => {
     const lastName = uniqueName("Incomplete");
     await openShooters(page);
 
