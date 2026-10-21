@@ -291,7 +291,7 @@ func (h *Handler) adminStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	h.serveStream(w, r, h.svc.Subscribe(id), func(ctx context.Context) (streamEvent, error) {
+	h.serveStream(w, r, roleAdmin, func(ctx context.Context) (*service.Subscription, error) { return h.svc.SubscribeAdmin(ctx, id) }, func(ctx context.Context) (streamEvent, error) {
 		if _, err := h.svc.GetCompetition(ctx, id); err != nil {
 			return streamEvent{}, err
 		}

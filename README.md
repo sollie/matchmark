@@ -133,7 +133,7 @@ If every admin is locked out, stop the server and run `matchmark reset-password 
 
 ### Live updates
 
-Spectator, admin and scorer screens receive live updates over server-sent events (`text/event-stream`): `GET /api/spectator/competitions/{id}/stream`, `GET /api/competitions/{id}/stream` and `GET /api/scorer/stream`. A reverse proxy must not buffer or cache these responses and must allow them to stay open: the server sends `X-Accel-Buffering: no` and `Cache-Control: no-cache`, a heartbeat every 25 seconds, and closes each stream after 30 minutes, so keep the proxy read timeout above 25 seconds (nginx: `proxy_buffering off`, `proxy_read_timeout 1h`). At most 500 streams are served at once.
+Spectator, admin and scorer screens receive live updates over server-sent events (`text/event-stream`): `GET /api/spectator/competitions/{id}/stream`, `GET /api/competitions/{id}/stream` and `GET /api/scorer/stream`. A reverse proxy must not buffer or cache these responses and must allow them to stay open: the server sends `X-Accel-Buffering: no` and `Cache-Control: no-cache`, a heartbeat every 25 seconds, and closes each stream after 30 minutes, so keep the proxy read timeout above 25 seconds (nginx: `proxy_buffering off`, `proxy_read_timeout 1h`). Each role has its own cap on concurrent streams: 500 spectator, 50 admin and 100 scorer streams, so a spectator flood cannot block admin or scorer screens. Requests over a cap get `503` with `Retry-After`; requests for unknown or draft competitions are rejected before subscribing.
 
 ## Pairing flow
 
