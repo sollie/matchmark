@@ -85,7 +85,7 @@ Tests seed data through the admin API with unique names and send a unique `X-For
 | `ADMIN_PASSWORD` | required when there are no users | Password of the seeded admin, 16-128 characters; ignored once users exist |
 | `DB_PATH` | `data/matchmark.db` (`/data/matchmark.db` in the image) | SQLite file; its directory also holds backups and ACME certificates |
 | `LISTEN_ADDR` | `:8080` plain, `:8443` with TLS | Listen address |
-| `BASE_URL` | empty | Public URL, used for pairing links; an `https` URL marks the session cookie `Secure` |
+| `BASE_URL` | empty | Public URL, used for pairing links; an `https` URL marks the session cookie `Secure` (see [TLS modes](#tls-modes)) |
 | `TRUSTED_PROXY` | empty | Comma-separated IPs or CIDRs of reverse proxies whose forwarded client IP headers are trusted |
 | `DISABLE_COMPRESSION` | `false` | Set to `true` to turn off response compression (for example behind a proxy that already compresses) |
 | `TLS_CERT_FILE`, `TLS_KEY_FILE` | empty | Static certificate mode; set both |
@@ -103,7 +103,7 @@ The server writes structured JSON logs (`log/slog`) to stdout: one `request` lin
 
 ### Audit log
 
-Every change, login, failed login, failed password change, report download, backup download and `reset-password` run is also written to stdout as an `audit` JSON line (`username`, `action`, `target`, `details`, `ip`, and `user_id` when known) and stored in the database, where admins browse it at `/admin/audit` (paged, filterable by user, action and date). Counts entered and locks made by a paired device have the username `device`; the `reset-password` command uses `cli`. The log is append-only and kept forever, so it grows with use; it contains usernames and client IP addresses, so apply your club's retention policy to the stdout lines. See `docs/spec.md`.
+Every change, login, failed login, failed password change, report download, backup download and `reset-password` run is also written to stdout as an `audit` JSON line (`username`, `action`, `target`, `details`, `ip`, and `user_id` when known) and stored in the database, where admins browse it at `/admin/audit` (paged, filterable by user, action and date). Counts entered and locks made by a paired device have the username `device`; the `reset-password` command uses `cli`. Repeated failed logins from one client for the same username are coalesced into one audit entry per time window. The log is append-only and kept forever, so it grows with use; it contains usernames and client IP addresses, so apply your club's retention policy to the stdout lines. See `docs/spec.md`.
 
 ### Score log
 
@@ -119,6 +119,8 @@ If every admin is locked out, stop the server and run `matchmark reset-password 
 
 ## TLS modes
 
+The session cookie is `Secure` when the binary serves TLS itself (static or ACME mode) or when `BASE_URL` is an `https` URL; otherwise (plain HTTP without an `https` `BASE_URL`) it is not.
+
 - **Plain HTTP (default):** for local networks or behind a TLS-terminating reverse proxy. Set `BASE_URL` to the public URL and `TRUSTED_PROXY` to the proxy address.
 - **Static certificate:** mount the files and set `TLS_CERT_FILE` and `TLS_KEY_FILE`; the server listens on `:8443`. Map the port in compose, e.g. `"443:8443"`.
 - **ACME:** set `ACME_DOMAIN` and `ACME_EMAIL`. The server obtains and renews certificates itself using the HTTP-01 challenge, which needs the public port 80 forwarded to the container's `:8080`, with HTTPS served on `:8443` (map `"80:8080"` and `"443:8443"`). Certificates are stored under `/data/certs`. Set `BASE_URL` to `https://<domain>`. The default compose file only publishes `8080` (as `HTTP_PORT`), so in ACME mode replace its `ports` entry with:
@@ -133,7 +135,7 @@ If every admin is locked out, stop the server and run `matchmark reset-password 
 
 ### Live updates
 
-Spectator, admin and scorer screens receive live updates over server-sent events (`text/event-stream`): `GET /api/spectator/competitions/{id}/stream`, `GET /api/competitions/{id}/stream` and `GET /api/scorer/stream`. A reverse proxy must not buffer or cache these responses and must allow them to stay open: the server sends `X-Accel-Buffering: no` and `Cache-Control: no-cache`, a heartbeat every 25 seconds, and closes each stream after 30 minutes, so keep the proxy read timeout above 25 seconds (nginx: `proxy_buffering off`, `proxy_read_timeout 1h`). At most 500 streams are served at once.
+Spectator, admin and scorer screens receive live updates over server-sent events (`text/event-stream`): `GET /api/spectator/competitions/{id}/stream`, `GET /api/competitions/{id}/stream` and `GET /api/scorer/stream`. A reverse proxy must not buffer or cache these responses and must allow them to stay open: the server sends `X-Accel-Buffering: no` and `Cache-Control: no-cache`, a heartbeat every 25 seconds, and closes each stream after 30 minutes, so keep the proxy read timeout above 25 seconds (nginx: `proxy_buffering off`, `proxy_read_timeout 1h`). Each role has its own cap on concurrent streams: 500 spectator, 50 admin and 100 scorer streams, so a spectator flood cannot block admin or scorer screens. Requests over a cap get `503` with `Retry-After`; requests for unknown or draft competitions are rejected before subscribing.
 
 ## Pairing flow
 

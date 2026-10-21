@@ -209,6 +209,15 @@ func (s *Service) Subscribe(competitionID int64) *Subscription {
 	return s.bus.Subscribe(competitionID)
 }
 
+func (s *Service) CheckPublicStream(ctx context.Context, competitionID int64) error {
+	return s.publicCompetition(ctx, competitionID)
+}
+
+func (s *Service) CheckAdminStream(ctx context.Context, competitionID int64) error {
+	_, err := s.GetCompetition(ctx, competitionID)
+	return err
+}
+
 func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (SpectatorSnapshot, error) {
 	slot := s.snapSlot(competitionID)
 	slot.mu.Lock()

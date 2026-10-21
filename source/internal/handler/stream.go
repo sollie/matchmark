@@ -15,7 +15,9 @@ import (
 const (
 	defaultHeartbeat    = 25 * time.Second
 	defaultStreamLife   = 30 * time.Minute
-	defaultMaxStreams   = 500
+	defaultMaxSpectator = 500
+	defaultMaxAdmin     = 50
+	defaultMaxScorer    = 100
 	streamRetryAfterSec = "5"
 )
 
@@ -24,13 +26,26 @@ var errTooManyStreams = errors.New("too many streams")
 type streamLimits struct {
 	heartbeat time.Duration
 	lifetime  time.Duration
-	max       int64
+	max       [streamRoles]int64
 }
 
-func WithStreamLimits(heartbeat, lifetime time.Duration, maxStreams int) Option {
+type streamRole int
+
+const (
+	roleSpectator streamRole = iota
+	roleAdmin
+	roleScorer
+	streamRoles
+)
+
+func WithStreamLimits(heartbeat, lifetime time.Duration, maxSpectator, maxAdmin, maxScorer int) Option {
 	return func(h *Handler) {
-		h.limits = streamLimits{heartbeat: heartbeat, lifetime: lifetime, max: int64(maxStreams)}
+		h.limits = streamLimits{heartbeat: heartbeat, lifetime: lifetime, max: [streamRoles]int64{int64(maxSpectator), int64(maxAdmin), int64(maxScorer)}}
 	}
+}
+
+func defaultStreamLimits() streamLimits {
+	return streamLimits{heartbeat: defaultHeartbeat, lifetime: defaultStreamLife, max: [streamRoles]int64{defaultMaxSpectator, defaultMaxAdmin, defaultMaxScorer}}
 }
 
 type streamEvent struct {
@@ -41,15 +56,22 @@ type streamEvent struct {
 
 type streamSnapshot func(ctx context.Context) (streamEvent, error)
 
-func (h *Handler) serveStream(w http.ResponseWriter, r *http.Request, sub *service.Subscription, snapshot streamSnapshot) {
-	defer sub.Close()
-	if h.streams.Add(1) > h.limits.max {
-		h.streams.Add(-1)
+func (h *Handler) serveStream(w http.ResponseWriter, r *http.Request, role streamRole, check func(context.Context) error, subscribe func() *service.Subscription, snapshot streamSnapshot) {
+	if check != nil {
+		if err := check(r.Context()); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
+	if h.streams[role].Add(1) > h.limits.max[role] {
+		h.streams[role].Add(-1)
 		w.Header().Set("Retry-After", streamRetryAfterSec)
 		writeError(w, errTooManyStreams)
 		return
 	}
-	defer h.streams.Add(-1)
+	defer h.streams[role].Add(-1)
+	sub := subscribe()
+	defer sub.Close()
 
 	first, err := snapshot(r.Context())
 	if err != nil {

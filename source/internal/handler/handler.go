@@ -17,13 +17,14 @@ type Handler struct {
 	auth         *service.Auth
 	audit        *service.Audit
 	secureCookie bool
+	servingTLS   bool
 	backupDir    string
 	limits       streamLimits
-	streams      atomic.Int64
+	streams      [streamRoles]atomic.Int64
 }
 
 func NewRouter(svc *service.Service, opts ...Option) http.Handler {
-	h := &Handler{svc: svc, limits: streamLimits{heartbeat: defaultHeartbeat, lifetime: defaultStreamLife, max: defaultMaxStreams}}
+	h := &Handler{svc: svc, limits: defaultStreamLimits()}
 	for _, opt := range opts {
 		opt(h)
 	}

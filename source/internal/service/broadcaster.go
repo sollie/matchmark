@@ -5,13 +5,17 @@ import (
 	"time"
 )
 
-const defaultCoalesceWindow = 250 * time.Millisecond
+const (
+	defaultCoalesceWindow = 250 * time.Millisecond
+	maxRetainedVersions   = 1024
+)
 
 type Broadcaster struct {
-	window time.Duration
-	mu     sync.Mutex
-	topics map[int64]*topic
-	global uint64
+	window   time.Duration
+	mu       sync.Mutex
+	topics   map[int64]*topic
+	retained map[int64]uint64
+	global   uint64
 }
 
 type topic struct {
@@ -29,13 +33,14 @@ type Subscription struct {
 }
 
 func NewBroadcaster(window time.Duration) *Broadcaster {
-	return &Broadcaster{window: window, topics: map[int64]*topic{}}
+	return &Broadcaster{window: window, topics: map[int64]*topic{}, retained: map[int64]uint64{}}
 }
 
 func (b *Broadcaster) topicLocked(id int64) *topic {
 	t, ok := b.topics[id]
 	if !ok {
-		t = &topic{subs: map[*Subscription]struct{}{}}
+		t = &topic{subs: map[*Subscription]struct{}{}, version: b.retained[id]}
+		delete(b.retained, id)
 		b.topics[id] = t
 	}
 	return t
@@ -60,16 +65,36 @@ func (s *Subscription) Close() {
 	s.closed = true
 	t := b.topics[s.id]
 	delete(t.subs, s)
+	b.releaseLocked(s.id, t)
+}
+
+func (b *Broadcaster) releaseLocked(id int64, t *topic) {
+	if len(t.subs) > 0 || t.timer != nil {
+		return
+	}
+	delete(b.topics, id)
+	if t.version == 0 {
+		return
+	}
+	b.retained[id] = t.version
+	if len(b.retained) > maxRetainedVersions {
+		for evicted, v := range b.retained {
+			if evicted != id {
+				delete(b.retained, evicted)
+				b.global += v
+				break
+			}
+		}
+	}
 }
 
 func (b *Broadcaster) Version(competitionID int64) uint64 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	v := b.global
 	if t, ok := b.topics[competitionID]; ok {
-		v += t.version
+		return b.global + t.version
 	}
-	return v
+	return b.global + b.retained[competitionID]
 }
 
 func (b *Broadcaster) Publish(competitionID int64) {
@@ -111,4 +136,5 @@ func (b *Broadcaster) fire(id int64) {
 		default:
 		}
 	}
+	b.releaseLocked(id, t)
 }

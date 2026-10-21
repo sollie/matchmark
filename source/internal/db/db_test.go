@@ -110,3 +110,35 @@ func TestMigrationBackfillsLockedAt(t *testing.T) {
 		t.Fatalf("locked_at = %v / %v", locked, unlocked)
 	}
 }
+
+func TestMigrationBoundsHitCounts(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mm.db")
+	conn, err := db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO shooters (last_name, first_name, sex, country, club) VALUES ('A', 'B', 'M', 'NOR', 'C')`,
+		`INSERT INTO competitions (name, date, course) VALUES ('M', '2026-10-19', '150')`,
+		`INSERT INTO entries (competition_id, shooter_id, category, lane) VALUES (1, 1, 'Revolver', 1)`,
+		`INSERT INTO stages (entry_id, stage_number, expected_shots, x, ten) VALUES (1, 1, 12, 7, 5)`,
+		`DELETE FROM schema_migrations WHERE version = 15`,
+	} {
+		if _, err := conn.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = conn.Close()
+	conn, err = db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	var x, ten int
+	if err := conn.QueryRow(`SELECT x, ten FROM stages WHERE stage_number = 1`).Scan(&x, &ten); err != nil || x != 7 || ten != 5 {
+		t.Fatalf("stage after migration: %d %d %v", x, ten, err)
+	}
+	if _, err := conn.Exec(`UPDATE stages SET x = 13 WHERE stage_number = 1`); err == nil {
+		t.Fatal("expected out-of-range count to be rejected")
+	}
+}

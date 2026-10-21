@@ -213,3 +213,45 @@ func TestPairingRequiresAdmin(t *testing.T) {
 		t.Fatalf("status %d", status)
 	}
 }
+
+func TestOutOfRangeHitsAreRejected(t *testing.T) {
+	f := newScoringFixture(t, 1, 3)
+	token := f.pair(t, 1)
+	adminPath := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[3])
+	const maxInt = 9223372036854775807
+
+	oversized := map[string]any{"x": 13, "10": -1}
+	wrapping := map[string]any{"x": maxInt, "10": maxInt, "9": 14}
+	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(7, 5)); status != http.StatusOK {
+		t.Fatalf("seed: %d %v", status, out)
+	}
+
+	for name, body := range map[string]map[string]any{
+		"oversized": {"x": 13},
+		"negative":  oversized,
+		"wrapping":  wrapping,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", body); status != http.StatusUnprocessableEntity {
+				t.Fatalf("device status %d", status)
+			}
+			if status, _ := f.env.Do("PUT", adminPath, body); status != http.StatusUnprocessableEntity {
+				t.Fatalf("admin status %d", status)
+			}
+		})
+	}
+
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	for _, e := range out["entries"].([]any) {
+		m := e.(map[string]any)
+		if int(m["lane"].(float64)) == 3 {
+			s := m["stages"].([]any)[0].(map[string]any)
+			if s["score"].(float64) != 120 {
+				t.Fatalf("stored hits changed: %v", s)
+			}
+		}
+	}
+	if status, out := f.env.Do("PUT", adminPath, counts(12, 0)); status != http.StatusOK {
+		t.Fatalf("valid admin: %d %v", status, out)
+	}
+}

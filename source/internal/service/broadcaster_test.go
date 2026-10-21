@@ -89,3 +89,32 @@ func TestBroadcasterVersionAdvancesPerPublish(t *testing.T) {
 		t.Fatal("version did not advance")
 	}
 }
+
+func TestBroadcasterVersionOfOtherCompetitionsIsStableAfterRelease(t *testing.T) {
+	b := service.NewBroadcaster(5 * time.Millisecond)
+	other := b.Version(2)
+	b.Publish(1)
+	time.Sleep(50 * time.Millisecond)
+	if got := b.Version(2); got != other {
+		t.Fatalf("version of unrelated competition changed: %d -> %d", other, got)
+	}
+	if b.Version(1) == b.Version(3) {
+		t.Fatal("published competition version must differ after its topic is released")
+	}
+}
+
+func TestBroadcasterRetainedVersionsStayBounded(t *testing.T) {
+	b := service.NewBroadcaster(time.Millisecond)
+	first := b.Version(1)
+	b.Publish(1)
+	for id := int64(2); id < 5000; id++ {
+		b.Publish(id)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if b.Version(1) == first {
+		t.Fatal("version of competition 1 went back to an earlier value")
+	}
+	if n := b.RetainedVersions(); n > 1024 {
+		t.Fatalf("retained %d versions", n)
+	}
+}

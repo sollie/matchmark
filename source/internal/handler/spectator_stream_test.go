@@ -108,7 +108,7 @@ func TestSpectatorStreamHiddenForDraftCompetition(t *testing.T) {
 }
 
 func TestSpectatorStreamSendsHeartbeat(t *testing.T) {
-	env := apitest.NewAdmin(t, handler.WithStreamLimits(50*time.Millisecond, time.Minute, 10))
+	env := apitest.NewAdmin(t, handler.WithStreamLimits(50*time.Millisecond, time.Minute, 10, 10, 10))
 	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
 	f.addEntry(t, "Hansen", 1)
 	f.activate(t)
@@ -125,7 +125,7 @@ func TestSpectatorStreamSendsHeartbeat(t *testing.T) {
 }
 
 func TestSpectatorStreamEndsAtLifetime(t *testing.T) {
-	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, 100*time.Millisecond, 10))
+	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, 100*time.Millisecond, 10, 10, 10))
 	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
 	f.addEntry(t, "Hansen", 1)
 	f.activate(t)
@@ -136,7 +136,7 @@ func TestSpectatorStreamEndsAtLifetime(t *testing.T) {
 }
 
 func TestSpectatorStreamCapsConcurrentStreams(t *testing.T) {
-	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1))
+	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
 	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
 	f.addEntry(t, "Hansen", 1)
 	f.activate(t)
@@ -155,4 +155,67 @@ func TestSpectatorStreamCapsConcurrentStreams(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatal("slot was not released after the stream closed")
+}
+
+func TestSpectatorFloodDoesNotBlockAdminOrScorerStreams(t *testing.T) {
+	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
+	f := &scoringFixture{fixture: &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}, entries: map[int]int{}}
+	f.entries[1] = f.addEntry(t, "Hansen", 1)
+	f.entries[2] = f.addEntry(t, "Berg", 2)
+	f.activate(t)
+	token := f.pair(t, 1)
+	nextSnapshot(t, env.OpenStream(streamPath(f.fixture), nil))
+	second := env.OpenStream(streamPath(f.fixture), nil)
+	if second.Status != http.StatusServiceUnavailable {
+		t.Fatalf("spectator status %d", second.Status)
+	}
+	if got := second.Header.Get("Retry-After"); got == "" {
+		t.Fatal("missing Retry-After")
+	}
+	admin := env.OpenStream(fmt.Sprintf("/api/competitions/%d/stream", f.comp), nil)
+	if admin.Status != http.StatusOK {
+		t.Fatalf("admin status %d", admin.Status)
+	}
+	if s := openScorerStream(f, token); s.Status != http.StatusOK {
+		t.Fatalf("scorer status %d", s.Status)
+	}
+}
+
+func TestRejectedStreamRequestsConsumeNoCapacity(t *testing.T) {
+	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
+	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
+	for i := 0; i < 3; i++ {
+		if s := env.OpenStream(streamPath(f), nil); s.Status != http.StatusNotFound {
+			t.Fatalf("draft status %d", s.Status)
+		}
+		if s := env.OpenStream("/api/spectator/competitions/9999/stream", nil); s.Status != http.StatusNotFound {
+			t.Fatalf("unknown status %d", s.Status)
+		}
+		if s := env.OpenStream("/api/competitions/9999/stream", nil); s.Status != http.StatusNotFound {
+			t.Fatalf("unknown admin status %d", s.Status)
+		}
+	}
+	f.addEntry(t, "Hansen", 1)
+	f.activate(t)
+	if s := env.OpenStream(streamPath(f), nil); s.Status != http.StatusOK {
+		t.Fatalf("status %d", s.Status)
+	}
+}
+
+func TestRejectedStreamRequestsDoNotConsumeCapAtCapacity(t *testing.T) {
+	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
+	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
+	f.addEntry(t, "Hansen", 1)
+	f.activate(t)
+	nextSnapshot(t, env.OpenStream(streamPath(f), nil))
+	adminOpen := env.OpenStream(fmt.Sprintf("/api/competitions/%d/stream", f.comp), nil)
+	if adminOpen.Status != http.StatusOK {
+		t.Fatalf("admin status %d", adminOpen.Status)
+	}
+	if s := env.OpenStream("/api/spectator/competitions/9999/stream", nil); s.Status != http.StatusNotFound {
+		t.Fatalf("unknown spectator status %d, want 404", s.Status)
+	}
+	if s := env.OpenStream("/api/competitions/9999/stream", nil); s.Status != http.StatusNotFound {
+		t.Fatalf("unknown admin status %d, want 404", s.Status)
+	}
 }
