@@ -71,8 +71,8 @@ func (h *Handler) scorerSession(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
 	token := bearerToken(r)
-	h.serveStream(w, r, roleScorer, func(context.Context) (*service.Subscription, error) {
-		return h.svc.Subscribe(deviceFrom(r).CompetitionID), nil
+	h.serveStream(w, r, roleScorer, nil, func() *service.Subscription {
+		return h.svc.Subscribe(deviceFrom(r).CompetitionID)
 	}, func(ctx context.Context) (streamEvent, error) {
 		sess, err := h.svc.DeviceSnapshot(ctx, token)
 		if errors.Is(err, service.ErrUnauthenticated) {

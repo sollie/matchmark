@@ -56,7 +56,13 @@ type streamEvent struct {
 
 type streamSnapshot func(ctx context.Context) (streamEvent, error)
 
-func (h *Handler) serveStream(w http.ResponseWriter, r *http.Request, role streamRole, subscribe func(context.Context) (*service.Subscription, error), snapshot streamSnapshot) {
+func (h *Handler) serveStream(w http.ResponseWriter, r *http.Request, role streamRole, check func(context.Context) error, subscribe func() *service.Subscription, snapshot streamSnapshot) {
+	if check != nil {
+		if err := check(r.Context()); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
 	if h.streams[role].Add(1) > h.limits.max[role] {
 		h.streams[role].Add(-1)
 		w.Header().Set("Retry-After", streamRetryAfterSec)
@@ -64,11 +70,7 @@ func (h *Handler) serveStream(w http.ResponseWriter, r *http.Request, role strea
 		return
 	}
 	defer h.streams[role].Add(-1)
-	sub, err := subscribe(r.Context())
-	if err != nil {
-		writeError(w, err)
-		return
-	}
+	sub := subscribe()
 	defer sub.Close()
 
 	first, err := snapshot(r.Context())

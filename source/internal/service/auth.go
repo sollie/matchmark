@@ -448,10 +448,10 @@ func (a *Auth) Login(clientKey, username, password string) (token string, expire
 	return token, expires, nil
 }
 
-func (a *Auth) shouldAuditFailedLogin(clientKey, details string, now time.Time) bool {
+func (a *Auth) shouldAuditFailedLogin(clientKey, username, details string, now time.Time) bool {
 	a.auditMu.Lock()
 	defer a.auditMu.Unlock()
-	key := details + "|" + clientKey
+	key := details + "|" + clientKey + "|" + strings.ToLower(username)
 	if at, ok := a.auditSeen[key]; ok && now.Sub(at) < loginAuditWindow {
 		return false
 	}
@@ -474,7 +474,7 @@ func (a *Auth) shouldAuditFailedLogin(clientKey, details string, now time.Time) 
 }
 
 func (a *Auth) auditFailedLogin(clientKey, username, details string) {
-	if !a.shouldAuditFailedLogin(clientKey, details, a.now()) {
+	if !a.shouldAuditFailedLogin(clientKey, username, details, a.now()) {
 		return
 	}
 	a.audit.RecordAs(context.Background(), Actor{Username: strings.ToLower(username), IP: clientKey}, AuditEvent{Action: "login_failed", Details: details})

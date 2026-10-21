@@ -201,3 +201,21 @@ func TestRejectedStreamRequestsConsumeNoCapacity(t *testing.T) {
 		t.Fatalf("status %d", s.Status)
 	}
 }
+
+func TestRejectedStreamRequestsDoNotConsumeCapAtCapacity(t *testing.T) {
+	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
+	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
+	f.addEntry(t, "Hansen", 1)
+	f.activate(t)
+	nextSnapshot(t, env.OpenStream(streamPath(f), nil))
+	adminOpen := env.OpenStream(fmt.Sprintf("/api/competitions/%d/stream", f.comp), nil)
+	if adminOpen.Status != http.StatusOK {
+		t.Fatalf("admin status %d", adminOpen.Status)
+	}
+	if s := env.OpenStream("/api/spectator/competitions/9999/stream", nil); s.Status != http.StatusNotFound {
+		t.Fatalf("unknown spectator status %d, want 404", s.Status)
+	}
+	if s := env.OpenStream("/api/competitions/9999/stream", nil); s.Status != http.StatusNotFound {
+		t.Fatalf("unknown admin status %d, want 404", s.Status)
+	}
+}

@@ -103,7 +103,7 @@ The server writes structured JSON logs (`log/slog`) to stdout: one `request` lin
 
 ### Audit log
 
-Every change, login, failed login, failed password change, report download, backup download and `reset-password` run is also written to stdout as an `audit` JSON line (`username`, `action`, `target`, `details`, `ip`, and `user_id` when known) and stored in the database, where admins browse it at `/admin/audit` (paged, filterable by user, action and date). Counts entered and locks made by a paired device have the username `device`; the `reset-password` command uses `cli`. The log is append-only and kept forever, so it grows with use; it contains usernames and client IP addresses, so apply your club's retention policy to the stdout lines. See `docs/spec.md`.
+Every change, login, failed login, failed password change, report download, backup download and `reset-password` run is also written to stdout as an `audit` JSON line (`username`, `action`, `target`, `details`, `ip`, and `user_id` when known) and stored in the database, where admins browse it at `/admin/audit` (paged, filterable by user, action and date). Counts entered and locks made by a paired device have the username `device`; the `reset-password` command uses `cli`. Repeated failed logins from one client for the same username are coalesced into one audit entry per time window. The log is append-only and kept forever, so it grows with use; it contains usernames and client IP addresses, so apply your club's retention policy to the stdout lines. See `docs/spec.md`.
 
 ### Score log
 

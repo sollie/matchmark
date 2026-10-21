@@ -312,3 +312,17 @@ func TestLoginAuditIsBoundedPerWindow(t *testing.T) {
 		t.Fatalf("failed rows in a new window = %d, want 2", got)
 	}
 }
+
+func TestLoginAuditCoalescesPerClientAndUsername(t *testing.T) {
+	env := apitest.New(t)
+	for _, name := range []string{"nobody", "someone", "nobody", "someone"} {
+		env.Do("POST", "/api/admin/login", map[string]any{"username": name, "password": "whatever-password-1"})
+	}
+	if status, _ := env.Do("POST", "/api/admin/login", map[string]any{"username": apitest.AdminUsername, "password": apitest.AdminPassword}); status != http.StatusNoContent {
+		t.Fatalf("login status %d", status)
+	}
+	rows := auditEntries(t, env, "?page_size=200")
+	if got := countAudit(rows, "login_failed", ""); got != 2 {
+		t.Fatalf("failed rows = %d, want one per username", got)
+	}
+}

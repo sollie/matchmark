@@ -209,18 +209,13 @@ func (s *Service) Subscribe(competitionID int64) *Subscription {
 	return s.bus.Subscribe(competitionID)
 }
 
-func (s *Service) SubscribePublic(ctx context.Context, competitionID int64) (*Subscription, error) {
-	if err := s.publicCompetition(ctx, competitionID); err != nil {
-		return nil, err
-	}
-	return s.bus.Subscribe(competitionID), nil
+func (s *Service) CheckPublicStream(ctx context.Context, competitionID int64) error {
+	return s.publicCompetition(ctx, competitionID)
 }
 
-func (s *Service) SubscribeAdmin(ctx context.Context, competitionID int64) (*Subscription, error) {
-	if _, err := s.GetCompetition(ctx, competitionID); err != nil {
-		return nil, err
-	}
-	return s.bus.Subscribe(competitionID), nil
+func (s *Service) CheckAdminStream(ctx context.Context, competitionID int64) error {
+	_, err := s.GetCompetition(ctx, competitionID)
+	return err
 }
 
 func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (SpectatorSnapshot, error) {
