@@ -60,6 +60,15 @@ func (s *Subscription) Close() {
 	s.closed = true
 	t := b.topics[s.id]
 	delete(t.subs, s)
+	b.releaseLocked(s.id, t)
+}
+
+func (b *Broadcaster) releaseLocked(id int64, t *topic) {
+	if len(t.subs) > 0 || t.timer != nil {
+		return
+	}
+	b.global += t.version
+	delete(b.topics, id)
 }
 
 func (b *Broadcaster) Version(competitionID int64) uint64 {
@@ -111,4 +120,5 @@ func (b *Broadcaster) fire(id int64) {
 		default:
 		}
 	}
+	b.releaseLocked(id, t)
 }
