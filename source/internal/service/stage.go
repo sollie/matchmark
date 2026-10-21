@@ -10,7 +10,7 @@ func ValidateRingCounts(c repository.RingCounts, expectedShots int) error {
 	counts := []int{c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss}
 	sum := 0
 	for _, n := range counts {
-		if n < 0 {
+		if n < 0 || n > expectedShots {
 			return ErrInvalid
 		}
 		sum += n
