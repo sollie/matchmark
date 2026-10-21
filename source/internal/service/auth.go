@@ -34,6 +34,9 @@ const (
 	usernameMaxDelay     = 30 * time.Second
 	usernameMaxTracked   = 10000
 
+	loginAuditWindow     = loginWindow
+	loginAuditMaxTracked = 10000
+
 	argonMemory  = 19 * 1024
 	argonTime    = 2
 	argonThreads = 1
@@ -71,6 +74,9 @@ type Auth struct {
 	failures map[string][]time.Time
 	sleep    func(time.Duration)
 	userFail map[string][]time.Time
+
+	auditMu   sync.Mutex
+	auditSeen map[string]time.Time
 }
 
 type AuthOption func(*Auth)
@@ -88,7 +94,7 @@ func WithAuthAudit(audit *Audit) AuthOption {
 }
 
 func NewAuth(repo *repository.Repository, opts ...AuthOption) *Auth {
-	a := &Auth{repo: repo, now: time.Now, sleep: time.Sleep, failures: map[string][]time.Time{}, userFail: map[string][]time.Time{}}
+	a := &Auth{repo: repo, now: time.Now, sleep: time.Sleep, failures: map[string][]time.Time{}, userFail: map[string][]time.Time{}, auditSeen: map[string]time.Time{}}
 	for _, opt := range opts {
 		opt(a)
 	}
@@ -442,7 +448,35 @@ func (a *Auth) Login(clientKey, username, password string) (token string, expire
 	return token, expires, nil
 }
 
+func (a *Auth) shouldAuditFailedLogin(clientKey, username, details string, now time.Time) bool {
+	a.auditMu.Lock()
+	defer a.auditMu.Unlock()
+	key := details + "|" + clientKey + "|" + strings.ToLower(username)
+	if at, ok := a.auditSeen[key]; ok && now.Sub(at) < loginAuditWindow {
+		return false
+	}
+	if _, ok := a.auditSeen[key]; !ok && len(a.auditSeen) >= loginAuditMaxTracked {
+		var oldest string
+		var oldestAt time.Time
+		for k, at := range a.auditSeen {
+			if now.Sub(at) >= loginAuditWindow {
+				delete(a.auditSeen, k)
+			} else if oldest == "" || at.Before(oldestAt) {
+				oldest, oldestAt = k, at
+			}
+		}
+		if len(a.auditSeen) >= loginAuditMaxTracked {
+			delete(a.auditSeen, oldest)
+		}
+	}
+	a.auditSeen[key] = now
+	return true
+}
+
 func (a *Auth) auditFailedLogin(clientKey, username, details string) {
+	if !a.shouldAuditFailedLogin(clientKey, username, details, a.now()) {
+		return
+	}
 	a.audit.RecordAs(context.Background(), Actor{Username: strings.ToLower(username), IP: clientKey}, AuditEvent{Action: "login_failed", Details: details})
 }
 

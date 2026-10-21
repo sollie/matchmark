@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/sollie/matchmark/internal/apitest"
 )
@@ -266,5 +267,62 @@ func TestAuditLogPagesAndFilters(t *testing.T) {
 		if status, _ := env.Do("GET", "/api/audit-log"+q, nil); status != http.StatusUnprocessableEntity {
 			t.Fatalf("%s: %d", q, status)
 		}
+	}
+}
+
+func countAudit(rows []map[string]any, action, details string) int {
+	n := 0
+	for _, r := range rows {
+		if r["action"] == action && r["details"] == details {
+			n++
+		}
+	}
+	return n
+}
+
+func TestLoginAuditIsBoundedPerWindow(t *testing.T) {
+	env := apitest.New(t)
+	bad := map[string]any{"username": "nobody", "password": "whatever-password-1"}
+	for i := 0; i < 60; i++ {
+		env.Do("POST", "/api/admin/login", bad)
+	}
+	env.Advance(2 * time.Hour)
+	if status, _ := env.Do("POST", "/api/admin/login", map[string]any{"username": apitest.AdminUsername, "password": apitest.AdminPassword}); status != http.StatusNoContent {
+		t.Fatalf("login status %d", status)
+	}
+	rows := auditEntries(t, env, "?page_size=200")
+	if failed, throttled := countAudit(rows, "login_failed", ""), countAudit(rows, "login_failed", "throttled"); failed != 1 || throttled != 1 {
+		t.Fatalf("failed=%d throttled=%d, want 1 each", failed, throttled)
+	}
+	if findAudit(rows, "login") == nil {
+		t.Fatalf("successful login not audited: %v", rows)
+	}
+	lines := 0
+	for _, l := range env.AuditLines() {
+		if l["action"] == "login_failed" {
+			lines++
+		}
+	}
+	if lines != 2 {
+		t.Fatalf("login_failed log lines = %d, want 2", lines)
+	}
+
+	env.Do("POST", "/api/admin/login", bad)
+	if got := countAudit(auditEntries(t, env, "?page_size=200"), "login_failed", ""); got != 2 {
+		t.Fatalf("failed rows in a new window = %d, want 2", got)
+	}
+}
+
+func TestLoginAuditCoalescesPerClientAndUsername(t *testing.T) {
+	env := apitest.New(t)
+	for _, name := range []string{"nobody", "someone", "nobody", "someone"} {
+		env.Do("POST", "/api/admin/login", map[string]any{"username": name, "password": "whatever-password-1"})
+	}
+	if status, _ := env.Do("POST", "/api/admin/login", map[string]any{"username": apitest.AdminUsername, "password": apitest.AdminPassword}); status != http.StatusNoContent {
+		t.Fatalf("login status %d", status)
+	}
+	rows := auditEntries(t, env, "?page_size=200")
+	if got := countAudit(rows, "login_failed", ""); got != 2 {
+		t.Fatalf("failed rows = %d, want one per username", got)
 	}
 }

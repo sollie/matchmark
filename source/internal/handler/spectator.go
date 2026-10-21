@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/service"
 )
 
 func (h *Handler) spectatorRoutes(r chi.Router) {
@@ -113,7 +114,7 @@ func (h *Handler) spectatorStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	h.serveStream(w, r, h.svc.Subscribe(id), func(ctx context.Context) (streamEvent, error) {
+	h.serveStream(w, r, roleSpectator, func(ctx context.Context) error { return h.svc.CheckPublicStream(ctx, id) }, func() *service.Subscription { return h.svc.Subscribe(id) }, func(ctx context.Context) (streamEvent, error) {
 		snap, err := h.svc.SpectatorSnapshot(ctx, id)
 		return streamEvent{Name: "snapshot", Data: snap}, err
 	})
