@@ -17,6 +17,7 @@ type Handler struct {
 	auth         *service.Auth
 	audit        *service.Audit
 	secureCookie bool
+	servingTLS   bool
 	backupDir    string
 	limits       streamLimits
 	streams      atomic.Int64

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sollie/matchmark/internal/apitest"
+	"github.com/sollie/matchmark/internal/handler"
 )
 
 func client(t *testing.T) *http.Client {
@@ -112,15 +113,19 @@ func TestLogoutInvalidatesStolenCookie(t *testing.T) {
 
 func TestSessionCookieAttributes(t *testing.T) {
 	tests := []struct {
+		name    string
 		baseURL string
+		tls     bool
 		secure  bool
 	}{
-		{"http://localhost:8080", false},
-		{"https://scores.example.org", true},
+		{"plain http", "http://localhost:8080", false, false},
+		{"https base url", "https://scores.example.org", false, true},
+		{"tls mode without base url", "", true, true},
+		{"tls mode with http base url", "http://localhost:8080", true, true},
 	}
 	for _, tc := range tests {
-		t.Run(tc.baseURL, func(t *testing.T) {
-			env := apitest.NewWithBaseURL(t, tc.baseURL)
+		t.Run(tc.name, func(t *testing.T) {
+			env := apitest.NewWithBaseURL(t, tc.baseURL, handler.WithTLS(tc.tls))
 			resp := post(t, client(t), env, "/api/admin/login", apitest.AdminPassword)
 			cookies := resp.Cookies()
 			if len(cookies) != 1 {

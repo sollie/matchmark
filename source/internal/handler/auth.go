@@ -22,6 +22,10 @@ func WithAuth(auth *service.Auth, baseURL string) Option {
 	}
 }
 
+func WithTLS(serving bool) Option {
+	return func(h *Handler) { h.servingTLS = serving }
+}
+
 func WithAudit(a *service.Audit) Option {
 	return func(h *Handler) { h.audit = a }
 }
@@ -104,7 +108,7 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, value string, expires 
 		Expires:  expires,
 		MaxAge:   maxAge,
 		HttpOnly: true,
-		Secure:   h.secureCookie,
+		Secure:   h.secureCookie || h.servingTLS,
 		SameSite: http.SameSiteLaxMode,
 	})
 }

@@ -85,7 +85,7 @@ Tests seed data through the admin API with unique names and send a unique `X-For
 | `ADMIN_PASSWORD` | required when there are no users | Password of the seeded admin, 16-128 characters; ignored once users exist |
 | `DB_PATH` | `data/matchmark.db` (`/data/matchmark.db` in the image) | SQLite file; its directory also holds backups and ACME certificates |
 | `LISTEN_ADDR` | `:8080` plain, `:8443` with TLS | Listen address |
-| `BASE_URL` | empty | Public URL, used for pairing links; an `https` URL marks the session cookie `Secure` |
+| `BASE_URL` | empty | Public URL, used for pairing links; an `https` URL marks the session cookie `Secure` (see [TLS modes](#tls-modes)) |
 | `TRUSTED_PROXY` | empty | Comma-separated IPs or CIDRs of reverse proxies whose forwarded client IP headers are trusted |
 | `DISABLE_COMPRESSION` | `false` | Set to `true` to turn off response compression (for example behind a proxy that already compresses) |
 | `TLS_CERT_FILE`, `TLS_KEY_FILE` | empty | Static certificate mode; set both |
@@ -118,6 +118,8 @@ To write the restore, run `matchmark restore --apply [file]` with the same `DB_P
 If every admin is locked out, stop the server and run `matchmark reset-password <username>` with the same `DB_PATH` the server uses, passing the new temporary password on stdin (so it stays out of the process list), for example `printf '%s\n' "$NEW_PASSWORD" | docker compose run --rm -T matchmark reset-password alice`. The username is case-insensitive. It needs no `ADMIN_USERNAME` or `ADMIN_PASSWORD`, rejects an unknown username, a missing database and a password outside 16-128 characters without changing anything, and on success sets the new password, ends all of that user's sessions and flags the account so the password must be changed at next login. The run is audited (actor `cli`, an `audit` line on stdout).
 
 ## TLS modes
+
+The session cookie is `Secure` when the binary serves TLS itself (static or ACME mode) or when `BASE_URL` is an `https` URL; otherwise (plain HTTP without an `https` `BASE_URL`) it is not.
 
 - **Plain HTTP (default):** for local networks or behind a TLS-terminating reverse proxy. Set `BASE_URL` to the public URL and `TRUSTED_PROXY` to the proxy address.
 - **Static certificate:** mount the files and set `TLS_CERT_FILE` and `TLS_KEY_FILE`; the server listens on `:8443`. Map the port in compose, e.g. `"443:8443"`.
