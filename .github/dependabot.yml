@@ -20,3 +20,27 @@ updates:
       actions:
         patterns:
           - "*"
+
+  - package-ecosystem: npm
+    directories:
+      - /source/web
+      - /source/api
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-dependencies:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      docker-images:
+        update-types:
+          - minor
+          - patch
