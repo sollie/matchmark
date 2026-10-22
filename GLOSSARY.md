@@ -103,6 +103,10 @@ _Avoid_: Backup, replication
 A change notice the server pushes for a competition to the spectator, admin and scorer screens, so they refresh without asking.
 _Avoid_: Poll, refresh, push notification
 
+**Change recorder**:
+The module that every state-changing operation reports to. Given one change (action, target, affected competition, and any locked stages whose Score log lines must be re-emitted), it writes the Audit log entry, re-emits the Score log lines, then publishes a Live update, in that fixed order. Failures in these steps are logged and never fail the request. Replication stays with the operation that needs it.
+_Avoid_: Event bus, notifier, hook
+
 ## Accounts
 
 **User**:
