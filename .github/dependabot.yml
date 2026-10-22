@@ -28,10 +28,6 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    ignore:
-      - dependency-name: typescript
-        versions:
-          - ">=7"
     groups:
       npm-dependencies:
         update-types:
