@@ -53,7 +53,7 @@ func (s *Service) RestoreScoreLog(ctx context.Context, plan restore.Plan, merge 
 	if err != nil {
 		return restore.Applied{}, fmt.Errorf("restore score log: %w", mapRepoErr(err))
 	}
-	s.bus.PublishAll()
+	s.changes.Record(ctx, Change{Live: LiveAll})
 	total.Competitions = counts.Competitions
 	total.Entries = counts.Entries
 	total.Stages = counts.Stages

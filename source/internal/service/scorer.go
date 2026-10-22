@@ -45,8 +45,7 @@ func (s *Service) CreatePairing(ctx context.Context, competitionID int64, lane i
 	if err != nil {
 		return 0, "", mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "device.pair", Target: idTarget("competition", competitionID), Details: "lane " + strconv.Itoa(lane)})
-	s.bus.Publish(competitionID)
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "device.pair", Target: idTarget("competition", competitionID), Details: "lane " + strconv.Itoa(lane)}, CompetitionID: competitionID, Live: LiveCompetition})
 	return id, token, nil
 }
 
@@ -62,8 +61,7 @@ func (s *Service) RevokePairing(ctx context.Context, competitionID, pairingID in
 	if err := s.repo.RevokePairing(ctx, competitionID, pairingID); err != nil {
 		return mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "device.revoke", Target: idTarget("competition", competitionID), Details: "pairing " + strconv.FormatInt(pairingID, 10)})
-	s.bus.Publish(competitionID)
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "device.revoke", Target: idTarget("competition", competitionID), Details: "pairing " + strconv.FormatInt(pairingID, 10)}, CompetitionID: competitionID, Live: LiveCompetition})
 	return nil
 }
 
@@ -92,13 +90,18 @@ func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber
 	if err != nil {
 		return err
 	}
-	if err := s.SetRingCounts(ctx, d.CompetitionID, t.Entry.ID, stageNumber, c); err != nil {
+	if err := s.writeRingCounts(ctx, d.CompetitionID, t.Entry.ID, stageNumber, c); err != nil {
 		return err
 	}
-	s.audit.RecordAs(ctx, Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP}, AuditEvent{
-		Action:  "stage.set_counts",
-		Target:  stageTarget(d.CompetitionID, t.Entry.ID, stageNumber),
-		Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
+	s.changes.Record(ctx, Change{
+		Audit: AuditEvent{
+			Action:  "stage.set_counts",
+			Target:  stageTarget(d.CompetitionID, t.Entry.ID, stageNumber),
+			Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
+		},
+		Actor:         &Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP},
+		CompetitionID: d.CompetitionID,
+		Live:          LiveCompetition,
 	})
 	return nil
 }
@@ -124,13 +127,17 @@ func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int
 		}
 		return mapRepoErr(err)
 	}
-	s.audit.RecordAs(ctx, Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP}, AuditEvent{
-		Action:  "stage.lock",
-		Target:  stageTarget(d.CompetitionID, t.Entry.ID, stageNumber),
-		Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
+	s.changes.Record(ctx, Change{
+		Audit: AuditEvent{
+			Action:  "stage.lock",
+			Target:  stageTarget(d.CompetitionID, t.Entry.ID, stageNumber),
+			Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
+		},
+		Actor:         &Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP},
+		CompetitionID: d.CompetitionID,
+		Live:          LiveCompetition,
+		Stage:         &StageEvent{Event: eventStageLocked, CompetitionID: d.CompetitionID, EntryID: t.Entry.ID, StageNumber: stageNumber},
 	})
-	s.emitStageEvent(ctx, eventStageLocked, d.CompetitionID, t.Entry.ID, stageNumber)
-	s.bus.Publish(d.CompetitionID)
 	return nil
 }
 
@@ -151,9 +158,12 @@ func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int
 		}
 		return mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "stage.lock", Target: stageTarget(competitionID, entryID, stageNumber)})
-	s.emitStageEvent(ctx, eventStageLocked, competitionID, entryID, stageNumber)
-	s.bus.Publish(competitionID)
+	s.changes.Record(ctx, Change{
+		Audit:         AuditEvent{Action: "stage.lock", Target: stageTarget(competitionID, entryID, stageNumber)},
+		CompetitionID: competitionID,
+		Live:          LiveCompetition,
+		Stage:         &StageEvent{Event: eventStageLocked, CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber},
+	})
 	return nil
 }
 
@@ -165,9 +175,12 @@ func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64,
 	if err := s.repo.UnlockStage(ctx, stage.ID); err != nil {
 		return mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "stage.unlock", Target: stageTarget(competitionID, entryID, stageNumber)})
-	s.emitStageSnapshot(ctx, eventStageUnlocked, competitionID, entryID, stage)
-	s.bus.Publish(competitionID)
+	s.changes.Record(ctx, Change{
+		Audit:         AuditEvent{Action: "stage.unlock", Target: stageTarget(competitionID, entryID, stageNumber)},
+		CompetitionID: competitionID,
+		Live:          LiveCompetition,
+		Stage:         &StageEvent{Event: eventStageUnlocked, CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber, Snapshot: &stage},
+	})
 	return nil
 }
 

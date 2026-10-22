@@ -18,15 +18,14 @@ var (
 )
 
 type Service struct {
-	repo       *repository.Repository
-	replicator ReplicationRequester
-	scoreLog   *slog.Logger
-	audit      *Audit
-	emitMu     sync.Mutex
-	emitSeq    int64
-	bus        *Broadcaster
-	snapMu     sync.Mutex
-	snaps      map[int64]*snapSlot
+	repo        *repository.Repository
+	replicator  ReplicationRequester
+	scoreLogger *slog.Logger
+	audit       *Audit
+	bus         *Broadcaster
+	changes     *ChangeRecorder
+	snapMu      sync.Mutex
+	snaps       map[int64]*snapSlot
 }
 
 func New(repo *repository.Repository, opts ...Option) *Service {
@@ -34,6 +33,8 @@ func New(repo *repository.Repository, opts ...Option) *Service {
 	for _, opt := range opts {
 		opt(s)
 	}
+	s.changes = NewChangeRecorder(s.audit, NewScoreLog(repo, s.scoreLogger), s.bus)
+	s.changes = NewChangeRecorder(s.audit, NewScoreLog(repo, s.scoreLogger), s.bus)
 	return s
 }
 

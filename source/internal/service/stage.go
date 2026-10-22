@@ -36,6 +36,14 @@ func (s *Service) validatedStage(ctx context.Context, competitionID, entryID int
 }
 
 func (s *Service) SetRingCounts(ctx context.Context, competitionID, entryID int64, stageNumber int, c repository.RingCounts) error {
+	if err := s.writeRingCounts(ctx, competitionID, entryID, stageNumber, c); err != nil {
+		return err
+	}
+	s.changes.Record(ctx, Change{CompetitionID: competitionID, Live: LiveCompetition})
+	return nil
+}
+
+func (s *Service) writeRingCounts(ctx context.Context, competitionID, entryID int64, stageNumber int, c repository.RingCounts) error {
 	stage, err := s.validatedStage(ctx, competitionID, entryID, stageNumber, c, true)
 	if err != nil {
 		return err
@@ -46,7 +54,6 @@ func (s *Service) SetRingCounts(ctx context.Context, competitionID, entryID int6
 		}
 		return mapRepoErr(err)
 	}
-	s.bus.Publish(competitionID)
 	return nil
 }
 
@@ -58,11 +65,15 @@ func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID
 	if err := s.repo.OverwriteRingCounts(ctx, stage.ID, c, lockedByUser(ctx, stage.Locked)); err != nil {
 		return mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "stage.set_counts", Target: stageTarget(competitionID, entryID, stageNumber)})
-	if stage.Locked {
-		s.emitStageEvent(ctx, eventStageLocked, competitionID, entryID, stageNumber)
+	change := Change{
+		Audit:         AuditEvent{Action: "stage.set_counts", Target: stageTarget(competitionID, entryID, stageNumber)},
+		CompetitionID: competitionID,
+		Live:          LiveCompetition,
 	}
-	s.bus.Publish(competitionID)
+	if stage.Locked {
+		change.Stage = &StageEvent{Event: eventStageLocked, CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber}
+	}
+	s.changes.Record(ctx, change)
 	return nil
 }
 

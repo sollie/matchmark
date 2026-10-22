@@ -54,8 +54,7 @@ func (s *Service) SetVisibility(ctx context.Context, competitionID int64, v repo
 	if err := s.repo.SetVisibility(ctx, competitionID, v); err != nil {
 		return mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "competition.visibility", Target: idTarget("competition", competitionID)})
-	s.bus.Publish(competitionID)
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.visibility", Target: idTarget("competition", competitionID)}, CompetitionID: competitionID, Live: LiveCompetition})
 	return nil
 }
 
