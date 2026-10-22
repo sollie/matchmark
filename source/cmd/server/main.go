@@ -24,6 +24,10 @@ import (
 )
 
 func main() {
+	if isVersionRequest(os.Args[1:]) {
+		printVersion(os.Stdout)
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "restore" {
 		if err := runRestore(os.Args[2:], os.Getenv, os.Stdin, os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, "restore:", err)
@@ -40,6 +44,7 @@ func main() {
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
+	logger.Info("starting matchmark", "version", version, "commit", commit, "built", date)
 	if err := run(logger); err != nil {
 		logger.Error("matchmark exited", "error", err)
 		os.Exit(1)
