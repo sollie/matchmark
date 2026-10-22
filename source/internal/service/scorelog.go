@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/sollie/matchmark/internal/repository"
@@ -19,46 +20,57 @@ const (
 	eventStageUnlocked = "stage_unlocked"
 )
 
+type ScoreLog struct {
+	repo *repository.Repository
+	log  *slog.Logger
+	mu   sync.Mutex
+	seq  int64
+}
+
+func NewScoreLog(repo *repository.Repository, log *slog.Logger) *ScoreLog {
+	return &ScoreLog{repo: repo, log: log}
+}
+
 func WithScoreLog(l *slog.Logger) Option {
-	return func(s *Service) { s.scoreLog = l }
+	return func(s *Service) { s.scoreLogger = l }
 }
 
-func (s *Service) emitStageEvent(ctx context.Context, event string, competitionID, entryID int64, stageNumber int) {
-	if s.scoreLog == nil {
+func (l *ScoreLog) EmitStage(ctx context.Context, event string, competitionID, entryID int64, stageNumber int) {
+	if l == nil || l.log == nil {
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
-	s.emitMu.Lock()
-	defer s.emitMu.Unlock()
-	stage, err := s.repo.GetStage(ctx, competitionID, entryID, stageNumber)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	stage, err := l.repo.GetStage(ctx, competitionID, entryID, stageNumber)
 	if err != nil {
-		s.scoreLog.ErrorContext(ctx, "score log context failed", "event", event, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", event, "error", err)
 		return
 	}
-	s.emitLocked(ctx, event, competitionID, entryID, stage)
+	l.emitLocked(ctx, event, competitionID, entryID, stage)
 }
 
-func (s *Service) emitStageSnapshot(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) {
-	if s.scoreLog == nil {
+func (l *ScoreLog) EmitStageSnapshot(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) {
+	if l == nil || l.log == nil {
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
-	s.emitMu.Lock()
-	defer s.emitMu.Unlock()
-	s.emitLocked(ctx, event, competitionID, entryID, stage)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.emitLocked(ctx, event, competitionID, entryID, stage)
 }
 
-func (s *Service) emitLocked(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) {
-	attrs, err := s.stageEventAttrs(ctx, event, competitionID, entryID, stage)
+func (l *ScoreLog) emitLocked(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) {
+	attrs, err := l.stageEventAttrs(ctx, event, competitionID, entryID, stage)
 	if err != nil {
-		s.scoreLog.ErrorContext(ctx, "score log context failed", "event", event, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", event, "error", err)
 		return
 	}
-	s.scoreLog.LogAttrs(ctx, slog.LevelInfo, event, attrs...)
+	l.log.LogAttrs(ctx, slog.LevelInfo, event, attrs...)
 }
 
-func (s *Service) stageEventAttrs(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) ([]slog.Attr, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (l *ScoreLog) stageEventAttrs(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) ([]slog.Attr, error) {
+	comp, err := l.repo.GetCompetition(ctx, competitionID)
 	if err != nil {
 		return nil, err
 	}
@@ -66,15 +78,15 @@ func (s *Service) stageEventAttrs(ctx context.Context, event string, competition
 	if err != nil {
 		return nil, err
 	}
-	entry, err := s.repo.GetEntry(ctx, competitionID, entryID)
+	entry, err := l.repo.GetEntry(ctx, competitionID, entryID)
 	if err != nil {
 		return nil, err
 	}
-	shooter, err := s.repo.GetShooter(ctx, entry.ShooterID)
+	shooter, err := l.repo.GetShooter(ctx, entry.ShooterID)
 	if err != nil {
 		return nil, err
 	}
-	s.emitSeq++
+	l.seq++
 	c := stage.Counts
 	var lockedBy any = stage.ScorerName
 	if stage.ScorerLane != nil {
@@ -84,7 +96,7 @@ func (s *Service) stageEventAttrs(ctx context.Context, event string, competition
 		slog.Int("schema_version", scoreLogSchemaVersion),
 		slog.String("event", event),
 		slog.String("emitted_at", time.Now().UTC().Format(emittedAtLayout)),
-		slog.Int64("seq", s.emitSeq),
+		slog.Int64("seq", l.seq),
 		slog.Group("competition",
 			slog.Int64("id", comp.ID),
 			slog.String("name", comp.Name),
@@ -117,17 +129,17 @@ func (s *Service) stageEventAttrs(ctx context.Context, event string, competition
 	}, nil
 }
 
-func (s *Service) reemitLockedStages(ctx context.Context, f repository.LockedStageFilter) {
-	if s.scoreLog == nil {
+func (l *ScoreLog) Reemit(ctx context.Context, f repository.LockedStageFilter) {
+	if l == nil || l.log == nil {
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
-	refs, err := s.repo.ListLockedStages(ctx, f)
+	refs, err := l.repo.ListLockedStages(ctx, f)
 	if err != nil {
-		s.scoreLog.ErrorContext(ctx, "score log context failed", "event", eventStageLocked, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageLocked, "error", err)
 		return
 	}
 	for _, ref := range refs {
-		s.emitStageEvent(ctx, eventStageLocked, ref.CompetitionID, ref.EntryID, ref.Number)
+		l.EmitStage(ctx, eventStageLocked, ref.CompetitionID, ref.EntryID, ref.Number)
 	}
 }

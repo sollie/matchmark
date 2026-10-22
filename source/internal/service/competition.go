@@ -25,7 +25,7 @@ func (s *Service) CreateShooter(ctx context.Context, sh repository.Shooter) (int
 	if err != nil {
 		return id, mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "shooter.create", Target: idTarget("shooter", id)})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "shooter.create", Target: idTarget("shooter", id)}})
 	return id, nil
 }
 
@@ -40,7 +40,7 @@ func (s *Service) CreateCompetition(ctx context.Context, c repository.Competitio
 	if err != nil {
 		return id, mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "competition.create", Target: idTarget("competition", id), Details: c.Name})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.create", Target: idTarget("competition", id), Details: c.Name}})
 	return id, nil
 }
 
@@ -64,8 +64,7 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if err != nil {
 		return id, mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "entry.add", Target: entryTarget(e.CompetitionID, id)})
-	s.bus.Publish(e.CompetitionID)
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.add", Target: entryTarget(e.CompetitionID, id)}, CompetitionID: e.CompetitionID, Live: LiveCompetition})
 	return id, nil
 }
 
@@ -76,8 +75,7 @@ func (s *Service) WithdrawEntry(ctx context.Context, competitionID, entryID int6
 	if err := s.repo.WithdrawEntry(ctx, competitionID, entryID); err != nil {
 		return mapRepoErr(err)
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "entry.withdraw", Target: entryTarget(competitionID, entryID)})
-	s.bus.Publish(competitionID)
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.withdraw", Target: entryTarget(competitionID, entryID)}, CompetitionID: competitionID, Live: LiveCompetition})
 	return nil
 }
 

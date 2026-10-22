@@ -20,6 +20,6 @@ func (s *Service) Backup(ctx context.Context, user User, dir string) (path strin
 		cleanup()
 		return "", nil, err
 	}
-	s.audit.Record(ctx, AuditEvent{Action: "backup.download"})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "backup.download"}})
 	return path, cleanup, nil
 }
