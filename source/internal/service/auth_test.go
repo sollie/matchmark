@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sollie/matchmark/internal/db"
 	"github.com/sollie/matchmark/internal/repository"
@@ -61,5 +62,31 @@ func TestSeedVariablesAreIgnoredOnceUsersExist(t *testing.T) {
 	}
 	if _, _, err := auth.Login("c", "first", "first-password-123456"); err != nil {
 		t.Fatalf("first user: %v", err)
+	}
+}
+
+func TestUnknownUsernameWaitsInsteadOfHashing(t *testing.T) {
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	var slept []time.Duration
+	auth := service.NewAuth(repository.New(conn), service.WithAuthSleep(func(d time.Duration) { slept = append(slept, d) }))
+	if err := auth.SeedAdmin("admin", "admin-password-12345"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := auth.Login("c", "nobody", "whatever-password-123"); !errors.Is(err, service.ErrInvalidCredentials) {
+		t.Fatalf("err = %v", err)
+	}
+	if len(slept) != 1 || slept[0] <= 0 {
+		t.Fatalf("unknown username sleeps = %v", slept)
+	}
+	slept = nil
+	if _, _, err := auth.Login("c", "admin", "wrong-password-123456"); !errors.Is(err, service.ErrInvalidCredentials) {
+		t.Fatalf("err = %v", err)
+	}
+	if len(slept) != 0 {
+		t.Fatalf("known user got extra wait: %v", slept)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -22,6 +23,8 @@ const (
 	MinPasswordLength = 16
 	MaxPasswordLength = 128
 	SessionTTL        = 12 * time.Hour
+
+	defaultVerifyEstimate = 100 * time.Millisecond
 
 	RoleAdmin = "admin"
 	RoleUser  = "user"
@@ -44,10 +47,10 @@ var (
 type User = repository.User
 
 type Auth struct {
-	repo      *repository.Repository
-	now       func() time.Time
-	dummyHash string
-	audit     *Audit
+	repo        *repository.Repository
+	now         func() time.Time
+	verifyNanos atomic.Int64
+	audit       *Audit
 
 	adminMu  sync.Mutex
 	throttle *LoginThrottle
@@ -73,7 +76,6 @@ func NewAuth(repo *repository.Repository, opts ...AuthOption) *Auth {
 	for _, opt := range opts {
 		opt(a)
 	}
-	a.dummyHash, _ = hashPassword("dummy")
 	return a
 }
 
@@ -305,6 +307,28 @@ func (a *Auth) ChangePassword(ctx context.Context, token, current, next string) 
 	return nil
 }
 
+func (a *Auth) timedVerify(password, phc string) (ok, needsRehash bool) {
+	start := a.now()
+	ok, needsRehash = verifyPassword(password, phc)
+	elapsed := int64(a.now().Sub(start))
+	if elapsed > 0 {
+		old := a.verifyNanos.Load()
+		if old == 0 {
+			a.verifyNanos.Store(elapsed)
+		} else {
+			a.verifyNanos.Store(old - old/4 + elapsed/4)
+		}
+	}
+	return ok, needsRehash
+}
+
+func (a *Auth) verifyEstimate() time.Duration {
+	if n := a.verifyNanos.Load(); n > 0 {
+		return time.Duration(n)
+	}
+	return defaultVerifyEstimate
+}
+
 func hashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
@@ -321,11 +345,12 @@ func (a *Auth) Login(clientKey, username, password string) (token string, expire
 		return "", time.Time{}, lookupErr
 	}
 	known := lookupErr == nil
-	hash := user.PasswordHash
-	if !known {
-		hash = a.dummyHash
+	var ok, needsRehash bool
+	if known {
+		ok, needsRehash = a.timedVerify(password, user.PasswordHash)
+	} else {
+		a.sleep(max(0, a.verifyEstimate()-a.now().Sub(now)))
 	}
-	ok, needsRehash := verifyPassword(password, hash)
 	if !known || !ok || !user.Active {
 		delay, audit := a.throttle.Fail(clientKey, username, now)
 		if delay > 0 {
