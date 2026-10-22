@@ -75,87 +75,40 @@ func (s *Service) AuthenticateDevice(ctx context.Context, token string) (Device,
 	return Device{CompetitionID: p.CompetitionID, Lane: p.Lane}, nil
 }
 
-type scoringTarget struct {
-	entry repository.Entry
-	name  string
-	score int
-}
-
-func (s *Service) deviceTarget(ctx context.Context, d Device) (scoringTarget, string, error) {
-	comp, err := s.repo.GetCompetition(ctx, d.CompetitionID)
-	if err != nil {
-		return scoringTarget{}, "", mapRepoErr(err)
-	}
-	if CompetitionStatus(comp.Status) != StatusActive {
-		return scoringTarget{}, "", ErrConflict
-	}
-	scoreLane, err := s.ScoreLane(ctx, d.CompetitionID, d.Lane)
-	if err != nil {
-		return scoringTarget{}, "", err
-	}
-	own, err := s.repo.MannedEntryByLane(ctx, d.CompetitionID, d.Lane)
-	if err != nil {
-		return scoringTarget{}, "", mapRepoErr(err)
-	}
-	ownShooter, err := s.repo.GetShooter(ctx, own.ShooterID)
-	if err != nil {
-		return scoringTarget{}, "", mapRepoErr(err)
-	}
-	target, err := s.repo.MannedEntryByLane(ctx, d.CompetitionID, scoreLane)
-	if err != nil {
-		return scoringTarget{}, "", mapRepoErr(err)
-	}
-	targetShooter, err := s.repo.GetShooter(ctx, target.ShooterID)
-	if err != nil {
-		return scoringTarget{}, "", mapRepoErr(err)
-	}
-	return scoringTarget{entry: target, name: shooterName(targetShooter), score: scoreLane}, shooterName(ownShooter), nil
-}
-
 func shooterName(sh repository.Shooter) string {
 	return sh.FirstName + " " + sh.LastName
 }
 
 func (s *Service) DeviceSession(ctx context.Context, d Device) (ScorerSession, error) {
-	t, _, err := s.deviceTarget(ctx, d)
+	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return ScorerSession{}, err
 	}
-	entries, err := s.repo.ListEntries(ctx, d.CompetitionID)
-	if err != nil {
-		return ScorerSession{}, err
-	}
-	out := ScorerSession{Lane: d.Lane, ScoreLane: t.score, EntryID: t.entry.ID, ShooterName: t.name}
-	for _, e := range entries {
-		if e.ID == t.entry.ID {
-			out.Stages = e.Stages
-		}
-	}
-	return out, nil
+	return ScorerSession{Lane: d.Lane, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages}, nil
 }
 
 func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber int, c repository.RingCounts) error {
-	t, _, err := s.deviceTarget(ctx, d)
+	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return err
 	}
-	if err := s.SetRingCounts(ctx, d.CompetitionID, t.entry.ID, stageNumber, c); err != nil {
+	if err := s.SetRingCounts(ctx, d.CompetitionID, t.Entry.ID, stageNumber, c); err != nil {
 		return err
 	}
 	s.audit.RecordAs(ctx, Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP}, AuditEvent{
 		Action:  "stage.set_counts",
-		Target:  stageTarget(d.CompetitionID, t.entry.ID, stageNumber),
+		Target:  stageTarget(d.CompetitionID, t.Entry.ID, stageNumber),
 		Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
 	})
 	return nil
 }
 
 func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int) error {
-	t, scorerName, err := s.deviceTarget(ctx, d)
+	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return err
 	}
-	stage, err := s.repo.GetStage(ctx, d.CompetitionID, t.entry.ID, stageNumber)
+	stage, err := s.repo.GetStage(ctx, d.CompetitionID, t.Entry.ID, stageNumber)
 	if err != nil {
 		return mapRepoErr(err)
 	}
@@ -165,7 +118,7 @@ func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int
 	if err := ValidateRingCounts(stage.Counts, stage.ExpectedShots); err != nil {
 		return err
 	}
-	if err := s.repo.LockStage(ctx, stage.ID, d.Lane, scorerName); err != nil {
+	if err := s.repo.LockStage(ctx, stage.ID, d.Lane, t.ScorerName); err != nil {
 		if err == repository.ErrConflict {
 			return ErrStageLocked
 		}
@@ -173,10 +126,10 @@ func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int
 	}
 	s.audit.RecordAs(ctx, Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP}, AuditEvent{
 		Action:  "stage.lock",
-		Target:  stageTarget(d.CompetitionID, t.entry.ID, stageNumber),
+		Target:  stageTarget(d.CompetitionID, t.Entry.ID, stageNumber),
 		Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
 	})
-	s.emitStageEvent(ctx, eventStageLocked, d.CompetitionID, t.entry.ID, stageNumber)
+	s.emitStageEvent(ctx, eventStageLocked, d.CompetitionID, t.Entry.ID, stageNumber)
 	s.bus.Publish(d.CompetitionID)
 	return nil
 }

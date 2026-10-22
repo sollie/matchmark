@@ -89,6 +89,21 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 	})
 }
 
+func TestSessionFollowsLaneChanges(t *testing.T) {
+	f := newScoringFixture(t, 1, 3, 5)
+	token := f.pair(t, 1)
+
+	status, _ := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries/%d/withdraw", f.comp, f.entries[3]), nil)
+	if status != http.StatusOK {
+		t.Fatalf("withdraw status %d", status)
+	}
+	status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil)
+	if status != http.StatusOK || int(out["score_lane"].(float64)) != 5 || out["shooter_name"] != "A Shooter5" {
+		t.Fatalf("session after withdraw: %d %v", status, out)
+	}
+
+}
+
 func TestAdminLocksCompleteStage(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	p := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[2])

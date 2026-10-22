@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"sort"
 )
 
 type Shooter struct {
@@ -108,23 +107,4 @@ func (r *Repository) WithdrawEntry(ctx context.Context, competitionID, entryID i
 		return ErrNotFound
 	}
 	return nil
-}
-
-func (r *Repository) MannedLanes(ctx context.Context, competitionID int64) ([]int, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT lane FROM entries WHERE competition_id = ? AND withdrawn = 0 ORDER BY lane`, competitionID)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	var lanes []int
-	for rows.Next() {
-		var l int
-		if err := rows.Scan(&l); err != nil {
-			return nil, err
-		}
-		lanes = append(lanes, l)
-	}
-	sort.Ints(lanes)
-	return lanes, rows.Err()
 }
