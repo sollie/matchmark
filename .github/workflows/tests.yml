@@ -78,13 +78,14 @@ jobs:
           retention-days: 7
 
   e2e-browser:
-    name: E2E (${{ matrix.browser }})
+    name: E2E (${{ matrix.browser }} ${{ matrix.shard }}/3)
     needs: web
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         browser: ${{ fromJSON(inputs.e2e-browsers) }}
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
 
@@ -114,12 +115,12 @@ jobs:
 
       - name: E2E
         working-directory: source/web
-        run: npm run e2e -- --project=${{ matrix.browser }}
+        run: npm run e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/3
 
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}
           path: |
             source/web/playwright-report
             source/web/test-results
