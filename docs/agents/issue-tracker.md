@@ -14,6 +14,16 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
+## Dependencies between issues
+
+Always record dependencies with GitHub's native issue dependencies, for any issue and not only wayfinding tickets. When issue A cannot start before issue B is done, add B as a blocker of A:
+
+```
+gh api --method POST repos/sollie/matchmark/issues/<A>/dependencies/blocked_by -F issue_id=$(gh api repos/sollie/matchmark/issues/<B> --jq .id)
+```
+
+`issue_id` is the blocker's numeric database id, not its `#number`. A "Blocked by #<n>" line in the body may be added for readers, but never replaces the link.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_

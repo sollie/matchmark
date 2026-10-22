@@ -108,6 +108,8 @@ That package is the single source of truth for:
 
 Issues are tracked in GitHub Issues (`sollie/matchmark`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
+Whenever an issue depends on another, always create a native GitHub dependency link (`blocked_by`, see `docs/agents/issue-tracker.md`). A "Blocked by #N" line in the body is not enough; add it only in addition to the link.
+
 ### Triage labels
 
 Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
