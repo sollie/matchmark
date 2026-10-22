@@ -13,6 +13,7 @@ The rulebook (courses, weapon classes, ring values) is public at `GET /api/ruleb
 | `Dockerfile` | Node build stage, Go build stage, Alpine 3.24 final image built with `-tags musl` (non-root) |
 | `docker-compose.yml` | The app plus a `./data` volume |
 | `scripts/smoke-image.sh` | Starts an image and checks it opens its database |
+| `.goreleaser.yaml`, `.github/workflows/` | Release binaries, CI, tag-triggered release (ADR 0012) |
 | `docs/` | Spec, ADRs, plan |
 
 ## Run with Docker
@@ -175,11 +176,12 @@ Restore by copying the replica's database file to `data/matchmark.db` on a new p
 
 | Target | Use |
 |--------|-----|
-| linux/amd64 | Supported (Docker image) |
-| linux/arm64 | Supported, including 64-bit Raspberry Pi OS (Docker image) |
-| darwin/arm64 | Development only |
+| linux/amd64 | Supported (Docker image and release binary) |
+| linux/arm64 | Supported, including 64-bit Raspberry Pi OS (Docker image and release binary) |
+| darwin/amd64, darwin/arm64 | Release binary, unsigned |
+| windows/amd64 | Release binary, unsigned |
 
-32-bit ARM is unsupported: tursogo ships no native library for it. The binary is built with `CGO_ENABLED=0` but loads an embedded native library at runtime, which the final image extracts to `TURSO_GO_CACHE_DIR` (`/var/cache/turso`, writable by the non-root user). On Alpine the build needs `-tags musl`, and the image installs `libgcc`.
+32-bit ARM and windows/arm64 are unsupported: tursogo ships no native library for them. The binary is built with `CGO_ENABLED=0` but loads an embedded native library at runtime, which the final image extracts to `TURSO_GO_CACHE_DIR` (`/var/cache/turso`, writable by the non-root user). On Alpine the build needs `-tags musl`, and the image installs `libgcc`.
 
 On a Pi (64-bit OS) building on the device works unchanged:
 
@@ -189,7 +191,15 @@ docker compose up --build -d
 
 To cross-build from another machine: `docker buildx build --platform linux/arm64 -t matchmark:latest .`.
 
-CI builds, tests and smoke-tests the image on native runners (`ubuntu-latest`, `ubuntu-24.04-arm`) and builds darwin/arm64. Run the smoke test locally with `scripts/smoke-image.sh matchmark:latest`.
+## Releases
+
+Push a tag such as `v0.1.0` (or `v0.1.0-rc.1` for a pre-release) on a commit on `main`. The release workflow runs all tests, then pushes `ghcr.io/sollie/matchmark:v0.1.0`, `:v0.1` and `:latest` (multi-arch, amd64 and arm64; pre-releases only get the exact tag), then publishes a GitHub Release with archives named `matchmark_<version>_<os>_<arch>` (`.tar.gz`, `.zip` on Windows) and `checksums.txt`. The changelog comes from Conventional Commits. `matchmark --version` prints the version. Restrict who may push `v*` tags with a tag ruleset in the repository settings (manual).
+
+The macOS and Windows binaries are not signed. On macOS clear the quarantine flag (`xattr -d com.apple.quarantine matchmark`); on Windows choose "More info" and "Run anyway" in SmartScreen. See ADR 0012.
+
+## CI
+
+Pull requests run the source checks (build, windows and darwin cross-compile, test, lint), the web checks and chromium e2e. The image build and the goreleaser snapshot run on a PR only when the Dockerfile, smoke script, `go.mod`/`go.sum`, `.goreleaser.yaml` or the workflows change. On `main` and weekly the image is built on native runners (`ubuntu-latest`, `ubuntu-24.04-arm`), smoke-tested with `scripts/smoke-image.sh matchmark:latest` and scanned with Trivy, and all three browsers run e2e.
 
 ## License
 
