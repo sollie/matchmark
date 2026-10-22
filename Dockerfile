@@ -12,7 +12,12 @@ COPY source/go.mod source/go.sum ./
 RUN go mod download
 COPY source ./
 COPY --from=web /src/web/dist ./web/dist
-RUN CGO_ENABLED=0 go build -tags musl -trimpath -ldflags="-s -w" -o /out/matchmark ./cmd/server
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG DATE=unknown
+RUN CGO_ENABLED=0 go build -tags musl -trimpath \
+    -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
+    -o /out/matchmark ./cmd/server
 
 FROM alpine:3.24
 RUN apk add --no-cache ca-certificates libgcc \
