@@ -34,7 +34,6 @@ func New(repo *repository.Repository, opts ...Option) *Service {
 		opt(s)
 	}
 	s.changes = NewChangeRecorder(s.audit, NewScoreLog(repo, s.scoreLogger), s.bus)
-	s.changes = NewChangeRecorder(s.audit, NewScoreLog(repo, s.scoreLogger), s.bus)
 	return s
 }
 

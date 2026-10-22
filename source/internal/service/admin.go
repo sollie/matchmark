@@ -116,15 +116,19 @@ func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status Com
 	if err := s.repo.SetCompetitionStatus(ctx, id, string(status)); err != nil {
 		return mapRepoErr(err)
 	}
-	if status == StatusFinished {
-		if err := s.repo.RevokeCompetitionPairings(ctx, id); err != nil {
-			return mapRepoErr(err)
-		}
+	record := Change{Audit: AuditEvent{Action: "competition.status", Target: idTarget("competition", id), Details: string(status)}, CompetitionID: id, Live: LiveCompetition}
+	if status != StatusFinished {
+		s.changes.Record(ctx, record)
+		return nil
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.status", Target: idTarget("competition", id), Details: string(status)}, CompetitionID: id, Live: LiveCompetition})
-	if status == StatusFinished && s.replicator != nil {
+	s.changes.Record(ctx, Change{Audit: record.Audit})
+	if err := s.repo.RevokeCompetitionPairings(ctx, id); err != nil {
+		return mapRepoErr(err)
+	}
+	if s.replicator != nil {
 		s.replicator.Request()
 	}
+	s.changes.Record(ctx, Change{CompetitionID: id, Live: LiveCompetition})
 	return nil
 }
 
