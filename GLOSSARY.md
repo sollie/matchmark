@@ -125,6 +125,9 @@ _Avoid_: Deleted user, disabled user, banned user
 A full copy of the database file, including password hashes, taken by an admin who has been allowed to. It is not Replication and not Restore.
 _Avoid_: Export, dump
 
+**Login throttle**:
+The module that decides whether a login attempt is allowed: it limits failures per client, slows repeated failures against one username, and deduplicates failed-login Audit log entries. It never sleeps; it returns the delay to apply.
+
 **Audit log**:
 The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records locked results.
 _Avoid_: Activity log, history

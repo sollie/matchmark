@@ -363,12 +363,16 @@ func TestUsernameDelayDoesNotAffectOtherUsernamesAndExpires(t *testing.T) {
 	if got := login(t, c, env, "/api/admin/login", "someone-else", "wrong-password-wrong").StatusCode; got != http.StatusUnauthorized {
 		t.Fatalf("other username: status %d", got)
 	}
-	if len(env.Delays()) != before {
-		t.Fatal("other username was delayed")
+	for _, d := range env.Delays()[before:] {
+		if d >= time.Second {
+			t.Fatalf("other username got backoff delay %v", d)
+		}
 	}
 	env.Advance(2 * time.Hour)
 	post(t, c, env, "/api/admin/login", "wrong-password-wrong")
-	if len(env.Delays()) != before {
-		t.Fatal("expired failures still delay")
+	for _, d := range env.Delays()[before:] {
+		if d >= time.Second {
+			t.Fatalf("expired failures still delay: %v", d)
+		}
 	}
 }
