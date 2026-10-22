@@ -22,17 +22,6 @@ const (
 	MinPasswordLength = 16
 	MaxPasswordLength = 128
 	SessionTTL        = 12 * time.Hour
-	loginMaxFailures  = 5
-	loginWindow       = 15 * time.Minute
-
-	usernameWindow       = time.Hour
-	usernameFreeFailures = 3
-	usernameBaseDelay    = time.Second
-	usernameMaxDelay     = 30 * time.Second
-	usernameMaxTracked   = 10000
-
-	loginAuditWindow     = loginWindow
-	loginAuditMaxTracked = 10000
 
 	RoleAdmin = "admin"
 	RoleUser  = "user"
@@ -61,13 +50,8 @@ type Auth struct {
 	audit     *Audit
 
 	adminMu  sync.Mutex
-	mu       sync.Mutex
-	failures map[string][]time.Time
+	throttle *LoginThrottle
 	sleep    func(time.Duration)
-	userFail map[string][]time.Time
-
-	auditMu   sync.Mutex
-	auditSeen map[string]time.Time
 }
 
 type AuthOption func(*Auth)
@@ -85,7 +69,7 @@ func WithAuthAudit(audit *Audit) AuthOption {
 }
 
 func NewAuth(repo *repository.Repository, opts ...AuthOption) *Auth {
-	a := &Auth{repo: repo, now: time.Now, sleep: time.Sleep, failures: map[string][]time.Time{}, userFail: map[string][]time.Time{}, auditSeen: map[string]time.Time{}}
+	a := &Auth{repo: repo, now: time.Now, sleep: time.Sleep, throttle: NewLoginThrottle()}
 	for _, opt := range opts {
 		opt(a)
 	}
@@ -299,11 +283,11 @@ func (a *Auth) ChangePassword(ctx context.Context, token, current, next string) 
 	}
 	key := fmt.Sprintf("user:%d", user.ID)
 	now := a.now()
-	if a.limited(key, now) {
+	if !a.throttle.Allowed(key, now) {
 		return ErrTooManyAttempts
 	}
 	if ok, _ := verifyPassword(current, user.PasswordHash); !ok {
-		a.recordFailure(key, now)
+		a.throttle.FailClient(key, now)
 		a.audit.RecordAs(ctx, Actor{UserID: user.ID, Username: user.Username, IP: ActorFrom(ctx).IP}, AuditEvent{Action: "user.change_password_failed", Target: userTarget(user.ID), Details: user.Username})
 		return ErrInvalidCredentials
 	}
@@ -328,8 +312,8 @@ func hashToken(token string) string {
 
 func (a *Auth) Login(clientKey, username, password string) (token string, expires time.Time, err error) {
 	now := a.now()
-	if a.limited(clientKey, now) {
-		a.auditFailedLogin(clientKey, username, "throttled")
+	if !a.throttle.Allowed(clientKey, now) {
+		a.auditThrottled(clientKey, username)
 		return "", time.Time{}, ErrTooManyAttempts
 	}
 	user, lookupErr := a.repo.UserByUsername(strings.ToLower(username))
@@ -343,14 +327,16 @@ func (a *Auth) Login(clientKey, username, password string) (token string, expire
 	}
 	ok, needsRehash := verifyPassword(password, hash)
 	if !known || !ok || !user.Active {
-		a.recordFailure(clientKey, now)
-		if delay := a.recordUsernameFailure(strings.ToLower(username), now); delay > 0 {
+		delay, audit := a.throttle.Fail(clientKey, username, now)
+		if delay > 0 {
 			a.sleep(delay)
 		}
-		a.auditFailedLogin(clientKey, username, "")
+		if audit {
+			a.recordFailedLogin(clientKey, username, "")
+		}
 		return "", time.Time{}, ErrInvalidCredentials
 	}
-	a.clearUsernameFailures(strings.ToLower(username))
+	a.throttle.Success(strings.ToLower(username))
 	if needsRehash {
 		upgraded, err := hashPassword(password)
 		if err != nil {
@@ -376,35 +362,13 @@ func (a *Auth) Login(clientKey, username, password string) (token string, expire
 	return token, expires, nil
 }
 
-func (a *Auth) shouldAuditFailedLogin(clientKey, username, details string, now time.Time) bool {
-	a.auditMu.Lock()
-	defer a.auditMu.Unlock()
-	key := details + "|" + clientKey + "|" + strings.ToLower(username)
-	if at, ok := a.auditSeen[key]; ok && now.Sub(at) < loginAuditWindow {
-		return false
+func (a *Auth) auditThrottled(clientKey, username string) {
+	if a.throttle.ShouldAudit(clientKey, username, "throttled", a.now()) {
+		a.recordFailedLogin(clientKey, username, "throttled")
 	}
-	if _, ok := a.auditSeen[key]; !ok && len(a.auditSeen) >= loginAuditMaxTracked {
-		var oldest string
-		var oldestAt time.Time
-		for k, at := range a.auditSeen {
-			if now.Sub(at) >= loginAuditWindow {
-				delete(a.auditSeen, k)
-			} else if oldest == "" || at.Before(oldestAt) {
-				oldest, oldestAt = k, at
-			}
-		}
-		if len(a.auditSeen) >= loginAuditMaxTracked {
-			delete(a.auditSeen, oldest)
-		}
-	}
-	a.auditSeen[key] = now
-	return true
 }
 
-func (a *Auth) auditFailedLogin(clientKey, username, details string) {
-	if !a.shouldAuditFailedLogin(clientKey, username, details, a.now()) {
-		return
-	}
+func (a *Auth) recordFailedLogin(clientKey, username, details string) {
 	a.audit.RecordAs(context.Background(), Actor{Username: strings.ToLower(username), IP: clientKey}, AuditEvent{Action: "login_failed", Details: details})
 }
 
@@ -424,87 +388,4 @@ func (a *Auth) Logout(token string) error {
 		return nil
 	}
 	return a.repo.DeleteSession(hashToken(token))
-}
-
-func (a *Auth) recent(clientKey string, now time.Time) []time.Time {
-	kept := a.failures[clientKey][:0]
-	for _, t := range a.failures[clientKey] {
-		if now.Sub(t) < loginWindow {
-			kept = append(kept, t)
-		}
-	}
-	if len(kept) == 0 {
-		delete(a.failures, clientKey)
-	} else {
-		a.failures[clientKey] = kept
-	}
-	return kept
-}
-
-func (a *Auth) limited(clientKey string, now time.Time) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return len(a.recent(clientKey, now)) >= loginMaxFailures
-}
-
-func (a *Auth) recordFailure(clientKey string, now time.Time) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.failures[clientKey] = append(a.recent(clientKey, now), now)
-}
-
-func (a *Auth) recentUsername(username string, now time.Time) []time.Time {
-	kept := a.userFail[username][:0]
-	for _, t := range a.userFail[username] {
-		if now.Sub(t) < usernameWindow {
-			kept = append(kept, t)
-		}
-	}
-	if len(kept) == 0 {
-		delete(a.userFail, username)
-	} else {
-		a.userFail[username] = kept
-	}
-	return kept
-}
-
-func (a *Auth) makeRoomForUsername(now time.Time) {
-	for name := range a.userFail {
-		a.recentUsername(name, now)
-	}
-	if len(a.userFail) < usernameMaxTracked {
-		return
-	}
-	var oldest string
-	var oldestAt time.Time
-	for name, failures := range a.userFail {
-		if last := failures[len(failures)-1]; oldest == "" || last.Before(oldestAt) {
-			oldest, oldestAt = name, last
-		}
-	}
-	delete(a.userFail, oldest)
-}
-
-func (a *Auth) recordUsernameFailure(username string, now time.Time) time.Duration {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if _, tracked := a.userFail[username]; !tracked && len(a.userFail) >= usernameMaxTracked {
-		a.makeRoomForUsername(now)
-	}
-	failures := append(a.recentUsername(username, now), now)
-	a.userFail[username] = failures
-	excess := len(failures) - usernameFreeFailures
-	if excess <= 0 {
-		return 0
-	}
-	if excess > 6 {
-		excess = 6
-	}
-	return min(usernameBaseDelay<<(excess-1), usernameMaxDelay)
-}
-
-func (a *Auth) clearUsernameFailures(username string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	delete(a.userFail, username)
 }
