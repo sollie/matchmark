@@ -1730,14 +1730,19 @@ export interface operations {
     };
     listShooters: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Case-insensitive partial match on WAID or first/last name. Without it all shooters are returned. */
+                q?: string;
+                /** @description Maximum number of results. Defaults to 20 when q is given, otherwise unlimited. */
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description All shooters */
+            /** @description Matching shooters */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1749,6 +1754,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Invalid"];
         };
     };
     createShooter: {

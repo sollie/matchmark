@@ -37,6 +37,38 @@ func TestShooterRegistry(t *testing.T) {
 			t.Fatalf("got %d %v", status, out)
 		}
 	})
+	t.Run("search by name and waid", func(t *testing.T) {
+		names := func(q string) []string {
+			status, out := env.Do("GET", "/api/shooters?q="+q, nil)
+			if status != http.StatusOK {
+				t.Fatalf("status %d", status)
+			}
+			var got []string
+			for _, s := range out["shooters"].([]any) {
+				got = append(got, s.(map[string]any)["last_name"].(string))
+			}
+			return got
+		}
+		if got := names("bER"); len(got) != 1 || got[0] != "Berg" {
+			t.Fatalf("name search got %v", got)
+		}
+		if got := names("w12"); len(got) != 1 || got[0] != "Olsen" {
+			t.Fatalf("waid search got %v", got)
+		}
+		if got := names("zzz"); len(got) != 0 {
+			t.Fatalf("no match got %v", got)
+		}
+		if got := names("%25"); len(got) != 0 {
+			t.Fatalf("wildcard matched %v", got)
+		}
+		status, out := env.Do("GET", "/api/shooters?q=a&limit=1", nil)
+		if status != http.StatusOK || len(out["shooters"].([]any)) != 1 {
+			t.Fatalf("limit got %d %v", status, out)
+		}
+		if status, _ := env.Do("GET", "/api/shooters?limit=x", nil); status != http.StatusUnprocessableEntity {
+			t.Fatalf("bad limit status %d", status)
+		}
+	})
 	t.Run("duplicate waid conflicts", func(t *testing.T) {
 		body := shooterBody("Dup")
 		body["waid"] = "W123"

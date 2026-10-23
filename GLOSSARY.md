@@ -13,7 +13,7 @@ A single match event run by a club on a given day. Its name, date and course can
 _Avoid_: Match, event
 
 **Shooter**:
-A person registered with the club who can enter competitions. A shooter with a WAID is a known shooter; one without is a new shooter.
+A person registered with the club who can enter competitions. A shooter with a WAID is a known shooter; one without is a new shooter. Admins find a shooter by searching the local registry on WAID or name.
 _Avoid_: Competitor, participant
 
 **WAID**:
