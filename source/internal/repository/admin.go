@@ -22,9 +22,20 @@ type EntryWithStages struct {
 	Stages []StageInfo
 }
 
-func (r *Repository) ListShooters(ctx context.Context) ([]Shooter, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters ORDER BY last_name, first_name, id`)
+func (r *Repository) ListShooters(ctx context.Context, query string, limit int) ([]Shooter, error) {
+	stmt := `SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters`
+	var args []any
+	if query != "" {
+		stmt += ` WHERE COALESCE(waid, '') LIKE ? ESCAPE '\' OR first_name || ' ' || last_name LIKE ? ESCAPE '\' OR last_name || ' ' || first_name LIKE ? ESCAPE '\'`
+		pattern := "%" + likeEscaper.Replace(query) + "%"
+		args = append(args, pattern, pattern, pattern)
+	}
+	stmt += ` ORDER BY last_name, first_name, id`
+	if limit > 0 {
+		stmt += ` LIMIT ?`
+		args = append(args, limit)
+	}
+	rows, err := r.db.QueryContext(ctx, stmt, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -39,6 +50,8 @@ func (r *Repository) ListShooters(ctx context.Context) ([]Shooter, error) {
 	}
 	return shooters, rows.Err()
 }
+
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 func (r *Repository) GetShooter(ctx context.Context, id int64) (Shooter, error) {
 	var s Shooter

@@ -76,7 +76,12 @@ func entryJSON(e repository.Entry) map[string]any {
 }
 
 func (h *Handler) listShooters(w http.ResponseWriter, r *http.Request) {
-	shooters, err := h.svc.ListShooters(r.Context())
+	limit, err := queryInt(r, "limit", 0)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	shooters, err := h.svc.ListShooters(r.Context(), r.URL.Query().Get("q"), limit)
 	if err != nil {
 		writeError(w, err)
 		return

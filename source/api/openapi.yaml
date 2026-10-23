@@ -423,9 +423,24 @@ paths:
       tags: [shooters]
       security:
         - adminCookie: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive partial match on WAID or first/last name. Without it all shooters are returned.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of results. Defaults to 20 when q is given, otherwise unlimited.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
       responses:
         '200':
-          description: All shooters
+          description: Matching shooters
           content:
             application/json:
               schema:
@@ -438,6 +453,8 @@ paths:
                       $ref: '#/components/schemas/Shooter'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
     post:
       operationId: createShooter
       tags: [shooters]

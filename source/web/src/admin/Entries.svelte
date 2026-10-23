@@ -2,6 +2,7 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import { categories } from "../lib/domain";
+  import ShooterPicker from "./ShooterPicker.svelte";
   import type { components } from "../lib/api/schema";
 
   type Shooter = components["schemas"]["Shooter"];
@@ -26,6 +27,7 @@
   const blankCounts = (): RingCounts => ({ x: 0, "10": 0, "9": 0, "8": 0, "7": 0, "0": 0, miss: 0 });
 
   let shooterId = $state<number | null>(null);
+  let pickerKey = $state(0);
   let category = $state(categories[0]);
   let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
@@ -38,7 +40,7 @@
     while (taken.has(n)) n++;
     return n;
   });
-  const available = $derived(shooters.filter((s) => !entries.some((e) => e.shooter_id === s.id)));
+  const entered = $derived(entries.map((e) => e.shooter_id));
   const lane = $derived(laneInput ?? nextLane);
   const stageNumbers = $derived(entries[0]?.stages.map((s) => s.stage_number) ?? []);
   const shooterName = (id: number) => {
@@ -71,6 +73,7 @@
     if (ok) {
       laneInput = null;
       shooterId = null;
+      pickerKey++;
     }
   }
 
@@ -140,13 +143,9 @@
 
   {#if status === "draft"}
   <form class="row add-form" aria-label="Add entry" onsubmit={add}>
-    <label>
-      Shooter
-      <select bind:value={shooterId} required>
-        <option value={null} disabled>Select shooter</option>
-        {#each available as s (s.id)}<option value={s.id}>{s.first_name} {s.last_name}</option>{/each}
-      </select>
-    </label>
+    {#key pickerKey}
+      <ShooterPicker exclude={entered} required onselect={(s) => (shooterId = s?.id ?? null)} />
+    {/key}
     <label>
       Category
       <select aria-label="Entry category" bind:value={category}>
