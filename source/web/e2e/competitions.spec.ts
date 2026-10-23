@@ -95,14 +95,16 @@ test.describe("competitions", () => {
     for (const { c, status, course } of expectations) {
       const r = row(page, c.name);
       await expect(r).toHaveCount(1);
-      await expect(r.getByRole("link", { name: c.name })).toBeVisible();
+      await expect(r.getByRole("link", { name: c.name, exact: true })).toBeVisible();
       await expect(r).toContainText(c.date);
       await expect(r).toContainText(course);
       await expect(r.getByText(status, { exact: true })).toBeVisible();
+      const downloads = r.getByRole("link", { name: /^(Results report \(\.xlsx\)|Detailed CSV) for / });
+      await expect(downloads).toHaveCount(status === "finished" ? 2 : 0);
     }
     await expect(table).toBeVisible();
 
-    await row(page, active.name).getByRole("link").click();
+    await row(page, active.name).getByRole("link", { name: active.name, exact: true }).click();
     await expect(page.getByRole("heading", { name: active.name })).toBeVisible();
   });
 
