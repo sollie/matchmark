@@ -95,6 +95,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusConflict, "not the current stage"
 	case errors.Is(err, service.ErrStageGateNotMet):
 		status, msg = http.StatusConflict, "every manned lane must accept the current stage first"
+	case errors.Is(err, service.ErrLanesOpen):
+		status, msg = http.StatusConflict, "a lane is still open"
 	case errors.Is(err, service.ErrStageNotLocked):
 		status, msg = http.StatusConflict, "stage is not locked"
 	case errors.Is(err, service.ErrUnauthenticated):

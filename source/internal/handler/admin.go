@@ -23,6 +23,8 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Delete("/competitions/{competitionID}", h.deleteCompetition)
 	r.Post("/competitions/{competitionID}/status", h.setCompetitionStatus)
 	r.Post("/competitions/{competitionID}/next-stage", h.startNextStage)
+	r.Get("/competitions/{competitionID}/control-room", h.controlRoom)
+	r.Post("/competitions/{competitionID}/accept-all", h.acceptAll)
 	r.Get("/competitions/{competitionID}/entries", h.listEntries)
 	r.Post("/competitions/{competitionID}/entries", h.addEntry)
 	r.Put("/competitions/{competitionID}/entries/{entryID}", h.updateEntry)
@@ -313,4 +315,47 @@ func (h *Handler) adminStream(w http.ResponseWriter, r *http.Request) {
 		}
 		return streamEvent{Name: "changed", Data: struct{}{}}, nil
 	})
+}
+
+func controlRoomJSON(room service.ControlRoom) map[string]any {
+	lanes := make([]map[string]any, 0, len(room.Lanes))
+	for _, l := range room.Lanes {
+		lanes = append(lanes, map[string]any{
+			"lane": l.Lane, "entry_id": l.EntryID, "shooter_name": l.ShooterName, "scorer_name": l.ScorerName,
+			"status": l.Status, "disputed": l.Disputed, "disputes": l.Disputes,
+			"paired": l.Paired, "connected": l.Connected,
+		})
+	}
+	return map[string]any{
+		"current_stage": room.CurrentStage, "can_start_next": room.CanStartNext,
+		"can_accept_all": room.CanAcceptAll, "lanes": lanes,
+	}
+}
+
+func (h *Handler) controlRoom(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	room, err := h.svc.ControlRoom(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, controlRoomJSON(room))
+}
+
+func (h *Handler) acceptAll(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	n, err := h.svc.AcceptAll(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"accepted": n})
 }

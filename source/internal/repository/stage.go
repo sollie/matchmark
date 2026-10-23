@@ -115,11 +115,43 @@ func (r *Repository) transition(ctx context.Context, record bool, ev StageEvent,
 		return err
 	}
 	if record {
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO stage_events (competition_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			ev.CompetitionID, ev.EntryID, ev.StageNumber, ev.Event, ev.ActorType, ev.ActorName, ev.ScorerName, ev.ShooterName, lockTimestamp()); err != nil {
-			return mapErr(err)
+		if err := insertStageEvent(ctx, tx, ev); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func insertStageEvent(ctx context.Context, tx *sql.Tx, ev StageEvent) error {
+	_, err := tx.ExecContext(ctx,
+		`INSERT INTO stage_events (competition_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		ev.CompetitionID, ev.EntryID, ev.StageNumber, ev.Event, ev.ActorType, ev.ActorName, ev.ScorerName, ev.ShooterName, lockTimestamp())
+	return mapErr(err)
+}
+
+type StageAcceptance struct {
+	StageID int64
+	Event   StageEvent
+}
+
+func (r *Repository) AcceptStages(ctx context.Context, acceptedBy string, items []StageAcceptance) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	now := lockTimestamp()
+	for _, it := range items {
+		res, err := tx.ExecContext(ctx,
+			`UPDATE stages SET status = 'accepted', accepted_by = ?, accepted_at = ?
+			 WHERE id = ? AND status = 'awaiting_acceptance'`,
+			acceptedBy, now, it.StageID)
+		if err := conflictIfNone(res, err); err != nil {
+			return err
+		}
+		if err := insertStageEvent(ctx, tx, it.Event); err != nil {
+			return err
 		}
 	}
 	return tx.Commit()

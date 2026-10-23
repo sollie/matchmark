@@ -8,6 +8,7 @@
   import { navigate } from "../lib/router.svelte";
   import type { components } from "../lib/api/schema";
   import Visibility from "./Visibility.svelte";
+  import ControlRoom from "./ControlRoom.svelte";
   import Entries from "./Entries.svelte";
   import Pairings from "./Pairings.svelte";
   import CompetitionEdit from "./CompetitionEdit.svelte";
@@ -23,6 +24,7 @@
   let entries = $state<EntryWithStages[]>([]);
   let error = $state("");
   let editing = $state(false);
+  let version = $state(0);
 
   async function loadCompetition() {
     const result = await api.GET("/api/competitions/{competitionID}", { params: { path: { competitionID: id } } });
@@ -57,6 +59,7 @@
         if (event === "changed") {
           void loadEntries();
           void loadCompetition();
+          version += 1;
         }
       },
     });
@@ -81,17 +84,6 @@
     else error = failure(result);
   }
 
-  async function startNextStage() {
-    error = "";
-    const result = await api.POST("/api/competitions/{competitionID}/next-stage", {
-      params: { path: { competitionID: id } },
-    });
-    if (result.data) {
-      await loadCompetition();
-      await loadEntries();
-    } else error = failure(result);
-  }
-
   async function remove() {
     if (!competition || !confirm(`Delete competition "${competition.name}" and all its results?`)) return;
     const result = await api.DELETE("/api/competitions/{competitionID}", { params: { path: { competitionID: id } } });
@@ -114,9 +106,6 @@
         {competition.status === "draft" ? "Start competition" : "Finish competition"}
       </button>
     {/if}
-    {#if competition.status === "active"}
-      <button class="primary" onclick={startNextStage}>Start next stage</button>
-    {/if}
     {#if competition.status === "draft" && !editing}
       <button onclick={() => (editing = true)}>Edit competition</button>
     {/if}
@@ -135,6 +124,10 @@
       }}
       cancel={() => (editing = false)}
     />
+  {/if}
+
+  {#if competition.status === "active"}
+    <ControlRoom competitionId={id} {version} changed={async () => { await loadCompetition(); await loadEntries(); }} />
   {/if}
 
   <Entries competitionId={id} status={competition.status} {entries} {shooters} reload={loadEntries} />

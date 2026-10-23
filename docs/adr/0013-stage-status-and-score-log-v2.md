@@ -22,6 +22,10 @@ Only accepted stages count. Standings, progress, the `.xlsx` report and the CSV 
 
 The competition stores a current-stage pointer (`current_stage`, migration 017, 1 at activation). Only the admin advances it, and only when every manned, non-withdrawn lane has accepted the current stage (the gate). Devices act only on the current stage; admin corrections of earlier stages do not move the pointer. Accepting the last stage finishes the competition through the existing finish path, which revokes pairings; devices still receive a minimal `finished` session so they can show a Finished screen. Status changes are conditional updates (`from` status), so a concurrent double finish is a no-op. Entries are added and moved only in draft; withdrawal is allowed only at the gate. A restore sets the pointer to the lowest stage with a non-accepted entry stage, or the last stage when everything is accepted.
 
+## Control room
+
+The admin sees the current stage as one row per manned lane from `GET /api/competitions/{id}/control-room`, and `POST /api/competitions/{id}/accept-all` accepts every awaiting stage when no lane is open. The best-effort connected state is kept in memory by counting open scorer streams per lane, because the broadcaster already knows who is subscribed. It is never stored, so a sleeping phone or a restart shows as not connected.
+
 ## Score log v2
 
 The Score log has one event, `stage_status`, with `schema_version` 2 and a `status` field, replacing `stage_locked` and `stage_unlocked`. An unlock is a line with status `open`, its ring counts and no lock provenance, so replay no longer deletes stages: the latest line per stage always wins, and a restored open stage keeps its hits. New fields are `accepted_by`, `accepted_at` and `disputed_at`. `restore` accepts only version 2 and fails on version 1 lines, since a log of mixed versions has no consistent replay; older logs are restored with the earlier release. A restored competition is `finished` when every stage is accepted and `active` otherwise.
