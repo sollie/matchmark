@@ -56,7 +56,7 @@ func TestImportShooterNameConflict(t *testing.T) {
 		t.Fatalf("candidate %v", first)
 	}
 
-	if status, _ = env.Do("POST", "/api/shooters/import", importBody(map[string]any{"update_shooter_id": 424242})); status != http.StatusConflict {
+	if status, _ = env.Do("POST", "/api/shooters/import", importBody(map[string]any{"update_shooter_id": 424242})); status != http.StatusUnprocessableEntity {
 		t.Fatalf("foreign candidate status %d", status)
 	}
 	if status, _ = env.Do("POST", "/api/shooters/import", importBody(map[string]any{"update_shooter_id": manual, "create_new": true})); status != http.StatusUnprocessableEntity {
@@ -74,6 +74,15 @@ func TestImportShooterNameConflict(t *testing.T) {
 	_, untouched := env.Do("GET", "/api/shooters/"+itoa(other), nil)
 	if untouched["waid"] != "999" {
 		t.Fatalf("other changed %v", untouched)
+	}
+}
+
+func TestImportShooterNameConflictNonASCII(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	env.ID("POST", "/api/shooters", map[string]any{"waid": "", "first_name": "Åse", "last_name": "ØVREBØ", "country": "Norway", "club": "X", "sex": "F"})
+	status, _ := env.Do("POST", "/api/shooters/import", importBody(map[string]any{"first_name": "åse", "last_name": "Øvrebø"}))
+	if status != http.StatusConflict {
+		t.Fatalf("status %d", status)
 	}
 }
 

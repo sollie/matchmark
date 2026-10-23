@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/sollie/matchmark/internal/service"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 type Handler struct {
@@ -103,7 +104,7 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusConflict, "stage is not locked"
 	case errors.Is(err, service.ErrUnauthenticated):
 		status, msg = http.StatusUnauthorized, "unauthorized"
-	case errors.Is(err, service.ErrUpstream):
+	case errors.Is(err, wa1500.ErrUpstream):
 		status, msg = http.StatusBadGateway, "wa1500 unavailable"
 	case errors.Is(err, service.ErrRateLimited):
 		status, msg = http.StatusTooManyRequests, "too many searches, try again shortly"

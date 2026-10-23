@@ -246,7 +246,7 @@ export interface paths {
         put?: never;
         /**
          * Import a WA1500 hit as a local shooter, matching by WAID and then by name
-         * @description A WAID match updates that shooter. Without a WAID match, shooters sharing the first and last name (case-insensitive) make the call answer 409 with candidates; resend with update_shooter_id (one of the candidates) or create_new true. Otherwise a new shooter is created.
+         * @description A WAID match updates that shooter. Without a WAID match, shooters sharing the first and last name (case-insensitive) make the call answer 409 with candidates; resend with update_shooter_id (one of the candidates, otherwise 422) or create_new true. Otherwise a new shooter is created.
          */
         post: operations["importShooter"];
         delete?: never;
