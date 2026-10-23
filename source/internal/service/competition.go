@@ -48,7 +48,7 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if e.Lane < 1 || !contains(categories, e.Category) {
 		return 0, ErrInvalid
 	}
-	comp, err := s.requireEntryChangeAllowed(ctx, e.CompetitionID)
+	comp, err := s.requireDraft(ctx, e.CompetitionID)
 	if err != nil {
 		return 0, err
 	}
@@ -69,7 +69,7 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 }
 
 func (s *Service) WithdrawEntry(ctx context.Context, competitionID, entryID int64) error {
-	if _, err := s.requireEntryChangeAllowed(ctx, competitionID); err != nil {
+	if err := s.requireWithdrawalAllowed(ctx, competitionID); err != nil {
 		return err
 	}
 	if err := s.repo.WithdrawEntry(ctx, competitionID, entryID); err != nil {

@@ -14,13 +14,20 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 const emittedAtLayout = "2006-01-02T15:04:05.000Z"
 
 const (
+	eventStageStatus   = "stage_status"
 	eventStageLocked   = "stage_locked"
 	eventStageUnlocked = "stage_unlocked"
+)
+
+const (
+	StatusOpen               = "open"
+	StatusAwaitingAcceptance = "awaiting_acceptance"
+	StatusAccepted           = "accepted"
 )
 
 type CourseOfFire struct {
@@ -64,9 +71,13 @@ type Event struct {
 	Entry         Entry           `json:"entry"`
 	Stage         Stage           `json:"stage"`
 	RingCounts    []int           `json:"ring_counts"`
+	Status        string          `json:"status"`
 	LockedBy      json.RawMessage `json:"locked_by"`
 	ScorerName    string          `json:"scorer_name"`
 	LockedAt      string          `json:"locked_at"`
+	AcceptedBy    string          `json:"accepted_by"`
+	AcceptedAt    string          `json:"accepted_at"`
+	DisputedAt    string          `json:"disputed_at"`
 }
 
 type Stats struct {
@@ -80,10 +91,14 @@ type ScoredStage struct {
 	Number        int
 	ExpectedShots int
 	RingCounts    [7]int
+	Status        string
 	LockedBy      string
 	Lane          int
 	ScorerName    string
 	LockedAt      string
+	AcceptedBy    string
+	AcceptedAt    string
+	DisputedAt    string
 }
 
 type RestoredEntry struct {
@@ -153,10 +168,10 @@ func parseLine(raw []byte) (Event, lineKind, error) {
 	if err := json.Unmarshal(raw, &ev); err != nil {
 		return Event{}, kindMalformed, nil
 	}
-	if ev.Event != eventStageLocked && ev.Event != eventStageUnlocked {
+	if ev.Event != eventStageStatus && ev.Event != eventStageLocked && ev.Event != eventStageUnlocked {
 		return Event{}, kindNonScore, nil
 	}
-	if ev.SchemaVersion != SchemaVersion {
+	if ev.Event != eventStageStatus || ev.SchemaVersion != SchemaVersion {
 		return Event{}, kindVersion, fmt.Errorf("unsupported schema_version %d (supported: %d)", ev.SchemaVersion, SchemaVersion)
 	}
 	if !valid(ev) {
@@ -169,7 +184,13 @@ func valid(ev Event) bool {
 	if _, err := rulebook.CourseByKey(ev.Competition.CourseOfFire.Key); err != nil {
 		return false
 	}
-	if _, _, ok := parseLockedBy(ev.LockedBy); !ok {
+	switch ev.Status {
+	case StatusOpen:
+	case StatusAwaitingAcceptance, StatusAccepted:
+		if _, _, ok := parseLockedBy(ev.LockedBy); !ok {
+			return false
+		}
+	default:
 		return false
 	}
 	if t, err := time.Parse(emittedAtLayout, ev.EmittedAt); err != nil || t.Format(emittedAtLayout) != ev.EmittedAt {
@@ -222,10 +243,6 @@ func Fold(events []Event) Plan {
 		comps[ev.Competition.ID] = ev.Competition
 		entries[[2]int64{ev.Competition.ID, ev.Entry.ID}] = ev.Entry
 		k := stageKey{ev.Competition.ID, ev.Entry.ID, ev.Stage.Number}
-		if ev.Event == eventStageUnlocked {
-			delete(stages, k)
-			continue
-		}
 		stages[k] = ev
 	}
 
@@ -237,10 +254,14 @@ func Fold(events []Event) Plan {
 			Number:        k.stage,
 			ExpectedShots: ev.Stage.ExpectedShots,
 			RingCounts:    ringCountsFromSlice(ev.RingCounts),
+			Status:        ev.Status,
 			LockedBy:      lockedBy,
 			Lane:          lane,
 			ScorerName:    ev.ScorerName,
 			LockedAt:      ev.LockedAt,
+			AcceptedBy:    ev.AcceptedBy,
+			AcceptedAt:    ev.AcceptedAt,
+			DisputedAt:    ev.DisputedAt,
 		})
 	}
 

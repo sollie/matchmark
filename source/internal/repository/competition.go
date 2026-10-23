@@ -15,11 +15,12 @@ type Shooter struct {
 }
 
 type Competition struct {
-	ID     int64
-	Name   string
-	Date   string
-	Course string
-	Status string
+	ID           int64
+	Name         string
+	Date         string
+	Course       string
+	Status       string
+	CurrentStage int
 }
 
 type Entry struct {
@@ -62,8 +63,8 @@ func (r *Repository) CreateCompetition(ctx context.Context, c Competition) (int6
 func (r *Repository) GetCompetition(ctx context.Context, id int64) (Competition, error) {
 	var c Competition
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, name, date, course, status FROM competitions WHERE id = ?`, id).
-		Scan(&c.ID, &c.Name, &c.Date, &c.Course, &c.Status)
+		`SELECT id, name, date, course, status, current_stage FROM competitions WHERE id = ?`, id).
+		Scan(&c.ID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage)
 	return c, mapErr(err)
 }
 

@@ -70,6 +70,15 @@ func (e *Env) ScoreLogLines() []map[string]any {
 	return out
 }
 
+func (e *Env) StageEvents(competitionID int) []repository.StageEvent {
+	e.t.Helper()
+	events, err := e.repo.ListStageEvents(context.Background(), int64(competitionID))
+	if err != nil {
+		e.t.Fatalf("list stage events: %v", err)
+	}
+	return events
+}
+
 func (e *Env) AuditLines() []map[string]any {
 	e.t.Helper()
 	var out []map[string]any

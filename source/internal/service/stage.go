@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/sollie/matchmark/internal/repository"
 )
@@ -26,7 +27,7 @@ func (s *Service) validatedStage(ctx context.Context, competitionID, entryID int
 	if err != nil {
 		return repository.Stage{}, mapRepoErr(err)
 	}
-	if requireUnlocked && stage.Locked {
+	if requireUnlocked && stage.Status != repository.StatusOpen {
 		return repository.Stage{}, ErrStageLocked
 	}
 	if err := ValidateRingCounts(c, stage.ExpectedShots); err != nil {
@@ -62,24 +63,54 @@ func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID
 	if err != nil {
 		return err
 	}
-	if err := s.repo.OverwriteRingCounts(ctx, stage.ID, c, lockedByUser(ctx, stage.Locked)); err != nil {
-		return mapRepoErr(err)
+	username := ActorFrom(ctx).Username
+	ev, err := s.userStageEvent(ctx, repository.EventAccepted, username, competitionID, entryID, stage)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.OverwriteRingCounts(ctx, stage, c, username, ev); err != nil {
+		return mapStageWriteErr(err)
 	}
 	change := Change{
 		Audit:         AuditEvent{Action: "stage.set_counts", Target: stageTarget(competitionID, entryID, stageNumber)},
 		CompetitionID: competitionID,
 		Live:          LiveCompetition,
 	}
-	if stage.Locked {
-		change.Stage = &StageEvent{Event: eventStageLocked, CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber}
+	if stage.Status != repository.StatusOpen {
+		change.Stage = &StageEvent{CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber}
 	}
 	s.changes.Record(ctx, change)
+	if stage.Status != repository.StatusOpen {
+		s.finishIfComplete(ctx, competitionID, nil)
+	}
 	return nil
 }
 
-func lockedByUser(ctx context.Context, locked bool) string {
-	if !locked {
+func mapStageWriteErr(err error) error {
+	if errors.Is(err, repository.ErrConflict) {
+		return ErrStageLocked
+	}
+	return mapRepoErr(err)
+}
+
+func (s *Service) userStageEvent(ctx context.Context, kind repository.StageEventKind, username string, competitionID, entryID int64, stage repository.Stage) (repository.StageEvent, error) {
+	entry, err := s.repo.GetEntry(ctx, competitionID, entryID)
+	if err != nil {
+		return repository.StageEvent{}, mapRepoErr(err)
+	}
+	shooter, err := s.repo.GetShooter(ctx, entry.ShooterID)
+	if err != nil {
+		return repository.StageEvent{}, mapRepoErr(err)
+	}
+	return repository.StageEvent{
+		CompetitionID: competitionID, EntryID: entryID, StageNumber: stage.Number, Event: kind,
+		ActorType: "user", ActorName: username, ScorerName: deviceScorerName(stage), ShooterName: shooterName(shooter),
+	}, nil
+}
+
+func deviceScorerName(stage repository.Stage) string {
+	if stage.ScorerLane == nil {
 		return ""
 	}
-	return ActorFrom(ctx).Username
+	return stage.ScorerName
 }

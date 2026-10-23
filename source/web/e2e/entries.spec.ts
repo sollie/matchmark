@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { adminUsername, createCompetition, createShooter, expect, openCompetition, row, section, seedEntry, setCounts, test } from "./helpers";
+import { adminUsername, createCompetition, createShooter, expect, openCompetition, row, section, seedEntry, setCounts, setStatus, test } from "./helpers";
 
 function addForm(page: Page) {
   return page.getByRole("form", { name: "Add entry" });
@@ -83,8 +83,9 @@ test.describe("entries layout", () => {
 
 test.describe("admin ring counts", () => {
   test("a live shot total flags a wrong total and the save is rejected", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { status: "active" });
+    const competition = await createCompetition(admin);
     const entry = await seedEntry(admin, competition.id, 1);
+    await setStatus(admin, competition.id, "active");
     await openCompetition(page, competition.id);
 
     await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Edit` }).click();
@@ -107,8 +108,9 @@ test.describe("admin ring counts", () => {
   });
 
   test("save and lock records the stage as locked by the signed-in user and unlock reopens it", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { status: "active" });
+    const competition = await createCompetition(admin);
     const entry = await seedEntry(admin, competition.id, 1);
+    await setStatus(admin, competition.id, "active");
     await openCompetition(page, competition.id);
 
     const entryRow = row(page, entry.shooter.last_name);
@@ -124,7 +126,7 @@ test.describe("admin ring counts", () => {
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
     await expect(counts).toHaveCount(0);
-    const locked = stage.getByText("Locked", { exact: true });
+    const locked = stage.getByText("Accepted", { exact: true });
     await expect(locked).toBeVisible();
     await expect(locked).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
     await expect(stage).toContainText("pts");
@@ -132,12 +134,13 @@ test.describe("admin ring counts", () => {
     await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Unlock` }).click();
     await expect(stage.getByText("Scored, not locked")).toBeVisible();
     await expect(page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Lock` })).toBeVisible();
-    await expect(stage.getByText("Locked", { exact: true })).toHaveCount(0);
+    await expect(stage.getByText("Accepted", { exact: true })).toHaveCount(0);
   });
 
   test("an admin overwrite replaces the counts of a stage that already has them", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { status: "active" });
+    const competition = await createCompetition(admin);
     const entry = await seedEntry(admin, competition.id, 1);
+    await setStatus(admin, competition.id, "active");
     await setCounts(admin, competition.id, entry.entryId, 1, { "10": course.stageOneShots }, true);
     await openCompetition(page, competition.id);
 
@@ -150,6 +153,6 @@ test.describe("admin ring counts", () => {
 
     await expect(counts).toHaveCount(0);
     await expect(stage.locator(".score strong")).toHaveText("108");
-    await expect(stage.getByText("Locked", { exact: true })).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
+    await expect(stage.getByText("Accepted", { exact: true })).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
   });
 });

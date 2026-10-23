@@ -15,6 +15,12 @@ var (
 	ErrLaneNotManned      = errors.New("lane is not manned")
 	ErrAdminScoringNeeded = errors.New("admin scoring required")
 	ErrStageLocked        = errors.New("stage is locked")
+
+	ErrStageNotAwaitingAcceptance = errors.New("stage is not awaiting acceptance")
+	ErrStageNotLocked             = errors.New("stage is not locked")
+	ErrNotCurrentStage            = errors.New("not the current stage")
+	ErrLanesOpen                  = errors.New("a lane is still open")
+	ErrStageGateNotMet            = errors.New("every manned lane must accept the current stage first")
 )
 
 type Service struct {
@@ -24,6 +30,7 @@ type Service struct {
 	audit       *Audit
 	bus         *Broadcaster
 	changes     *ChangeRecorder
+	presence    presence
 	snapMu      sync.Mutex
 	snaps       map[int64]*snapSlot
 }

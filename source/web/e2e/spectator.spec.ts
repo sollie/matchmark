@@ -22,7 +22,7 @@ async function openCompetition(page: Page, name: string) {
 }
 
 async function seedScored(api: APIRequestContext, finish = false) {
-  const competition = await createCompetition(api, { name: uniqueName("Spectator"), status: "active" });
+  const competition = await createCompetition(api, { name: uniqueName("Spectator") });
   await setVisibility(api, competition.id, {});
   const club = uniqueName("Club");
   const entries = [] as { lane: number; last_name: string; first_name: string; club: string; country: string }[];
@@ -37,10 +37,14 @@ async function seedScored(api: APIRequestContext, finish = false) {
     const shooter = await createShooter(api, { club: `${club} L${plan.lane}`, country: plan.lane % 2 ? "SWE" : "DEN" });
     shooters.push(shooter);
   }
+  const entryIds = [] as number[];
   for (const [i, plan] of plans.entries()) {
-    const entryId = await addEntry(api, competition.id, shooters[i].id, plan.lane);
-    await setCounts(api, competition.id, entryId, 1, plan.counts, plan.lock);
+    entryIds.push(await addEntry(api, competition.id, shooters[i].id, plan.lane));
     entries.push({ lane: plan.lane, ...shooters[i] });
+  }
+  await setStatus(api, competition.id, "active");
+  for (const [i, plan] of plans.entries()) {
+    await setCounts(api, competition.id, entryIds[i], 1, plan.counts, plan.lock);
   }
   if (finish) await setStatus(api, competition.id, "finished");
   return { competition, entries };
@@ -55,22 +59,21 @@ test.describe("spectator", () => {
     const byLane = (lane: number) => row(page, entries[lane - 1].last_name);
     await expect(byLane(2)).toBeVisible();
     await expect(byLane(2).getByRole("cell").first()).toHaveText("1");
-    await expect(byLane(4).getByRole("cell").first()).toHaveText("1");
-    await expect(byLane(1).getByRole("cell").first()).toHaveText("3");
-    await expect(byLane(3).getByRole("cell").first()).toHaveText("4");
+    await expect(byLane(4).getByRole("cell").first()).toHaveText("3");
+    await expect(byLane(1).getByRole("cell").first()).toHaveText("2");
+    await expect(byLane(3).getByRole("cell").first()).toHaveText("3");
     await expect(byLane(1).getByRole("cell").nth(1)).toHaveText("1");
     await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toBeVisible();
     await expect(table.getByRole("columnheader", { name: "X", exact: true })).toBeVisible();
 
     const rows = table.locator("tbody tr");
     await expect(rows.first()).toContainText(entries[1].last_name);
-    await expect(rows.last()).toContainText(entries[2].last_name);
 
     const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
-    await expect(progress.getByText("2/4 locked")).toBeVisible();
+    await expect(progress.getByText("2/4 accepted")).toBeVisible();
   });
 
-  test("a locked stage appears live without polling requests", async ({ page, admin }) => {
+  test("an accepted stage appears live without polling requests", async ({ page, admin }) => {
     const { competition, entries } = await seedScored(admin);
     const polled: string[] = [];
     page.on("request", (request) => {
@@ -79,14 +82,14 @@ test.describe("spectator", () => {
     });
     await openCompetition(page, competition.name);
     const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
-    await expect(progress.getByText("2/4 locked")).toBeVisible();
+    await expect(progress.getByText("2/4 accepted")).toBeVisible();
 
     const entryId = (
       await (await admin.get(`/api/competitions/${competition.id}/entries`)).json()
     ).entries.find((e: { lane: number }) => e.lane === 3).id;
     await setCounts(admin, competition.id, entryId, 1, { "9": 12 }, true);
 
-    await expect(progress.getByText("3/4 locked")).toBeVisible();
+    await expect(progress.getByText("3/4 accepted")).toBeVisible();
     await expect(row(page, entries[2].last_name)).toBeVisible();
     expect(polled).toEqual([]);
   });
@@ -99,7 +102,7 @@ test.describe("spectator", () => {
     });
     await openCompetition(page, competition.name);
     const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
-    await expect(progress.getByText("2/4 locked")).toBeVisible();
+    await expect(progress.getByText("2/4 accepted")).toBeVisible();
     await expect.poll(() => streams).toBe(1);
 
     const setHidden = (hidden: boolean) =>
@@ -114,11 +117,11 @@ test.describe("spectator", () => {
     ).entries.find((e: { lane: number }) => e.lane === 3).id;
     await setCounts(admin, competition.id, entryId, 1, { "9": 12 }, true);
     await page.waitForTimeout(1000);
-    await expect(progress.getByText("2/4 locked")).toBeVisible();
+    await expect(progress.getByText("2/4 accepted")).toBeVisible();
     expect(streams).toBe(1);
 
     await setHidden(false);
-    await expect(progress.getByText("3/4 locked")).toBeVisible();
+    await expect(progress.getByText("3/4 accepted")).toBeVisible();
     await expect(row(page, entries[2].last_name)).toBeVisible();
     expect(streams).toBe(2);
   });

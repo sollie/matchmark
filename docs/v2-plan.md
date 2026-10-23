@@ -24,9 +24,17 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 15. Shared `fetch`-based SSE client in the SPA (backoff reconnect, close while the tab is hidden, stale indicator, terminal `revoked`). Vitest for parser and reconnect.
 - [x] 16. Spectator stream (`snapshot` with standings and progress, built once per change) replacing the 5 s and 30 s polling; OpenAPI `text/event-stream`; e2e asserts a change appears without a poll.
 - [x] 17. Admin stream (`changed` ping, SPA refetches entries) replacing the 3 s polling.
-- [x] 18. Scorer stream (`snapshot` with the session, `revoked` on unpair or finish; the unsaved ring counts are kept, a changed score lane shows a notice and resets them, a locked stage disables save) via the device-token header.
+- [x] 18. Scorer stream (`snapshot` with the session, `revoked` on unpair or finish; the unsaved ring counts are kept, a changed score lane shows a notice and resets them, a stage that is not open disables save; later extended with the server-derived `phase`, see ADR 0013) via the device-token header.
 - [x] 19. Update `README.md` (reverse proxies must not buffer `text/event-stream`), `docs/spec.md` (SSE no longer out, polling text) and set ADR 0010 to accepted.
 
 ## Release pipeline (ADR 0012)
 
 - [x] 20. Version stamping, `.goreleaser.yaml`, reusable test and image workflows, tag-triggered release with GHCR multi-arch images, Dependabot for npm and Docker, README and ADR. Validate with a `v0.1.0-rc.1` tag after merging.
+
+## Shooter acceptance (ADR 0013)
+
+- [x] 21. Stage status model, `stage_status` Score log v2 and restore (#235).
+- [x] 22. Shooter acceptance and dispute from the device, with the server-derived device phase (#236).
+- [x] 23. Lockstep on a current stage, the gate and auto-finish (#237).
+- [x] 24. Admin control room (#238) and dispute history (#239).
+- [x] 25. Mid-competition restore (#240) and the documentation sweep (#241).

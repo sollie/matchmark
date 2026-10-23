@@ -2,6 +2,8 @@
 status: accepted
 ---
 
+> Amended by ADR 0013: the events are now a single `stage_status` event with `schema_version` 2, written on every stage status change. The text below describes the original `stage_locked` and `stage_unlocked` design.
+
 # Score log: locked stages written to stdout as JSON
 
 If the database is lost and no replica exists, every scored competition is gone. Container logs are usually retained but held only request lines. Each time a stage is locked, the server now writes a self-contained JSON `info` line to stdout, the **Score log**, through an injected `*slog.Logger`. The line is written only after the database write succeeded, and a logging failure never fails the lock.

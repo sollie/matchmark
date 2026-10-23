@@ -198,11 +198,11 @@ func TestEntriesListStageScores(t *testing.T) {
 	stages := out["entries"].([]any)[0].(map[string]any)["stages"].([]any)
 	want := []struct {
 		score, shots int
-		locked       bool
-	}{{117, 12, false}, {120, 12, true}, {0, 0, false}}
+		status       string
+	}{{117, 12, "open"}, {120, 12, "accepted"}, {0, 0, "open"}}
 	for i, w := range want {
 		m := stages[i].(map[string]any)
-		if int(m["score"].(float64)) != w.score || int(m["shots_entered"].(float64)) != w.shots || m["locked"] != w.locked {
+		if int(m["score"].(float64)) != w.score || int(m["shots_entered"].(float64)) != w.shots || m["status"] != w.status {
 			t.Fatalf("stage %d: %v", i+1, m)
 		}
 	}
@@ -264,44 +264,6 @@ func TestEntryDeleteOnlyInDraft(t *testing.T) {
 	if status, _ := f.env.Do("DELETE", fmt.Sprintf("%s/entries/%d", base, e2), nil); status != http.StatusConflict {
 		t.Fatalf("status %d", status)
 	}
-}
-
-func lockStage(t *testing.T, f *fixture, entry, stage, shots int) {
-	t.Helper()
-	p := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/%d", f.comp, entry, stage)
-	if status, out := f.env.Do("PUT", p, map[string]any{"x": shots}); status != http.StatusOK {
-		t.Fatalf("set counts: %d %v", status, out)
-	}
-}
-
-func TestEntryChangesOnlyBetweenStages(t *testing.T) {
-	f := newFixture(t, "150")
-	e1 := f.addEntry(t, "One", 1)
-	e2 := f.addEntry(t, "Two", 2)
-	base := fmt.Sprintf("/api/competitions/%d", f.comp)
-	f.env.Do("POST", base+"/status", map[string]any{"status": "active"})
-
-	t.Run("between stages entries can be added", func(t *testing.T) {
-		f.addEntry(t, "Three", 3)
-	})
-
-	lockStage(t, f, e1, 1, 12)
-
-	t.Run("mid stage blocks add, update and withdraw", func(t *testing.T) {
-		shooter := f.env.ID("POST", "/api/shooters", shooterBody("Late"))
-		status, _ := f.env.Do("POST", base+"/entries", map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 9})
-		if status != http.StatusConflict {
-			t.Fatalf("add status %d", status)
-		}
-		status, _ = f.env.Do("PUT", fmt.Sprintf("%s/entries/%d", base, e2), map[string]any{"category": "Pistol", "lane": 8})
-		if status != http.StatusConflict {
-			t.Fatalf("update status %d", status)
-		}
-		status, _ = f.env.Do("POST", fmt.Sprintf("%s/entries/%d/withdraw", base, e2), nil)
-		if status != http.StatusConflict {
-			t.Fatalf("withdraw status %d", status)
-		}
-	})
 }
 
 func TestEntriesFrozenWhenFinished(t *testing.T) {

@@ -22,6 +22,10 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Put("/competitions/{competitionID}", h.updateCompetition)
 	r.Delete("/competitions/{competitionID}", h.deleteCompetition)
 	r.Post("/competitions/{competitionID}/status", h.setCompetitionStatus)
+	r.Post("/competitions/{competitionID}/next-stage", h.startNextStage)
+	r.Get("/competitions/{competitionID}/control-room", h.controlRoom)
+	r.Post("/competitions/{competitionID}/accept-all", h.acceptAll)
+	r.Get("/competitions/{competitionID}/stage-events", h.stageEvents)
 	r.Get("/competitions/{competitionID}/entries", h.listEntries)
 	r.Post("/competitions/{competitionID}/entries", h.addEntry)
 	r.Put("/competitions/{competitionID}/entries/{entryID}", h.updateEntry)
@@ -32,6 +36,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/competitions/{competitionID}/results.xlsx", h.resultsWorkbook)
 	r.Get("/competitions/{competitionID}/results.csv", h.resultsCSV)
 	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock", h.lockStage)
+	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept", h.acceptStage)
 	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock", h.unlockStage)
 	r.Post("/competitions/{competitionID}/pairings", h.createPairing)
 	r.Get("/competitions/{competitionID}/pairings", h.listPairings)
@@ -60,7 +65,7 @@ func shooterJSON(s repository.Shooter) map[string]any {
 }
 
 func competitionJSON(c repository.Competition) map[string]any {
-	return map[string]any{"id": c.ID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status}
+	return map[string]any{"id": c.ID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_stage": c.CurrentStage}
 }
 
 func entryJSON(e repository.Entry) map[string]any {
@@ -216,6 +221,20 @@ func (h *Handler) setCompetitionStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": body.Status})
 }
 
+func (h *Handler) startNextStage(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	stage, err := h.svc.StartNextStage(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"current_stage": stage})
+}
+
 func (h *Handler) listEntries(w http.ResponseWriter, r *http.Request) {
 	id, err := pathInt(r, "competitionID")
 	if err != nil {
@@ -232,7 +251,7 @@ func (h *Handler) listEntries(w http.ResponseWriter, r *http.Request) {
 		m := entryJSON(e.Entry)
 		stages := make([]map[string]any, 0, len(e.Stages))
 		for _, s := range e.Stages {
-			stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "locked": s.Locked, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered})
+			stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "status": s.Status, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered})
 		}
 		m["stages"] = stages
 		out = append(out, m)
@@ -297,4 +316,81 @@ func (h *Handler) adminStream(w http.ResponseWriter, r *http.Request) {
 		}
 		return streamEvent{Name: "changed", Data: struct{}{}}, nil
 	})
+}
+
+func controlRoomJSON(room service.ControlRoom) map[string]any {
+	lanes := make([]map[string]any, 0, len(room.Lanes))
+	for _, l := range room.Lanes {
+		lanes = append(lanes, map[string]any{
+			"lane": l.Lane, "entry_id": l.EntryID, "shooter_name": l.ShooterName, "scorer_name": l.ScorerName,
+			"status": l.Status, "disputed": l.Disputed, "disputes": l.Disputes,
+			"paired": l.Paired, "connected": l.Connected,
+		})
+	}
+	return map[string]any{
+		"current_stage": room.CurrentStage, "can_start_next": room.CanStartNext,
+		"can_accept_all": room.CanAcceptAll, "lanes": lanes,
+	}
+}
+
+func (h *Handler) controlRoom(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	room, err := h.svc.ControlRoom(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, controlRoomJSON(room))
+}
+
+func (h *Handler) acceptAll(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	n, err := h.svc.AcceptAll(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"accepted": n})
+}
+
+func (h *Handler) stageEvents(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	stage, err := queryInt(r, "stage", 0)
+	if err != nil || stage < 0 {
+		writeError(w, service.ErrInvalid)
+		return
+	}
+	q := r.URL.Query()
+	history, err := h.svc.StageHistory(r.Context(), id, service.StageHistoryFilter{
+		Scorer: q.Get("scorer"), Shooter: q.Get("shooter"), Stage: stage,
+	})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	events := make([]map[string]any, 0, len(history.Events))
+	for _, e := range history.Events {
+		events = append(events, map[string]any{
+			"id": e.ID, "time": e.CreatedAt, "stage": e.StageNumber, "entry_id": e.EntryID, "event": e.Event,
+			"actor_type": e.ActorType, "actor_name": e.ActorName,
+			"shooter_name": e.ShooterName, "scorer_name": e.ScorerName,
+		})
+	}
+	scorers := make([]map[string]any, 0, len(history.Scorers))
+	for _, c := range history.Scorers {
+		scorers = append(scorers, map[string]any{"scorer_name": c.ScorerName, "locks": c.Locks, "disputes": c.Disputes})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"events": events, "scorers": scorers})
 }

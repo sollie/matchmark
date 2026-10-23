@@ -33,8 +33,12 @@ func seedReport(t *testing.T, env *apitest.Env, name string, shooters []reportSh
 	}
 	for i, s := range shooters {
 		if s.counts != nil {
-			if status, out := env.Do("PUT", fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", comp, entryIDs[i]), s.counts); status != http.StatusOK {
+			path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", comp, entryIDs[i])
+			if status, out := env.Do("PUT", path, s.counts); status != http.StatusOK {
 				t.Fatalf("set counts: %d %v", status, out)
+			}
+			if status, out := env.Do("POST", path+"/lock", nil); status != http.StatusOK {
+				t.Fatalf("lock: %d %v", status, out)
 			}
 		}
 	}
@@ -167,14 +171,14 @@ func TestResultsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,stage,X,10,9,8,7,0,miss,total,locked,scorer_lane,scorer_name"
+	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,stage,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name"
 	if strings.Join(rows[0], ",") != wantHeader {
 		t.Fatalf("header %v", rows[0])
 	}
 	if len(rows) != 21 {
 		t.Fatalf("rows %d, want 1 header + 2 entries x 10 stages", len(rows))
 	}
-	if got := strings.Join(rows[1], ","); got != "Revolver,1,Berg,Ola,W100,false,1,3,4,3,1,1,0,0,112,false,," {
+	if got := strings.Join(rows[1], ","); got != "Revolver,1,Berg,Ola,W100,false,1,3,4,3,1,1,0,0,112,true,,"+apitest.AdminUsername {
 		t.Fatalf("first row %q", got)
 	}
 	if got := strings.Join(rows[11], ","); got != "Pistol,2,Nyhus,Kari,,false,1,0,0,0,0,0,0,0,0,false,," {

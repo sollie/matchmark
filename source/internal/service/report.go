@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/report"
 )
 
@@ -16,6 +17,13 @@ func (s *Service) loadReport(ctx context.Context, competitionID int64) (report.D
 	entries, err := s.repo.ReportEntries(ctx, competitionID)
 	if err != nil {
 		return report.Data{}, err
+	}
+	for i := range entries {
+		for j := range entries[i].Stages {
+			if entries[i].Stages[j].Status != repository.StatusAccepted {
+				entries[i].Stages[j].Counts = repository.RingCounts{}
+			}
+		}
 	}
 	return report.Data{Competition: comp, Entries: entries}, nil
 }

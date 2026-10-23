@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/sollie/matchmark/internal/repository"
@@ -113,15 +114,19 @@ func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status Com
 	if statusTransitions[CompetitionStatus(current.Status)] != status {
 		return ErrConflict
 	}
-	if err := s.repo.SetCompetitionStatus(ctx, id, string(status)); err != nil {
+	return s.changeStatus(ctx, id, CompetitionStatus(current.Status), status, nil)
+}
+
+func (s *Service) changeStatus(ctx context.Context, id int64, from, status CompetitionStatus, actor *Actor) error {
+	if err := s.repo.SetCompetitionStatus(ctx, id, string(from), string(status)); err != nil {
 		return mapRepoErr(err)
 	}
-	record := Change{Audit: AuditEvent{Action: "competition.status", Target: idTarget("competition", id), Details: string(status)}, CompetitionID: id, Live: LiveCompetition}
+	record := Change{Audit: AuditEvent{Action: "competition.status", Target: idTarget("competition", id), Details: string(status)}, Actor: actor, CompetitionID: id, Live: LiveCompetition}
 	if status != StatusFinished {
 		s.changes.Record(ctx, record)
 		return nil
 	}
-	s.changes.Record(ctx, Change{Audit: record.Audit})
+	s.changes.Record(ctx, Change{Audit: record.Audit, Actor: actor})
 	if err := s.repo.RevokeCompetitionPairings(ctx, id); err != nil {
 		return mapRepoErr(err)
 	}
@@ -175,33 +180,138 @@ func (s *Service) ListEntries(ctx context.Context, competitionID int64) ([]Entry
 	return out, nil
 }
 
-func (s *Service) requireEntryChangeAllowed(ctx context.Context, competitionID int64) (repository.Competition, error) {
+func (s *Service) requireDraft(ctx context.Context, competitionID int64) (repository.Competition, error) {
 	comp, err := s.repo.GetCompetition(ctx, competitionID)
 	if err != nil {
 		return comp, mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) == StatusFinished {
+	if CompetitionStatus(comp.Status) != StatusDraft {
 		return comp, ErrConflict
 	}
-	busy, err := s.repo.StageInProgress(ctx, competitionID)
-	if err != nil {
-		return comp, err
-	}
-	if busy {
-		return comp, ErrNotBetweenStages
-	}
 	return comp, nil
+}
+
+func (s *Service) requireWithdrawalAllowed(ctx context.Context, competitionID int64) error {
+	comp, err := s.repo.GetCompetition(ctx, competitionID)
+	if err != nil {
+		return mapRepoErr(err)
+	}
+	switch CompetitionStatus(comp.Status) {
+	case StatusDraft:
+		return nil
+	case StatusFinished:
+		return ErrConflict
+	}
+	entries, err := s.repo.ListEntries(ctx, competitionID)
+	if err != nil {
+		return err
+	}
+	if !stageAccepted(entries, comp.CurrentStage) {
+		return ErrNotBetweenStages
+	}
+	return nil
+}
+
+func stageAccepted(entries []repository.EntryWithStages, stageNumber int) bool {
+	for _, e := range entries {
+		if e.Withdrawn {
+			continue
+		}
+		accepted := false
+		for _, st := range e.Stages {
+			if st.Number == stageNumber && st.Status == repository.StatusAccepted {
+				accepted = true
+			}
+		}
+		if !accepted {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Service) StartNextStage(ctx context.Context, competitionID int64) (int, error) {
+	comp, err := s.repo.GetCompetition(ctx, competitionID)
+	if err != nil {
+		return 0, mapRepoErr(err)
+	}
+	if CompetitionStatus(comp.Status) != StatusActive {
+		return 0, ErrConflict
+	}
+	last, err := lastStage(comp.Course)
+	if err != nil {
+		return 0, err
+	}
+	if comp.CurrentStage >= last {
+		return 0, ErrConflict
+	}
+	entries, err := s.repo.ListEntries(ctx, competitionID)
+	if err != nil {
+		return 0, err
+	}
+	if !stageAccepted(entries, comp.CurrentStage) {
+		return 0, ErrStageGateNotMet
+	}
+	if err := s.repo.AdvanceStage(ctx, competitionID, comp.CurrentStage); err != nil {
+		return 0, mapRepoErr(err)
+	}
+	next := comp.CurrentStage + 1
+	s.changes.Record(ctx, Change{
+		Audit:         AuditEvent{Action: "competition.next_stage", Target: idTarget("competition", competitionID), Details: "stage " + strconv.Itoa(next)},
+		CompetitionID: competitionID,
+		Live:          LiveCompetition,
+	})
+	return next, nil
+}
+
+func lastStage(course string) (int, error) {
+	c, err := rulebook.CourseByKey(course)
+	if err != nil {
+		return 0, err
+	}
+	last := 0
+	for _, st := range c.Stages {
+		last = max(last, st.StageNumber)
+	}
+	return last, nil
+}
+
+func (s *Service) finishIfComplete(ctx context.Context, competitionID int64, actor *Actor) {
+	comp, err := s.repo.GetCompetition(ctx, competitionID)
+	if err != nil || CompetitionStatus(comp.Status) != StatusActive {
+		return
+	}
+	last, err := lastStage(comp.Course)
+	if err != nil || comp.CurrentStage != last {
+		return
+	}
+	entries, err := s.repo.ListEntries(ctx, competitionID)
+	if err != nil || !stageAccepted(entries, last) {
+		return
+	}
+	_ = s.changeStatus(ctx, competitionID, StatusActive, StatusFinished, actor)
 }
 
 func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64, category string, lane int) (repository.Entry, error) {
 	if lane < 1 || !contains(categories, category) {
 		return repository.Entry{}, ErrInvalid
 	}
-	if _, err := s.repo.GetEntry(ctx, competitionID, entryID); err != nil {
+	current, err := s.repo.GetEntry(ctx, competitionID, entryID)
+	if err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
-	if _, err := s.requireEntryChangeAllowed(ctx, competitionID); err != nil {
-		return repository.Entry{}, err
+	comp, err := s.repo.GetCompetition(ctx, competitionID)
+	if err != nil {
+		return repository.Entry{}, mapRepoErr(err)
+	}
+	switch CompetitionStatus(comp.Status) {
+	case StatusDraft:
+	case StatusActive:
+		if lane != current.Lane {
+			return repository.Entry{}, ErrConflict
+		}
+	default:
+		return repository.Entry{}, ErrConflict
 	}
 	if err := s.repo.UpdateEntry(ctx, competitionID, entryID, category, lane); err != nil {
 		return repository.Entry{}, mapRepoErr(err)

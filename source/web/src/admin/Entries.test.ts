@@ -20,8 +20,8 @@ const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
   lane: 1,
   withdrawn: false,
   stages: [
-    { stage_number: 1, expected_shots: 30, locked: true, scorer_lane: 2, scorer_name: "Rick Roe", score: 287, shots_entered: 30 },
-    { stage_number: 2, expected_shots: 30, locked: false, scorer_lane: null, scorer_name: null, score: 0, shots_entered: 0 },
+    { stage_number: 1, expected_shots: 30, status: "accepted", scorer_lane: 2, scorer_name: "Rick Roe", score: 287, shots_entered: 30 },
+    { stage_number: 2, expected_shots: 30, status: "open", scorer_lane: null, scorer_name: null, score: 0, shots_entered: 0 },
   ],
   ...overrides,
 });
@@ -36,26 +36,26 @@ function setup(entries: EntryWithStages[] = [entry()]) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("Entries", () => {
-  it("labels each stage as Locked or Open", () => {
+  it("labels each stage as Accepted or Open", () => {
     setup();
     const row = screen.getByRole("row", { name: /Jane Doe/ });
-    expect(within(row).getByText("Locked")).toBeTruthy();
+    expect(within(row).getByText("Accepted")).toBeTruthy();
     expect(within(row).getByText("Open")).toBeTruthy();
   });
 
   it("shows scores and tells scored-but-unlocked stages from untouched ones", () => {
-    const stage = (n: number, locked: boolean, score: number, shots: number) => ({
+    const stage = (n: number, status: "open" | "accepted", score: number, shots: number) => ({
       stage_number: n,
       expected_shots: 30,
-      locked,
+      status,
       scorer_lane: null,
       scorer_name: null,
       score,
       shots_entered: shots,
     });
-    setup([entry({ stages: [stage(1, true, 287, 30), stage(2, false, 295, 30), stage(3, false, 0, 0)] })]);
+    setup([entry({ stages: [stage(1, "accepted", 287, 30), stage(2, "open", 295, 30), stage(3, "open", 0, 0)] })]);
     const row = screen.getByRole("row", { name: /Jane Doe/ });
-    expect(within(row).getByText("Locked")).toBeTruthy();
+    expect(within(row).getByText("Accepted")).toBeTruthy();
     expect(within(row).getByText("287")).toBeTruthy();
     expect(within(row).getByText("Scored, not locked")).toBeTruthy();
     expect(within(row).getByText("295")).toBeTruthy();
@@ -125,5 +125,25 @@ describe("Entries", () => {
   it("marks withdrawn entries in text", () => {
     setup([entry({ withdrawn: true })]);
     expect(screen.getByText("Withdrawn")).toBeTruthy();
+  });
+});
+
+describe("Entries awaiting acceptance", () => {
+  const awaiting = () =>
+    entry({
+      stages: [{ stage_number: 1, expected_shots: 30, status: "awaiting_acceptance", scorer_lane: 2, scorer_name: "Rick Roe", score: 287, shots_entered: 30 }],
+    });
+
+  it("accepts a stage that awaits acceptance", async () => {
+    const { calls, reload, user } = setup([awaiting()]);
+    expect(screen.getByText("Awaiting acceptance")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Lane 1 stage 1: Accept" }));
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/competitions/5/entries/1/stages/1/accept"]);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("offers no accept for an accepted stage", () => {
+    setup();
+    expect(screen.queryByRole("button", { name: "Lane 1 stage 1: Accept" })).toBeNull();
   });
 });

@@ -22,7 +22,7 @@ func TestChangeRecorderOrdersAuditScoreLogThenLive(t *testing.T) {
 	logger := newLogger(&out)
 	f := buildFixture(t, repo, &out, logger)
 	f.fillStage(t, f.entry1, 1)
-	if err := f.svc.AdminLockStage(context.Background(), f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.AdminLockStage(context.Background(), f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -39,7 +39,7 @@ func TestChangeRecorderOrdersAuditScoreLogThenLive(t *testing.T) {
 	})
 
 	audit := strings.Index(out.String(), `"msg":"audit"`)
-	scored := strings.Index(out.String(), `"msg":"stage_locked"`)
+	scored := strings.Index(out.String(), `"msg":"stage_status"`)
 	if audit < 0 || scored < 0 || audit > scored {
 		t.Fatalf("want audit before score log, got audit=%d score=%d", audit, scored)
 	}
@@ -63,7 +63,7 @@ func TestChangeRecorderSwallowsScoreLogFailure(t *testing.T) {
 		Audit:         service.AuditEvent{Action: "stage.lock", Target: "stage:99/99/1"},
 		CompetitionID: 99,
 		Live:          service.LiveCompetition,
-		Stage:         &service.StageEvent{Event: "stage_locked", CompetitionID: 99, EntryID: 99, StageNumber: 1},
+		Stage:         &service.StageEvent{CompetitionID: 99, EntryID: 99, StageNumber: 1},
 	})
 	if !strings.Contains(out.String(), "score log context failed") {
 		t.Fatalf("expected logged failure, got %s", out.String())
