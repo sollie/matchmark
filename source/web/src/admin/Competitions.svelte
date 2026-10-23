@@ -53,7 +53,7 @@
 
 <div class="card scroll">
 <table>
-  <thead><tr><th>Name</th><th>Date</th><th>Course</th><th>Status</th></tr></thead>
+  <thead><tr><th>Name</th><th>Date</th><th>Course</th><th>Status</th><th>Actions</th></tr></thead>
   <tbody>
     {#each competitions as c (c.id)}
       <tr>
@@ -61,9 +61,15 @@
         <td>{c.date}</td>
         <td>{courseLabel(c.course)}</td>
         <td><span class="badge {statusTone[c.status]}">{c.status}</span></td>
+        <td class="row-actions">
+          {#if c.status === "finished"}
+            <a class="button" href={`/api/competitions/${c.id}/results.xlsx`} download aria-label={`Results report (.xlsx) for ${c.name}`}>Results report (.xlsx)</a>
+            <a class="button" href={`/api/competitions/${c.id}/results.csv`} download aria-label={`Detailed CSV for ${c.name}`}>Detailed CSV</a>
+          {/if}
+        </td>
       </tr>
     {:else}
-      <tr><td colspan="4" class="muted">No competitions yet.</td></tr>
+      <tr><td colspan="5" class="muted">No competitions yet.</td></tr>
     {/each}
   </tbody>
 </table>
