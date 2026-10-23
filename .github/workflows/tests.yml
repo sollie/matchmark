@@ -81,6 +81,12 @@ jobs:
     name: E2E (${{ matrix.browser }} ${{ matrix.shard }}/3)
     needs: web
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    env:
+      HOME: /root
     strategy:
       fail-fast: false
       matrix:
@@ -109,9 +115,9 @@ jobs:
         working-directory: source/web
         run: npm ci
 
-      - name: Install browser
+      - name: Check Playwright image matches lockfile
         working-directory: source/web
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: test "$(node -p "require('./node_modules/@playwright/test/package.json').version")" = "1.64.1"
 
       - name: E2E
         working-directory: source/web
