@@ -76,6 +76,8 @@ func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, service.ErrNotFound):
 		status, msg = http.StatusNotFound, "not found"
+	case errors.Is(err, service.ErrGone):
+		status, msg = http.StatusGone, "gone"
 	case errors.Is(err, service.ErrInvalid):
 		status, msg = http.StatusUnprocessableEntity, "invalid input"
 	case errors.Is(err, service.ErrInvalidUsername), errors.Is(err, service.ErrWeakPassword):

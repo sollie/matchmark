@@ -14,7 +14,8 @@ export type StreamOptions = {
 
 export type StreamHandle = { close: () => void };
 
-const terminalStatuses = new Set([401, 403, 404, 409]);
+const terminalStatuses = new Set([401, 403, 404, 409, 410]);
+const stableAfterMs = 5000;
 
 export function createSseParser(emit: (event: string, data: string) => void) {
   let buffer = "";
@@ -105,6 +106,7 @@ export function openStream(opts: StreamOptions): StreamHandle {
     armStale();
     let ended = false;
     let retryAfterMs = 0;
+    let liveSince = 0;
     try {
       const response = await (opts.fetch ?? globalThis.fetch)(opts.url, {
         headers: { Accept: "text/event-stream", ...opts.headers },
@@ -121,7 +123,7 @@ export function openStream(opts: StreamOptions): StreamHandle {
         if (Number.isFinite(seconds) && seconds > 0) retryAfterMs = seconds * 1000;
       }
       if (!response.ok || !response.body) throw new Error(`stream status ${response.status}`);
-      failures = 0;
+      liveSince = Date.now();
       setState("live");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -145,6 +147,7 @@ export function openStream(opts: StreamOptions): StreamHandle {
       if (own.signal.aborted && controller !== own) return;
     }
     if (ended || controller !== own) return;
+    if (liveSince > 0 && Date.now() - liveSince >= stableAfterMs) failures = 0;
     clearTimeout(staleTimer);
     lost(retryAfterMs);
   }
