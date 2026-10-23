@@ -155,7 +155,7 @@
           <li><StageCell stage={{ stage: 0, accepted: false, state: "not_started" }} prefix={false} /> Not started</li>
           <li><StageCell stage={{ stage: 0, accepted: false, state: "in_progress" }} prefix={false} /> In progress</li>
           <li><StageCell stage={{ stage: 0, accepted: false, state: "awaiting_acceptance" }} prefix={false} /> Awaiting acceptance</li>
-          <li><strong>118</strong> Accepted score</li>
+          <li><StageCell stage={{ stage: 0, accepted: true, state: "accepted", score: 118 }} prefix={false} /> Accepted</li>
         </ul>
       {/if}
     {/if}

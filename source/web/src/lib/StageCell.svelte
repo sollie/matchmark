@@ -12,22 +12,12 @@
     accepted: "accepted",
   } as const;
 
-  const glyphs = {
-    not_started: "–",
-    in_progress: "…",
-    awaiting_acceptance: "⏳",
-  } as const;
-
   const label = $derived.by(() => {
     if (!stage) return "";
     const base = prefix ? `Stage ${stage.stage}: ${names[stage.state]}` : names[stage.state];
     return stage.state === "accepted" && stage.score !== undefined ? `${base}, ${stage.score}` : base;
   });
-  const text = $derived.by(() => {
-    if (!stage) return "";
-    if (stage.state !== "accepted") return glyphs[stage.state];
-    return stage.score !== undefined ? String(stage.score) : "✓";
-  });
+  const text = $derived(stage?.state === "accepted" && stage.score !== undefined ? String(stage.score) : "");
 </script>
 
 {#if stage}
@@ -35,9 +25,9 @@
 {/if}
 
 <style>
-  .cell { display: inline-block; min-width: 1.5em; text-align: right; }
-  .not_started { color: var(--text-muted); }
-  .in_progress { color: var(--accent); font-weight: 600; letter-spacing: 0.05em; }
-  .awaiting_acceptance { color: var(--warning-fg); font-style: italic; }
-  .accepted { color: var(--text); font-weight: 700; }
+  .cell { display: inline-block; min-width: 2.5em; min-height: 1.5em; padding: 0 var(--space-2); border-radius: var(--radius-sm); text-align: center; font-weight: 700; line-height: 1.5; vertical-align: middle; }
+  .not_started { background: var(--neutral-bg); }
+  .in_progress { background: var(--brand-tint); box-shadow: inset 0 0 0 2px var(--accent); }
+  .awaiting_acceptance { background: var(--warning-bg); color: var(--warning-fg); }
+  .accepted { background: var(--success-bg); color: var(--success-fg); }
 </style>

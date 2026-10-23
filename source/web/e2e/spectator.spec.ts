@@ -144,19 +144,19 @@ test.describe("spectator", () => {
     await expect(row(page, entries[1].last_name)).toBeVisible();
   });
 
-  test("stage cells show state as glyph and label with a legend", async ({ page, admin }) => {
+  test("stage cells show state as color and label with a legend", async ({ page, admin }) => {
     const { competition, entries } = await seedScored(admin);
     await openCompetition(page, competition.name);
 
     const accepted = row(page, entries[1].last_name);
     await expect(accepted.getByLabel("Stage 1: accepted, 120", { exact: true })).toHaveText("120");
     const inProgress = row(page, entries[2].last_name);
-    await expect(inProgress.getByLabel("Stage 1: in progress", { exact: true })).toHaveText("…");
-    await expect(inProgress.getByLabel("Stage 2: not started", { exact: true })).toHaveText("–");
+    await expect(inProgress.getByLabel("Stage 1: in progress", { exact: true })).toHaveText("");
+    await expect(inProgress.getByLabel("Stage 2: not started", { exact: true })).toHaveText("");
     await expect(inProgress.getByTitle("Stage 2: not started", { exact: true })).toBeVisible();
 
     const legend = page.getByRole("list", { name: "Stage state legend" });
-    for (const state of ["Not started", "In progress", "Awaiting acceptance", "Accepted score"]) {
+    for (const state of ["Not started", "In progress", "Awaiting acceptance", "Accepted"]) {
       await expect(legend).toContainText(state);
     }
   });
@@ -172,8 +172,8 @@ test.describe("spectator", () => {
         ...(shown.clubs ? [shooter.club] : []),
         ...(shown.countries ? [shooter.country] : []),
         "Revolver",
-        shown.stage ? "120" : "✓",
-        ...Array<string>(course.stages - 1).fill("–"),
+        shown.stage ? "120" : "",
+        ...Array<string>(course.stages - 1).fill(""),
         "120",
         ...(shown.x ? ["6"] : []),
       ];
