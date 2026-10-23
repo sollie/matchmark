@@ -14,6 +14,7 @@ import (
 	"github.com/sollie/matchmark/internal/report"
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/restore"
+	"github.com/sollie/matchmark/internal/rulebook"
 	"github.com/sollie/matchmark/internal/service"
 )
 
@@ -311,5 +312,77 @@ func TestRestorePartialAcceptanceLeavesCompetitionActive(t *testing.T) {
 	comp, err := repo.GetCompetition(ctx, 7)
 	if err != nil || comp.Status != "active" {
 		t.Fatalf("partial = %+v, %v", comp, err)
+	}
+}
+
+func restoreStages(t *testing.T, stages []restore.ScoredStage) (*repository.Repository, repository.Competition) {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	repo := repository.New(conn)
+	plan := mergePlan("Mid", [7]int{1, 2, 3, 4, 0, 0, 0})
+	plan.Competitions[0].Entries[0].Stages = stages
+	if _, err := service.New(repo).RestoreScoreLog(ctx, plan, false); err != nil {
+		t.Fatal(err)
+	}
+	comp, err := repo.GetCompetition(ctx, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return repo, comp
+}
+
+func stageWith(number int, status string) restore.ScoredStage {
+	st := restore.ScoredStage{Number: number, ExpectedShots: 10, RingCounts: [7]int{1, 2, 3, 4, 0, 0, 0}, Status: status, LockedBy: "bob", ScorerName: "bob", LockedAt: "2026-10-19T10:00:00Z"}
+	if status == restore.StatusAccepted {
+		st.AcceptedBy, st.AcceptedAt = "bob", "2026-10-19T10:01:00Z"
+	}
+	return st
+}
+
+func TestRestoreSetsPointerToLowestStageNotAccepted(t *testing.T) {
+	repo, comp := restoreStages(t, []restore.ScoredStage{
+		stageWith(1, restore.StatusAccepted),
+		stageWith(2, restore.StatusAwaitingAcceptance),
+		stageWith(3, restore.StatusAccepted),
+	})
+	if comp.Status != "active" || comp.CurrentStage != 2 {
+		t.Fatalf("comp = %+v", comp)
+	}
+	st, err := repo.GetStage(context.Background(), 7, 1, 2)
+	if err != nil || st.Status != repository.StatusAwaitingAcceptance || st.Counts.Ten != 2 {
+		t.Fatalf("stage = %+v, %v", st, err)
+	}
+}
+
+func TestRestoreReopenedDisputedStageIsOpenWithHits(t *testing.T) {
+	disputed := stageWith(1, restore.StatusOpen)
+	disputed.DisputedAt = "2026-10-19T10:02:00Z"
+	repo, comp := restoreStages(t, []restore.ScoredStage{disputed})
+	if comp.Status != "active" || comp.CurrentStage != 1 {
+		t.Fatalf("comp = %+v", comp)
+	}
+	st, err := repo.GetStage(context.Background(), 7, 1, 1)
+	if err != nil || st.Status != repository.StatusOpen || st.Counts.Nine != 3 || st.DisputedAt == "" {
+		t.Fatalf("stage = %+v, %v", st, err)
+	}
+}
+
+func TestRestoreFullyAcceptedCompetitionIsFinished(t *testing.T) {
+	var all []restore.ScoredStage
+	course, err := rulebook.CourseByKey("150")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cs := range course.Stages {
+		all = append(all, stageWith(cs.StageNumber, restore.StatusAccepted))
+	}
+	_, comp := restoreStages(t, all)
+	if comp.Status != "finished" {
+		t.Fatalf("comp = %+v", comp)
 	}
 }

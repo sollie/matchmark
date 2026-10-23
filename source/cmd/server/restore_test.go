@@ -61,7 +61,7 @@ func TestRestoreCommandApplyRefusesNonEmptyUnlessMerge(t *testing.T) {
 		return out.String()
 	}
 	first := run()
-	for _, want := range []string{"restored 1 competition(s), 1 entries, 1 scored stage(s)", "unscored entries, devices and pairings are not restored"} {
+	for _, want := range []string{"restored 1 competition(s), 1 entries, 1 scored stage(s)", "re-pair the devices"} {
 		if !strings.Contains(first, want) {
 			t.Fatalf("first output missing %q: %s", want, first)
 		}
