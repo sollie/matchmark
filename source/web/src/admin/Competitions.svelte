@@ -63,8 +63,8 @@
         <td><span class="badge {statusTone[c.status]}">{c.status}</span></td>
         <td class="row-actions">
           {#if c.status === "finished"}
-            <a class="button" href={`/api/competitions/${c.id}/results.xlsx`} download aria-label={`Results report (.xlsx) for ${c.name}`}>Results report (.xlsx)</a>
-            <a class="button" href={`/api/competitions/${c.id}/results.csv`} download aria-label={`Detailed CSV for ${c.name}`}>Detailed CSV</a>
+            <a class="button" href={`/api/competitions/${c.id}/results.xlsx`} download title="Results report (.xlsx)" aria-label={`Results report (.xlsx) for ${c.name}`}><svg class="icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 2v7.5M4.5 6.5 8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>XLSX</a>
+            <a class="button" href={`/api/competitions/${c.id}/results.csv`} download title="Detailed CSV" aria-label={`Detailed CSV for ${c.name}`}><svg class="icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 2v7.5M4.5 6.5 8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>CSV</a>
           {/if}
         </td>
       </tr>
