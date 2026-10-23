@@ -16,6 +16,7 @@ type Handler struct {
 	svc          *service.Service
 	auth         *service.Auth
 	audit        *service.Audit
+	wa1500       *service.WA1500Lookup
 	secureCookie bool
 	servingTLS   bool
 	backupDir    string
@@ -54,6 +55,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireUser)
 			h.adminRoutes(r)
+			h.wa1500Routes(r)
 			h.visibilityRoutes(r)
 		})
 	})
@@ -101,6 +103,10 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusConflict, "stage is not locked"
 	case errors.Is(err, service.ErrUnauthenticated):
 		status, msg = http.StatusUnauthorized, "unauthorized"
+	case errors.Is(err, service.ErrUpstream):
+		status, msg = http.StatusBadGateway, "wa1500 unavailable"
+	case errors.Is(err, service.ErrRateLimited):
+		status, msg = http.StatusTooManyRequests, "too many searches, try again shortly"
 	case errors.Is(err, errTooManyStreams):
 		status, msg = http.StatusServiceUnavailable, "too many streams"
 	case errors.Is(err, service.ErrAdminScoringNeeded):
