@@ -86,7 +86,7 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.getByLabel("10 count", { exact: true })).toHaveCount(0);
 
     await openCompetition(page, competition.id);
-    const badge = row(page, entries[1].shooter.last_name).getByText("Awaiting acceptance", { exact: true }).first();
+    const badge = row(section(page, "Entries and progress"), entries[1].shooter.last_name).getByText("Awaiting acceptance", { exact: true }).first();
     await expect(badge).toBeVisible();
     await expect(badge).toHaveAttribute(
       "title",
