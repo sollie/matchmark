@@ -20,7 +20,7 @@ type RingCountsView struct {
 
 type StageScoreView struct {
 	Stage    int             `json:"stage"`
-	Score    int             `json:"score"`
+	Score    *int            `json:"score,omitempty"`
 	Accepted bool            `json:"accepted"`
 	State    StageState      `json:"state"`
 	Counts   *RingCountsView `json:"ring_counts,omitempty"`
@@ -143,14 +143,16 @@ func (s *Service) standings(ctx context.Context, comp repository.Competition) ([
 			total.Seven += st.Counts.Seven
 			total.Zero += st.Counts.Zero
 			total.Miss += st.Counts.Miss
-			if vis.StageScores {
-				sv := StageScoreView{Stage: st.Number, Score: stagePoints(st.Counts), Accepted: accepted, State: stageState(st.Status, st.Number, comp.CurrentStage)}
+			sv := StageScoreView{Stage: st.Number, Accepted: accepted, State: stageState(st.Status, st.Number, comp.CurrentStage)}
+			if vis.StageScores && accepted {
+				score := stagePoints(st.Counts)
+				sv.Score = &score
 				if vis.RingCounts {
 					c := ringCountsView(st.Counts)
 					sv.Counts = &c
 				}
-				v.Stages = append(v.Stages, sv)
 			}
+			v.Stages = append(v.Stages, sv)
 		}
 		if vis.Names {
 			v.LastName, v.FirstName = &e.LastName, &e.FirstName

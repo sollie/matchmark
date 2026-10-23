@@ -140,6 +140,23 @@ test.describe("spectator", () => {
     await expect(row(page, entries[1].last_name)).toBeVisible();
   });
 
+  test("stage cells show state as glyph and label with a legend", async ({ page, admin }) => {
+    const { competition, entries } = await seedScored(admin);
+    await openCompetition(page, competition.name);
+
+    const accepted = row(page, entries[1].last_name);
+    await expect(accepted.getByLabel("Stage 1: accepted, 120", { exact: true })).toHaveText("120");
+    const inProgress = row(page, entries[2].last_name);
+    await expect(inProgress.getByLabel("Stage 1: in progress", { exact: true })).toHaveText("…");
+    await expect(inProgress.getByLabel("Stage 2: not started", { exact: true })).toHaveText("–");
+    await expect(inProgress.getByTitle("Stage 2: not started", { exact: true })).toBeVisible();
+
+    const legend = page.getByRole("list", { name: "Stage state legend" });
+    for (const state of ["Not started", "In progress", "Awaiting acceptance", "Accepted score"]) {
+      await expect(legend).toContainText(state);
+    }
+  });
+
   test("each visibility flag hides its fields and values", async ({ course, page, admin }) => {
     const { competition, entries } = await seedScored(admin);
     const shooter = entries[1];
@@ -151,7 +168,8 @@ test.describe("spectator", () => {
         ...(shown.clubs ? [shooter.club] : []),
         ...(shown.countries ? [shooter.country] : []),
         "Revolver",
-        ...(shown.stage ? ["120", ...Array<string>(course.stages - 1).fill("0")] : []),
+        shown.stage ? "120" : "✓",
+        ...Array<string>(course.stages - 1).fill("–"),
         "120",
         ...(shown.x ? ["6"] : []),
       ];
@@ -180,8 +198,9 @@ test.describe("spectator", () => {
 
     await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false, show_stage_scores: false });
     await openCompetition(page, competition.name);
-    await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toHaveCount(0);
+    await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toBeVisible();
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, x: true }));
+    await expect(winner.getByLabel("Stage 1: accepted", { exact: true })).toBeVisible();
 
     await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false, show_stage_scores: false, show_ring_counts: false });
     await openCompetition(page, competition.name);

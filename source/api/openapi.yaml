@@ -2300,13 +2300,13 @@ components:
           $ref: '#/components/schemas/StageStatus'
     StageScore:
       type: object
-      required: [stage, score, accepted, state]
+      required: [stage, accepted, state]
       properties:
         stage:
           type: integer
         score:
           type: integer
-          description: Zero until the stage is accepted
+          description: Present only when stage scores are visible and the stage is accepted
         accepted:
           type: boolean
         state:

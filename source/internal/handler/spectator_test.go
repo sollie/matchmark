@@ -111,9 +111,19 @@ func TestSpectatorVisibilityFlags(t *testing.T) {
 		}
 		_, out := publicGet(t, f, standingsPath(f))
 		row := out["standings"].([]any)[0].(map[string]any)
-		for _, k := range []string{"last_name", "first_name", "club", "country", "stages", "ring_counts", "x_count"} {
+		for _, k := range []string{"last_name", "first_name", "club", "country", "ring_counts", "x_count"} {
 			if _, ok := row[k]; ok {
 				t.Fatalf("%s present: %v", k, row)
+			}
+		}
+		stages := row["stages"].([]any)
+		if len(stages) != 10 {
+			t.Fatalf("stages %v", stages)
+		}
+		for _, st := range stages {
+			m := st.(map[string]any)
+			if _, ok := m["score"]; ok || m["state"] == nil {
+				t.Fatalf("stage %v", m)
 			}
 		}
 		if row["lane"] == nil || row["total"] == nil || row["category"] == nil {
@@ -138,6 +148,9 @@ func TestSpectatorVisibilityFlags(t *testing.T) {
 		stages := row["stages"].([]any)
 		if len(stages) != 10 || stages[0].(map[string]any)["score"].(float64) != 120 {
 			t.Fatalf("stages %v", stages)
+		}
+		if _, ok := stages[1].(map[string]any)["score"]; ok {
+			t.Fatalf("unaccepted stage has score: %v", stages[1])
 		}
 	})
 	t.Run("visibility requires admin", func(t *testing.T) {

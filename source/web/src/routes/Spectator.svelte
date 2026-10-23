@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
+  import StageCell from "../lib/StageCell.svelte";
   import { openStream, type StreamState } from "../lib/sse";
   import type { components } from "../lib/api/schema";
 
@@ -140,7 +141,7 @@
                 {#if showCountries}<td class="optional">{s.country}</td>{/if}
                 <td class="optional">{s.category}</td>
                 {#each stageNumbers as n (n)}
-                  <td class="num">{s.stages?.find((st) => st.stage === n)?.score ?? ""}</td>
+                  <td class="num"><StageCell stage={s.stages?.find((st) => st.stage === n)} /></td>
                 {/each}
                 <td class="num total">{s.total}</td>
                 {#if showX}<td class="num">{s.x_count}</td>{/if}
@@ -149,6 +150,14 @@
           </tbody>
         </table>
       </div>
+      {#if stageNumbers.length > 0}
+        <ul class="legend" aria-label="Stage state legend">
+          <li><StageCell stage={{ stage: 0, accepted: false, state: "not_started" }} prefix={false} /> Not started</li>
+          <li><StageCell stage={{ stage: 0, accepted: false, state: "in_progress" }} prefix={false} /> In progress</li>
+          <li><StageCell stage={{ stage: 0, accepted: false, state: "awaiting_acceptance" }} prefix={false} /> Awaiting acceptance</li>
+          <li><strong>118</strong> Accepted score</li>
+        </ul>
+      {/if}
     {/if}
   {/if}
   <p><a href="/admin">Admin</a></p>
@@ -161,6 +170,8 @@
   .empty p { margin: var(--space-1) 0; }
   .rank, .total { font-weight: 700; font-size: var(--text-lg); }
   tr.leader > td, tr.leader:hover > td { background: var(--brand-tint); font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); list-style: none; padding: 0; margin: var(--space-3) 0; color: var(--text-muted); font-size: var(--text-sm); }
+  .legend li { display: flex; align-items: center; gap: var(--space-1); }
   .progress li { flex-wrap: wrap; }
   .stage-name { min-width: 4.5rem; font-weight: 600; }
   .count { min-width: 6.5rem; text-align: right; color: var(--text-muted); }

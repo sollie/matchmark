@@ -1209,8 +1209,8 @@ export interface components {
         };
         StageScore: {
             stage: number;
-            /** @description Zero until the stage is accepted */
-            score: number;
+            /** @description Present only when stage scores are visible and the stage is accepted */
+            score?: number;
             accepted: boolean;
             state: components["schemas"]["SpectatorStageState"];
             ring_counts?: components["schemas"]["RingCounts"];
