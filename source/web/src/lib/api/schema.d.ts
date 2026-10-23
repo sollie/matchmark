@@ -891,24 +891,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/spectator/competitions/{competitionID}/progress": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                competitionID: components["parameters"]["CompetitionID"];
-            };
-            cookie?: never;
-        };
-        get: operations["getSpectatorProgress"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/spectator/competitions/{competitionID}/stream": {
         parameters: {
             query?: never;
@@ -920,7 +902,7 @@ export interface paths {
         };
         /**
          * Live updates as server-sent events
-         * @description Sends a `snapshot` event with the standings and progress on connect and again after every change, coalesced over about 250 ms. A `: heartbeat` comment is sent every 25 seconds. The server closes the stream after 30 minutes and the client reconnects, which yields a fresh snapshot, so no replay or `Last-Event-ID` is needed. Visibility flags apply as for the standings endpoint. At most 500 streams are served at once.
+         * @description Sends a `snapshot` event with the standings on connect and again after every change, coalesced over about 250 ms. A `: heartbeat` comment is sent every 25 seconds. The server closes the stream after 30 minutes and the client reconnects, which yields a fresh snapshot, so no replay or `Last-Event-ID` is needed. Visibility flags apply as for the standings endpoint. At most 500 streams are served at once.
          */
         get: operations["streamSpectatorUpdates"];
         put?: never;
@@ -1209,9 +1191,10 @@ export interface components {
         };
         StageScore: {
             stage: number;
-            /** @description Zero until the stage is accepted */
-            score: number;
+            /** @description Present only when stage scores are visible and the stage is accepted */
+            score?: number;
             accepted: boolean;
+            state: components["schemas"]["SpectatorStageState"];
             ring_counts?: components["schemas"]["RingCounts"];
         };
         Standing: {
@@ -1227,14 +1210,17 @@ export interface components {
             ring_counts?: components["schemas"]["RingCounts"];
             stages?: components["schemas"]["StageScore"][];
         };
+        /**
+         * @description A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
+         * @enum {string}
+         */
+        SpectatorStageState: "not_started" | "in_progress" | "awaiting_acceptance" | "accepted";
         SpectatorSnapshot: {
+            /** @description The competition's current stage number */
+            current_stage: number;
+            /** @description Number of stages in the competition's course of fire */
+            total_stages: number;
             standings: components["schemas"]["Standing"][];
-            stages: components["schemas"]["StageProgress"][];
-        };
-        StageProgress: {
-            stage: number;
-            entries: number;
-            accepted: number;
         };
     };
     responses: {
@@ -3002,31 +2988,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         standings: components["schemas"]["Standing"][];
-                    };
-                };
-            };
-            404: components["responses"]["NotFound"];
-        };
-    };
-    getSpectatorProgress: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                competitionID: components["parameters"]["CompetitionID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Per-stage accepted counts */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        stages: components["schemas"]["StageProgress"][];
                     };
                 };
             };

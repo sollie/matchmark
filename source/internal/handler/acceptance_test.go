@@ -72,20 +72,12 @@ func TestAwaitingStageIsNotCountedUntilAdminAccepts(t *testing.T) {
 			t.Fatalf("awaiting stage counted: %v", f.standingTotals(t))
 		}
 	}
-	_, progress := publicGet(t, f.fixture, fmt.Sprintf("/api/spectator/competitions/%d/progress", f.comp))
-	if st := progress["stages"].([]any)[0].(map[string]any); st["accepted"] != float64(0) {
-		t.Fatalf("progress: %v", st)
-	}
 
 	if status, out := f.env.Do("POST", f.adminStage(2, 1, "/accept"), nil); status != http.StatusOK || out["status"] != "accepted" {
 		t.Fatalf("accept: %d %v", status, out)
 	}
 	if totals := f.standingTotals(t); totals[0] != 120 {
 		t.Fatalf("accepted stage not counted: %v", totals)
-	}
-	_, progress = publicGet(t, f.fixture, fmt.Sprintf("/api/spectator/competitions/%d/progress", f.comp))
-	if st := progress["stages"].([]any)[0].(map[string]any); st["accepted"] != float64(1) {
-		t.Fatalf("progress: %v", st)
 	}
 }
 
