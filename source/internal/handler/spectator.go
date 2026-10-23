@@ -13,7 +13,6 @@ import (
 func (h *Handler) spectatorRoutes(r chi.Router) {
 	r.Get("/spectator/competitions", h.spectatorCompetitions)
 	r.Get("/spectator/competitions/{competitionID}/standings", h.spectatorStandings)
-	r.Get("/spectator/competitions/{competitionID}/progress", h.spectatorProgress)
 	r.Get("/spectator/competitions/{competitionID}/stream", h.spectatorStream)
 }
 
@@ -92,20 +91,6 @@ func (h *Handler) spectatorStandings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"standings": rows})
-}
-
-func (h *Handler) spectatorProgress(w http.ResponseWriter, r *http.Request) {
-	id, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	stages, err := h.svc.Progress(r.Context(), id)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"stages": stages})
 }
 
 func (h *Handler) spectatorStream(w http.ResponseWriter, r *http.Request) {

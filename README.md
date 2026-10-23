@@ -76,7 +76,7 @@ Coverage, by area:
 - Control room: the lane grid with scorer, shooter, status, disputes, paired and best-effort connected, Start next stage and Accept all enabled only when allowed, and per-row Accept and Unlock for an unpaired lane.
 - Lockstep: the next-stage gate, devices limited to the current stage, the next-stage banner, auto-finish with the finished screen, and the frozen entry list.
 - Pairing and scorer device: pairing link creation, the device's lane and score lane, score lane wrap-around, running total and mismatch message, save and lock (the stage awaits acceptance), the waiting screen, the shooter reviewing, accepting or disputing their result with the Disputed notice and prefilled values, read-only locked stages, revoked pairings, the admin-scoring requirement with one manned lane, unpairing a device, and refusal to score a draft competition.
-- Spectator: ranking by total then X count with stage progress, draft and finished visibility, each visibility flag, the empty state, and 404 for a draft standings API.
+- Spectator: ranking by total then X count with the stage status row, draft and finished visibility, each visibility flag, the empty state, and 404 for a draft standings API.
 - Reports and backup: `.xlsx` results report and detailed CSV (downloaded from the competition list, finished competitions only), database backup, and 401 without a session.
 
 Not covered by the browser suite: the score log (Go tests, ADR 0007), accessible-name cleanup (#129), and phone and tablet viewports.

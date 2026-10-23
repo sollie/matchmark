@@ -1598,27 +1598,6 @@ paths:
                       $ref: '#/components/schemas/Standing'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/spectator/competitions/{competitionID}/progress:
-    parameters:
-      - $ref: '#/components/parameters/CompetitionID'
-    get:
-      operationId: getSpectatorProgress
-      tags: [spectator]
-      responses:
-        '200':
-          description: Per-stage accepted counts
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [stages]
-                properties:
-                  stages:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/StageProgress'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /api/spectator/competitions/{competitionID}/stream:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -1627,7 +1606,7 @@ paths:
       tags: [spectator]
       summary: Live updates as server-sent events
       description: >
-        Sends a `snapshot` event with the standings and progress on connect and
+        Sends a `snapshot` event with the standings on connect and
         again after every change, coalesced over about 250 ms. A `: heartbeat`
         comment is sent every 25 seconds. The server closes the stream after
         30 minutes and the client reconnects, which yields a fresh snapshot, so
@@ -2300,15 +2279,17 @@ components:
           $ref: '#/components/schemas/StageStatus'
     StageScore:
       type: object
-      required: [stage, score, accepted]
+      required: [stage, accepted, state]
       properties:
         stage:
           type: integer
         score:
           type: integer
-          description: Zero until the stage is accepted
+          description: Present only when stage scores are visible and the stage is accepted
         accepted:
           type: boolean
+        state:
+          $ref: '#/components/schemas/SpectatorStageState'
         ring_counts:
           $ref: '#/components/schemas/RingCounts'
     Standing:
@@ -2339,25 +2320,21 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StageScore'
+    SpectatorStageState:
+      type: string
+      enum: [not_started, in_progress, awaiting_acceptance, accepted]
+      description: A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
     SpectatorSnapshot:
       type: object
-      required: [standings, stages]
+      required: [current_stage, total_stages, standings]
       properties:
+        current_stage:
+          type: integer
+          description: The competition's current stage number
+        total_stages:
+          type: integer
+          description: Number of stages in the competition's course of fire
         standings:
           type: array
           items:
             $ref: '#/components/schemas/Standing'
-        stages:
-          type: array
-          items:
-            $ref: '#/components/schemas/StageProgress'
-    StageProgress:
-      type: object
-      required: [stage, entries, accepted]
-      properties:
-        stage:
-          type: integer
-        entries:
-          type: integer
-        accepted:
-          type: integer
