@@ -347,6 +347,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/competitions/{competitionID}/stage-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Stage event history with lock and dispute counts per scorer
+         * @description Events are oldest first and cover locks, acceptances, disputes, accept-all and unlocks. Device actors carry the shooter and scorer resolved from the pairing. The per-scorer counts cover the filtered events.
+         */
+        get: operations["listStageEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/competitions/{competitionID}/accept-all": {
         parameters: {
             query?: never;
@@ -1068,6 +1090,32 @@ export interface components {
             paired: boolean;
             /** @description Best-effort, from open scorer streams */
             connected: boolean;
+        };
+        StageHistory: {
+            events: components["schemas"]["StageHistoryEvent"][];
+            scorers: components["schemas"]["ScorerDisputes"][];
+        };
+        StageHistoryEvent: {
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            time: string;
+            stage: number;
+            entry_id: number;
+            /** @enum {string} */
+            event: "locked" | "accepted" | "disputed" | "accepted_all" | "unlocked";
+            /** @enum {string} */
+            actor_type: "device" | "user";
+            /** @description device for a paired device, otherwise the username */
+            actor_name: string;
+            shooter_name: string;
+            /** @description The locking scorer; empty when the admin scored the stage */
+            scorer_name: string;
+        };
+        ScorerDisputes: {
+            scorer_name: string;
+            locks: number;
+            disputes: number;
         };
         /**
          * @description A device lock leaves a stage awaiting acceptance, an admin lock or accept makes it accepted. Only accepted stages count in public views and reports
@@ -1962,6 +2010,37 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listStageEvents: {
+        parameters: {
+            query?: {
+                /** @description Exact scorer name */
+                scorer?: string;
+                /** @description Exact shooter name */
+                shooter?: string;
+                stage?: number;
+            };
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stage event history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageHistory"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Invalid"];
         };
     };
     acceptAll: {

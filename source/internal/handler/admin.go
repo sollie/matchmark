@@ -25,6 +25,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Post("/competitions/{competitionID}/next-stage", h.startNextStage)
 	r.Get("/competitions/{competitionID}/control-room", h.controlRoom)
 	r.Post("/competitions/{competitionID}/accept-all", h.acceptAll)
+	r.Get("/competitions/{competitionID}/stage-events", h.stageEvents)
 	r.Get("/competitions/{competitionID}/entries", h.listEntries)
 	r.Post("/competitions/{competitionID}/entries", h.addEntry)
 	r.Put("/competitions/{competitionID}/entries/{entryID}", h.updateEntry)
@@ -358,4 +359,38 @@ func (h *Handler) acceptAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int{"accepted": n})
+}
+
+func (h *Handler) stageEvents(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	stage, err := queryInt(r, "stage", 0)
+	if err != nil || stage < 0 {
+		writeError(w, service.ErrInvalid)
+		return
+	}
+	q := r.URL.Query()
+	history, err := h.svc.StageHistory(r.Context(), id, service.StageHistoryFilter{
+		Scorer: q.Get("scorer"), Shooter: q.Get("shooter"), Stage: stage,
+	})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	events := make([]map[string]any, 0, len(history.Events))
+	for _, e := range history.Events {
+		events = append(events, map[string]any{
+			"id": e.ID, "time": e.CreatedAt, "stage": e.StageNumber, "entry_id": e.EntryID, "event": e.Event,
+			"actor_type": e.ActorType, "actor_name": e.ActorName,
+			"shooter_name": e.ShooterName, "scorer_name": e.ScorerName,
+		})
+	}
+	scorers := make([]map[string]any, 0, len(history.Scorers))
+	for _, c := range history.Scorers {
+		scorers = append(scorers, map[string]any{"scorer_name": c.ScorerName, "locks": c.Locks, "disputes": c.Disputes})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"events": events, "scorers": scorers})
 }
