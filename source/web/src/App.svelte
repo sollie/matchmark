@@ -4,12 +4,14 @@
   import Scorer from "./routes/Scorer.svelte";
   import Admin from "./admin/Admin.svelte";
   import NotFound from "./routes/NotFound.svelte";
+  import Footer from "./lib/Footer.svelte";
 </script>
 
 <header class="site-header">
   <a class="brand-name" href="/">MatchMark</a>
 </header>
 
+<div class="app-content">
 {#if router.path === "/"}
   <Spectator />
 {:else if router.path === "/score"}
@@ -19,3 +21,6 @@
 {:else}
   <NotFound />
 {/if}
+</div>
+
+<Footer />

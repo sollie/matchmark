@@ -22,6 +22,10 @@ func WithAuth(auth *service.Auth, baseURL string) Option {
 	}
 }
 
+func WithVersion(version string) Option {
+	return func(h *Handler) { h.version = version }
+}
+
 func WithTLS(serving bool) Option {
 	return func(h *Handler) { h.servingTLS = serving }
 }

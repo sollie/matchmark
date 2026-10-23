@@ -1520,6 +1520,23 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/version:
+    get:
+      operationId: getVersion
+      tags: [spectator]
+      summary: Build version of the running binary
+      responses:
+        '200':
+          description: The build version
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version]
+                properties:
+                  version:
+                    type: string
+                    example: v1.2.3
   /api/rulebook:
     get:
       operationId: getRulebook

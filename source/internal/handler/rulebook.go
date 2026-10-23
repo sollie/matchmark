@@ -33,6 +33,14 @@ type rulebookBody struct {
 	Rings         []rulebookRingBody   `json:"rings"`
 }
 
+type versionBody struct {
+	Version string `json:"version"`
+}
+
+func (h *Handler) getVersion(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, versionBody{Version: h.version})
+}
+
 func (h *Handler) rulebookRoutes(r chi.Router) {
 	r.Get("/rulebook", h.getRulebook)
 }

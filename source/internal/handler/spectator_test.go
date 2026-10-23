@@ -176,6 +176,17 @@ func TestSpectatorCompetitionList(t *testing.T) {
 	}
 }
 
+func TestVersionIsPublic(t *testing.T) {
+	f := newFixture(t, "150")
+	status, out := publicGet(t, f, "/api/version")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d", status)
+	}
+	if _, ok := out["version"].(string); !ok {
+		t.Errorf("version = %v", out["version"])
+	}
+}
+
 func TestRulebookIsPublic(t *testing.T) {
 	f := newFixture(t, "150")
 	status, out := publicGet(t, f, "/api/rulebook")
