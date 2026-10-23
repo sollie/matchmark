@@ -22,6 +22,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Put("/competitions/{competitionID}", h.updateCompetition)
 	r.Delete("/competitions/{competitionID}", h.deleteCompetition)
 	r.Post("/competitions/{competitionID}/status", h.setCompetitionStatus)
+	r.Post("/competitions/{competitionID}/next-stage", h.startNextStage)
 	r.Get("/competitions/{competitionID}/entries", h.listEntries)
 	r.Post("/competitions/{competitionID}/entries", h.addEntry)
 	r.Put("/competitions/{competitionID}/entries/{entryID}", h.updateEntry)
@@ -61,7 +62,7 @@ func shooterJSON(s repository.Shooter) map[string]any {
 }
 
 func competitionJSON(c repository.Competition) map[string]any {
-	return map[string]any{"id": c.ID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status}
+	return map[string]any{"id": c.ID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_stage": c.CurrentStage}
 }
 
 func entryJSON(e repository.Entry) map[string]any {
@@ -215,6 +216,20 @@ func (h *Handler) setCompetitionStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": body.Status})
+}
+
+func (h *Handler) startNextStage(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	stage, err := h.svc.StartNextStage(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"current_stage": stage})
 }
 
 func (h *Handler) listEntries(w http.ResponseWriter, r *http.Request) {

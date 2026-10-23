@@ -306,6 +306,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/competitions/{competitionID}/next-stage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start the next stage once every manned, non-withdrawn lane has accepted the current one */
+        post: operations["startNextStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/competitions/{competitionID}/visibility": {
         parameters: {
             query?: never;
@@ -906,6 +925,8 @@ export interface components {
             /** Format: int64 */
             id: number;
             status: components["schemas"]["CompetitionStatus"];
+            /** @description Stage the competition is on. Stage 1 at activation; moved only by starting the next stage */
+            current_stage: number;
         } & components["schemas"]["CompetitionInput"];
         Visibility: {
             show_names: boolean;
@@ -957,6 +978,8 @@ export interface components {
         ScorerSession: {
             lane: number;
             score_lane: number;
+            /** @description The competition's current stage; devices can score only this stage. Zero in the finished phase */
+            current_stage: number;
             /** Format: int64 */
             entry_id: number;
             shooter_name: string;
@@ -968,10 +991,10 @@ export interface components {
                 disputed: boolean;
             })[];
             /**
-             * @description Derived by the server. needs_acceptance only appears once the device has no stage left to score
+             * @description Derived by the server from the current stage. scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started a stage that has no hits yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
              * @enum {string}
              */
-            phase: "scoring" | "waiting" | "needs_acceptance";
+            phase: "scoring" | "waiting" | "needs_acceptance" | "next_stage" | "finished";
             /** @description Present while phase is needs_acceptance */
             acceptance?: components["schemas"]["RingCounts"] & {
                 stage_number: number;
@@ -1820,6 +1843,33 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Invalid"];
+        };
+    };
+    startNextStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new current stage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        current_stage: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     getVisibility: {

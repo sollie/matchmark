@@ -1,12 +1,13 @@
 import type { APIRequestContext } from "@playwright/test";
-import { createCompetition, createPairing, expect, openCompetition, row, section, seedEntry, setCounts, test } from "./helpers";
+import { createCompetition, createPairing, expect, openCompetition, row, section, seedEntry, setCounts, setStatus, test } from "./helpers";
 
 const deviceTokenKey = "mm_device_token";
 
 async function seedActive(api: APIRequestContext, lanes: number[]) {
-  const competition = await createCompetition(api, { status: "active" });
+  const competition = await createCompetition(api);
   const entries = [];
   for (const lane of lanes) entries.push(await seedEntry(api, competition.id, lane));
+  await setStatus(api, competition.id, "active");
   return { competition, entries };
 }
 

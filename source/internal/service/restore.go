@@ -115,10 +115,27 @@ func buildRestoreCompetition(c restore.RestoredCompetition) (repository.RestoreC
 		rc.Entries = append(rc.Entries, re)
 	}
 	rc.Competition.Status = string(StatusActive)
+	rc.Competition.CurrentStage = restoredCurrentStage(rc.Entries)
 	if allAccepted {
 		rc.Competition.Status = string(StatusFinished)
 	}
 	return rc, nil
+}
+
+func restoredCurrentStage(entries []repository.RestoreEntry) int {
+	lowest, last := 0, 1
+	for _, e := range entries {
+		for _, st := range e.Stages {
+			last = max(last, st.Number)
+			if st.Status != repository.StatusAccepted && (lowest == 0 || st.Number < lowest) {
+				lowest = st.Number
+			}
+		}
+	}
+	if lowest == 0 {
+		return last
+	}
+	return lowest
 }
 
 func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreCompetition) (repository.RestoreCompetition, []string, error) {

@@ -16,7 +16,11 @@ A lock used to be final. With shooter acceptance (see `GLOSSARY.md`: Awaiting ac
 - admin unlock: any non-open status to `open`, hits kept
 - admin overwrite: an open stage only changes counts; an awaiting or accepted stage ends accepted, taken over by the user, with an event only when it was awaiting
 
-Only accepted stages count. Standings, progress, the `.xlsx` report and the CSV treat other stages as zero; the admin entries list still shows every stage's score. The device phase (`scoring`, `waiting`, `needs_acceptance`) is derived server-side from the stages of the score lane and of the device's own lane. Lockstep and the current-stage pointer are separate steps of the shooter-acceptance work.
+Only accepted stages count. Standings, progress, the `.xlsx` report and the CSV treat other stages as zero; the admin entries list still shows every stage's score. The device phase (`scoring`, `waiting`, `needs_acceptance`, `next_stage`, `finished`) is derived server-side from the current stage of the score lane and of the device's own lane.
+
+## Lockstep
+
+The competition stores a current-stage pointer (`current_stage`, migration 017, 1 at activation). Only the admin advances it, and only when every manned, non-withdrawn lane has accepted the current stage (the gate). Devices act only on the current stage; admin corrections of earlier stages do not move the pointer. Accepting the last stage finishes the competition through the existing finish path, which revokes pairings; devices still receive a minimal `finished` session so they can show a Finished screen. Status changes are conditional updates (`from` status), so a concurrent double finish is a no-op. Entries are added and moved only in draft; withdrawal is allowed only at the gate. A restore sets the pointer to the lowest stage with a non-accepted entry stage, or the last stage when everything is accepted.
 
 ## Score log v2
 

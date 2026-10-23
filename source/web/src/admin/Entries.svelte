@@ -13,11 +13,13 @@
     entries,
     shooters,
     reload,
+    status = "draft",
   }: {
     competitionId: number;
     entries: EntryWithStages[];
     shooters: Shooter[];
     reload: () => Promise<void>;
+    status?: components["schemas"]["CompetitionStatus"];
   } = $props();
 
   const ringKeys = ["x", "10", "9", "8", "7", "0", "miss"] as const;
@@ -136,6 +138,7 @@
   <h2>Entries and progress</h2>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
+  {#if status === "draft"}
   <form class="row add-form" aria-label="Add entry" onsubmit={add}>
     <label>
       Shooter
@@ -154,6 +157,7 @@
     <button type="submit" class="primary">Add entry</button>
     <a href="/admin/shooters">Manage shooters</a>
   </form>
+  {/if}
 
   <div class="scroll">
   <table class="entries">
@@ -223,10 +227,12 @@
                 <button class="primary" onclick={saveEdit}>Save</button>
                 <button class="secondary" onclick={() => (editing = null)}>Cancel</button>
               {:else}
-                <button class="secondary" onclick={() => (editing = { id: entry.id, category: entry.category, lane: entry.lane })}>
-                  Move
-                </button>
-                {#if !entry.withdrawn}<button class="secondary" onclick={() => withdraw(entry)}>Withdraw</button>{/if}
+                {#if status === "draft"}
+                  <button class="secondary" onclick={() => (editing = { id: entry.id, category: entry.category, lane: entry.lane })}>
+                    Move
+                  </button>
+                {/if}
+                {#if !entry.withdrawn && status !== "finished"}<button class="secondary" onclick={() => withdraw(entry)}>Withdraw</button>{/if}
                 <button class="danger remove" onclick={() => remove(entry)}>Remove</button>
               {/if}
             </div>

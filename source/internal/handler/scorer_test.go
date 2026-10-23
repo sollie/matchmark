@@ -78,7 +78,7 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 		}
 	})
 	t.Run("counts must sum to expected shots", func(t *testing.T) {
-		if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/2", counts(5, 0)); status != http.StatusUnprocessableEntity {
+		if status, _ := f.env.DoToken(f.pair(t, 3), "PUT", "/api/scorer/stages/1", counts(5, 0)); status != http.StatusUnprocessableEntity {
 			t.Fatalf("status %d", status)
 		}
 	})
@@ -92,7 +92,7 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 func TestSessionFollowsLaneChanges(t *testing.T) {
 	f := newScoringFixture(t, 1, 3, 5)
 	token := f.pair(t, 1)
-
+	f.acceptAll(t, 1, 1, 3, 5)
 	status, _ := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries/%d/withdraw", f.comp, f.entries[3]), nil)
 	if status != http.StatusOK {
 		t.Fatalf("withdraw status %d", status)
@@ -199,11 +199,15 @@ func TestPairingLifecycle(t *testing.T) {
 		}
 	})
 
-	t.Run("finish invalidates pairings", func(t *testing.T) {
+	t.Run("finish leaves devices a finished screen only", func(t *testing.T) {
 		token := f.pair(t, 2)
 		f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "finished"})
-		if status, _ := f.env.DoToken(token, "GET", "/api/scorer/session", nil); status != http.StatusUnauthorized {
-			t.Fatalf("status %d", status)
+		status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil)
+		if status != http.StatusOK || out["phase"] != "finished" {
+			t.Fatalf("status %d %v", status, out)
+		}
+		if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0)); status != http.StatusConflict {
+			t.Fatalf("write after finish: %d", status)
 		}
 	})
 }

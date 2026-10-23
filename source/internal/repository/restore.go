@@ -76,8 +76,8 @@ func (r *Repository) RestoreCompetitions(ctx context.Context, rcs []RestoreCompe
 
 func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, counts *RestoreCounts) error {
 	res, err := tx.ExecContext(ctx,
-		`INSERT OR IGNORE INTO competitions (id, name, date, course, status) VALUES (?, ?, ?, ?, ?)`,
-		rc.Competition.ID, rc.Competition.Name, rc.Competition.Date, rc.Competition.Course, rc.Competition.Status)
+		`INSERT OR IGNORE INTO competitions (id, name, date, course, status, current_stage) VALUES (?, ?, ?, ?, ?, ?)`,
+		rc.Competition.ID, rc.Competition.Name, rc.Competition.Date, rc.Competition.Course, rc.Competition.Status, rc.Competition.CurrentStage)
 	if err != nil {
 		return mapErr(err)
 	}

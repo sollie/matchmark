@@ -195,10 +195,16 @@ func TestReplayMatchesDatabase(t *testing.T) {
 	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 2); err != nil {
+	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if err := f.svc.AdminAcceptStage(ctx, f.compID, f.entry2, 1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.StartNextStage(ctx, f.compID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 2); err != nil {
 		t.Fatal(err)
 	}
 	folded := replayScoreLog(t, f.buf.String())
@@ -285,6 +291,26 @@ func newLogger(w io.Writer) *slog.Logger {
 
 func buildFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buffer, logger *slog.Logger) *scoreFixture {
 	t.Helper()
+	f := buildDraftFixture(t, repo, buf, logger)
+	if err := f.svc.SetCompetitionStatus(context.Background(), f.compID, service.StatusActive); err != nil {
+		t.Fatal(err)
+	}
+	return f
+}
+
+func newDraftScoreFixture(t *testing.T) *scoreFixture {
+	t.Helper()
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	buf := &bytes.Buffer{}
+	return buildDraftFixture(t, repository.New(conn), buf, newLogger(buf))
+}
+
+func buildDraftFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buffer, logger *slog.Logger) *scoreFixture {
+	t.Helper()
 	ctx := context.Background()
 	svc := service.New(repo, service.WithScoreLog(logger))
 	s1, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "Alm", Sex: "M", Country: "NOR", Club: "Club A", WAID: "W1"})
@@ -305,9 +331,6 @@ func buildFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buffer, 
 	}
 	e2, err := svc.AddEntry(ctx, repository.Entry{CompetitionID: compID, ShooterID: s2, Category: "Pistol", Lane: 2})
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err := svc.SetCompetitionStatus(ctx, compID, service.StatusActive); err != nil {
 		t.Fatal(err)
 	}
 	return &scoreFixture{svc: svc, repo: repo, buf: buf, compID: compID, entry1: e1, entry2: e2}
@@ -416,7 +439,7 @@ func (f *scoreFixture) lockedAt(t *testing.T) map[stageKey]logLine {
 }
 
 func TestEntryEditReemitsLockedStages(t *testing.T) {
-	f := newScoreFixture(t)
+	f := newDraftScoreFixture(t)
 	ctx := context.Background()
 	for _, e := range []int64{f.entry1, f.entry2} {
 		for _, n := range []int{1, 2} {

@@ -13,16 +13,18 @@ import (
 type Device struct {
 	CompetitionID int64
 	Lane          int
+	Finished      bool
 }
 
 type ScorerSession struct {
-	Lane        int
-	ScoreLane   int
-	EntryID     int64
-	ShooterName string
-	Stages      []repository.StageInfo
-	Phase       Phase
-	Acceptance  *Acceptance
+	Lane         int
+	CurrentStage int
+	ScoreLane    int
+	EntryID      int64
+	ShooterName  string
+	Stages       []repository.StageInfo
+	Phase        Phase
+	Acceptance   *Acceptance
 }
 
 type Phase string
@@ -31,6 +33,8 @@ const (
 	PhaseScoring         Phase = "scoring"
 	PhaseWaiting         Phase = "waiting"
 	PhaseNeedsAcceptance Phase = "needs_acceptance"
+	PhaseNextStage       Phase = "next_stage"
+	PhaseFinished        Phase = "finished"
 )
 
 type Acceptance struct {
@@ -40,26 +44,31 @@ type Acceptance struct {
 	ScorerName  string
 }
 
-func derivePhase(t ScoreTarget) (Phase, *Acceptance) {
-	for _, s := range t.Entry.Stages {
-		if s.Status == repository.StatusOpen {
-			return PhaseScoring, nil
-		}
-		if s.Status == repository.StatusAwaitingAcceptance {
-			break
+func stageOf(e repository.EntryWithStages, number int) (repository.StageInfo, bool) {
+	for _, st := range e.Stages {
+		if st.Number == number {
+			return st, true
 		}
 	}
-	for _, s := range t.Own.Stages {
-		if s.Status == repository.StatusAwaitingAcceptance {
-			c := s.Counts
-			name := ""
-			if s.ScorerName != nil {
-				name = *s.ScorerName
-			}
-			return PhaseNeedsAcceptance, &Acceptance{
-				StageNumber: s.Number, Counts: c, ScorerName: name,
-				Total: c.X + c.Ten + c.Nine + c.Eight + c.Seven + c.Zero + c.Miss,
-			}
+	return repository.StageInfo{}, false
+}
+
+func derivePhase(t ScoreTarget) (Phase, *Acceptance) {
+	if st, ok := stageOf(t.Entry, t.CurrentStage); ok && st.Status == repository.StatusOpen {
+		if t.CurrentStage > 1 && st.Counts == (repository.RingCounts{}) && st.DisputedAt == "" {
+			return PhaseNextStage, nil
+		}
+		return PhaseScoring, nil
+	}
+	if st, ok := stageOf(t.Own, t.CurrentStage); ok && st.Status == repository.StatusAwaitingAcceptance {
+		c := st.Counts
+		name := ""
+		if st.ScorerName != nil {
+			name = *st.ScorerName
+		}
+		return PhaseNeedsAcceptance, &Acceptance{
+			StageNumber: st.Number, Counts: c, ScorerName: name,
+			Total: c.X + c.Ten + c.Nine + c.Eight + c.Seven + c.Zero + c.Miss,
 		}
 	}
 	return PhaseWaiting, nil
@@ -110,8 +119,15 @@ func (s *Service) RevokePairing(ctx context.Context, competitionID, pairingID in
 
 func (s *Service) AuthenticateDevice(ctx context.Context, token string) (Device, error) {
 	p, err := s.repo.PairingByTokenHash(ctx, hashToken(token))
-	if err != nil || p.Revoked {
+	if err != nil {
 		return Device{}, ErrUnauthenticated
+	}
+	if p.Revoked {
+		comp, err := s.repo.GetCompetition(ctx, p.CompetitionID)
+		if err != nil || CompetitionStatus(comp.Status) != StatusFinished {
+			return Device{}, ErrUnauthenticated
+		}
+		return Device{CompetitionID: p.CompetitionID, Lane: p.Lane, Finished: true}, nil
 	}
 	return Device{CompetitionID: p.CompetitionID, Lane: p.Lane}, nil
 }
@@ -121,18 +137,24 @@ func shooterName(sh repository.Shooter) string {
 }
 
 func (s *Service) DeviceSession(ctx context.Context, d Device) (ScorerSession, error) {
+	if d.Finished {
+		return ScorerSession{Lane: d.Lane, Phase: PhaseFinished}, nil
+	}
 	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return ScorerSession{}, err
 	}
 	phase, acceptance := derivePhase(t)
-	return ScorerSession{Lane: d.Lane, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Phase: phase, Acceptance: acceptance}, nil
+	return ScorerSession{Lane: d.Lane, CurrentStage: t.CurrentStage, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Phase: phase, Acceptance: acceptance}, nil
 }
 
 func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber int, c repository.RingCounts) error {
 	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return err
+	}
+	if stageNumber != t.CurrentStage {
+		return ErrNotCurrentStage
 	}
 	if err := s.writeRingCounts(ctx, d.CompetitionID, t.Entry.ID, stageNumber, c); err != nil {
 		return err
@@ -154,6 +176,9 @@ func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int
 	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return "", err
+	}
+	if stageNumber != t.CurrentStage {
+		return "", ErrNotCurrentStage
 	}
 	stage, err := s.repo.GetStage(ctx, d.CompetitionID, t.Entry.ID, stageNumber)
 	if err != nil {
@@ -195,6 +220,7 @@ func (s *Service) DeviceAcceptStage(ctx context.Context, d Device, stageNumber i
 		return "", mapAcceptanceErr(err)
 	}
 	s.recordDeviceStageChange(ctx, d, ev, "stage.accept")
+	s.finishIfComplete(ctx, d.CompetitionID, &Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP})
 	return repository.StatusAccepted, nil
 }
 
@@ -217,6 +243,9 @@ func (s *Service) ownAwaitingStage(ctx context.Context, d Device, stageNumber in
 	}
 	if CompetitionStatus(comp.Status) != StatusActive {
 		return repository.Stage{}, repository.StageEvent{}, ErrConflict
+	}
+	if stageNumber != comp.CurrentStage {
+		return repository.Stage{}, repository.StageEvent{}, ErrNotCurrentStage
 	}
 	entry, err := s.repo.MannedEntryByLane(ctx, d.CompetitionID, d.Lane)
 	if err != nil {
@@ -290,6 +319,7 @@ func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int
 		Live:          LiveCompetition,
 		Stage:         &StageEvent{CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber},
 	})
+	s.finishIfComplete(ctx, competitionID, nil)
 	return repository.StatusAccepted, nil
 }
 
@@ -318,6 +348,7 @@ func (s *Service) AdminAcceptStage(ctx context.Context, competitionID, entryID i
 		Live:          LiveCompetition,
 		Stage:         &StageEvent{CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber},
 	})
+	s.finishIfComplete(ctx, competitionID, nil)
 	return nil
 }
 

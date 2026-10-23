@@ -649,6 +649,32 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/next-stage:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    post:
+      operationId: startNextStage
+      tags: [competitions]
+      summary: Start the next stage once every manned, non-withdrawn lane has accepted the current one
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The new current stage
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [current_stage]
+                properties:
+                  current_stage:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/competitions/{competitionID}/visibility:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -1741,13 +1767,16 @@ components:
     Competition:
       allOf:
         - type: object
-          required: [id, status]
+          required: [id, status, current_stage]
           properties:
             id:
               type: integer
               format: int64
             status:
               $ref: '#/components/schemas/CompetitionStatus'
+            current_stage:
+              type: integer
+              description: Stage the competition is on. Stage 1 at activation; moved only by starting the next stage
         - $ref: '#/components/schemas/CompetitionInput'
     Visibility:
       type: object
@@ -1852,12 +1881,15 @@ components:
           type: boolean
     ScorerSession:
       type: object
-      required: [lane, score_lane, entry_id, shooter_name, stages, phase]
+      required: [lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
       properties:
         lane:
           type: integer
         score_lane:
           type: integer
+        current_stage:
+          type: integer
+          description: The competition's current stage; devices can score only this stage. Zero in the finished phase
         entry_id:
           type: integer
           format: int64
@@ -1883,8 +1915,8 @@ components:
                     description: True from a dispute until the scorer locks the stage again
         phase:
           type: string
-          enum: [scoring, waiting, needs_acceptance]
-          description: Derived by the server. needs_acceptance only appears once the device has no stage left to score
+          enum: [scoring, waiting, needs_acceptance, next_stage, finished]
+          description: Derived by the server from the current stage. scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started a stage that has no hits yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
         acceptance:
           description: Present while phase is needs_acceptance
           allOf:
