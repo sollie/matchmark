@@ -3,6 +3,7 @@
   import { failure } from "../lib/api/util";
   import { categories } from "../lib/domain";
   import ShooterPicker from "./ShooterPicker.svelte";
+  import Wa1500Import from "./Wa1500Import.svelte";
   import type { components } from "../lib/api/schema";
 
   type Shooter = components["schemas"]["Shooter"];
@@ -28,6 +29,9 @@
 
   let shooterId = $state<number | null>(null);
   let pickerKey = $state(0);
+  let importQuery = $state<string | null>(null);
+  let imported = $state<Shooter[]>([]);
+  let chosen = $state<Shooter | null>(null);
   let category = $state(categories[0]);
   let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
@@ -44,7 +48,7 @@
   const lane = $derived(laneInput ?? nextLane);
   const stageNumbers = $derived(entries[0]?.stages.map((s) => s.stage_number) ?? []);
   const shooterName = (id: number) => {
-    const s = shooters.find((x) => x.id === id);
+    const s = shooters.find((x) => x.id === id) ?? imported.find((x) => x.id === id);
     return s ? `${s.first_name} ${s.last_name}` : `#${id}`;
   };
   const ordered = $derived([...entries].sort((a, b) => a.lane - b.lane || a.id - b.id));
@@ -61,6 +65,14 @@
     return true;
   }
 
+  function importSaved(s: Shooter) {
+    imported = [...imported.filter((x) => x.id !== s.id), s];
+    chosen = s;
+    shooterId = s.id;
+    importQuery = null;
+    pickerKey++;
+  }
+
   async function add(e: SubmitEvent) {
     e.preventDefault();
     if (shooterId === null) return;
@@ -73,6 +85,7 @@
     if (ok) {
       laneInput = null;
       shooterId = null;
+      chosen = null;
       pickerKey++;
     }
   }
@@ -144,7 +157,16 @@
   {#if status === "draft"}
   <form class="row add-form" aria-label="Add entry" onsubmit={add}>
     {#key pickerKey}
-      <ShooterPicker exclude={entered} required onselect={(s) => (shooterId = s?.id ?? null)} />
+      <ShooterPicker
+        exclude={entered}
+        required
+        initial={chosen}
+        onselect={(s) => {
+          shooterId = s?.id ?? null;
+          chosen = s;
+        }}
+        onadd={(q) => (importQuery = q)}
+      />
     {/key}
     <label>
       Category
@@ -156,6 +178,9 @@
     <button type="submit" class="primary">Add entry</button>
     <a href="/admin/shooters">Manage shooters</a>
   </form>
+  {#if importQuery !== null}
+    <Wa1500Import query={importQuery} onsaved={importSaved} oncancel={() => (importQuery = null)} />
+  {/if}
   {/if}
 
   <div class="scroll">
