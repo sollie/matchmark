@@ -25,6 +25,8 @@ export ADMIN_PASSWORD='at-least-16-characters'
 docker compose up --build -d
 ```
 
+The two `ADMIN_` variables are only needed for the first start; later starts work without them.
+
 The app listens on plain HTTP at `http://localhost:8080` (override the host port with `HTTP_PORT`). The container runs as UID/GID 65532, so the `data` directory must be writable by that user. The database (a SQLite-format file opened through the tursogo driver), backups and ACME certificates live in `/data`.
 
 Sign in at `/` with the seeded admin's username and password. On first start, when there are no users, an admin is created from `ADMIN_USERNAME` and `ADMIN_PASSWORD`; the server refuses to start if either is missing or invalid. Once any user exists both variables are ignored.
