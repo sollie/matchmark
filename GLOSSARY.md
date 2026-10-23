@@ -91,6 +91,9 @@ _Avoid_: Reject, appeal
 The one stage every device scores at a given time. The admin starts the next stage once every manned, non-withdrawn lane has accepted the current one (the gate); accepting the last stage finishes the competition. Stored as `current_stage`.
 _Avoid_: Active stage, round
 
+**Dispute history**:
+The admin table of a competition's stage events (locks, acceptances, disputes, accept-all and unlocks, with actor and time), filterable by scorer, shooter and stage, with lock and dispute counts per scorer.
+
 **Control room**:
 The admin view of an active competition's current stage, with one row per manned lane (scorer, shooter, status, disputes, paired and a best-effort connected indicator) and the Start next stage, Accept all, Accept and Unlock actions. Connected means an open scorer stream and is never stored.
 

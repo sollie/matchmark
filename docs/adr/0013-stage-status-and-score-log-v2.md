@@ -26,6 +26,10 @@ The competition stores a current-stage pointer (`current_stage`, migration 017, 
 
 The admin sees the current stage as one row per manned lane from `GET /api/competitions/{id}/control-room`, and `POST /api/competitions/{id}/accept-all` accepts every awaiting stage when no lane is open. The best-effort connected state is kept in memory by counting open scorer streams per lane, because the broadcaster already knows who is subscribed. It is never stored, so a sleeping phone or a restart shows as not connected.
 
+## Dispute history
+
+`GET /api/competitions/{id}/stage-events` serves the `stage_events` table to admins, filtered by exact scorer, shooter and stage, with lock and dispute counts per scorer computed over the filtered events. Device events already store the shooter and scorer resolved from the pairing at the time, so the history stays correct after pairings are revoked.
+
 ## Score log v2
 
 The Score log has one event, `stage_status`, with `schema_version` 2 and a `status` field, replacing `stage_locked` and `stage_unlocked`. An unlock is a line with status `open`, its ring counts and no lock provenance, so replay no longer deletes stages: the latest line per stage always wins, and a restored open stage keeps its hits. New fields are `accepted_by`, `accepted_at` and `disputed_at`. `restore` accepts only version 2 and fails on version 1 lines, since a log of mixed versions has no consistent replay; older logs are restored with the earlier release. A restored competition is `finished` when every stage is accepted and `active` otherwise.

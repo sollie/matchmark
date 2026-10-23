@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/sollie/matchmark/internal/repository"
 )
@@ -170,4 +171,60 @@ func (s *Service) AcceptAll(ctx context.Context, competitionID int64) (int, erro
 	}
 	s.finishIfComplete(ctx, competitionID, nil)
 	return len(items), nil
+}
+
+type StageHistoryFilter struct {
+	Scorer  string
+	Shooter string
+	Stage   int
+}
+
+type ScorerDisputes struct {
+	ScorerName string
+	Locks      int
+	Disputes   int
+}
+
+type StageHistory struct {
+	Events  []repository.StageEvent
+	Scorers []ScorerDisputes
+}
+
+func (s *Service) StageHistory(ctx context.Context, competitionID int64, f StageHistoryFilter) (StageHistory, error) {
+	if _, err := s.repo.GetCompetition(ctx, competitionID); err != nil {
+		return StageHistory{}, mapRepoErr(err)
+	}
+	all, err := s.repo.ListStageEvents(ctx, competitionID)
+	if err != nil {
+		return StageHistory{}, err
+	}
+	history := StageHistory{Events: []repository.StageEvent{}, Scorers: []ScorerDisputes{}}
+	counts := map[string]*ScorerDisputes{}
+	for _, ev := range all {
+		if (f.Scorer != "" && ev.ScorerName != f.Scorer) ||
+			(f.Shooter != "" && ev.ShooterName != f.Shooter) ||
+			(f.Stage != 0 && ev.StageNumber != f.Stage) {
+			continue
+		}
+		history.Events = append(history.Events, ev)
+		if ev.ScorerName == "" {
+			continue
+		}
+		c := counts[ev.ScorerName]
+		if c == nil {
+			c = &ScorerDisputes{ScorerName: ev.ScorerName}
+			counts[ev.ScorerName] = c
+		}
+		switch ev.Event {
+		case repository.EventLocked:
+			c.Locks++
+		case repository.EventDisputed:
+			c.Disputes++
+		}
+	}
+	for _, c := range counts {
+		history.Scorers = append(history.Scorers, *c)
+	}
+	slices.SortFunc(history.Scorers, func(a, b ScorerDisputes) int { return strings.Compare(a.ScorerName, b.ScorerName) })
+	return history, nil
 }

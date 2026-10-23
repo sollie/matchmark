@@ -699,6 +699,46 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/stage-events:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: listStageEvents
+      tags: [competitions]
+      summary: Stage event history with lock and dispute counts per scorer
+      description: |
+        Events are oldest first and cover locks, acceptances, disputes, accept-all and unlocks. Device actors carry the shooter and scorer resolved from the pairing. The per-scorer counts cover the filtered events.
+      security:
+        - adminCookie: []
+      parameters:
+        - name: scorer
+          in: query
+          description: Exact scorer name
+          schema:
+            type: string
+        - name: shooter
+          in: query
+          description: Exact shooter name
+          schema:
+            type: string
+        - name: stage
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Stage event history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageHistory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/competitions/{competitionID}/accept-all:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -2023,6 +2063,56 @@ components:
         connected:
           type: boolean
           description: Best-effort, from open scorer streams
+    StageHistory:
+      type: object
+      required: [events, scorers]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageHistoryEvent'
+        scorers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScorerDisputes'
+    StageHistoryEvent:
+      type: object
+      required: [id, time, stage, entry_id, event, actor_type, actor_name, shooter_name, scorer_name]
+      properties:
+        id:
+          type: integer
+          format: int64
+        time:
+          type: string
+          format: date-time
+        stage:
+          type: integer
+        entry_id:
+          type: integer
+        event:
+          type: string
+          enum: [locked, accepted, disputed, accepted_all, unlocked]
+        actor_type:
+          type: string
+          enum: [device, user]
+        actor_name:
+          type: string
+          description: device for a paired device, otherwise the username
+        shooter_name:
+          type: string
+        scorer_name:
+          type: string
+          description: The locking scorer; empty when the admin scored the stage
+    ScorerDisputes:
+      type: object
+      required: [scorer_name, locks, disputes]
+      properties:
+        scorer_name:
+          type: string
+        locks:
+          type: integer
+        disputes:
+          type: integer
     StageStatus:
       type: string
       enum: [open, awaiting_acceptance, accepted]

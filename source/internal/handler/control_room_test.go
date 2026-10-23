@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/sollie/matchmark/internal/apitest"
 )
 
 type controlRoom struct {
@@ -246,5 +248,112 @@ func TestControlRoomAndAcceptAllRequireAdminAndAnActiveCompetition(t *testing.T)
 	}
 	if status, _ := draft.env.Do("POST", fmt.Sprintf("/api/competitions/%d/accept-all", draft.comp), nil); status != http.StatusConflict {
 		t.Fatalf("draft accept all: %d", status)
+	}
+}
+
+type historyEvent struct {
+	Stage       int
+	Event       string
+	ActorType   string
+	ActorName   string
+	ShooterName string
+	ScorerName  string
+	Time        string
+}
+
+type scorerCount struct {
+	ScorerName string
+	Locks      int
+	Disputes   int
+}
+
+func (f *scoringFixture) history(t *testing.T, query string) ([]historyEvent, []scorerCount) {
+	t.Helper()
+	status, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/stage-events%s", f.comp, query), nil)
+	if status != http.StatusOK {
+		t.Fatalf("stage events: %d %v", status, out)
+	}
+	var events []historyEvent
+	for _, e := range out["events"].([]any) {
+		m := e.(map[string]any)
+		events = append(events, historyEvent{
+			Stage: int(m["stage"].(float64)), Event: m["event"].(string), ActorType: m["actor_type"].(string),
+			ActorName: m["actor_name"].(string), ShooterName: m["shooter_name"].(string),
+			ScorerName: m["scorer_name"].(string), Time: m["time"].(string),
+		})
+	}
+	var counts []scorerCount
+	for _, c := range out["scorers"].([]any) {
+		m := c.(map[string]any)
+		counts = append(counts, scorerCount{ScorerName: m["scorer_name"].(string), Locks: int(m["locks"].(float64)), Disputes: int(m["disputes"].(float64))})
+	}
+	return events, counts
+}
+
+func TestStageEventHistoryResolvesDeviceActorsAndCountsDisputesPerScorer(t *testing.T) {
+	f := newScoringFixture(t, 1, 2, 3)
+	f.deviceLock(t, 1, 1)
+	if status, _ := f.deviceAction(f.pair(t, 2), 1, "dispute"); status != http.StatusOK {
+		t.Fatalf("dispute: %d", status)
+	}
+	f.lockOnDevice(t, f.pair(t, 1))
+	f.deviceAction(f.pair(t, 2), 1, "accept")
+	f.lockOnDevice(t, f.pair(t, 2))
+	f.env.Do("POST", f.adminStage(3, 1, "/accept"), nil)
+
+	events, counts := f.history(t, "")
+	if len(events) != 6 {
+		t.Fatalf("events %+v", events)
+	}
+	first := events[0]
+	if first.Event != "locked" || first.ActorType != "device" || first.ScorerName != "A Shooter1" || first.ShooterName != "A Shooter2" || first.Stage != 1 || first.Time == "" {
+		t.Fatalf("first %+v", first)
+	}
+	if events[1].Event != "disputed" || events[1].ShooterName != "A Shooter2" || events[1].ScorerName != "A Shooter1" {
+		t.Fatalf("dispute %+v", events[1])
+	}
+	last := events[5]
+	if last.Event != "accepted" || last.ActorType != "user" || last.ActorName != apitest.AdminUsername {
+		t.Fatalf("last %+v", last)
+	}
+	want := map[string]scorerCount{"A Shooter1": {Locks: 2, Disputes: 1}, "A Shooter2": {Locks: 1}}
+	for _, c := range counts {
+		w, ok := want[c.ScorerName]
+		if ok && (c.Locks != w.Locks || c.Disputes != w.Disputes) {
+			t.Fatalf("counts %+v", counts)
+		}
+		delete(want, c.ScorerName)
+	}
+	if len(want) != 0 {
+		t.Fatalf("counts %+v", counts)
+	}
+}
+
+func TestStageEventHistoryFiltersByScorerShooterAndStage(t *testing.T) {
+	f := newScoringFixture(t, 1, 2, 3)
+	f.deviceLock(t, 1, 1)
+	f.deviceAction(f.pair(t, 2), 1, "dispute")
+	f.lockOnDevice(t, f.pair(t, 2))
+	f.lockOnDevice(t, f.pair(t, 3))
+
+	if events, _ := f.history(t, "?scorer=A+Shooter1"); len(events) != 2 {
+		t.Fatalf("scorer filter %+v", events)
+	}
+	events, counts := f.history(t, "?shooter=A+Shooter3")
+	if len(events) != 1 || events[0].ShooterName != "A Shooter3" || len(counts) != 1 || counts[0].Disputes != 0 {
+		t.Fatalf("shooter filter %+v %+v", events, counts)
+	}
+	if events, _ := f.history(t, "?stage=2"); len(events) != 0 {
+		t.Fatalf("stage filter %+v", events)
+	}
+	if status, _ := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/stage-events?stage=x", f.comp), nil); status != http.StatusUnprocessableEntity {
+		t.Fatalf("bad stage: %d", status)
+	}
+}
+
+func TestStageEventHistoryRequiresAdmin(t *testing.T) {
+	f := newScoringFixture(t, 1, 2)
+	if status, _ := f.env.DoToken(f.pair(t, 1), "GET", fmt.Sprintf("/api/competitions/%d/stage-events", f.comp), nil); status == http.StatusOK {
+		t.Fatal("a device must not read the history")
 	}
 }

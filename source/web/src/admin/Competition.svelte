@@ -9,6 +9,7 @@
   import type { components } from "../lib/api/schema";
   import Visibility from "./Visibility.svelte";
   import ControlRoom from "./ControlRoom.svelte";
+  import StageHistory from "./StageHistory.svelte";
   import Entries from "./Entries.svelte";
   import Pairings from "./Pairings.svelte";
   import CompetitionEdit from "./CompetitionEdit.svelte";
@@ -128,6 +129,10 @@
 
   {#if competition.status === "active"}
     <ControlRoom competitionId={id} {version} changed={async () => { await loadCompetition(); await loadEntries(); }} />
+  {/if}
+
+  {#if competition.status !== "draft"}
+    <StageHistory competitionId={id} {version} />
   {/if}
 
   <Entries competitionId={id} status={competition.status} {entries} {shooters} reload={loadEntries} />

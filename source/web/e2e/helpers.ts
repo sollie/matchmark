@@ -219,6 +219,15 @@ export async function deviceLock(
   }
 }
 
+export async function deviceAction(baseURL: string, token: string, stage: number, action: "accept" | "dispute" | "lock") {
+  const api = await request.newContext({ baseURL, extraHTTPHeaders: { Authorization: `Bearer ${token}` } });
+  try {
+    await checked(await api.post(`/api/scorer/stages/${stage}/${action}`), `device ${action}`);
+  } finally {
+    await api.dispose();
+  }
+}
+
 function pairingPath(token: string): string {
   return `/score#token=${encodeURIComponent(token)}`;
 }
