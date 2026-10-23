@@ -39,7 +39,7 @@
   async function search(q: string) {
     const current = ++sequence;
     loading = true;
-    const result = await api.GET("/api/shooters", { params: { query: { q: q.trim() || undefined, limit: 20 } } });
+    const result = await api.GET("/api/shooters", { params: { query: { q: q.trim() || undefined, limit: Math.min(20 + exclude.length, 100) } } });
     if (current !== sequence) return;
     loading = false;
     results = result.data?.shooters ?? [];

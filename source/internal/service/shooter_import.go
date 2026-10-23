@@ -56,7 +56,7 @@ func (s *Service) ImportShooter(ctx context.Context, in ShooterImport) (ShooterI
 				return s.importUpdate(ctx, m.ID, sh)
 			}
 		}
-		return ShooterImportResult{}, &NameConflictError{Candidates: matches}
+		return ShooterImportResult{}, ErrInvalid
 	}
 	if len(matches) > 0 {
 		return ShooterImportResult{}, &NameConflictError{Candidates: matches}

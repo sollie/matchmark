@@ -55,6 +55,10 @@ func TestShooterRegistry(t *testing.T) {
 		if got := names("w12"); len(got) != 1 || got[0] != "Olsen" {
 			t.Fatalf("waid search got %v", got)
 		}
+		env.ID("POST", "/api/shooters", shooterBody("Øvrebø"))
+		if got := names("%C3%B8vre"); len(got) != 1 || got[0] != "Øvrebø" {
+			t.Fatalf("non-ascii search got %v", got)
+		}
 		if got := names("zzz"); len(got) != 0 {
 			t.Fatalf("no match got %v", got)
 		}

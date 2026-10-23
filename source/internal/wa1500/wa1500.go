@@ -49,8 +49,10 @@ func WithMaxBytes(n int64) ClientOption { return func(c *Client) { c.maxBytes = 
 
 func WithTimeout(d time.Duration) ClientOption { return func(c *Client) { c.http.Timeout = d } }
 
+func noRedirect(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
 func NewClient(opts ...ClientOption) *Client {
-	c := &Client{baseURL: defaultBaseURL, http: &http.Client{Timeout: defaultTimeout}, maxBytes: defaultMaxBytes}
+	c := &Client{baseURL: defaultBaseURL, http: &http.Client{Timeout: defaultTimeout, CheckRedirect: noRedirect}, maxBytes: defaultMaxBytes}
 	for _, opt := range opts {
 		opt(c)
 	}

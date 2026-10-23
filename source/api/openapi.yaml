@@ -481,7 +481,7 @@ paths:
       description: >-
         A WAID match updates that shooter. Without a WAID match, shooters sharing the first and last
         name (case-insensitive) make the call answer 409 with candidates; resend with
-        update_shooter_id (one of the candidates) or create_new true. Otherwise a new shooter is created.
+        update_shooter_id (one of the candidates, otherwise 422) or create_new true. Otherwise a new shooter is created.
       security:
         - adminCookie: []
       requestBody:

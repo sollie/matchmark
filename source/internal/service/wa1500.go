@@ -19,7 +19,6 @@ const (
 )
 
 var (
-	ErrUpstream    = errors.New("wa1500 upstream failure")
 	ErrRateLimited = errors.New("too many wa1500 searches")
 )
 
@@ -47,7 +46,7 @@ func (l *WA1500Lookup) Search(ctx context.Context, query string) ([]wa1500.Shoot
 		return nil, ErrInvalid
 	}
 	if l == nil || l.searcher == nil {
-		return nil, ErrUpstream
+		return nil, wa1500.ErrUpstream
 	}
 	key := strings.ToLower(query)
 	if results, ok := l.cached(key); ok {
@@ -58,7 +57,7 @@ func (l *WA1500Lookup) Search(ctx context.Context, query string) ([]wa1500.Shoot
 	}
 	results, err := l.searcher.Search(ctx, query)
 	if err != nil {
-		return nil, errors.Join(ErrUpstream, err)
+		return nil, errors.Join(wa1500.ErrUpstream, err)
 	}
 	if results == nil {
 		results = []wa1500.Shooter{}

@@ -22,42 +22,54 @@ type EntryWithStages struct {
 	Stages []StageInfo
 }
 
-func (r *Repository) ListShooters(ctx context.Context, query string, limit int) ([]Shooter, error) {
-	stmt := `SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters`
-	var args []any
-	if query != "" {
-		stmt += ` WHERE COALESCE(waid, '') LIKE ? ESCAPE '\' OR first_name || ' ' || last_name LIKE ? ESCAPE '\' OR last_name || ' ' || first_name LIKE ? ESCAPE '\'`
-		pattern := "%" + likeEscaper.Replace(query) + "%"
-		args = append(args, pattern, pattern, pattern)
-	}
-	stmt += ` ORDER BY last_name, first_name, id`
-	if limit > 0 {
-		stmt += ` LIMIT ?`
-		args = append(args, limit)
-	}
-	rows, err := r.db.QueryContext(ctx, stmt, args...)
+const shooterColumns = `id, last_name, first_name, sex, country, club, COALESCE(waid, '')`
+
+type rowScanner interface{ Scan(dest ...any) error }
+
+func scanShooter(row rowScanner) (Shooter, error) {
+	var s Shooter
+	err := row.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID)
+	return s, err
+}
+
+func (r *Repository) queryShooters(ctx context.Context, keep func(Shooter) bool, limit int, where, order string, args ...any) ([]Shooter, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+shooterColumns+` FROM shooters `+where+` ORDER BY `+order, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	shooters := []Shooter{}
 	for rows.Next() {
-		var s Shooter
-		if err := rows.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID); err != nil {
+		s, err := scanShooter(rows)
+		if err != nil {
 			return nil, err
 		}
+		if keep != nil && !keep(s) {
+			continue
+		}
 		shooters = append(shooters, s)
+		if limit > 0 && len(shooters) == limit {
+			break
+		}
 	}
 	return shooters, rows.Err()
 }
 
-var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+func (r *Repository) ListShooters(ctx context.Context, query string, limit int) ([]Shooter, error) {
+	var keep func(Shooter) bool
+	if query != "" {
+		needle := strings.ToLower(query)
+		keep = func(s Shooter) bool {
+			return strings.Contains(strings.ToLower(s.WAID), needle) ||
+				strings.Contains(strings.ToLower(s.FirstName+" "+s.LastName), needle) ||
+				strings.Contains(strings.ToLower(s.LastName+" "+s.FirstName), needle)
+		}
+	}
+	return r.queryShooters(ctx, keep, limit, "", "last_name, first_name, id")
+}
 
 func (r *Repository) GetShooter(ctx context.Context, id int64) (Shooter, error) {
-	var s Shooter
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters WHERE id = ?`, id).
-		Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID)
+	s, err := scanShooter(r.db.QueryRowContext(ctx, `SELECT `+shooterColumns+` FROM shooters WHERE id = ?`, id))
 	return s, mapErr(err)
 }
 
@@ -222,28 +234,12 @@ func affected(res sql.Result, err error) error {
 }
 
 func (r *Repository) FindShooterByWAID(ctx context.Context, waid string) (Shooter, error) {
-	var s Shooter
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters WHERE waid = ?`, waid).
-		Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID)
+	s, err := scanShooter(r.db.QueryRowContext(ctx, `SELECT `+shooterColumns+` FROM shooters WHERE waid = ?`, waid))
 	return s, mapErr(err)
 }
 
 func (r *Repository) FindShootersByName(ctx context.Context, firstName, lastName string) ([]Shooter, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters
-		 WHERE lower(first_name) = lower(?) AND lower(last_name) = lower(?) ORDER BY id`, firstName, lastName)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	shooters := []Shooter{}
-	for rows.Next() {
-		var s Shooter
-		if err := rows.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID); err != nil {
-			return nil, err
-		}
-		shooters = append(shooters, s)
-	}
-	return shooters, rows.Err()
+	return r.queryShooters(ctx, func(s Shooter) bool {
+		return strings.EqualFold(s.FirstName, firstName) && strings.EqualFold(s.LastName, lastName)
+	}, 0, "", "id")
 }

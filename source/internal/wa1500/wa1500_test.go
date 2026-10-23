@@ -112,6 +112,14 @@ func TestClientFailures(t *testing.T) {
 			t.Fatalf("err %v", err)
 		}
 	})
+	t.Run("redirect", func(t *testing.T) {
+		c := newClient(t, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "http://127.0.0.1:1/", http.StatusFound)
+		})
+		if _, err := c.Search(context.Background(), "x"); !errors.Is(err, ErrUpstream) {
+			t.Fatalf("err %v", err)
+		}
+	})
 	t.Run("unreachable", func(t *testing.T) {
 		c := NewClient(WithBaseURL("http://127.0.0.1:1"))
 		if _, err := c.Search(context.Background(), "x"); !errors.Is(err, ErrUpstream) {

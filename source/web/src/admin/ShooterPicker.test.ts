@@ -44,6 +44,12 @@ describe("ShooterPicker", () => {
     expect(screen.queryByRole("option", { name: /Jane Doe/ })).toBeNull();
   });
 
+  it("over-fetches by the number of excluded shooters", async () => {
+    const { user, calls } = setup({ exclude: [7, 9, 10] });
+    await user.type(screen.getByRole("combobox", { name: "Shooter" }), "o");
+    await waitFor(() => expect(calls.some((c) => c.search.includes("limit=23"))).toBe(true));
+  });
+
   it("shows a no-match state and offers the add action with the typed query", async () => {
     stubFetch(() => ({ body: { shooters: [] } }));
     const onadd = vi.fn();
