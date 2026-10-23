@@ -11,8 +11,7 @@ test.describe("lockstep stages", () => {
 
     await openCompetition(page, competition.id);
     await expect(page.getByText("· Stage 1")).toBeVisible();
-    await page.getByRole("button", { name: "Start next stage" }).click();
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start next stage" })).toBeDisabled();
 
     for (const device of [lane1, lane2]) {
       await device.getByLabel("10 count", { exact: true }).fill("12");

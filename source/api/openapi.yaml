@@ -675,6 +675,57 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/control-room:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: getControlRoom
+      tags: [competitions]
+      summary: The current stage with one row per manned lane
+      description: |
+        Answers 409 while the competition is a draft. connected is best-effort: it is true while the lane's device holds an open scorer stream and is never stored.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Control room
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlRoom'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/accept-all:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    post:
+      operationId: acceptAll
+      tags: [competitions]
+      summary: Accept every stage of the current stage that awaits acceptance
+      description: Answers 409 while any manned lane is still open for the current stage, or when the competition is not active. Accepting the last stage finishes the competition.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Number of stages accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted]
+                properties:
+                  accepted:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/competitions/{competitionID}/visibility:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -1930,6 +1981,48 @@ components:
                   type: integer
                 scorer_name:
                   type: string
+    ControlRoom:
+      type: object
+      required: [current_stage, can_start_next, can_accept_all, lanes]
+      properties:
+        current_stage:
+          type: integer
+        can_start_next:
+          type: boolean
+          description: True at the gate, when every manned lane has accepted the current stage and a later stage exists
+        can_accept_all:
+          type: boolean
+          description: True when no manned lane is open for the current stage and at least one awaits acceptance
+        lanes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ControlRoomLane'
+    ControlRoomLane:
+      type: object
+      required: [lane, entry_id, shooter_name, scorer_name, status, disputed, disputes, paired, connected]
+      properties:
+        lane:
+          type: integer
+        entry_id:
+          type: integer
+        shooter_name:
+          type: string
+        scorer_name:
+          type: string
+          description: The locking scorer, or the scorer the lane is derived to have; empty when the lane is scored by the admin
+        status:
+          $ref: '#/components/schemas/StageStatus'
+        disputed:
+          type: boolean
+          description: The stage is open again after a dispute
+        disputes:
+          type: integer
+          description: Disputes of the current stage
+        paired:
+          type: boolean
+        connected:
+          type: boolean
+          description: Best-effort, from open scorer streams
     StageStatus:
       type: string
       enum: [open, awaiting_acceptance, accepted]

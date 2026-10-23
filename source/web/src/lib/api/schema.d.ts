@@ -325,6 +325,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/competitions/{competitionID}/control-room": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The current stage with one row per manned lane
+         * @description Answers 409 while the competition is a draft. connected is best-effort: it is true while the lane's device holds an open scorer stream and is never stored.
+         */
+        get: operations["getControlRoom"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/competitions/{competitionID}/accept-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept every stage of the current stage that awaits acceptance
+         * @description Answers 409 while any manned lane is still open for the current stage, or when the competition is not active. Accepting the last stage finishes the competition.
+         */
+        post: operations["acceptAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/competitions/{competitionID}/visibility": {
         parameters: {
             query?: never;
@@ -1001,6 +1045,29 @@ export interface components {
                 total: number;
                 scorer_name: string;
             };
+        };
+        ControlRoom: {
+            current_stage: number;
+            /** @description True at the gate, when every manned lane has accepted the current stage and a later stage exists */
+            can_start_next: boolean;
+            /** @description True when no manned lane is open for the current stage and at least one awaits acceptance */
+            can_accept_all: boolean;
+            lanes: components["schemas"]["ControlRoomLane"][];
+        };
+        ControlRoomLane: {
+            lane: number;
+            entry_id: number;
+            shooter_name: string;
+            /** @description The locking scorer, or the scorer the lane is derived to have; empty when the lane is scored by the admin */
+            scorer_name: string;
+            status: components["schemas"]["StageStatus"];
+            /** @description The stage is open again after a dispute */
+            disputed: boolean;
+            /** @description Disputes of the current stage */
+            disputes: number;
+            paired: boolean;
+            /** @description Best-effort, from open scorer streams */
+            connected: boolean;
         };
         /**
          * @description A device lock leaves a stage awaiting acceptance, an admin lock or accept makes it accepted. Only accepted stages count in public views and reports
@@ -1864,6 +1931,58 @@ export interface operations {
                 content: {
                     "application/json": {
                         current_stage: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getControlRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Control room */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlRoom"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    acceptAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Number of stages accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accepted: number;
                     };
                 };
             };

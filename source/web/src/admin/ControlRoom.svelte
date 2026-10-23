@@ -1,0 +1,110 @@
+<script lang="ts">
+  import { api } from "../lib/api/client";
+  import { failure } from "../lib/api/util";
+  import type { components } from "../lib/api/schema";
+
+  type ControlRoom = components["schemas"]["ControlRoom"];
+  type Lane = components["schemas"]["ControlRoomLane"];
+
+  let { competitionId, version, changed }: { competitionId: number; version: number; changed: () => Promise<void> } = $props();
+
+  let room = $state<ControlRoom | null>(null);
+  let error = $state("");
+
+  async function load() {
+    const result = await api.GET("/api/competitions/{competitionID}/control-room", {
+      params: { path: { competitionID: competitionId } },
+    });
+    if (result.data) room = result.data;
+    else error = failure(result);
+  }
+
+  $effect(() => {
+    void version;
+    void load();
+  });
+
+  async function run(call: Promise<{ error?: unknown; response: Response }>) {
+    error = "";
+    const result = await call;
+    if (!result.response.ok) error = failure(result);
+    await load();
+    await changed();
+  }
+
+  const stagePath = (lane: Lane, stage: number) => ({ competitionID: competitionId, entryID: lane.entry_id, stage });
+
+  const startNext = () =>
+    run(api.POST("/api/competitions/{competitionID}/next-stage", { params: { path: { competitionID: competitionId } } }));
+  const acceptAll = () =>
+    run(api.POST("/api/competitions/{competitionID}/accept-all", { params: { path: { competitionID: competitionId } } }));
+  const accept = (lane: Lane, stage: number) =>
+    run(
+      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept", {
+        params: { path: stagePath(lane, stage) },
+      }),
+    );
+  const unlock = (lane: Lane, stage: number) =>
+    run(
+      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock", {
+        params: { path: stagePath(lane, stage) },
+      }),
+    );
+
+  const statusLabel = (lane: Lane) =>
+    lane.status === "accepted" ? "Accepted" : lane.status === "awaiting_acceptance" ? "Awaiting acceptance" : lane.disputed ? "Disputed" : "Open";
+  const statusTone = (lane: Lane) =>
+    lane.status === "accepted" ? "success" : lane.status === "awaiting_acceptance" ? "info" : lane.disputed ? "danger" : "warning";
+</script>
+
+<section class="card">
+  <h2>Control room</h2>
+  {#if room}
+    <p>Current stage: <strong>{room.current_stage}</strong></p>
+    <div class="row">
+      <button class="primary" disabled={!room.can_start_next} onclick={startNext}>Start next stage</button>
+      <button class="primary" disabled={!room.can_accept_all} onclick={acceptAll}>Accept all</button>
+    </div>
+    {#if error}<p class="error" role="alert">{error}</p>{/if}
+    <div class="scroll">
+      <table class="lanes">
+        <thead>
+          <tr><th>Lane</th><th>Shooter</th><th>Scorer</th><th>Status</th><th>Disputes</th><th>Device</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {#each room.lanes as lane (lane.entry_id)}
+            <tr>
+              <td>{lane.lane}</td>
+              <td>{lane.shooter_name}</td>
+              <td>{lane.scorer_name || "Admin"}</td>
+              <td><span class="badge {statusTone(lane)}">{statusLabel(lane)}</span></td>
+              <td>{lane.disputes}</td>
+              <td>
+                <span class="badge {lane.paired ? 'success' : 'neutral'}">{lane.paired ? "Paired" : "Not paired"}</span>
+                <span class="badge {lane.connected ? 'success' : 'neutral'}">{lane.connected ? "Connected" : "Not connected"}</span>
+              </td>
+              <td class="actions">
+                {#if lane.status === "awaiting_acceptance"}
+                  <button class="secondary" aria-label={`Control room lane ${lane.lane}: Accept`} onclick={() => accept(lane, room!.current_stage)}>Accept</button>
+                {/if}
+                {#if lane.status !== "open"}
+                  <button class="secondary" aria-label={`Control room lane ${lane.lane}: Unlock`} onclick={() => unlock(lane, room!.current_stage)}>Unlock</button>
+                {/if}
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">Connected is best-effort: it shows an open connection from the lane's device, not whether the phone works. It is not stored.</p>
+  {:else if error}
+    <p class="error" role="alert">{error}</p>
+  {:else}
+    <p class="muted">Loading…</p>
+  {/if}
+</section>
+
+<style>
+  .lanes .actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+  .lanes button { min-height: var(--touch); }
+</style>
