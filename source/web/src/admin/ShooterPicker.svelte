@@ -8,12 +8,14 @@
     label = "Shooter",
     exclude = [],
     required = false,
+    initial = null,
     onselect,
     onadd,
   }: {
     label?: string;
     exclude?: number[];
     required?: boolean;
+    initial?: Shooter | null;
     onselect: (shooter: Shooter | null) => void;
     onadd?: (query: string) => void;
   } = $props();
@@ -22,7 +24,7 @@
   const listId = `${uid}-list`;
   const optionId = (i: number) => `${uid}-opt-${i}`;
 
-  let text = $state("");
+  let text = $state(initial ? `${initial.first_name} ${initial.last_name}` : "");
   let results = $state<Shooter[]>([]);
   let open = $state(false);
   let loading = $state(false);

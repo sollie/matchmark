@@ -158,4 +158,27 @@ test.describe("admin ring counts", () => {
     await expect(stage.locator(".score strong")).toHaveText("108");
     await expect(stage.getByText("Accepted", { exact: true })).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
   });
+
+  test("a shooter imported from WA1500 in the picker is selected for the entry", async ({ course, adminPage: page, admin }) => {
+    const competition = await createCompetition(admin);
+    const lastName = `Imported${Date.now()}`;
+    const waid = `W${Date.now()}`;
+    await page.route("**/api/wa1500/search*", (route) =>
+      route.fulfill({ json: { results: [{ waid, first_name: "Ida", last_name: lastName, country: "SWE", club: "Remote Club" }] } }),
+    );
+    await openCompetition(page, competition.id);
+
+    const form = addForm(page);
+    await form.getByRole("combobox", { name: "Shooter" }).fill(lastName);
+    await expect(page.getByText("No match")).toBeVisible();
+    await page.getByRole("option", { name: "Search WA1500 / add new" }).click();
+    await expect(page.getByRole("textbox", { name: "Search WA1500" })).toHaveValue(lastName);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByLabel(`Sex for Ida ${lastName}`).selectOption("F");
+    await page.getByRole("button", { name: `Import Ida ${lastName}` }).click();
+
+    await expect(form.getByRole("combobox", { name: "Shooter" })).toHaveValue(`Ida ${lastName}`);
+    await form.getByRole("button", { name: "Add entry" }).click();
+    await expect(row(page, lastName)).toBeVisible();
+  });
 });
