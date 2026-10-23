@@ -68,6 +68,10 @@ _Avoid_: Course of fire (as a noun for the whole set), program
 One course-of-fire segment shot by a shooter, with a fixed number of shots.
 _Avoid_: String, round
 
+**Stage state**:
+What a spectator sees for one shooter's stage: not started, in progress, awaiting acceptance or accepted. A disputed stage reopens and shows as in progress. Only an accepted stage shows its score.
+_Avoid_: Stage status
+
 **Hit**:
 The recorded ring value of one shot.
 _Avoid_: Shot result
