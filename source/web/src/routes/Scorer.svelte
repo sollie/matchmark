@@ -30,6 +30,7 @@
   let session = $state<Session | null>(null);
   let loadError = $state("");
   let counts = $state<Record<string, number>>(emptyCounts());
+  let saved = $state<Record<string, number>>(emptyCounts());
   let message = $state("");
   let error = $state("");
   let busy = $state(false);
@@ -59,6 +60,18 @@
               : `Status: scoring lane ${session.score_lane}.`,
   );
   const sum = $derived(rings.reduce((n, r) => n + counts[r.key], 0));
+  const unsaved = $derived(rings.some((r) => counts[r.key] !== saved[r.key]));
+  const savedValid = $derived(
+    current !== null && rings.reduce((n, r) => n + saved[r.key], 0) === current.expected_shots,
+  );
+  const canLock = $derived(!unsaved && savedValid);
+  const saveStatus = $derived(
+    unsaved
+      ? "Unsaved changes: press Save, then Lock stage."
+      : savedValid
+        ? "Saved ✓"
+        : `Enter ring counts that add up to ${current?.expected_shots} shots, then press Save.`,
+  );
 
   function auth() {
     return deviceHeaders(token ?? "");
@@ -95,6 +108,7 @@
       notice = `Score lane changed to lane ${next.score_lane}. Your unsaved ring counts were reset.`;
     }
     const now = next.stages.find((s) => s.stage_number === next.current_stage);
+    saved = savedCounts(now);
     if (!previous || previous.current_stage !== next.current_stage) {
       counts = savedCounts(now);
       message = "";
@@ -165,7 +179,7 @@
       } as Rings,
     });
     busy = false;
-    if (response.ok) message = "Saved";
+    if (response.ok) saved = { ...counts };
     else if (response.status === 422)
       error = `Ring counts must add up to ${current?.expected_shots} shots (entered ${sum}).`;
     else error = errorMessage(err, `Request failed (${response.status})`);
@@ -288,9 +302,16 @@
                 {/if}
               </p>
               <div class="actions">
-                <button class="primary" disabled={busy} onclick={save}>Save</button>
-                <button class="primary lock" disabled={busy} onclick={lock}>Lock stage</button>
+                <button class="primary" class:emphasis={unsaved} disabled={busy} onclick={save}>Save</button>
+                <button
+                  class="primary lock"
+                  class:secondary={!canLock}
+                  disabled={busy || !canLock}
+                  aria-describedby={canLock ? undefined : "save-status"}
+                  title={canLock ? undefined : saveStatus}
+                  onclick={lock}>Lock stage</button>
               </div>
+              <p id="save-status" class="save-status" class:unsaved aria-live="polite">{saveStatus}</p>
             </div>
           </div>
         {/if}
@@ -389,6 +410,10 @@
   .total-label { margin: var(--space-1) 0 var(--space-3); }
   .actions { display: flex; gap: var(--space-2); }
   .actions button { flex: 1; min-height: 3.5rem; font-size: var(--text-lg); }
+  .actions .emphasis { box-shadow: 0 0 0 3px var(--brand-tint); }
+  .actions .lock.secondary { background: var(--surface-alt); border-color: var(--border); color: var(--text); }
+  .save-status { margin: var(--space-2) 0 0; font-size: var(--text-sm); font-weight: 600; }
+  .save-status.unsaved { color: var(--danger-fg); }
   .actions .lock { background: var(--accent); border-color: var(--accent); color: var(--on-brand); }
   @media (min-width: 48rem) {
     .layout { grid-template-columns: 1fr 18rem; }
