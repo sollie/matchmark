@@ -1,0 +1,1 @@
+ALTER TABLE stages ADD COLUMN started INTEGER NOT NULL DEFAULT 0 CHECK (started IN (0, 1));

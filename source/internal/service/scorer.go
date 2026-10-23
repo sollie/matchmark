@@ -55,7 +55,7 @@ func stageOf(e repository.EntryWithStages, number int) (repository.StageInfo, bo
 
 func derivePhase(t ScoreTarget) (Phase, *Acceptance) {
 	if st, ok := stageOf(t.Entry, t.CurrentStage); ok && st.Status == repository.StatusOpen {
-		if t.CurrentStage > 1 && st.Counts == (repository.RingCounts{}) && st.DisputedAt == "" {
+		if st.Started {
 			return PhaseNextStage, nil
 		}
 		return PhaseScoring, nil
@@ -309,7 +309,7 @@ func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int
 	if err != nil {
 		return "", err
 	}
-	ev.ScorerName = username
+	ev.ScorerName = ""
 	if err := s.repo.LockStageAsUser(ctx, stage.ID, username, ev); err != nil {
 		return "", mapStageWriteErr(err)
 	}
@@ -323,24 +323,24 @@ func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int
 	return repository.StatusAccepted, nil
 }
 
-func (s *Service) AdminAcceptStage(ctx context.Context, competitionID, entryID int64, stageNumber int) error {
+func (s *Service) AdminAcceptStage(ctx context.Context, competitionID, entryID int64, stageNumber int) (repository.StageStatus, error) {
 	stage, err := s.repo.GetStage(ctx, competitionID, entryID, stageNumber)
 	if err != nil {
-		return mapRepoErr(err)
+		return "", mapRepoErr(err)
 	}
 	if stage.Status != repository.StatusAwaitingAcceptance {
-		return ErrStageNotAwaitingAcceptance
+		return "", ErrStageNotAwaitingAcceptance
 	}
 	username := ActorFrom(ctx).Username
 	ev, err := s.userStageEvent(ctx, repository.EventAccepted, username, competitionID, entryID, stage)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := s.repo.AcceptStage(ctx, stage.ID, username, ev); err != nil {
 		if errors.Is(err, repository.ErrConflict) {
-			return ErrStageNotAwaitingAcceptance
+			return "", ErrStageNotAwaitingAcceptance
 		}
-		return mapRepoErr(err)
+		return "", mapRepoErr(err)
 	}
 	s.changes.Record(ctx, Change{
 		Audit:         AuditEvent{Action: "stage.accept", Target: stageTarget(competitionID, entryID, stageNumber)},
@@ -349,23 +349,23 @@ func (s *Service) AdminAcceptStage(ctx context.Context, competitionID, entryID i
 		Stage:         &StageEvent{CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber},
 	})
 	s.finishIfComplete(ctx, competitionID, nil)
-	return nil
+	return repository.StatusAccepted, nil
 }
 
-func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64, stageNumber int) error {
+func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64, stageNumber int) (repository.StageStatus, error) {
 	stage, err := s.repo.GetStage(ctx, competitionID, entryID, stageNumber)
 	if err != nil {
-		return mapRepoErr(err)
+		return "", mapRepoErr(err)
 	}
 	ev, err := s.userStageEvent(ctx, repository.EventUnlocked, ActorFrom(ctx).Username, competitionID, entryID, stage)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := s.repo.UnlockStage(ctx, stage.ID, ev); err != nil {
 		if errors.Is(err, repository.ErrConflict) {
-			return ErrStageNotLocked
+			return "", ErrStageNotLocked
 		}
-		return mapRepoErr(err)
+		return "", mapRepoErr(err)
 	}
 	s.changes.Record(ctx, Change{
 		Audit:         AuditEvent{Action: "stage.unlock", Target: stageTarget(competitionID, entryID, stageNumber)},
@@ -373,7 +373,7 @@ func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64,
 		Live:          LiveCompetition,
 		Stage:         &StageEvent{CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber},
 	})
-	return nil
+	return repository.StatusOpen, nil
 }
 
 func (s *Service) DeviceSnapshot(ctx context.Context, token string) (ScorerSession, error) {

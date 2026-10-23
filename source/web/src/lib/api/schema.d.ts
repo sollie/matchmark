@@ -438,6 +438,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /** @description A draft competition allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409 */
         put: operations["updateEntry"];
         post?: never;
         delete: operations["deleteEntry"];
@@ -1057,7 +1058,7 @@ export interface components {
                 disputed: boolean;
             })[];
             /**
-             * @description Derived by the server from the current stage. scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started a stage that has no hits yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
+             * @description Derived by the server from the current stage. scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
              * @enum {string}
              */
             phase: "scoring" | "waiting" | "needs_acceptance" | "next_stage" | "finished";
@@ -1085,7 +1086,7 @@ export interface components {
             status: components["schemas"]["StageStatus"];
             /** @description The stage is open again after a dispute */
             disputed: boolean;
-            /** @description Disputes of the current stage */
+            /** @description Disputes across all stages of the competition */
             disputes: number;
             paired: boolean;
             /** @description Best-effort, from open scorer streams */

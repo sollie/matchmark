@@ -128,6 +128,27 @@ func TestPhasesAcrossTheGate(t *testing.T) {
 	}
 }
 
+func TestNextStageBannerClearsOnceTheScorerSaves(t *testing.T) {
+	f := newScoringFixture(t, 1, 2)
+	lane1, lane2 := f.pair(t, 1), f.pair(t, 2)
+	f.acceptAll(t, 1, 1, 2)
+	if status, out := f.startNext(f.comp); status != http.StatusOK {
+		t.Fatalf("start next: %d %v", status, out)
+	}
+	if status, _ := f.env.DoToken(lane1, "PUT", "/api/scorer/stages/2", f.fullStage(t, 2, 2)); status != http.StatusOK {
+		t.Fatalf("save hits: %d", status)
+	}
+	if got := f.session(t, lane1)["phase"]; got != "scoring" {
+		t.Fatalf("phase after the scorer saved: %v", got)
+	}
+	if got := f.session(t, f.pair(t, 1))["phase"]; got != "scoring" {
+		t.Fatalf("phase after re-pairing: %v", got)
+	}
+	if got := f.session(t, lane2)["phase"]; got != "next_stage" {
+		t.Fatalf("other lane phase: %v", got)
+	}
+}
+
 func TestLastAcceptanceFinishesTheCompetitionAndRevokesPairings(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	lane1, lane2 := f.pair(t, 1), f.pair(t, 2)
@@ -278,5 +299,16 @@ func TestAdminAcceptanceOfTheLastStageFinishesTheCompetition(t *testing.T) {
 	}
 	if _, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d", f.comp), nil); out["status"] != "finished" {
 		t.Fatalf("status %v", out["status"])
+	}
+}
+
+func TestCategoryCanBeEditedOnceActiveButTheLaneStaysFrozen(t *testing.T) {
+	f := newScoringFixture(t, 1, 2, 3)
+	update := fmt.Sprintf("/api/competitions/%d/entries/%d", f.comp, f.entries[2])
+	if status, out := f.env.Do("PUT", update, map[string]any{"category": "Revolver", "lane": 2}); status != http.StatusOK {
+		t.Fatalf("category change: %d %v", status, out)
+	}
+	if status, _ := f.env.Do("PUT", update, map[string]any{"category": "Revolver", "lane": 8}); status != http.StatusConflict {
+		t.Fatalf("lane change: %d", status)
 	}
 }

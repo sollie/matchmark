@@ -198,7 +198,7 @@ func TestReplayMatchesDatabase(t *testing.T) {
 	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.AdminAcceptStage(ctx, f.compID, f.entry2, 1); err != nil {
+	if _, err := f.svc.AdminAcceptStage(ctx, f.compID, f.entry2, 1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.svc.StartNextStage(ctx, f.compID); err != nil {
@@ -367,7 +367,7 @@ func TestUnlockLine(t *testing.T) {
 	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.UnlockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.UnlockStage(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
@@ -386,7 +386,7 @@ func TestUnlockLine(t *testing.T) {
 
 func TestNoUnlockLineOnMissingStage(t *testing.T) {
 	f := newScoreFixture(t)
-	if err := f.svc.UnlockStage(context.Background(), f.compID, f.entry1, 99); err == nil {
+	if _, err := f.svc.UnlockStage(context.Background(), f.compID, f.entry1, 99); err == nil {
 		t.Fatal("expected error")
 	}
 	if n := len(f.lines(t)); n != 0 {
@@ -582,7 +582,7 @@ func TestUnlockLineKeepsPreUnlockProvenance(t *testing.T) {
 	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.UnlockStage(ctx, f.compID, f.entry2, 1); err != nil {
+	if _, err := f.svc.UnlockStage(ctx, f.compID, f.entry2, 1); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)

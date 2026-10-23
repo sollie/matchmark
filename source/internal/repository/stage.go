@@ -79,7 +79,7 @@ func (r *Repository) GetStage(ctx context.Context, competitionID, entryID int64,
 
 func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCounts) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ? WHERE id = ? AND status = 'open'`,
+		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, started = 0 WHERE id = ? AND status = 'open'`,
 		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
 	if err != nil {
 		return mapErr(err)
@@ -93,13 +93,13 @@ func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCou
 func (r *Repository) OverwriteRingCounts(ctx context.Context, stage Stage, c RingCounts, username string, ev StageEvent) error {
 	if stage.Status == StatusOpen {
 		res, err := r.db.ExecContext(ctx,
-			`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ? WHERE id = ? AND status = 'open'`,
+			`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, started = 0 WHERE id = ? AND status = 'open'`,
 			c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stage.ID)
 		return conflictIfNone(res, err)
 	}
 	return r.transition(ctx, stage.Status == StatusAwaitingAcceptance, ev,
 		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?,
-		        status = 'accepted', scorer_lane = NULL, scorer_name = ?, accepted_by = ?, accepted_at = ?, disputed_at = NULL
+		        status = 'accepted', scorer_lane = NULL, scorer_name = ?, accepted_by = ?, accepted_at = ?, disputed_at = NULL, started = 0
 		 WHERE id = ? AND status = ?`,
 		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, username, username, lockTimestamp(), stage.ID, stage.Status)
 }

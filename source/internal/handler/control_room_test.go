@@ -119,6 +119,33 @@ func TestControlRoomCountsDisputesPerLane(t *testing.T) {
 	}
 }
 
+func TestControlRoomDisputeCountIsCumulativeAcrossStages(t *testing.T) {
+	f := newScoringFixture(t, 1, 2)
+	f.deviceLock(t, 1, 1)
+	f.deviceAction(f.pair(t, 2), 1, "dispute")
+	f.acceptAll(t, 1, 1, 2)
+	if status, out := f.startNext(f.comp); status != http.StatusOK {
+		t.Fatalf("start next: %d %v", status, out)
+	}
+	if got := f.controlRoom(t).lane(t, 2).Disputes; got != 1 {
+		t.Fatalf("disputes after the next stage started: %d", got)
+	}
+}
+
+func TestAdminLockIsNotCountedAsAScorer(t *testing.T) {
+	f := newScoringFixture(t, 1, 2)
+	f.acceptAll(t, 1, 1, 2)
+	events, counts := f.history(t, "")
+	if len(events) != 2 || len(counts) != 0 {
+		t.Fatalf("events %+v counts %+v", events, counts)
+	}
+	for _, ev := range events {
+		if ev.ScorerName != "" {
+			t.Fatalf("event %+v", ev)
+		}
+	}
+}
+
 func TestControlRoomShowsBestEffortConnectedFromOpenScorerStreams(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	token := f.pair(t, 1)

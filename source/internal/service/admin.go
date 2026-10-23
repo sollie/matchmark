@@ -296,11 +296,22 @@ func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64,
 	if lane < 1 || !contains(categories, category) {
 		return repository.Entry{}, ErrInvalid
 	}
-	if _, err := s.repo.GetEntry(ctx, competitionID, entryID); err != nil {
+	current, err := s.repo.GetEntry(ctx, competitionID, entryID)
+	if err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
-	if _, err := s.requireDraft(ctx, competitionID); err != nil {
-		return repository.Entry{}, err
+	comp, err := s.repo.GetCompetition(ctx, competitionID)
+	if err != nil {
+		return repository.Entry{}, mapRepoErr(err)
+	}
+	switch CompetitionStatus(comp.Status) {
+	case StatusDraft:
+	case StatusActive:
+		if lane != current.Lane {
+			return repository.Entry{}, ErrConflict
+		}
+	default:
+		return repository.Entry{}, ErrConflict
 	}
 	if err := s.repo.UpdateEntry(ctx, competitionID, entryID, category, lane); err != nil {
 		return repository.Entry{}, mapRepoErr(err)
