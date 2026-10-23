@@ -11,10 +11,12 @@ A lock used to be final. With shooter acceptance (see `GLOSSARY.md`: Awaiting ac
 - device lock: `open` to `awaiting_acceptance`
 - admin lock as the signed-in user: `open` to `accepted`
 - admin accept: `awaiting_acceptance` to `accepted`
+- device accept (the shooter's own lane only): `awaiting_acceptance` to `accepted`, `accepted_by` is the lane
+- device dispute (the shooter's own lane only): `awaiting_acceptance` to `open`, hits kept, `disputed_at` set and cleared by the next lock
 - admin unlock: any non-open status to `open`, hits kept
 - admin overwrite: an open stage only changes counts; an awaiting or accepted stage ends accepted, taken over by the user, with an event only when it was awaiting
 
-Only accepted stages count. Standings, progress, the `.xlsx` report and the CSV treat other stages as zero; the admin entries list still shows every stage's score. Device accept, dispute, lockstep and the current-stage pointer are separate steps of the shooter-acceptance work.
+Only accepted stages count. Standings, progress, the `.xlsx` report and the CSV treat other stages as zero; the admin entries list still shows every stage's score. The device phase (`scoring`, `waiting`, `needs_acceptance`) is derived server-side from the stages of the score lane and of the device's own lane. Lockstep and the current-stage pointer are separate steps of the shooter-acceptance work.
 
 ## Score log v2
 
@@ -27,4 +29,4 @@ The Score log has one event, `stage_status`, with `schema_version` 2 and a `stat
 
 ## Consequences
 
-The lock endpoints return `{"status": ...}` instead of `{"locked": true}`, and the spectator `locked` fields are now `accepted`. The CSV column `locked` is `accepted`. The audit log records `stage.lock`, `stage.accept` and `stage.unlock`.
+The lock endpoints return `{"status": ...}` instead of `{"locked": true}`, and the spectator `locked` fields are now `accepted`. The CSV column `locked` is `accepted`. The audit log records `stage.lock`, `stage.accept`, `stage.dispute` and `stage.unlock`.

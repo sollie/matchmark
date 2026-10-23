@@ -184,4 +184,50 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.getByRole("alert")).toHaveText("conflict");
     await expect(scorer.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
   });
+
+  test("the shooter reviews a locked result, disputes it, and the scorer re-scores with values prefilled", async ({ admin, openDevice }) => {
+    const { competition } = await seedActive(admin, [1, 2]);
+    const lane1 = await openDevice((await createPairing(admin, competition.id, 1)).token);
+    const lane2 = await openDevice((await createPairing(admin, competition.id, 2)).token);
+    await expect(lane1.getByRole("heading", { name: /Scoring lane 2/ })).toBeVisible();
+    await expect(lane2.getByRole("heading", { name: /Scoring lane 1/ })).toBeVisible();
+
+    await lane1.getByLabel("10 count", { exact: true }).fill("8");
+    await lane1.getByLabel("9 count", { exact: true }).fill("4");
+    await lane1.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(lane1.getByRole("status")).toHaveText("Saved");
+    await lane1.getByRole("button", { name: "Lock stage", exact: true }).click();
+    await expect(lane1.getByText("Waiting for", { exact: false })).toBeVisible();
+
+    await expect(lane2.getByLabel("10 count", { exact: true })).toBeVisible();
+    await expect(lane2.getByRole("button", { name: "Review result" })).toHaveCount(0);
+
+    await lane2.getByLabel("10 count", { exact: true }).fill("12");
+    await lane2.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(lane2.getByRole("status")).toHaveText("Saved");
+    await lane2.getByRole("button", { name: "Lock stage", exact: true }).click();
+    await expect(lane2.getByText(/Your result for stage 1 awaits your acceptance/)).toBeVisible();
+    await lane2.getByRole("button", { name: "Review result" }).click();
+    await expect(lane2.getByText("12 hits, 0 X")).toBeVisible();
+
+    await lane2.reload();
+    await expect(lane2.getByText(/Your result for stage 1 awaits your acceptance/)).toBeVisible();
+    await lane2.getByRole("button", { name: "Review result" }).click();
+    await lane2.getByRole("button", { name: "Dispute" }).click();
+
+    await expect(lane1.getByText(/Disputed: the shooter disputed stage 1/)).toBeVisible();
+    await expect(lane1.getByLabel("10 count", { exact: true })).toHaveValue("8");
+    await expect(lane1.getByLabel("9 count", { exact: true })).toHaveValue("4");
+    await lane1.reload();
+    await expect(lane1.getByText(/Disputed: the shooter disputed stage 1/)).toBeVisible();
+    await expect(lane1.getByLabel("9 count", { exact: true })).toHaveValue("4");
+
+    await lane1.getByRole("button", { name: "Lock stage", exact: true }).click();
+    await expect(lane1.getByText(/Disputed: the shooter disputed/)).toHaveCount(0);
+    await expect(lane1.getByText(/Your result for stage 1 awaits your acceptance/)).toBeVisible();
+    await lane1.getByRole("button", { name: "Review result" }).click();
+    await expect(lane1.getByText("12 hits, 0 X")).toBeVisible();
+    await lane1.getByRole("button", { name: "Accept" }).click();
+    await expect(lane1.getByRole("status")).toHaveText("Result accepted");
+  });
 });

@@ -101,6 +101,14 @@ func (r *Repository) AcceptStage(ctx context.Context, stageID int64, acceptedBy 
 		acceptedBy, lockTimestamp(), stageID)
 }
 
+func (r *Repository) DisputeStage(ctx context.Context, stageID int64, ev StageEvent) error {
+	return r.transition(ctx, true, ev,
+		`UPDATE stages SET status = 'open', scorer_lane = NULL, scorer_name = NULL, locked_at = NULL,
+		        accepted_by = NULL, accepted_at = NULL, disputed_at = ?
+		 WHERE id = ? AND status = 'awaiting_acceptance'`,
+		lockTimestamp(), stageID)
+}
+
 func (r *Repository) UnlockStage(ctx context.Context, stageID int64, ev StageEvent) error {
 	return r.transition(ctx, true, ev,
 		`UPDATE stages SET status = 'open', scorer_lane = NULL, scorer_name = NULL, locked_at = NULL,

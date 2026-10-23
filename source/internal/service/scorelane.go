@@ -11,6 +11,7 @@ type ScoreTarget struct {
 	ScorerName  string
 	ScoreLane   int
 	Entry       repository.EntryWithStages
+	Own         repository.EntryWithStages
 	ShooterName string
 }
 
@@ -81,6 +82,7 @@ func (s *Service) resolveScoreTarget(ctx context.Context, d Device, requireActiv
 		ScorerName:  shooterName(scorer),
 		ScoreLane:   scoreLane,
 		Entry:       target,
+		Own:         manned[d.Lane],
 		ShooterName: shooterName(shooter),
 	}, nil
 }

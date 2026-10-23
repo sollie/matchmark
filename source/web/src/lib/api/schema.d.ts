@@ -654,6 +654,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scorer/stages/{stage}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stage: components["parameters"]["Stage"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept the device's own locked stage
+         * @description Acts on the stage of the device's own lane, never on another lane. Answers 409 unless the stage is awaiting acceptance, and 403 if the device itself locked it.
+         */
+        post: operations["scorerAcceptStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scorer/stages/{stage}/dispute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stage: components["parameters"]["Stage"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dispute the device's own locked stage
+         * @description Reopens the stage of the device's own lane with its hits kept and records the disputed time, which the next lock clears. Answers 409 unless the stage is awaiting acceptance, and 403 if the device itself locked it.
+         */
+        post: operations["scorerDisputeStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rulebook": {
         parameters: {
             query?: never;
@@ -916,11 +960,24 @@ export interface components {
             /** Format: int64 */
             entry_id: number;
             shooter_name: string;
-            stages: {
+            stages: (components["schemas"]["RingCounts"] & {
                 stage_number: number;
                 expected_shots: number;
                 status: components["schemas"]["StageStatus"];
-            }[];
+                /** @description True from a dispute until the scorer locks the stage again */
+                disputed: boolean;
+            })[];
+            /**
+             * @description Derived by the server. needs_acceptance only appears once the device has no stage left to score
+             * @enum {string}
+             */
+            phase: "scoring" | "waiting" | "needs_acceptance";
+            /** @description Present while phase is needs_acceptance */
+            acceptance?: components["schemas"]["RingCounts"] & {
+                stage_number: number;
+                total: number;
+                scorer_name: string;
+            };
         };
         /**
          * @description A device lock leaves a stage awaiting acceptance, an admin lock or accept makes it accepted. Only accepted stages count in public views and reports
@@ -1022,6 +1079,15 @@ export interface components {
         };
         /** @description Single-lane competitions require admin scoring */
         AdminScoringRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description The action is not permitted for this device */
+        Forbidden: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2363,6 +2429,58 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["AdminScoringRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    scorerAcceptStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stage: components["parameters"]["Stage"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new stage status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageStatusResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    scorerDisputeStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stage: components["parameters"]["Stage"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new stage status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageStatusResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
         };

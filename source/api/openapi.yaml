@@ -1249,6 +1249,58 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/scorer/stages/{stage}/accept:
+    parameters:
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: scorerAcceptStage
+      tags: [scorer]
+      summary: Accept the device's own locked stage
+      description: >
+        Acts on the stage of the device's own lane, never on another lane. Answers 409 unless the stage is awaiting acceptance, and 403 if the device itself locked it.
+      security:
+        - deviceBearer: []
+      responses:
+        '200':
+          description: The new stage status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageStatusResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/scorer/stages/{stage}/dispute:
+    parameters:
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: scorerDisputeStage
+      tags: [scorer]
+      summary: Dispute the device's own locked stage
+      description: >
+        Reopens the stage of the device's own lane with its hits kept and records the disputed time, which the next lock clears. Answers 409 unless the stage is awaiting acceptance, and 403 if the device itself locked it.
+      security:
+        - deviceBearer: []
+      responses:
+        '200':
+          description: The new stage status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageStatusResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/rulebook:
     get:
       operationId: getRulebook
@@ -1451,6 +1503,12 @@ components:
             $ref: '#/components/schemas/Error'
     AdminScoringRequired:
       description: Single-lane competitions require admin scoring
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: The action is not permitted for this device
       content:
         application/json:
           schema:
@@ -1794,7 +1852,7 @@ components:
           type: boolean
     ScorerSession:
       type: object
-      required: [lane, score_lane, entry_id, shooter_name, stages]
+      required: [lane, score_lane, entry_id, shooter_name, stages, phase]
       properties:
         lane:
           type: integer
@@ -1809,14 +1867,37 @@ components:
           type: array
           items:
             type: object
-            required: [stage_number, expected_shots, status]
-            properties:
-              stage_number:
-                type: integer
-              expected_shots:
-                type: integer
-              status:
-                $ref: '#/components/schemas/StageStatus'
+            allOf:
+              - $ref: '#/components/schemas/RingCounts'
+              - type: object
+                required: [stage_number, expected_shots, status, disputed]
+                properties:
+                  stage_number:
+                    type: integer
+                  expected_shots:
+                    type: integer
+                  status:
+                    $ref: '#/components/schemas/StageStatus'
+                  disputed:
+                    type: boolean
+                    description: True from a dispute until the scorer locks the stage again
+        phase:
+          type: string
+          enum: [scoring, waiting, needs_acceptance]
+          description: Derived by the server. needs_acceptance only appears once the device has no stage left to score
+        acceptance:
+          description: Present while phase is needs_acceptance
+          allOf:
+            - $ref: '#/components/schemas/RingCounts'
+            - type: object
+              required: [stage_number, total, scorer_name]
+              properties:
+                stage_number:
+                  type: integer
+                total:
+                  type: integer
+                scorer_name:
+                  type: string
     StageStatus:
       type: string
       enum: [open, awaiting_acceptance, accepted]

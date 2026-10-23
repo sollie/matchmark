@@ -13,6 +13,7 @@ type StageInfo struct {
 	ScorerLane    *int
 	ScorerName    *string
 	Counts        RingCounts
+	DisputedAt    string
 }
 
 type EntryWithStages struct {
@@ -153,7 +154,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 
 	srows, err := r.db.QueryContext(ctx,
 		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.status, s.scorer_lane, s.scorer_name,
-		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss FROM stages s
+		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, COALESCE(s.disputed_at, '') FROM stages s
 		 JOIN entries e ON e.id = s.entry_id WHERE e.competition_id = ? ORDER BY s.entry_id, s.stage_number`,
 		competitionID)
 	if err != nil {
@@ -164,7 +165,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 		var entryID int64
 		var si StageInfo
 		if err := srows.Scan(&entryID, &si.Number, &si.ExpectedShots, &si.Status, &si.ScorerLane, &si.ScorerName,
-			&si.Counts.X, &si.Counts.Ten, &si.Counts.Nine, &si.Counts.Eight, &si.Counts.Seven, &si.Counts.Zero, &si.Counts.Miss); err != nil {
+			&si.Counts.X, &si.Counts.Ten, &si.Counts.Nine, &si.Counts.Eight, &si.Counts.Seven, &si.Counts.Zero, &si.Counts.Miss, &si.DisputedAt); err != nil {
 			return nil, err
 		}
 		i := index[entryID]

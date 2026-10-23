@@ -19,6 +19,8 @@ func (h *Handler) scorerRoutes(r chi.Router) {
 	r.Get("/scorer/stream", h.scorerStream)
 	r.Put("/scorer/stages/{stage}", h.scorerSetCounts)
 	r.Post("/scorer/stages/{stage}/lock", h.scorerLock)
+	r.Post("/scorer/stages/{stage}/accept", h.scorerAccept)
+	r.Post("/scorer/stages/{stage}/dispute", h.scorerDispute)
 }
 
 func (h *Handler) RequireDevice(next http.Handler) http.Handler {
@@ -52,12 +54,25 @@ func deviceFrom(r *http.Request) service.Device {
 func scorerSessionJSON(sess service.ScorerSession) map[string]any {
 	stages := make([]map[string]any, 0, len(sess.Stages))
 	for _, s := range sess.Stages {
-		stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "status": s.Status})
+		stage := ringCountsJSON(s.Counts)
+		stage["stage_number"] = s.Number
+		stage["expected_shots"] = s.ExpectedShots
+		stage["status"] = s.Status
+		stage["disputed"] = s.DisputedAt != ""
+		stages = append(stages, stage)
 	}
-	return map[string]any{
+	out := map[string]any{
 		"lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
-		"shooter_name": sess.ShooterName, "stages": stages,
+		"shooter_name": sess.ShooterName, "stages": stages, "phase": sess.Phase,
 	}
+	if a := sess.Acceptance; a != nil {
+		acceptance := ringCountsJSON(a.Counts)
+		acceptance["stage_number"] = a.StageNumber
+		acceptance["total"] = a.Total
+		acceptance["scorer_name"] = a.ScorerName
+		out["acceptance"] = acceptance
+	}
+	return out
 }
 
 func (h *Handler) scorerSession(w http.ResponseWriter, r *http.Request) {
@@ -110,6 +125,32 @@ func (h *Handler) scorerLock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status, err := h.svc.DeviceLockStage(r.Context(), deviceFrom(r), int(stage))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
+}
+
+func ringCountsJSON(c repository.RingCounts) map[string]any {
+	return map[string]any{"x": c.X, "10": c.Ten, "9": c.Nine, "8": c.Eight, "7": c.Seven, "0": c.Zero, "miss": c.Miss}
+}
+
+func (h *Handler) scorerAccept(w http.ResponseWriter, r *http.Request) {
+	h.scorerTransition(w, r, h.svc.DeviceAcceptStage)
+}
+
+func (h *Handler) scorerDispute(w http.ResponseWriter, r *http.Request) {
+	h.scorerTransition(w, r, h.svc.DeviceDisputeStage)
+}
+
+func (h *Handler) scorerTransition(w http.ResponseWriter, r *http.Request, act func(context.Context, service.Device, int) (repository.StageStatus, error)) {
+	stage, err := pathInt(r, "stage")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	status, err := act(r.Context(), deviceFrom(r), int(stage))
 	if err != nil {
 		writeError(w, err)
 		return
