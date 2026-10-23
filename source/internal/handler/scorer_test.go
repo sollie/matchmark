@@ -36,7 +36,7 @@ func (f *scoringFixture) stageLocked(t *testing.T, lane, stage int) bool {
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == lane {
-			return m["stages"].([]any)[stage-1].(map[string]any)["locked"].(bool)
+			return m["stages"].([]any)[stage-1].(map[string]any)["status"].(string) != "open"
 		}
 	}
 	t.Fatalf("lane %d not found", lane)

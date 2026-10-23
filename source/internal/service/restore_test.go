@@ -25,11 +25,11 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 	}
 	f.fillStage(t, f.entry1, 1)
 	for _, n := range []int{1, 2} {
-		if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, n); err != nil {
+		if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, n); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := f.svc.AdminLockStage(service.WithActor(ctx, service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.AdminLockStage(service.WithActor(ctx, service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	events, _, err := restore.Parse(strings.NewReader(f.buf.String()))
@@ -92,7 +92,7 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 		}
 	}
 	other, err := repo.GetStage(ctx, f.compID, f.entry1, 2)
-	if err != nil || other.Locked {
+	if err != nil || other.Status != repository.StatusOpen {
 		t.Fatalf("unscored stage = %+v, %v", other, err)
 	}
 }
@@ -115,7 +115,7 @@ func normalizedReport(t *testing.T, repo *repository.Repository, compID int64) [
 func mergePlan(name string, counts [7]int, stages ...int) restore.Plan {
 	var scored []restore.ScoredStage
 	for _, n := range stages {
-		scored = append(scored, restore.ScoredStage{Number: n, ExpectedShots: 10, RingCounts: counts, LockedBy: "bob", ScorerName: "bob", LockedAt: "2026-10-19T10:00:00Z"})
+		scored = append(scored, restore.ScoredStage{Number: n, ExpectedShots: 10, RingCounts: counts, Status: restore.StatusAccepted, AcceptedBy: "bob", AcceptedAt: "2026-10-19T10:00:00Z", LockedBy: "bob", ScorerName: "bob", LockedAt: "2026-10-19T10:00:00Z"})
 	}
 	return restore.Plan{Competitions: []restore.RestoredCompetition{{
 		ID: 7, Name: name, Date: "2026-10-19", CourseOfFire: restore.CourseOfFire{Key: "150"},
@@ -144,7 +144,7 @@ func TestRestoreRefusesNonEmptyDatabaseWithoutMerge(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 	st, err := repo.GetStage(ctx, 7, 1, 2)
-	if err != nil || st.Locked {
+	if err != nil || st.Status != repository.StatusOpen {
 		t.Fatalf("stage 2 = %+v, %v", st, err)
 	}
 }
@@ -174,7 +174,7 @@ func TestRestoreMergeAppliesMatchingIDsAndListsConflicts(t *testing.T) {
 		t.Fatalf("stage 1 = %+v, %v", kept, err)
 	}
 	added, err := repo.GetStage(ctx, 7, 1, 2)
-	if err != nil || !added.Locked || added.Counts.X != 9 {
+	if err != nil || added.Status != repository.StatusAccepted || added.Counts.X != 9 {
 		t.Fatalf("stage 2 = %+v, %v", added, err)
 	}
 
@@ -282,5 +282,24 @@ func TestRestoreMergeReportsLockMetadataConflict(t *testing.T) {
 	}
 	if len(res.Conflicts) != 1 || !strings.Contains(res.Conflicts[0], "stage 1") {
 		t.Fatalf("res = %+v", res)
+	}
+}
+
+func TestRestorePartialAcceptanceLeavesCompetitionActive(t *testing.T) {
+	ctx := context.Background()
+	conn, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	repo := repository.New(conn)
+	svc := service.New(repo)
+	counts := [7]int{10, 0, 0, 0, 0, 0, 0}
+	if _, err := svc.RestoreScoreLog(ctx, mergePlan("Partial", counts, 1), false); err != nil {
+		t.Fatal(err)
+	}
+	comp, err := repo.GetCompetition(ctx, 7)
+	if err != nil || comp.Status != "active" {
+		t.Fatalf("partial = %+v, %v", comp, err)
 	}
 }

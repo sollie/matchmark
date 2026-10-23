@@ -46,7 +46,7 @@ func TestScoreLogNamesUserForUserLocksAndLaneForDeviceLocks(t *testing.T) {
 		t.Fatalf("user lock: %d %v", status, out)
 	}
 	line = lastScoreLine(t, f.env)
-	if line["event"] != "stage_locked" || line["locked_by"] != apitest.AdminUsername || line["scorer_name"] != apitest.AdminUsername {
+	if line["event"] != "stage_status" || line["locked_by"] != apitest.AdminUsername || line["scorer_name"] != apitest.AdminUsername {
 		t.Fatalf("user lock line: %v", line)
 	}
 

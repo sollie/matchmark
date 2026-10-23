@@ -32,6 +32,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/competitions/{competitionID}/results.xlsx", h.resultsWorkbook)
 	r.Get("/competitions/{competitionID}/results.csv", h.resultsCSV)
 	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock", h.lockStage)
+	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept", h.acceptStage)
 	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock", h.unlockStage)
 	r.Post("/competitions/{competitionID}/pairings", h.createPairing)
 	r.Get("/competitions/{competitionID}/pairings", h.listPairings)
@@ -232,7 +233,7 @@ func (h *Handler) listEntries(w http.ResponseWriter, r *http.Request) {
 		m := entryJSON(e.Entry)
 		stages := make([]map[string]any, 0, len(e.Stages))
 		for _, s := range e.Stages {
-			stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "locked": s.Locked, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered})
+			stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "status": s.Status, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered})
 		}
 		m["stages"] = stages
 		out = append(out, m)

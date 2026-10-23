@@ -834,7 +834,7 @@ paths:
     put:
       operationId: setRingCounts
       tags: [entries]
-      summary: Admin overwrite of a stage's ring counts, allowed on a locked stage which stays locked
+      summary: Admin overwrite of a stage's ring counts, allowed on a stage awaiting acceptance or accepted, which then ends accepted
       security:
         - adminCookie: []
       requestBody:
@@ -864,20 +864,16 @@ paths:
     post:
       operationId: lockStage
       tags: [entries]
-      summary: Admin lock of a stage whose ring counts are complete
+      summary: Admin lock of a stage whose ring counts are complete, accepted directly
       security:
         - adminCookie: []
       responses:
         '200':
-          description: Stage locked
+          description: Stage accepted
           content:
             application/json:
               schema:
-                type: object
-                required: [locked]
-                properties:
-                  locked:
-                    type: boolean
+                $ref: '#/components/schemas/StageStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -886,6 +882,30 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/EntryID'
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: acceptStage
+      tags: [entries]
+      summary: Admin acceptance of a stage that is awaiting acceptance
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Stage accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageStatusResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -894,23 +914,22 @@ paths:
     post:
       operationId: unlockStage
       tags: [entries]
+      summary: Admin unlock of a stage that is awaiting acceptance or accepted, reopening it with its ring counts kept
       security:
         - adminCookie: []
       responses:
         '200':
-          description: Stage unlocked
+          description: Stage reopened
           content:
             application/json:
               schema:
-                type: object
-                required: [locked]
-                properties:
-                  locked:
-                    type: boolean
+                $ref: '#/components/schemas/StageStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/competitions/{competitionID}/lanes/{lane}/score-lane:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -1217,15 +1236,11 @@ paths:
         - deviceBearer: []
       responses:
         '200':
-          description: Stage locked
+          description: Stage awaiting acceptance
           content:
             application/json:
               schema:
-                type: object
-                required: [locked]
-                properties:
-                  locked:
-                    type: boolean
+                $ref: '#/components/schemas/StageStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1294,7 +1309,7 @@ paths:
       tags: [spectator]
       responses:
         '200':
-          description: Per-stage locked counts
+          description: Per-stage accepted counts
           content:
             application/json:
               schema:
@@ -1711,14 +1726,14 @@ components:
           type: boolean
     EntryStage:
       type: object
-      required: [stage_number, expected_shots, locked, scorer_lane, scorer_name, score, shots_entered]
+      required: [stage_number, expected_shots, status, scorer_lane, scorer_name, score, shots_entered]
       properties:
         stage_number:
           type: integer
         expected_shots:
           type: integer
-        locked:
-          type: boolean
+        status:
+          $ref: '#/components/schemas/StageStatus'
         scorer_lane:
           type: integer
           nullable: true
@@ -1727,7 +1742,7 @@ components:
           nullable: true
         score:
           type: integer
-          description: Points from the stored ring counts, whether or not the stage is locked
+          description: Points from the stored ring counts, whether or not the stage is accepted
         shots_entered:
           type: integer
           description: Sum of all stored ring counts
@@ -1794,23 +1809,34 @@ components:
           type: array
           items:
             type: object
-            required: [stage_number, expected_shots, locked]
+            required: [stage_number, expected_shots, status]
             properties:
               stage_number:
                 type: integer
               expected_shots:
                 type: integer
-              locked:
-                type: boolean
+              status:
+                $ref: '#/components/schemas/StageStatus'
+    StageStatus:
+      type: string
+      enum: [open, awaiting_acceptance, accepted]
+      description: A device lock leaves a stage awaiting acceptance, an admin lock or accept makes it accepted. Only accepted stages count in public views and reports
+    StageStatusResult:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/StageStatus'
     StageScore:
       type: object
-      required: [stage, score, locked]
+      required: [stage, score, accepted]
       properties:
         stage:
           type: integer
         score:
           type: integer
-        locked:
+          description: Zero until the stage is accepted
+        accepted:
           type: boolean
         ring_counts:
           $ref: '#/components/schemas/RingCounts'
@@ -1856,11 +1882,11 @@ components:
             $ref: '#/components/schemas/StageProgress'
     StageProgress:
       type: object
-      required: [stage, entries, locked]
+      required: [stage, entries, accepted]
       properties:
         stage:
           type: integer
         entries:
           type: integer
-        locked:
+        accepted:
           type: integer

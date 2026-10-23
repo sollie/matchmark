@@ -71,7 +71,7 @@ func TestSpectatorStreamPushesSnapshotAfterLock(t *testing.T) {
 	f.activate(t)
 	s := f.env.OpenStream(streamPath(f), nil)
 	first := nextSnapshot(t, s)
-	if first.Stages[0]["locked"].(float64) != 0 {
+	if first.Stages[0]["accepted"].(float64) != 0 {
 		t.Fatalf("stages %v", first.Stages)
 	}
 	path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1/lock", f.comp, entry)
@@ -79,7 +79,7 @@ func TestSpectatorStreamPushesSnapshotAfterLock(t *testing.T) {
 		t.Fatalf("lock: %d %v", status, out)
 	}
 	second := nextSnapshot(t, s)
-	if second.Stages[0]["locked"].(float64) != 1 {
+	if second.Stages[0]["accepted"].(float64) != 1 {
 		t.Fatalf("stages %v", second.Stages)
 	}
 }

@@ -89,6 +89,10 @@ func writeError(w http.ResponseWriter, err error) {
 		status, msg = http.StatusConflict, "entries can only change between stages"
 	case errors.Is(err, service.ErrStageLocked):
 		status, msg = http.StatusConflict, "stage is locked"
+	case errors.Is(err, service.ErrStageNotAwaitingAcceptance):
+		status, msg = http.StatusConflict, "stage is not awaiting acceptance"
+	case errors.Is(err, service.ErrStageNotLocked):
+		status, msg = http.StatusConflict, "stage is not locked"
 	case errors.Is(err, service.ErrUnauthenticated):
 		status, msg = http.StatusUnauthorized, "unauthorized"
 	case errors.Is(err, errTooManyStreams):

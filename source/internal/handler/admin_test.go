@@ -198,11 +198,11 @@ func TestEntriesListStageScores(t *testing.T) {
 	stages := out["entries"].([]any)[0].(map[string]any)["stages"].([]any)
 	want := []struct {
 		score, shots int
-		locked       bool
-	}{{117, 12, false}, {120, 12, true}, {0, 0, false}}
+		status       string
+	}{{117, 12, "open"}, {120, 12, "accepted"}, {0, 0, "open"}}
 	for i, w := range want {
 		m := stages[i].(map[string]any)
-		if int(m["score"].(float64)) != w.score || int(m["shots_entered"].(float64)) != w.shots || m["locked"] != w.locked {
+		if int(m["score"].(float64)) != w.score || int(m["shots_entered"].(float64)) != w.shots || m["status"] != w.status {
 			t.Fatalf("stage %d: %v", i+1, m)
 		}
 	}

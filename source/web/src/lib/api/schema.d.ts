@@ -392,7 +392,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Admin overwrite of a stage's ring counts, allowed on a locked stage which stays locked */
+        /** Admin overwrite of a stage's ring counts, allowed on a stage awaiting acceptance or accepted, which then ends accepted */
         put: operations["setRingCounts"];
         post?: never;
         delete?: never;
@@ -414,8 +414,29 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Admin lock of a stage whose ring counts are complete */
+        /** Admin lock of a stage whose ring counts are complete, accepted directly */
         post: operations["lockStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+                entryID: components["parameters"]["EntryID"];
+                stage: components["parameters"]["Stage"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin acceptance of a stage that is awaiting acceptance */
+        post: operations["acceptStage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -435,6 +456,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Admin unlock of a stage that is awaiting acceptance or accepted, reopening it with its ring counts kept */
         post: operations["unlockStage"];
         delete?: never;
         options?: never;
@@ -862,10 +884,10 @@ export interface components {
         EntryStage: {
             stage_number: number;
             expected_shots: number;
-            locked: boolean;
+            status: components["schemas"]["StageStatus"];
             scorer_lane: number | null;
             scorer_name: string | null;
-            /** @description Points from the stored ring counts, whether or not the stage is locked */
+            /** @description Points from the stored ring counts, whether or not the stage is accepted */
             score: number;
             /** @description Sum of all stored ring counts */
             shots_entered: number;
@@ -897,13 +919,22 @@ export interface components {
             stages: {
                 stage_number: number;
                 expected_shots: number;
-                locked: boolean;
+                status: components["schemas"]["StageStatus"];
             }[];
+        };
+        /**
+         * @description A device lock leaves a stage awaiting acceptance, an admin lock or accept makes it accepted. Only accepted stages count in public views and reports
+         * @enum {string}
+         */
+        StageStatus: "open" | "awaiting_acceptance" | "accepted";
+        StageStatusResult: {
+            status: components["schemas"]["StageStatus"];
         };
         StageScore: {
             stage: number;
+            /** @description Zero until the stage is accepted */
             score: number;
-            locked: boolean;
+            accepted: boolean;
             ring_counts?: components["schemas"]["RingCounts"];
         };
         Standing: {
@@ -926,7 +957,7 @@ export interface components {
         StageProgress: {
             stage: number;
             entries: number;
-            locked: number;
+            accepted: number;
         };
     };
     responses: {
@@ -1955,21 +1986,46 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Stage locked */
+            /** @description Stage accepted */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        locked: boolean;
-                    };
+                    "application/json": components["schemas"]["StageStatusResult"];
                 };
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Invalid"];
+        };
+    };
+    acceptStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+                entryID: components["parameters"]["EntryID"];
+                stage: components["parameters"]["Stage"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stage accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageStatusResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     unlockStage: {
@@ -1985,19 +2041,18 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Stage unlocked */
+            /** @description Stage reopened */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        locked: boolean;
-                    };
+                    "application/json": components["schemas"]["StageStatusResult"];
                 };
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     getScoreLane: {
@@ -2297,15 +2352,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Stage locked */
+            /** @description Stage awaiting acceptance */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        locked: boolean;
-                    };
+                    "application/json": components["schemas"]["StageStatusResult"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -2392,7 +2445,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Per-stage locked counts */
+            /** @description Per-stage accepted counts */
             200: {
                 headers: {
                     [name: string]: unknown;

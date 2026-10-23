@@ -17,7 +17,7 @@ func WriteSummary(w io.Writer, plan Plan, stats Stats) {
 				e.ID, e.Shooter.FirstName, e.Shooter.LastName, e.Lane, e.Category, len(e.Stages))
 			for _, s := range e.Stages {
 				stages++
-				_, _ = fmt.Fprintf(w, "    stage %d: %v locked by %s\n", s.Number, s.RingCounts, s.LockedBy)
+				_, _ = fmt.Fprintf(w, "    stage %d: %v %s\n", s.Number, s.RingCounts, s.Status)
 			}
 		}
 	}

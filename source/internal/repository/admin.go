@@ -9,7 +9,7 @@ import (
 type StageInfo struct {
 	Number        int
 	ExpectedShots int
-	Locked        bool
+	Status        StageStatus
 	ScorerLane    *int
 	ScorerName    *string
 	Counts        RingCounts
@@ -152,7 +152,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 	_ = rows.Close()
 
 	srows, err := r.db.QueryContext(ctx,
-		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.locked, s.scorer_lane, s.scorer_name,
+		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.status, s.scorer_lane, s.scorer_name,
 		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss FROM stages s
 		 JOIN entries e ON e.id = s.entry_id WHERE e.competition_id = ? ORDER BY s.entry_id, s.stage_number`,
 		competitionID)
@@ -163,7 +163,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 	for srows.Next() {
 		var entryID int64
 		var si StageInfo
-		if err := srows.Scan(&entryID, &si.Number, &si.ExpectedShots, &si.Locked, &si.ScorerLane, &si.ScorerName,
+		if err := srows.Scan(&entryID, &si.Number, &si.ExpectedShots, &si.Status, &si.ScorerLane, &si.ScorerName,
 			&si.Counts.X, &si.Counts.Ten, &si.Counts.Nine, &si.Counts.Eight, &si.Counts.Seven, &si.Counts.Zero, &si.Counts.Miss); err != nil {
 			return nil, err
 		}
@@ -181,7 +181,7 @@ func (r *Repository) StageInProgress(ctx context.Context, competitionID int64) (
 		   FROM stages s JOIN entries e ON e.id = s.entry_id
 		   WHERE e.competition_id = ? AND e.withdrawn = 0
 		   GROUP BY s.stage_number
-		   HAVING SUM(s.locked = 1 OR s.x + s.ten + s.nine + s.eight + s.seven + s.zero + s.miss > 0) BETWEEN 1 AND COUNT(*) - 1
+		   HAVING SUM(s.status <> 'open' OR s.x + s.ten + s.nine + s.eight + s.seven + s.zero + s.miss > 0) BETWEEN 1 AND COUNT(*) - 1
 		 )`, competitionID).Scan(&n)
 	return n > 0, err
 }

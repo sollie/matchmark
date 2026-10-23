@@ -22,6 +22,8 @@ type logLine struct {
 	Level         string `json:"level"`
 	SchemaVersion int    `json:"schema_version"`
 	Event         string `json:"event"`
+	Status        string `json:"status"`
+	AcceptedBy    string `json:"accepted_by"`
 	EmittedAt     string `json:"emitted_at"`
 	Seq           int64  `json:"seq"`
 	Competition   struct {
@@ -80,7 +82,7 @@ func TestStageLockedLines(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry2, 1)
-	if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
@@ -88,7 +90,7 @@ func TestStageLockedLines(t *testing.T) {
 		t.Fatalf("lines = %d", len(lines))
 	}
 	l := lines[0]
-	if l.Msg != "stage_locked" || l.Event != "stage_locked" || l.Level != "INFO" || l.SchemaVersion != 1 {
+	if l.Msg != "stage_status" || l.Event != "stage_status" || l.Status != "awaiting_acceptance" || l.Level != "INFO" || l.SchemaVersion != 2 {
 		t.Fatalf("header = %+v", l)
 	}
 	if !emittedAtPattern.MatchString(l.EmittedAt) {
@@ -122,7 +124,7 @@ func TestStageLockedLines(t *testing.T) {
 func TestAdminLockLine(t *testing.T) {
 	f := newScoreFixture(t)
 	f.fillStage(t, f.entry1, 2)
-	if err := f.svc.AdminLockStage(service.WithActor(context.Background(), service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 2); err != nil {
+	if _, err := f.svc.AdminLockStage(service.WithActor(context.Background(), service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 2); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
@@ -138,20 +140,20 @@ func TestNoLineOnFailedLock(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	dev := service.Device{CompetitionID: f.compID, Lane: 1}
-	if err := f.svc.DeviceLockStage(ctx, dev, 1); !errors.Is(err, service.ErrInvalid) {
+	if _, err := f.svc.DeviceLockStage(ctx, dev, 1); !errors.Is(err, service.ErrInvalid) {
 		t.Fatalf("err = %v", err)
 	}
-	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); !errors.Is(err, service.ErrInvalid) {
+	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); !errors.Is(err, service.ErrInvalid) {
 		t.Fatalf("err = %v", err)
 	}
 	f.fillStage(t, f.entry2, 1)
-	if err := f.svc.DeviceLockStage(ctx, dev, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, dev, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.DeviceLockStage(ctx, dev, 1); !errors.Is(err, service.ErrStageLocked) {
+	if _, err := f.svc.DeviceLockStage(ctx, dev, 1); !errors.Is(err, service.ErrStageLocked) {
 		t.Fatalf("err = %v", err)
 	}
-	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); !errors.Is(err, service.ErrStageLocked) {
+	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); !errors.Is(err, service.ErrStageLocked) {
 		t.Fatalf("err = %v", err)
 	}
 	if n := len(f.lines(t)); n != 1 {
@@ -171,14 +173,14 @@ func TestLockSucceedsWhenLogWriterFails(t *testing.T) {
 	t.Cleanup(func() { _ = conn.Close() })
 	f := buildFixture(t, repository.New(conn), &bytes.Buffer{}, newLogger(failingWriter{}))
 	f.fillStage(t, f.entry2, 1)
-	if err := f.svc.DeviceLockStage(context.Background(), service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(context.Background(), service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 	entries, err := f.repo.ListEntries(context.Background(), f.compID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !entries[1].Stages[0].Locked {
+	if entries[1].Stages[0].Status != repository.StatusAwaitingAcceptance {
 		t.Fatal("stage not locked")
 	}
 }
@@ -190,13 +192,13 @@ func TestReplayMatchesDatabase(t *testing.T) {
 		f.fillStage(t, f.entry2, n)
 	}
 	f.fillStage(t, f.entry1, 1)
-	if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 2); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 2); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	folded := replayScoreLog(t, f.buf.String())
@@ -207,7 +209,7 @@ func TestReplayMatchesDatabase(t *testing.T) {
 	locked := 0
 	for _, e := range entries {
 		for _, st := range e.Stages {
-			if !st.Locked {
+			if st.Status == repository.StatusOpen {
 				continue
 			}
 			locked++
@@ -258,10 +260,6 @@ func replayScoreLog(t *testing.T, raw string) map[stageKey]logLine {
 		}
 		k := stageKey{l.Competition.ID, l.Entry.ID, l.Stage.Number}
 		if prev, ok := out[k]; ok && !newerOrEqual(l, prev) {
-			continue
-		}
-		if l.Event == "stage_unlocked" {
-			delete(out, k)
 			continue
 		}
 		out[k] = l
@@ -343,7 +341,7 @@ func TestUnlockLine(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry1, 1)
-	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.svc.UnlockStage(ctx, f.compID, f.entry1, 1); err != nil {
@@ -354,11 +352,11 @@ func TestUnlockLine(t *testing.T) {
 		t.Fatalf("lines = %d", len(lines))
 	}
 	l := lines[1]
-	if l.Event != "stage_unlocked" || l.Msg != "stage_unlocked" || l.Level != "INFO" || l.Entry.Shooter.WAID != "W1" ||
+	if l.Event != "stage_status" || l.Status != "open" || l.LockedBy != nil || l.Level != "INFO" || l.Entry.Shooter.WAID != "W1" ||
 		l.Competition.Name != "Spring Match" || l.Stage.Number != 1 || !equalInts(l.RingCounts, []int{2, 4, 6, 0, 0, 0, 0}) {
 		t.Fatalf("line = %+v", l)
 	}
-	if got := replayScoreLog(t, f.buf.String()); len(got) != 0 {
+	if got := replayScoreLog(t, f.buf.String())[stageKey{f.compID, f.entry1, 1}]; got.Status != "open" {
 		t.Fatalf("replay = %+v", got)
 	}
 }
@@ -377,7 +375,7 @@ func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry2, 1)
-	if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
 	edit := repository.RingCounts{X: 1, Ten: 1, Nine: 10}
@@ -389,7 +387,7 @@ func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
 		t.Fatalf("lines = %d", len(lines))
 	}
 	first, second := lines[0], lines[1]
-	if second.Event != "stage_locked" || second.LockedBy != "carol" || second.ScorerName != "carol" ||
+	if second.Event != "stage_status" || second.Status != "accepted" || second.LockedBy != "carol" || second.ScorerName != "carol" ||
 		!equalInts(second.RingCounts, []int{1, 1, 10, 0, 0, 0, 0}) {
 		t.Fatalf("line = %+v", second)
 	}
@@ -423,7 +421,7 @@ func TestEntryEditReemitsLockedStages(t *testing.T) {
 	for _, e := range []int64{f.entry1, f.entry2} {
 		for _, n := range []int{1, 2} {
 			f.fillStage(t, e, n)
-			if err := f.svc.AdminLockStage(ctx, f.compID, e, n); err != nil {
+			if _, err := f.svc.AdminLockStage(ctx, f.compID, e, n); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -463,7 +461,7 @@ func TestShooterEditReemitsAcrossCompetitions(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry2, 1)
-	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); err != nil {
+	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); err != nil {
 		t.Fatal(err)
 	}
 	n := len(f.lines(t))
@@ -514,7 +512,7 @@ func TestCompetitionEditReemitsLockedStages(t *testing.T) {
 	if err := svc.SetRingCounts(ctx, compID, e1, 1, repository.RingCounts{X: 2, Ten: 4, Nine: 6}); err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.AdminLockStage(ctx, compID, e1, 1); err != nil {
+	if _, err := svc.AdminLockStage(ctx, compID, e1, 1); err != nil {
 		t.Fatal(err)
 	}
 	n := strings.Count(buf.String(), "\n")
@@ -534,7 +532,7 @@ func TestSeqStrictlyIncreasesAndReplayIgnoresEqualTimestamps(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry1, 1)
-	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 5; i++ {
@@ -558,7 +556,7 @@ func TestUnlockLineKeepsPreUnlockProvenance(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry2, 1)
-	if err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.svc.UnlockStage(ctx, f.compID, f.entry2, 1); err != nil {
@@ -566,7 +564,7 @@ func TestUnlockLineKeepsPreUnlockProvenance(t *testing.T) {
 	}
 	lines := f.lines(t)
 	locked, unlocked := lines[0], lines[1]
-	if unlocked.Event != "stage_unlocked" || unlocked.LockedBy != float64(1) || unlocked.ScorerName != "Al Alm" || unlocked.LockedAt != locked.LockedAt || unlocked.LockedAt == "" {
+	if unlocked.Status != "open" || unlocked.LockedBy != nil || unlocked.ScorerName != "" || unlocked.LockedAt != "" || locked.Status != "awaiting_acceptance" {
 		t.Fatalf("unlock line = %+v", unlocked)
 	}
 }
@@ -575,7 +573,7 @@ func TestCourseChangeRejectedWhenLockedStagesExist(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry1, 1)
-	if err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	n := len(f.lines(t))
