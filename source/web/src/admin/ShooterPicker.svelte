@@ -142,9 +142,9 @@
 
 <style>
   .picker { position: relative; }
-  ul { position: absolute; z-index: 10; left: 0; right: 0; margin: 0; padding: 0; list-style: none; background: var(--surface, #fff); border: 1px solid var(--border, #ccc); max-height: 16rem; overflow-y: auto; }
-  li { padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem); cursor: pointer; }
-  li.active { background: var(--accent-soft, #e6efff); }
-  li.empty { cursor: default; color: var(--muted, #666); }
+  ul { position: absolute; z-index: 10; left: 0; right: 0; margin: 0; padding: 0; list-style: none; background: var(--surface); color: var(--text); border: 1px solid var(--border); max-height: 16rem; overflow-y: auto; }
+  li { padding: var(--space-2) var(--space-3); cursor: pointer; }
+  li.active { background: var(--brand-tint); color: var(--text); }
+  li.empty { cursor: default; color: var(--text-muted); }
   [hidden] { display: none; }
 </style>
