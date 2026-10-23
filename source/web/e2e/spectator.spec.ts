@@ -214,3 +214,12 @@ test.describe("spectator", () => {
     await anonymous.dispose();
   });
 });
+
+test("the footer links back to the repository on every page", async ({ page }) => {
+  for (const path of ["/", "/score", "/admin"]) {
+    await page.goto(path);
+    const link = page.getByRole("link", { name: "Source code on GitHub" });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "https://github.com/sollie/matchmark");
+  }
+});
