@@ -110,8 +110,6 @@
     {#if competition.status === "draft" && !editing}
       <button onclick={() => (editing = true)}>Edit competition</button>
     {/if}
-    <a href={`/api/competitions/${id}/results.xlsx`} download>Results report (.xlsx)</a>
-    <a href={`/api/competitions/${id}/results.csv`} download>Detailed CSV</a>
     <button class="danger" onclick={remove}>Delete competition</button>
   </div>
   {#if error}<p class="error" role="alert">{error}</p>{/if}

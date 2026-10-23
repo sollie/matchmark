@@ -1,21 +1,23 @@
 import { readFile } from "node:fs/promises";
 import type { APIRequestContext } from "@playwright/test";
-import { createCompetition, expect, newApi, openCompetition, seedEntry, setCounts, test } from "./helpers";
+import { createCompetition, expect, newApi, openCompetition, seedEntry, setCounts, setStatus, test } from "./helpers";
 
 async function seedReportCompetition(api: APIRequestContext) {
   const competition = await createCompetition(api);
   const { shooter, entryId } = await seedEntry(api, competition.id, 1);
   await setCounts(api, competition.id, entryId, 1, { x: 7, "10": 5 }, true);
+  await setStatus(api, competition.id, "active");
+  await setStatus(api, competition.id, "finished");
   return { competition, shooter };
 }
 
 test.describe("reports and backup", () => {
   test("the results report downloads as an xlsx workbook", async ({ adminPage: page, admin }) => {
     const { competition } = await seedReportCompetition(admin);
-    await openCompetition(page, competition.id);
+    await page.goto("/admin");
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Results report (.xlsx)" }).click();
+    await page.getByRole("link", { name: "Results report (.xlsx) for " + competition.name }).click();
     const download = await downloadPromise;
 
     expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
@@ -25,15 +27,22 @@ test.describe("reports and backup", () => {
 
   test("the detailed CSV downloads and contains the shooter", async ({ adminPage: page, admin }) => {
     const { competition, shooter } = await seedReportCompetition(admin);
-    await openCompetition(page, competition.id);
+    await page.goto("/admin");
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Detailed CSV" }).click();
+    await page.getByRole("link", { name: "Detailed CSV for " + competition.name }).click();
     const download = await downloadPromise;
 
     expect(download.suggestedFilename()).toMatch(/\.csv$/);
     const text = await readFile(await download.path(), "utf8");
     expect(text).toContain(shooter.last_name);
+  });
+
+  test("the competition page offers no downloads", async ({ adminPage: page, admin }) => {
+    const { competition } = await seedReportCompetition(admin);
+    await openCompetition(page, competition.id);
+    await expect(page.getByRole("heading", { name: competition.name })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Results report|Detailed CSV/ })).toHaveCount(0);
   });
 
   test("report and backup endpoints return 401 without a session", async ({ admin, baseURL }) => {
