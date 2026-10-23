@@ -69,7 +69,7 @@ Coverage, by area:
 - Audit log: an admin finds entries filtered by user, action and date and pages through them; regular users never see the screen.
 - Auth: wrong password, unknown username and correct login, per-client login lockout, sign out, 401 on unauthenticated admin API calls, the not-found page, and the unpaired scorer page.
 - Shooter search: picking a shooter for an entry through the search combobox, the no-match state and hiding shooters already entered.
-- Shooters: add, edit, cancel an edit, delete with confirmation, and form validation.
+- Shooters: add, edit, cancel an edit, delete with confirmation, form validation, local search, and WA1500 import (sex selector, name-conflict dialog, manual fallback; the WA1500 search is mocked).
 - Competitions: creation for each course of fire with its stage columns, the prefilled ISO 8601 date and invalid-date blocking, the list with statuses, start and finish with confirmation, finished competitions (revoked pairings, no new entries), editing a draft (name, date, course, locked course once entries exist, no edit once started), delete with confirmation, and visibility flags persisting.
 - Entries and admin scoring: adding entries with category and default lane, taken-lane rejection, move, withdraw and remove, live shot totals with rejection of wrong totals, and save and lock as the signed-in user (an accepted stage), accepting a stage that awaits acceptance, and unlock.
 - Dispute history: the stage event table with scorer, shooter and stage filters and the dispute count per scorer.
