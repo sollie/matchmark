@@ -20,6 +20,7 @@ import (
 	"github.com/sollie/matchmark/internal/handler"
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/service"
+	"github.com/sollie/matchmark/internal/wa1500"
 	"github.com/sollie/matchmark/web"
 )
 
@@ -78,6 +79,7 @@ func run(logger *slog.Logger) error {
 		handler.WithTLS(cfg.TLSMode != TLSPlain),
 		handler.WithAudit(audit),
 		handler.WithBackupDir(filepath.Dir(cfg.DBPath)),
+		handler.WithWA1500(service.NewWA1500Lookup(wa1500.NewClient())),
 	)
 	root := trustedProxyRealIP(cfg.TrustedProxy)(requestLogger(logger)(compression(!cfg.DisableCompression)(spaHandler(web.Dist(), api))))
 	srv := &http.Server{

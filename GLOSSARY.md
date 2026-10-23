@@ -13,12 +13,16 @@ A single match event run by a club on a given day. Its name, date and course can
 _Avoid_: Match, event
 
 **Shooter**:
-A person registered with the club who can enter competitions. A shooter with a WAID is a known shooter; one without is a new shooter.
+A person registered with the club who can enter competitions. A shooter with a WAID is a known shooter; one without is a new shooter. Admins find a shooter by searching the local registry on WAID or name.
 _Avoid_: Competitor, participant
 
 **WAID**:
 The identifier the World Association assigns to a shooter and uses to match results to their record. New shooters have none yet.
 _Avoid_: WA-ID, member number
+
+**WA1500 import**:
+Copying a shooter found in the WA1500 register into the club's own shooters, with the sex chosen by the admin. A shooter with the same WAID is updated; one that only shares the name must be confirmed as the same person or created as a new shooter.
+_Avoid_: Sync
 
 **New shooter**:
 A shooter without a WAID, typically fresh from the PPC course and needing a match to get the course accepted.

@@ -3,6 +3,7 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
+  import Wa1500Import from "./Wa1500Import.svelte";
 
   type Shooter = components["schemas"]["Shooter"];
   type ShooterInput = components["schemas"]["ShooterInput"];
@@ -13,11 +14,28 @@
   let form = $state<ShooterInput>(blank());
   let editing = $state<number | null>(null);
   let error = $state("");
+  let query = $state("");
+  let importing = $state(false);
+  let notice = $state("");
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function load() {
-    const result = await api.GET("/api/shooters");
+    const q = query.trim();
+    const result = await api.GET("/api/shooters", { params: { query: q ? { q, limit: 100 } : {} } });
     if (result.data) shooters = result.data.shooters;
     else error = failure(result);
+  }
+
+  function onsearch() {
+    clearTimeout(timer);
+    timer = setTimeout(load, 250);
+  }
+
+  async function imported(s: Shooter) {
+    importing = false;
+    query = "";
+    notice = `Saved ${s.first_name} ${s.last_name}.`;
+    await load();
   }
 
   onMount(load);
@@ -59,6 +77,18 @@
 
 <h1>Shooters</h1>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
+{#if notice}<p role="status">{notice}</p>{/if}
+
+<div class="row">
+  <label>Search shooters <input type="search" bind:value={query} oninput={onsearch} placeholder="Name or WAID" /></label>
+  <button type="button" class="secondary" aria-expanded={importing} onclick={() => (importing = !importing)}>
+    Import from WA1500
+  </button>
+</div>
+
+{#if importing}
+  <Wa1500Import query={query} onsaved={imported} oncancel={() => (importing = false)} />
+{/if}
 
 <form class="row card" onsubmit={save}>
   <label>Last name <input bind:value={form.last_name} maxlength="64" required /></label>
@@ -96,7 +126,7 @@
         </td>
       </tr>
     {:else}
-      <tr><td colspan="6" class="muted">No shooters yet.</td></tr>
+      <tr><td colspan="6" class="muted">{query.trim() ? "No matching shooters." : "No shooters yet."}</td></tr>
     {/each}
   </tbody>
 </table>

@@ -1,4 +1,4 @@
-export type Call = { method: string; path: string; body: unknown; authorization: string | null };
+export type Call = { method: string; path: string; search: string; body: unknown; authorization: string | null };
 type Reply = { status?: number; body?: unknown } | undefined;
 
 let handler: (request: Request) => Promise<Response> = async () => new Response(null, { status: 500 });
@@ -15,6 +15,7 @@ export function stubFetch(respond: (call: Call) => Reply = () => undefined) {
     const call: Call = {
       method: request.method,
       path: new URL(request.url).pathname,
+      search: new URL(request.url).search,
       body: text ? JSON.parse(text) : undefined,
       authorization: request.headers.get("Authorization"),
     };

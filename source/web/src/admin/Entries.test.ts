@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/svelte";
+import { render, screen, waitFor, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import Entries from "./Entries.svelte";
 import { stubFetch } from "../test/fetch";
@@ -145,5 +145,29 @@ describe("Entries awaiting acceptance", () => {
   it("offers no accept for an accepted stage", () => {
     setup();
     expect(screen.queryByRole("button", { name: "Lane 1 stage 1: Accept" })).toBeNull();
+  });
+
+  it("imports a shooter from WA1500 inside the picker and selects it for the entry", async () => {
+    const imported = { id: 11, last_name: "Anderson", first_name: "Mike", sex: "M" as const, country: "SWE", club: "Alpha", waid: "W100" };
+    const calls = stubFetch((c) => {
+      if (c.path === "/api/shooters" && c.method === "GET") return { body: { shooters: [] } };
+      if (c.path === "/api/wa1500/search") return { body: { results: [{ waid: "W100", first_name: "Mike", last_name: "Anderson", country: "SWE", club: "Alpha" }] } };
+      if (c.path === "/api/shooters/import") return { status: 201, body: { id: 11, action: "created" } };
+      if (c.path === "/api/shooters/11") return { body: imported };
+      return { status: 201, body: {} };
+    });
+    render(Entries, { competitionId: 5, entries: [], shooters, reload: vi.fn(async () => {}) });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole("combobox", { name: "Shooter" }), "ande");
+    await user.click(await screen.findByRole("option", { name: "Search WA1500 / add new" }));
+    expect((screen.getByRole("textbox", { name: "Search WA1500" }) as HTMLInputElement).value).toBe("ande");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await user.selectOptions(await screen.findByRole("combobox", { name: "Sex for Mike Anderson" }), "M");
+    await user.click(screen.getByRole("button", { name: "Import Mike Anderson" }));
+    await waitFor(() => expect((screen.getByRole("combobox", { name: "Shooter" }) as HTMLInputElement).value).toBe("Mike Anderson"));
+    expect(screen.queryByRole("textbox", { name: "Search WA1500" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Add entry" }));
+    const post = calls.find((c) => c.method === "POST" && c.path === "/api/competitions/5/entries");
+    expect(post?.body).toMatchObject({ shooter_id: 11 });
   });
 });

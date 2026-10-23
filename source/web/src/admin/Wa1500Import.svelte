@@ -1,0 +1,180 @@
+<script lang="ts">
+  import { api } from "../lib/api/client";
+  import { failure } from "../lib/api/util";
+  import type { components } from "../lib/api/schema";
+
+  type Shooter = components["schemas"]["Shooter"];
+  type ShooterInput = components["schemas"]["ShooterInput"];
+  type Hit = components["schemas"]["Wa1500Shooter"];
+  type Sex = ShooterInput["sex"];
+
+  let {
+    query = "",
+    onsaved,
+    oncancel,
+  }: {
+    query?: string;
+    onsaved: (shooter: Shooter) => void;
+    oncancel?: () => void;
+  } = $props();
+
+  const blank = (): ShooterInput => ({ last_name: "", first_name: "", sex: "M", country: "", club: "", waid: "" });
+
+  let text = $state(query);
+  let hits = $state<Hit[]>([]);
+  let searched = $state(false);
+  let searching = $state(false);
+  let sexes = $state<Record<string, Sex | "">>({});
+  let error = $state("");
+  let manual = $state(false);
+  let form = $state<ShooterInput>(blank());
+  let pending = $state<{ hit: Hit; sex: Sex; candidates: Shooter[] } | null>(null);
+  let busy = $state(false);
+
+  const hitName = (h: Hit) => `${h.first_name} ${h.last_name}`;
+
+  async function search(e: SubmitEvent) {
+    e.preventDefault();
+    const q = text.trim();
+    if (!q) return;
+    error = "";
+    searching = true;
+    const result = await api.GET("/api/wa1500/search", { params: { query: { q } } });
+    searching = false;
+    searched = true;
+    if (result.data) {
+      hits = result.data.results;
+      return;
+    }
+    hits = [];
+    error = failure(result);
+    if (result.response.status === 502) manual = true;
+  }
+
+  async function finish(id: number) {
+    const result = await api.GET("/api/shooters/{shooterID}", { params: { path: { shooterID: id } } });
+    if (result.data) onsaved(result.data);
+    else error = failure(result);
+  }
+
+  async function runImport(hit: Hit, sex: Sex, extra: { update_shooter_id?: number; create_new?: boolean } = {}) {
+    error = "";
+    busy = true;
+    const result = await api.POST("/api/shooters/import", { body: { ...hit, sex, ...extra } });
+    busy = false;
+    if (result.response.status === 409 && result.error && "candidates" in result.error) {
+      pending = { hit, sex, candidates: result.error.candidates };
+      return;
+    }
+    if (!result.data) {
+      pending = null;
+      error = failure(result);
+      return;
+    }
+    pending = null;
+    await finish(result.data.id);
+  }
+
+  function importHit(hit: Hit) {
+    const sex = sexes[hit.waid];
+    if (sex) runImport(hit, sex);
+  }
+
+  async function saveManual(e: SubmitEvent) {
+    e.preventDefault();
+    error = "";
+    busy = true;
+    const result = await api.POST("/api/shooters", { body: form });
+    busy = false;
+    if (!result.data) {
+      error = failure(result);
+      return;
+    }
+    await finish(result.data.id);
+  }
+</script>
+
+<div class="wa1500-import card">
+  <form class="row" onsubmit={search}>
+    <label>Search WA1500 <input type="text" bind:value={text} maxlength="100" placeholder="Name, club or WAID" /></label>
+    <button type="submit" class="primary" disabled={searching || !text.trim()}>Search</button>
+    {#if oncancel}<button type="button" class="secondary" onclick={oncancel}>Close</button>{/if}
+  </form>
+
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
+
+  {#if searching}
+    <p class="muted" role="status">Searching WA1500…</p>
+  {:else if searched && hits.length === 0 && !error}
+    <p class="muted" role="status">No WA1500 results</p>
+  {/if}
+
+  {#if hits.length > 0}
+    <ul class="hits" aria-label="WA1500 results">
+      {#each hits as h (h.waid)}
+        <li class="row">
+          <span>{hitName(h)} · {h.waid} · {h.club} · {h.country}</span>
+          <select aria-label={`Sex for ${hitName(h)}`} bind:value={sexes[h.waid]}>
+            <option value="">Sex</option>
+            <option value="M">M</option>
+            <option value="F">F</option>
+          </select>
+          <button type="button" class="primary" disabled={busy || !sexes[h.waid]} onclick={() => importHit(h)}>
+            Import {hitName(h)}
+          </button>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+
+  {#if !manual}
+    <button type="button" class="secondary" onclick={() => (manual = true)}>Enter manually</button>
+  {:else}
+    <form class="row" onsubmit={saveManual} aria-label="Manual shooter entry">
+      <label>Last name <input bind:value={form.last_name} maxlength="64" required /></label>
+      <label>First name <input bind:value={form.first_name} maxlength="64" required /></label>
+      <label>
+        Sex
+        <select bind:value={form.sex}>
+          <option value="M">M</option>
+          <option value="F">F</option>
+        </select>
+      </label>
+      <label>Country <input bind:value={form.country} maxlength="3" size="4" required /></label>
+      <label>Club <input bind:value={form.club} maxlength="128" required /></label>
+      <label>WAID (blank for new shooter) <input bind:value={form.waid} maxlength="32" /></label>
+      <button type="submit" class="primary" disabled={busy}>Save shooter</button>
+    </form>
+  {/if}
+
+  {#if pending}
+    {@const current = pending}
+    <div class="dialog card" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
+      <h3 id="conflict-title">Name already exists</h3>
+      <p>
+        {hitName(current.hit)} matches existing shooters. Update one of them with the WA1500 data, or create a new
+        shooter.
+      </p>
+      <ul>
+        {#each current.candidates as c (c.id)}
+          <li>
+            <button type="button" class="secondary" disabled={busy} onclick={() => runImport(current.hit, current.sex, { update_shooter_id: c.id })}>
+              Update {c.first_name} {c.last_name} · {c.waid || "no WAID"} · {c.club} · {c.country}
+            </button>
+          </li>
+        {/each}
+      </ul>
+      <div class="row">
+        <button type="button" class="primary" disabled={busy} onclick={() => runImport(current.hit, current.sex, { create_new: true })}>
+          Create new shooter
+        </button>
+        <button type="button" class="secondary" onclick={() => (pending = null)}>Cancel</button>
+      </div>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .hits { list-style: none; margin: 0; padding: 0; }
+  .dialog { border: 1px solid var(--border, #ccc); background: var(--surface, #fff); }
+</style>

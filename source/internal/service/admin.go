@@ -36,8 +36,20 @@ func validShooter(sh repository.Shooter) bool {
 		len(sh.LastName) <= 128 && len(sh.FirstName) <= 128 && len(sh.WAID) <= 32 && len(sh.Club) <= 128
 }
 
-func (s *Service) ListShooters(ctx context.Context) ([]repository.Shooter, error) {
-	return s.repo.ListShooters(ctx)
+const (
+	defaultShooterSearchLimit = 20
+	maxShooterSearchLimit     = 100
+)
+
+func (s *Service) ListShooters(ctx context.Context, query string, limit int) ([]repository.Shooter, error) {
+	query = strings.TrimSpace(query)
+	if limit < 0 || limit > maxShooterSearchLimit {
+		return nil, ErrInvalid
+	}
+	if limit == 0 && query != "" {
+		limit = defaultShooterSearchLimit
+	}
+	return s.repo.ListShooters(ctx, query, limit)
 }
 
 func (s *Service) GetShooter(ctx context.Context, id int64) (repository.Shooter, error) {

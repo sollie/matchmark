@@ -22,29 +22,54 @@ type EntryWithStages struct {
 	Stages []StageInfo
 }
 
-func (r *Repository) ListShooters(ctx context.Context) ([]Shooter, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters ORDER BY last_name, first_name, id`)
+const shooterColumns = `id, last_name, first_name, sex, country, club, COALESCE(waid, '')`
+
+type rowScanner interface{ Scan(dest ...any) error }
+
+func scanShooter(row rowScanner) (Shooter, error) {
+	var s Shooter
+	err := row.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID)
+	return s, err
+}
+
+func (r *Repository) queryShooters(ctx context.Context, keep func(Shooter) bool, limit int, where, order string, args ...any) ([]Shooter, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+shooterColumns+` FROM shooters `+where+` ORDER BY `+order, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	shooters := []Shooter{}
 	for rows.Next() {
-		var s Shooter
-		if err := rows.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID); err != nil {
+		s, err := scanShooter(rows)
+		if err != nil {
 			return nil, err
 		}
+		if keep != nil && !keep(s) {
+			continue
+		}
 		shooters = append(shooters, s)
+		if limit > 0 && len(shooters) == limit {
+			break
+		}
 	}
 	return shooters, rows.Err()
 }
 
+func (r *Repository) ListShooters(ctx context.Context, query string, limit int) ([]Shooter, error) {
+	var keep func(Shooter) bool
+	if query != "" {
+		needle := strings.ToLower(query)
+		keep = func(s Shooter) bool {
+			return strings.Contains(strings.ToLower(s.WAID), needle) ||
+				strings.Contains(strings.ToLower(s.FirstName+" "+s.LastName), needle) ||
+				strings.Contains(strings.ToLower(s.LastName+" "+s.FirstName), needle)
+		}
+	}
+	return r.queryShooters(ctx, keep, limit, "", "last_name, first_name, id")
+}
+
 func (r *Repository) GetShooter(ctx context.Context, id int64) (Shooter, error) {
-	var s Shooter
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters WHERE id = ?`, id).
-		Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID)
+	s, err := scanShooter(r.db.QueryRowContext(ctx, `SELECT `+shooterColumns+` FROM shooters WHERE id = ?`, id))
 	return s, mapErr(err)
 }
 
@@ -206,4 +231,15 @@ func affected(res sql.Result, err error) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (r *Repository) FindShooterByWAID(ctx context.Context, waid string) (Shooter, error) {
+	s, err := scanShooter(r.db.QueryRowContext(ctx, `SELECT `+shooterColumns+` FROM shooters WHERE waid = ?`, waid))
+	return s, mapErr(err)
+}
+
+func (r *Repository) FindShootersByName(ctx context.Context, firstName, lastName string) ([]Shooter, error) {
+	return r.queryShooters(ctx, func(s Shooter) bool {
+		return strings.EqualFold(s.FirstName, firstName) && strings.EqualFold(s.LastName, lastName)
+	}, 0, "", "id")
 }
