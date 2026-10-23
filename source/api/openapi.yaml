@@ -2300,7 +2300,7 @@ components:
           $ref: '#/components/schemas/StageStatus'
     StageScore:
       type: object
-      required: [stage, score, accepted]
+      required: [stage, score, accepted, state]
       properties:
         stage:
           type: integer
@@ -2309,6 +2309,8 @@ components:
           description: Zero until the stage is accepted
         accepted:
           type: boolean
+        state:
+          $ref: '#/components/schemas/SpectatorStageState'
         ring_counts:
           $ref: '#/components/schemas/RingCounts'
     Standing:
@@ -2339,10 +2341,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StageScore'
+    SpectatorStageState:
+      type: string
+      enum: [not_started, in_progress, awaiting_acceptance, accepted]
+      description: A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
     SpectatorSnapshot:
       type: object
-      required: [standings, stages]
+      required: [current_stage, standings, stages]
       properties:
+        current_stage:
+          type: integer
+          description: The competition's current stage number
         standings:
           type: array
           items:

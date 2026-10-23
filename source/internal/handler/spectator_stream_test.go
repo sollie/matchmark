@@ -14,8 +14,9 @@ import (
 const eventWait = 3 * time.Second
 
 type snapshotBody struct {
-	Standings []map[string]any `json:"standings"`
-	Stages    []map[string]any `json:"stages"`
+	CurrentStage int              `json:"current_stage"`
+	Standings    []map[string]any `json:"standings"`
+	Stages       []map[string]any `json:"stages"`
 }
 
 func streamPath(f *fixture) string {
@@ -217,5 +218,33 @@ func TestRejectedStreamRequestsDoNotConsumeCapAtCapacity(t *testing.T) {
 	}
 	if s := env.OpenStream("/api/competitions/9999/stream", nil); s.Status != http.StatusNotFound {
 		t.Fatalf("unknown admin status %d, want 404", s.Status)
+	}
+}
+
+func TestSpectatorSnapshotStageStates(t *testing.T) {
+	f := newFixture(t, "150")
+	one := f.addEntry(t, "Hansen", 1)
+	two := f.addEntry(t, "Berg", 2)
+	f.env.Do("PUT", fmt.Sprintf("/api/competitions/%d/visibility", f.comp), map[string]any{"show_names": true, "show_stage_scores": true})
+	f.scoreAccepted(t, one, 1, map[string]any{"x": 12})
+	f.score(t, two, 1, map[string]any{"x": 12})
+	f.activate(t)
+	snap := nextSnapshot(t, f.env.OpenStream(streamPath(f), nil))
+	if snap.CurrentStage != 1 {
+		t.Fatalf("current stage %d", snap.CurrentStage)
+	}
+	states := map[string][]string{}
+	for _, row := range snap.Standings {
+		var list []string
+		for _, st := range row["stages"].([]any) {
+			list = append(list, st.(map[string]any)["state"].(string))
+		}
+		states[row["last_name"].(string)] = list
+	}
+	if got := states["Hansen"]; got[0] != "accepted" || got[1] != "not_started" {
+		t.Fatalf("hansen %v", got)
+	}
+	if got := states["Berg"]; got[0] != "in_progress" || got[1] != "not_started" {
+		t.Fatalf("berg %v", got)
 	}
 }

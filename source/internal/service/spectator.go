@@ -22,7 +22,30 @@ type StageScoreView struct {
 	Stage    int             `json:"stage"`
 	Score    int             `json:"score"`
 	Accepted bool            `json:"accepted"`
+	State    StageState      `json:"state"`
 	Counts   *RingCountsView `json:"ring_counts,omitempty"`
+}
+
+type StageState string
+
+const (
+	StageNotStarted         StageState = "not_started"
+	StageInProgress         StageState = "in_progress"
+	StageAwaitingAcceptance StageState = "awaiting_acceptance"
+	StageAccepted           StageState = "accepted"
+)
+
+func stageState(st repository.StageStatus, number, currentStage int) StageState {
+	switch st {
+	case repository.StatusAccepted:
+		return StageAccepted
+	case repository.StatusAwaitingAcceptance:
+		return StageAwaitingAcceptance
+	}
+	if number > currentStage {
+		return StageNotStarted
+	}
+	return StageInProgress
 }
 
 type StandingView struct {
@@ -62,15 +85,15 @@ func (s *Service) ListPublicCompetitions(ctx context.Context) ([]repository.Comp
 	return s.repo.ListPublicCompetitions(ctx)
 }
 
-func (s *Service) publicCompetition(ctx context.Context, id int64) error {
+func (s *Service) publicCompetition(ctx context.Context, id int64) (repository.Competition, error) {
 	c, err := s.repo.GetCompetition(ctx, id)
 	if err != nil {
-		return mapRepoErr(err)
+		return repository.Competition{}, mapRepoErr(err)
 	}
 	if CompetitionStatus(c.Status) == StatusDraft {
-		return ErrNotFound
+		return repository.Competition{}, ErrNotFound
 	}
-	return nil
+	return c, nil
 }
 
 func stagePoints(c repository.RingCounts) int {
@@ -82,9 +105,15 @@ func ringCountsView(c repository.RingCounts) RingCountsView {
 }
 
 func (s *Service) Standings(ctx context.Context, competitionID int64) ([]StandingView, error) {
-	if err := s.publicCompetition(ctx, competitionID); err != nil {
+	comp, err := s.publicCompetition(ctx, competitionID)
+	if err != nil {
 		return nil, err
 	}
+	return s.standings(ctx, comp)
+}
+
+func (s *Service) standings(ctx context.Context, comp repository.Competition) ([]StandingView, error) {
+	competitionID := comp.ID
 	vis, err := s.repo.GetVisibility(ctx, competitionID)
 	if err != nil {
 		return nil, mapRepoErr(err)
@@ -115,7 +144,7 @@ func (s *Service) Standings(ctx context.Context, competitionID int64) ([]Standin
 			total.Zero += st.Counts.Zero
 			total.Miss += st.Counts.Miss
 			if vis.StageScores {
-				sv := StageScoreView{Stage: st.Number, Score: stagePoints(st.Counts), Accepted: accepted}
+				sv := StageScoreView{Stage: st.Number, Score: stagePoints(st.Counts), Accepted: accepted, State: stageState(st.Status, st.Number, comp.CurrentStage)}
 				if vis.RingCounts {
 					c := ringCountsView(st.Counts)
 					sv.Counts = &c
@@ -153,7 +182,7 @@ func (s *Service) Standings(ctx context.Context, competitionID int64) ([]Standin
 }
 
 func (s *Service) Progress(ctx context.Context, competitionID int64) ([]StageProgress, error) {
-	if err := s.publicCompetition(ctx, competitionID); err != nil {
+	if _, err := s.publicCompetition(ctx, competitionID); err != nil {
 		return nil, err
 	}
 	entries, err := s.repo.ListSpectatorEntries(ctx, competitionID)
@@ -183,8 +212,9 @@ func (s *Service) Progress(ctx context.Context, competitionID int64) ([]StagePro
 }
 
 type SpectatorSnapshot struct {
-	Standings []StandingView  `json:"standings"`
-	Stages    []StageProgress `json:"stages"`
+	CurrentStage int             `json:"current_stage"`
+	Standings    []StandingView  `json:"standings"`
+	Stages       []StageProgress `json:"stages"`
 }
 
 type cachedSnapshot struct {
@@ -213,7 +243,8 @@ func (s *Service) Subscribe(competitionID int64) *Subscription {
 }
 
 func (s *Service) CheckPublicStream(ctx context.Context, competitionID int64) error {
-	return s.publicCompetition(ctx, competitionID)
+	_, err := s.publicCompetition(ctx, competitionID)
+	return err
 }
 
 func (s *Service) CheckAdminStream(ctx context.Context, competitionID int64) error {
@@ -229,7 +260,12 @@ func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (S
 	if c := slot.cached; c != nil && c.version == version {
 		return c.snapshot, nil
 	}
-	standings, err := s.Standings(ctx, competitionID)
+	comp, err := s.publicCompetition(ctx, competitionID)
+	if err != nil {
+		slot.cached = nil
+		return SpectatorSnapshot{}, err
+	}
+	standings, err := s.standings(ctx, comp)
 	if err != nil {
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
@@ -239,7 +275,7 @@ func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (S
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
-	snap := SpectatorSnapshot{Standings: standings, Stages: stages}
+	snap := SpectatorSnapshot{CurrentStage: comp.CurrentStage, Standings: standings, Stages: stages}
 	slot.cached = &cachedSnapshot{version: version, snapshot: snap}
 	return snap, nil
 }

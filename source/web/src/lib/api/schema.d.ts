@@ -1212,6 +1212,7 @@ export interface components {
             /** @description Zero until the stage is accepted */
             score: number;
             accepted: boolean;
+            state: components["schemas"]["SpectatorStageState"];
             ring_counts?: components["schemas"]["RingCounts"];
         };
         Standing: {
@@ -1227,7 +1228,14 @@ export interface components {
             ring_counts?: components["schemas"]["RingCounts"];
             stages?: components["schemas"]["StageScore"][];
         };
+        /**
+         * @description A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
+         * @enum {string}
+         */
+        SpectatorStageState: "not_started" | "in_progress" | "awaiting_acceptance" | "accepted";
         SpectatorSnapshot: {
+            /** @description The competition's current stage number */
+            current_stage: number;
             standings: components["schemas"]["Standing"][];
             stages: components["schemas"]["StageProgress"][];
         };
