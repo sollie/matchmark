@@ -51,7 +51,7 @@ async function seedScored(api: APIRequestContext, finish = false) {
 }
 
 test.describe("spectator", () => {
-  test("standings are ranked by total then X count with stage progress", async ({ page, admin }) => {
+  test("standings are ranked by total then X count with the stage status row", async ({ page, admin }) => {
     const { competition, entries } = await seedScored(admin);
     await openCompetition(page, competition.name);
 
@@ -69,8 +69,10 @@ test.describe("spectator", () => {
     const rows = table.locator("tbody tr");
     await expect(rows.first()).toContainText(entries[1].last_name);
 
-    const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
+    const progress = page.getByRole("status");
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
+    await expect(progress.getByText("Stage 1 of 10")).toBeVisible();
+    await expect(page.locator("progress")).toHaveCount(0);
   });
 
   test("an accepted stage appears live without polling requests", async ({ page, admin }) => {
@@ -78,10 +80,10 @@ test.describe("spectator", () => {
     const polled: string[] = [];
     page.on("request", (request) => {
       const path = new URL(request.url()).pathname;
-      if (/\/spectator\/competitions\/\d+\/(standings|progress)$/.test(path)) polled.push(path);
+      if (/\/spectator\/competitions\/\d+\/standings$/.test(path)) polled.push(path);
     });
     await openCompetition(page, competition.name);
-    const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
+    const progress = page.getByRole("status");
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
 
     const entryId = (
@@ -101,7 +103,7 @@ test.describe("spectator", () => {
       if (/\/spectator\/competitions\/\d+\/stream$/.test(new URL(request.url()).pathname)) streams++;
     });
     await openCompetition(page, competition.name);
-    const progress = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Stage progress" }) });
+    const progress = page.getByRole("status");
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
     await expect.poll(() => streams).toBe(1);
 
@@ -136,6 +138,8 @@ test.describe("spectator", () => {
 
     await openCompetition(page, active.name);
     await expect(page.locator("select option").filter({ hasText: active.name })).toContainText("finished");
+    await expect(page.getByRole("status").getByText("Finished", { exact: true })).toBeVisible();
+    await expect(page.getByRole("status").getByText(/Stage \d+ of/)).toHaveCount(0);
     await expect(row(page, entries[0].last_name)).toBeVisible();
     await expect(row(page, entries[1].last_name)).toBeVisible();
   });

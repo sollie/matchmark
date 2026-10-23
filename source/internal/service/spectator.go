@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 type RingCountsView struct {
@@ -60,12 +61,6 @@ type StandingView struct {
 	XCount     *int             `json:"x_count,omitempty"`
 	RingCounts *RingCountsView  `json:"ring_counts,omitempty"`
 	Stages     []StageScoreView `json:"stages,omitempty"`
-}
-
-type StageProgress struct {
-	Stage    int `json:"stage"`
-	Entries  int `json:"entries"`
-	Accepted int `json:"accepted"`
 }
 
 func (s *Service) GetVisibility(ctx context.Context, competitionID int64) (repository.Visibility, error) {
@@ -183,40 +178,10 @@ func (s *Service) standings(ctx context.Context, comp repository.Competition) ([
 	return out, nil
 }
 
-func (s *Service) Progress(ctx context.Context, competitionID int64) ([]StageProgress, error) {
-	if _, err := s.publicCompetition(ctx, competitionID); err != nil {
-		return nil, err
-	}
-	entries, err := s.repo.ListSpectatorEntries(ctx, competitionID)
-	if err != nil {
-		return nil, err
-	}
-	byStage := map[int]*StageProgress{}
-	for _, e := range entries {
-		for _, st := range e.Stages {
-			p, ok := byStage[st.Number]
-			if !ok {
-				p = &StageProgress{Stage: st.Number}
-				byStage[st.Number] = p
-			}
-			p.Entries++
-			if st.Status == repository.StatusAccepted {
-				p.Accepted++
-			}
-		}
-	}
-	out := make([]StageProgress, 0, len(byStage))
-	for _, p := range byStage {
-		out = append(out, *p)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Stage < out[j].Stage })
-	return out, nil
-}
-
 type SpectatorSnapshot struct {
-	CurrentStage int             `json:"current_stage"`
-	Standings    []StandingView  `json:"standings"`
-	Stages       []StageProgress `json:"stages"`
+	CurrentStage int            `json:"current_stage"`
+	TotalStages  int            `json:"total_stages"`
+	Standings    []StandingView `json:"standings"`
 }
 
 type cachedSnapshot struct {
@@ -272,12 +237,12 @@ func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (S
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
-	stages, err := s.Progress(ctx, competitionID)
+	course, err := rulebook.CourseByKey(comp.Course)
 	if err != nil {
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
-	snap := SpectatorSnapshot{CurrentStage: comp.CurrentStage, Standings: standings, Stages: stages}
+	snap := SpectatorSnapshot{CurrentStage: comp.CurrentStage, TotalStages: len(course.Stages), Standings: standings}
 	slot.cached = &cachedSnapshot{version: version, snapshot: snap}
 	return snap, nil
 }

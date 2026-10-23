@@ -7,13 +7,12 @@
 
   type Competition = components["schemas"]["Competition"];
   type Standing = components["schemas"]["Standing"];
-  type Progress = components["schemas"]["StageProgress"];
   type Snapshot = components["schemas"]["SpectatorSnapshot"];
 
   let competitions = $state<Competition[]>([]);
   let selected = $state<number | null>(null);
   let standings = $state<Standing[]>([]);
-  let progress = $state<Progress[]>([]);
+  let snapshot = $state<Snapshot | null>(null);
   let connection = $state<StreamState>("connecting");
   let updated = $state<Date | null>(null);
 
@@ -21,6 +20,15 @@
   const showClubs = $derived(standings.some((s) => s.club !== undefined));
   const showCountries = $derived(standings.some((s) => s.country !== undefined));
   const showX = $derived(standings.some((s) => s.x_count !== undefined));
+  const current = $derived(competitions.find((c) => c.id === selected));
+  const finished = $derived(current?.status === "finished");
+  const acceptance = $derived.by(() => {
+    if (!snapshot) return null;
+    const stages = snapshot.standings
+      .filter((s) => !s.withdrawn)
+      .flatMap((s) => s.stages?.filter((st) => st.stage === snapshot?.current_stage) ?? []);
+    return { accepted: stages.filter((st) => st.accepted).length, total: stages.length };
+  });
   const stageNumbers = $derived(
     [...new Set(standings.flatMap((s) => s.stages?.map((st) => st.stage) ?? []))].sort(
       (a, b) => a - b,
@@ -46,9 +54,8 @@
       url: `/api/spectator/competitions/${selected}/stream`,
       onEvent: (event, data) => {
         if (event !== "snapshot") return;
-        const snapshot: Snapshot = JSON.parse(data);
-        standings = snapshot.standings;
-        progress = snapshot.stages;
+        snapshot = JSON.parse(data);
+        standings = snapshot?.standings ?? [];
         updated = new Date();
       },
       onState: (next) => {
@@ -74,41 +81,34 @@
       <p class="muted">Reload this page once a competition has started.</p>
     </div>
   {:else}
-    <label class="picker">
-      Competition
-      <select bind:value={selected}>
-        {#each competitions as c (c.id)}
-          <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
-        {/each}
-      </select>
-    </label>
-
-    <p class="status" role="status">
-      {#if connection === "stale"}
-        <span class="badge danger">Offline</span>
-        <span class="error">Connection lost. Reconnecting…</span>
-        {#if updated}<span class="muted">Last update {clockTime(updated)}</span>{/if}
-      {:else if updated}
-        <span class="badge success">Live</span> <span class="muted">Updated {clockTime(updated)}</span>
-      {:else}
-        <span class="badge neutral">Loading</span> <span class="muted">Waiting for results…</span>
-      {/if}
-    </p>
-
-    {#if progress.length > 0}
-      <div class="card">
-        <h2>Stage progress</h2>
-        <ul class="progress">
-          {#each progress as p (p.stage)}
-            <li>
-              <span class="stage-name">Stage {p.stage}</span>
-              <progress max={p.entries} value={p.accepted}></progress>
-              <span class="count">{p.accepted}/{p.entries} accepted</span>
-            </li>
+    <div class="status-row">
+      <label class="picker">
+        Competition
+        <select bind:value={selected}>
+          {#each competitions as c (c.id)}
+            <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
           {/each}
-        </ul>
+        </select>
+      </label>
+      <div class="status" role="status">
+        {#if current}<span class="badge neutral">{current.status}</span>{/if}
+        {#if finished}
+          <strong>Finished</strong>
+        {:else if snapshot && acceptance}
+          <strong>Stage {snapshot.current_stage} of {snapshot.total_stages}</strong>
+          <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
+        {/if}
+        {#if connection === "stale"}
+          <span class="badge danger">Offline</span>
+          {#if updated}<span class="muted">Last update {clockTime(updated)}</span>{/if}
+        {:else if updated}
+          <span class="badge success">Live</span>
+          <span class="muted">Updated {clockTime(updated)}</span>
+        {:else}
+          <span class="badge neutral">Loading</span>
+        {/if}
       </div>
-    {/if}
+    </div>
 
     <h2>Standings</h2>
     {#if standings.length === 0}
@@ -165,23 +165,14 @@
 
 <style>
   .picker select { font-size: var(--text-base); padding: var(--space-2) var(--space-3); max-width: 100%; }
-  .status { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-3) 0; }
+  .status-row { display: flex; align-items: center; gap: var(--space-2) var(--space-4); flex-wrap: wrap; margin: var(--space-3) 0; }
+  .status { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
   .empty { text-align: center; padding: var(--space-6) var(--space-4); }
   .empty p { margin: var(--space-1) 0; }
   .rank, .total { font-weight: 700; font-size: var(--text-lg); }
   tr.leader > td, tr.leader:hover > td { background: var(--brand-tint); font-weight: 600; }
   .legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); list-style: none; padding: 0; margin: var(--space-3) 0; color: var(--text-muted); font-size: var(--text-sm); }
   .legend li { display: flex; align-items: center; gap: var(--space-1); }
-  .progress li { flex-wrap: wrap; }
-  .stage-name { min-width: 4.5rem; font-weight: 600; }
-  .count { min-width: 6.5rem; text-align: right; color: var(--text-muted); }
-  progress { appearance: none; height: var(--space-3); border: 0; border-radius: 999px; overflow: hidden; background: var(--neutral-bg); }
-  progress::-webkit-progress-bar { background: var(--neutral-bg); }
-  progress::-webkit-progress-value { background: var(--brand); border-radius: 999px; }
-  progress::-moz-progress-bar { background: var(--brand); border-radius: 999px; }
-  @media (max-width: 40rem) {
-    .progress progress { flex-basis: 100%; order: 3; }
-  }
   @media (min-width: 90rem) {
     .spectator { max-width: 96rem; font-size: var(--text-lg); }
     .spectator :global(th) { font-size: var(--text-base); }

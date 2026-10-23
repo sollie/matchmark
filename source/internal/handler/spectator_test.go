@@ -160,22 +160,6 @@ func TestSpectatorVisibilityFlags(t *testing.T) {
 	})
 }
 
-func TestSpectatorProgress(t *testing.T) {
-	f := spectatorFixture(t)
-	status, out := publicGet(t, f, fmt.Sprintf("/api/spectator/competitions/%d/progress", f.comp))
-	if status != http.StatusOK {
-		t.Fatalf("status %d %v", status, out)
-	}
-	stages := out["stages"].([]any)
-	if len(stages) != 10 {
-		t.Fatalf("stages %v", stages)
-	}
-	s1 := stages[0].(map[string]any)
-	if s1["stage"].(float64) != 1 || s1["entries"].(float64) != 2 || s1["accepted"].(float64) != 2 {
-		t.Fatalf("stage 1 %v", s1)
-	}
-}
-
 func TestSpectatorCompetitionList(t *testing.T) {
 	f := spectatorFixture(t)
 	f.env.ID("POST", "/api/competitions", map[string]any{"name": "Draft", "date": "2026-06-01", "course": "60"})

@@ -16,7 +16,7 @@ const eventWait = 3 * time.Second
 type snapshotBody struct {
 	CurrentStage int              `json:"current_stage"`
 	Standings    []map[string]any `json:"standings"`
-	Stages       []map[string]any `json:"stages"`
+	TotalStages  int              `json:"total_stages"`
 }
 
 func streamPath(f *fixture) string {
@@ -60,9 +60,6 @@ func TestSpectatorStreamSendsSnapshotOnConnect(t *testing.T) {
 	if len(snap.Standings) != 2 || snap.Standings[0]["last_name"] != "Berg" {
 		t.Fatalf("standings %v", snap.Standings)
 	}
-	if len(snap.Stages) != 10 {
-		t.Fatalf("stages %v", snap.Stages)
-	}
 }
 
 func TestSpectatorStreamPushesSnapshotAfterLock(t *testing.T) {
@@ -72,16 +69,16 @@ func TestSpectatorStreamPushesSnapshotAfterLock(t *testing.T) {
 	f.activate(t)
 	s := f.env.OpenStream(streamPath(f), nil)
 	first := nextSnapshot(t, s)
-	if first.Stages[0]["accepted"].(float64) != 0 {
-		t.Fatalf("stages %v", first.Stages)
+	if first.Standings[0]["stages"].([]any)[0].(map[string]any)["accepted"] != false {
+		t.Fatalf("standings %v", first.Standings)
 	}
 	path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1/lock", f.comp, entry)
 	if status, out := f.env.Do("POST", path, nil); status != http.StatusOK && status != http.StatusNoContent {
 		t.Fatalf("lock: %d %v", status, out)
 	}
 	second := nextSnapshot(t, s)
-	if second.Stages[0]["accepted"].(float64) != 1 {
-		t.Fatalf("stages %v", second.Stages)
+	if second.Standings[0]["stages"].([]any)[0].(map[string]any)["accepted"] != true {
+		t.Fatalf("standings %v", second.Standings)
 	}
 }
 
@@ -230,6 +227,9 @@ func TestSpectatorSnapshotStageStates(t *testing.T) {
 	f.score(t, two, 1, map[string]any{"x": 12})
 	f.activate(t)
 	snap := nextSnapshot(t, f.env.OpenStream(streamPath(f), nil))
+	if snap.TotalStages != 10 {
+		t.Fatalf("total stages %d", snap.TotalStages)
+	}
 	if snap.CurrentStage != 1 {
 		t.Fatalf("current stage %d", snap.CurrentStage)
 	}

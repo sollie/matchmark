@@ -891,24 +891,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/spectator/competitions/{competitionID}/progress": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                competitionID: components["parameters"]["CompetitionID"];
-            };
-            cookie?: never;
-        };
-        get: operations["getSpectatorProgress"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/spectator/competitions/{competitionID}/stream": {
         parameters: {
             query?: never;
@@ -920,7 +902,7 @@ export interface paths {
         };
         /**
          * Live updates as server-sent events
-         * @description Sends a `snapshot` event with the standings and progress on connect and again after every change, coalesced over about 250 ms. A `: heartbeat` comment is sent every 25 seconds. The server closes the stream after 30 minutes and the client reconnects, which yields a fresh snapshot, so no replay or `Last-Event-ID` is needed. Visibility flags apply as for the standings endpoint. At most 500 streams are served at once.
+         * @description Sends a `snapshot` event with the standings on connect and again after every change, coalesced over about 250 ms. A `: heartbeat` comment is sent every 25 seconds. The server closes the stream after 30 minutes and the client reconnects, which yields a fresh snapshot, so no replay or `Last-Event-ID` is needed. Visibility flags apply as for the standings endpoint. At most 500 streams are served at once.
          */
         get: operations["streamSpectatorUpdates"];
         put?: never;
@@ -1236,13 +1218,9 @@ export interface components {
         SpectatorSnapshot: {
             /** @description The competition's current stage number */
             current_stage: number;
+            /** @description Number of stages in the competition's course of fire */
+            total_stages: number;
             standings: components["schemas"]["Standing"][];
-            stages: components["schemas"]["StageProgress"][];
-        };
-        StageProgress: {
-            stage: number;
-            entries: number;
-            accepted: number;
         };
     };
     responses: {
@@ -3010,31 +2988,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         standings: components["schemas"]["Standing"][];
-                    };
-                };
-            };
-            404: components["responses"]["NotFound"];
-        };
-    };
-    getSpectatorProgress: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                competitionID: components["parameters"]["CompetitionID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Per-stage accepted counts */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        stages: components["schemas"]["StageProgress"][];
                     };
                 };
             };
