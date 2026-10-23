@@ -124,8 +124,8 @@ func TestPhaseFollowsLockAndAcceptanceAndSurvivesReload(t *testing.T) {
 		t.Fatalf("phase after accepting while own lock awaits: %v", got)
 	}
 	f.deviceAction(lane1, 1, "accept")
-	if got := f.session(t, lane1)["phase"]; got != "scoring" {
-		t.Fatalf("lane 1 moves on once both stages are accepted: %v", got)
+	if got := f.session(t, lane1)["phase"]; got != "waiting" {
+		t.Fatalf("lane 1 waits at the gate once both stages are accepted: %v", got)
 	}
 }
 

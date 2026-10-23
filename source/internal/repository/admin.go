@@ -68,7 +68,7 @@ func (r *Repository) DeleteShooter(ctx context.Context, id int64) error {
 
 func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, date, course, status FROM competitions ORDER BY date DESC, id DESC`)
+		`SELECT id, name, date, course, status, current_stage FROM competitions ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error
 	comps := []Competition{}
 	for rows.Next() {
 		var c Competition
-		if err := rows.Scan(&c.ID, &c.Name, &c.Date, &c.Course, &c.Status); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage); err != nil {
 			return nil, err
 		}
 		comps = append(comps, c)
@@ -90,9 +90,15 @@ func (r *Repository) UpdateCompetition(ctx context.Context, c Competition) error
 	return affected(res, err)
 }
 
-func (r *Repository) SetCompetitionStatus(ctx context.Context, id int64, status string) error {
-	res, err := r.db.ExecContext(ctx, `UPDATE competitions SET status = ? WHERE id = ?`, status, id)
-	return affected(res, err)
+func (r *Repository) SetCompetitionStatus(ctx context.Context, id int64, from, to string) error {
+	res, err := r.db.ExecContext(ctx, `UPDATE competitions SET status = ? WHERE id = ? AND status = ?`, to, id, from)
+	return conflictIfNone(res, err)
+}
+
+func (r *Repository) AdvanceStage(ctx context.Context, id int64, from int) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE competitions SET current_stage = current_stage + 1 WHERE id = ? AND status = 'active' AND current_stage = ?`, id, from)
+	return conflictIfNone(res, err)
 }
 
 func (r *Repository) DeleteCompetition(ctx context.Context, id int64) error {
@@ -172,19 +178,6 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 		entries[i].Stages = append(entries[i].Stages, si)
 	}
 	return entries, srows.Err()
-}
-
-func (r *Repository) StageInProgress(ctx context.Context, competitionID int64) (bool, error) {
-	var n int
-	err := r.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM (
-		   SELECT s.stage_number
-		   FROM stages s JOIN entries e ON e.id = s.entry_id
-		   WHERE e.competition_id = ? AND e.withdrawn = 0
-		   GROUP BY s.stage_number
-		   HAVING SUM(s.status <> 'open' OR s.x + s.ten + s.nine + s.eight + s.seven + s.zero + s.miss > 0) BETWEEN 1 AND COUNT(*) - 1
-		 )`, competitionID).Scan(&n)
-	return n > 0, err
 }
 
 func affected(res sql.Result, err error) error {

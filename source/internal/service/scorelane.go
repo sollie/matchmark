@@ -8,11 +8,12 @@ import (
 )
 
 type ScoreTarget struct {
-	ScorerName  string
-	ScoreLane   int
-	Entry       repository.EntryWithStages
-	Own         repository.EntryWithStages
-	ShooterName string
+	ScorerName   string
+	ScoreLane    int
+	CurrentStage int
+	Entry        repository.EntryWithStages
+	Own          repository.EntryWithStages
+	ShooterName  string
 }
 
 func deriveScoreLane(manned []int, ownLane int) (int, error) {
@@ -79,10 +80,11 @@ func (s *Service) resolveScoreTarget(ctx context.Context, d Device, requireActiv
 		return ScoreTarget{}, mapRepoErr(err)
 	}
 	return ScoreTarget{
-		ScorerName:  shooterName(scorer),
-		ScoreLane:   scoreLane,
-		Entry:       target,
-		Own:         manned[d.Lane],
-		ShooterName: shooterName(shooter),
+		ScorerName:   shooterName(scorer),
+		ScoreLane:    scoreLane,
+		CurrentStage: comp.CurrentStage,
+		Entry:        target,
+		Own:          manned[d.Lane],
+		ShooterName:  shooterName(shooter),
 	}, nil
 }

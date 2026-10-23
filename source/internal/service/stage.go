@@ -80,6 +80,9 @@ func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID
 		change.Stage = &StageEvent{CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber}
 	}
 	s.changes.Record(ctx, change)
+	if stage.Status != repository.StatusOpen {
+		s.finishIfComplete(ctx, competitionID, nil)
+	}
 	return nil
 }
 

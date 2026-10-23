@@ -22,7 +22,7 @@ async function openCompetition(page: Page, name: string) {
 }
 
 async function seedScored(api: APIRequestContext, finish = false) {
-  const competition = await createCompetition(api, { name: uniqueName("Spectator"), status: "active" });
+  const competition = await createCompetition(api, { name: uniqueName("Spectator") });
   await setVisibility(api, competition.id, {});
   const club = uniqueName("Club");
   const entries = [] as { lane: number; last_name: string; first_name: string; club: string; country: string }[];
@@ -37,10 +37,14 @@ async function seedScored(api: APIRequestContext, finish = false) {
     const shooter = await createShooter(api, { club: `${club} L${plan.lane}`, country: plan.lane % 2 ? "SWE" : "DEN" });
     shooters.push(shooter);
   }
+  const entryIds = [] as number[];
   for (const [i, plan] of plans.entries()) {
-    const entryId = await addEntry(api, competition.id, shooters[i].id, plan.lane);
-    await setCounts(api, competition.id, entryId, 1, plan.counts, plan.lock);
+    entryIds.push(await addEntry(api, competition.id, shooters[i].id, plan.lane));
     entries.push({ lane: plan.lane, ...shooters[i] });
+  }
+  await setStatus(api, competition.id, "active");
+  for (const [i, plan] of plans.entries()) {
+    await setCounts(api, competition.id, entryIds[i], 1, plan.counts, plan.lock);
   }
   if (finish) await setStatus(api, competition.id, "finished");
   return { competition, entries };

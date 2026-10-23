@@ -88,7 +88,7 @@ The shooter's refusal of a locked stage. The stage reopens with its hits kept, a
 _Avoid_: Reject, appeal
 
 **Current stage**:
-The one stage every device scores at a given time. The admin starts the next stage once every manned lane has accepted the current one.
+The one stage every device scores at a given time. The admin starts the next stage once every manned, non-withdrawn lane has accepted the current one (the gate); accepting the last stage finishes the competition. Stored as `current_stage`.
 _Avoid_: Active stage, round
 
 **Results report**:

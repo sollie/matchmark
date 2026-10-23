@@ -63,7 +63,7 @@ func scorerSessionJSON(sess service.ScorerSession) map[string]any {
 	}
 	out := map[string]any{
 		"lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
-		"shooter_name": sess.ShooterName, "stages": stages, "phase": sess.Phase,
+		"shooter_name": sess.ShooterName, "stages": stages, "phase": sess.Phase, "current_stage": sess.CurrentStage,
 	}
 	if a := sess.Acceptance; a != nil {
 		acceptance := ringCountsJSON(a.Counts)
@@ -96,7 +96,7 @@ func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return streamEvent{}, err
 		}
-		return streamEvent{Name: "snapshot", Data: scorerSessionJSON(sess)}, nil
+		return streamEvent{Name: "snapshot", Data: scorerSessionJSON(sess), Final: sess.Phase == service.PhaseFinished}, nil
 	})
 }
 

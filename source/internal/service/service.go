@@ -18,6 +18,8 @@ var (
 
 	ErrStageNotAwaitingAcceptance = errors.New("stage is not awaiting acceptance")
 	ErrStageNotLocked             = errors.New("stage is not locked")
+	ErrNotCurrentStage            = errors.New("not the current stage")
+	ErrStageGateNotMet            = errors.New("every manned lane must accept the current stage first")
 )
 
 type Service struct {

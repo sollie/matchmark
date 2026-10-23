@@ -7,7 +7,8 @@ import { stubFetch } from "../test/fetch";
 type SessionOverrides = {
   score_lane?: number;
   shooter_name?: string;
-  phase?: "scoring" | "waiting" | "needs_acceptance";
+  phase?: "scoring" | "waiting" | "needs_acceptance" | "next_stage" | "finished";
+  current_stage?: number;
   acceptance?: object;
   disputed?: number[];
   counts?: Record<string, number>;
@@ -18,6 +19,7 @@ const zeroCounts = { x: 0, 10: 0, 9: 0, 8: 0, 7: 0, 0: 0, miss: 0 };
 const session = (locked: boolean[], { disputed = [], counts = {}, ...overrides }: SessionOverrides = {}) => ({
   lane: 1,
   score_lane: 2,
+  current_stage: locked.findIndex((l) => !l) + 1 || locked.length,
   entry_id: 4,
   shooter_name: "Rick Roe",
   phase: "scoring",
@@ -84,7 +86,8 @@ describe("Scorer", () => {
     const user = userEvent.setup();
     await open(server);
     expect(server.streams[0].headers.get("Authorization")).toBe("Bearer device-token");
-    expect(screen.getByRole("tab", { name: /Stage 2/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText(/Stage 2\./)).toBeTruthy();
+    expect(screen.queryByRole("tab")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Increase X" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     const save = calls.find((c) => c.method === "PUT");
@@ -96,8 +99,7 @@ describe("Scorer", () => {
   it("shows a locked banner for a locked stage and saves nothing", async () => {
     const server = fakeStream();
     const user = userEvent.setup();
-    await open(server);
-    await user.click(screen.getByRole("tab", { name: /Stage 1/ }));
+    await open(server, session([true, false], { current_stage: 1 }));
     expect(screen.getByText(/Stage 1 is locked/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(calls.some((c) => c.method === "PUT")).toBe(false);
@@ -119,8 +121,8 @@ describe("Scorer", () => {
     const user = userEvent.setup();
     await open(server);
     await user.click(screen.getByRole("button", { name: "Increase X" }));
-    server.streams[0].send("snapshot", session([true, true], { phase: "waiting" }));
-    await screen.findByText(/Stage 1 is locked/);
+    server.streams[0].send("snapshot", session([true, true], { phase: "waiting", current_stage: 2 }));
+    await screen.findByText(/Stage 2 is locked/);
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     server.streams[0].send("snapshot", session([true, false]));
     await screen.findByRole("button", { name: "Save" });
@@ -131,7 +133,7 @@ describe("Scorer", () => {
     const server = fakeStream();
     const user = userEvent.setup();
     const acceptance = { ...zeroCounts, x: 10, 10: 2, stage_number: 1, total: 12, scorer_name: "Ann Lee" };
-    await open(server, session([true, false], { phase: "needs_acceptance", acceptance }));
+    await open(server, session([true, false], { phase: "needs_acceptance", acceptance, current_stage: 1 }));
     expect(screen.getByText(/Your result for stage 1 awaits your acceptance/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
 
@@ -172,6 +174,25 @@ describe("Scorer", () => {
     await screen.findByText("Scoring lane 3: Ann Lee");
     expect(screen.getByRole("status").textContent).toContain("Score lane changed to lane 3");
     expect(screen.getByLabelText("X count")).toHaveProperty("value", "0");
+  });
+
+  it("announces a started stage and shows the scoring form after Continue", async () => {
+    const server = fakeStream();
+    const user = userEvent.setup();
+    await open(server, session([true, false], { phase: "next_stage" }));
+    expect(screen.getByText(/The next stage has started/)).toBeTruthy();
+    expect(screen.queryByLabelText("X count")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByLabelText("X count")).toBeTruthy();
+  });
+
+  it("shows the finished screen and keeps the token", async () => {
+    const server = fakeStream();
+    render(Scorer);
+    await waitFor(() => expect(server.streams.length).toBe(1));
+    server.streams[0].send("snapshot", { lane: 1, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" });
+    await screen.findByText(/The competition is finished/);
+    expect(localStorage.getItem("mm_device_token")).toBe("device-token");
   });
 
   it("forgets the token and does not reconnect after a revoked event", async () => {

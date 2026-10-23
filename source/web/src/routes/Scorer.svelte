@@ -29,7 +29,6 @@
   let token = $state(loadDeviceToken());
   let session = $state<Session | null>(null);
   let loadError = $state("");
-  let stage = $state<number | null>(null);
   let counts = $state<Record<string, number>>(emptyCounts());
   let message = $state("");
   let error = $state("");
@@ -38,9 +37,11 @@
   let connection = $state<StreamState>("connecting");
   let connectAttempt = $state(0);
   let reviewing = $state(false);
+  let started = $state(false);
 
+  const stage = $derived(session?.current_stage ?? null);
   const current = $derived(session?.stages.find((s) => s.stage_number === stage) ?? null);
-  const waitingStage = $derived(session?.stages.find((s) => s.status !== "accepted") ?? null);
+  const waitingStage = $derived(session?.stages.find((s) => s.stage_number === stage && s.status !== "accepted") ?? null);
   const acceptance = $derived(session?.acceptance ?? null);
   const sum = $derived(rings.reduce((n, r) => n + counts[r.key], 0));
 
@@ -78,15 +79,16 @@
       error = "";
       notice = `Score lane changed to lane ${next.score_lane}. Your unsaved ring counts were reset.`;
     }
-    if (stage === null || !next.stages.some((s) => s.stage_number === stage)) {
-      const first = next.stages.find((s) => s.status === "open") ?? next.stages[0];
-      stage = first?.stage_number ?? null;
-      counts = savedCounts(first);
+    const now = next.stages.find((s) => s.stage_number === next.current_stage);
+    if (!previous || previous.current_stage !== next.current_stage) {
+      counts = savedCounts(now);
+      message = "";
+      error = "";
     } else {
-      const was = previous?.stages.find((s) => s.stage_number === stage);
-      const now = next.stages.find((s) => s.stage_number === stage);
+      const was = previous.stages.find((s) => s.stage_number === next.current_stage);
       if (now?.disputed && !was?.disputed) counts = savedCounts(now);
     }
+    if (next.phase !== "next_stage") started = false;
     if (next.phase !== "needs_acceptance") reviewing = false;
   }
 
@@ -120,14 +122,6 @@
       stream.close();
     };
   });
-
-  function selectStage(n: number) {
-    stage = n;
-    counts = savedCounts(session?.stages.find((s) => s.stage_number === n));
-    notice = "";
-    message = "";
-    error = "";
-  }
 
   function bump(key: string, delta: number) {
     counts[key] = Math.max(0, counts[key] + delta);
@@ -215,24 +209,23 @@
       <p class="muted">Loading…</p>
     {/if}
   {:else}
+    {#if session.phase === "finished"}
+      <h1>Scorer</h1>
+      <section class="card finished" aria-label="Finished">
+        <h2>Finished</h2>
+        <p class="banner">The competition is finished. Thank you for scoring.</p>
+      </section>
+    {:else}
     <h1>Scoring lane {session.score_lane}: {session.shooter_name}</h1>
-    <p class="muted">This device is paired to lane {session.lane}.</p>
+    <p class="muted">This device is paired to lane {session.lane}. Stage {session.current_stage}.</p>
 
-    {#if session.phase === "scoring"}
-      <div class="stages" role="tablist">
-        {#each session.stages as s (s.stage_number)}
-          <button
-            role="tab"
-            aria-selected={s.stage_number === stage}
-            class:active={s.stage_number === stage}
-            class:is-locked={s.status !== "open"}
-            onclick={() => selectStage(s.stage_number)}
-          >
-            <span>Stage {s.stage_number}</span>
-            <span class="state">{s.status !== "open" ? "🔒 Locked" : "Open"}</span>
-          </button>
-        {/each}
-      </div>
+    {#if session.phase === "next_stage" && !started}
+      <section class="card next-stage" aria-label="Next stage">
+        <h2>Stage {session.current_stage} has started</h2>
+        <p class="banner">The next stage has started. Get ready to score lane {session.score_lane}.</p>
+        <button class="primary" onclick={() => (started = true)}>Continue</button>
+      </section>
+    {:else if session.phase === "scoring" || session.phase === "next_stage"}
 
       {#if current?.status === "open" && current.disputed}
         <p class="card banner disputed">
@@ -304,13 +297,14 @@
         {#if waitingStage}
           <p class="banner">🔒 Stage {waitingStage.stage_number} is locked. Waiting for {session.shooter_name} to accept.</p>
         {:else}
-          <p class="banner">All stages are accepted.</p>
+          <p class="banner">🔒 Stage {session.current_stage} is locked. Waiting for the other lanes and the admin.</p>
         {/if}
         {#if acceptance}
           <p class="banner needs-acceptance">Your result for stage {acceptance.stage_number} awaits your acceptance.</p>
           <button class="primary" onclick={() => (reviewing = true)}>Review result</button>
         {/if}
       </section>
+    {/if}
     {/if}
 
     {#if connection === "stale"}<p class="muted">Connection lost. Reconnecting…</p>{/if}
@@ -322,11 +316,6 @@
 </main>
 
 <style>
-  .stages { display: flex; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-3) 0; }
-  .stages button { display: flex; flex-direction: column; align-items: center; min-width: 6rem; min-height: var(--touch); padding: var(--space-2) var(--space-4); border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-weight: 600; }
-  .stages button .state { font-size: var(--text-sm); font-weight: 500; }
-  .stages button.is-locked { border-style: dashed; }
-  .stages button.active { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
   .banner { font-weight: 600; font-size: var(--text-lg); }
   .disputed { border-color: var(--danger-fg); color: var(--danger-fg); }
   .result dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0; }

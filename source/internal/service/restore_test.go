@@ -24,12 +24,19 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 		f.fillStage(t, f.entry2, n)
 	}
 	f.fillStage(t, f.entry1, 1)
-	for _, n := range []int{1, 2} {
-		if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, n); err != nil {
-			t.Fatal(err)
-		}
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := f.svc.AdminLockStage(service.WithActor(ctx, service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.AdminAcceptStage(ctx, f.compID, f.entry2, 1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.StartNextStage(ctx, f.compID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 2); err != nil {
 		t.Fatal(err)
 	}
 	events, _, err := restore.Parse(strings.NewReader(f.buf.String()))
@@ -52,6 +59,9 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 	}
 	if first.Competitions != 1 || first.Entries != 2 || first.Stages != 3 {
 		t.Fatalf("first = %+v", first)
+	}
+	if restored, err := repo.GetCompetition(ctx, f.compID); err != nil || restored.Status != "active" || restored.CurrentStage != 2 {
+		t.Fatalf("restored competition = %+v, err %v", restored, err)
 	}
 	second, err := svc.RestoreScoreLog(ctx, plan, true)
 	if err != nil {

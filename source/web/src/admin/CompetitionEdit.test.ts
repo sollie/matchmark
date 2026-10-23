@@ -18,7 +18,7 @@ beforeAll(async () => {
   await loadRulebook();
 });
 
-const competition = { id: 5, name: "Spring", date: "2026-03-01", course: "150", status: "draft" as const };
+const competition = { id: 5, name: "Spring", date: "2026-03-01", course: "150", status: "draft" as const, current_stage: 1 };
 
 function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0]) {
   const calls = stubFetch(reply);

@@ -54,7 +54,10 @@
     const stream = openStream({
       url: `/api/competitions/${id}/stream`,
       onEvent: (event) => {
-        if (event === "changed") void loadEntries();
+        if (event === "changed") {
+          void loadEntries();
+          void loadCompetition();
+        }
       },
     });
     return () => stream.close();
@@ -67,7 +70,7 @@
     const message =
       next === "finished"
         ? "Finish this competition? All pairings are revoked."
-        : "Start this competition? Entries can then only change between stages.";
+        : "Start this competition? Entries are then frozen and devices score one stage at a time.";
     if (!confirm(message)) return;
     error = "";
     const result = await api.POST("/api/competitions/{competitionID}/status", {
@@ -76,6 +79,17 @@
     });
     if (result.data) competition = { ...competition, status: result.data.status };
     else error = failure(result);
+  }
+
+  async function startNextStage() {
+    error = "";
+    const result = await api.POST("/api/competitions/{competitionID}/next-stage", {
+      params: { path: { competitionID: id } },
+    });
+    if (result.data) {
+      await loadCompetition();
+      await loadEntries();
+    } else error = failure(result);
   }
 
   async function remove() {
@@ -92,12 +106,16 @@
   <p>
     {competition.date} · {courseLabel(competition.course)} ·
     <span class="badge {statusTone[competition.status]}">{competition.status}</span>
+    {#if competition.status === "active"}· Stage {competition.current_stage}{/if}
   </p>
   <div class="row">
     {#if nextStatus[competition.status]}
       <button class="primary" onclick={advance}>
         {competition.status === "draft" ? "Start competition" : "Finish competition"}
       </button>
+    {/if}
+    {#if competition.status === "active"}
+      <button class="primary" onclick={startNextStage}>Start next stage</button>
     {/if}
     {#if competition.status === "draft" && !editing}
       <button onclick={() => (editing = true)}>Edit competition</button>
@@ -119,7 +137,7 @@
     />
   {/if}
 
-  <Entries competitionId={id} {entries} {shooters} reload={loadEntries} />
+  <Entries competitionId={id} status={competition.status} {entries} {shooters} reload={loadEntries} />
   <Pairings competitionId={id} {entries} finished={competition.status === "finished"} />
   <Visibility competitionId={id} />
 {:else if error}

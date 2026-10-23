@@ -11,7 +11,7 @@ test.describe("audit log", () => {
     await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
     await expect(row(page, "competition.create").filter({ hasText: name }).first()).toContainText("e2e-admin");
 
-    await page.getByLabel("User").fill("nobody-here");
+    await page.getByLabel("User").fill("unknown-audit-user");
     await page.getByRole("button", { name: "Filter" }).click();
     await expect(page.getByText("No entries match.")).toBeVisible();
 
