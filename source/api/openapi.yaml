@@ -473,6 +473,50 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/wa1500/search:
+    get:
+      operationId: searchWa1500
+      tags: [shooters]
+      summary: Search the WA1500 register by name, club or WAID (cached, rate limited)
+      security:
+        - adminCookie: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      responses:
+        '200':
+          description: Matching WA1500 shooters
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Wa1500Shooter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many WA1500 searches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: WA1500 is unreachable or returned an unusable response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/shooters/{shooterID}:
     parameters:
       - $ref: '#/components/parameters/ShooterID'
@@ -1649,6 +1693,20 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    Wa1500Shooter:
+      type: object
+      required: [waid, first_name, last_name, country, club]
+      properties:
+        waid:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        country:
+          type: string
+        club:
+          type: string
     Rulebook:
       type: object
       required: [courses, weapon_classes, rings]

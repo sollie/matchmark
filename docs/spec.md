@@ -48,6 +48,8 @@ JSON REST API under `/api`, documented with OpenAPI; admin and spectator endpoin
 
 `GET /api/rulebook` is read-only and unauthenticated. It returns the courses keyed `150`, `60`, `48` and `40` (label, discipline, total shots, stages with distance, expected shots, time and position), the weapon classes per discipline and the ring values. `internal/rulebook` is its only source, including the course labels; the SPA course dropdowns read from it.
 
+`GET /api/wa1500/search?q=` (admin only) looks up the WA1500 register at the fixed host `https://wa1500.org` (`internal/wa1500`: form POST to `class.php`, Latin-1 response decoded, 10 s timeout, 2 MiB size cap, `LAST,  First` names split into last and first name) and returns `{results:[{waid, first_name, last_name, country, club}]}`. WA1500 provides no sex. Results are cached for five minutes per query and searches are limited to ten per minute (`429`); an unreachable or unusable upstream returns `502` so the client can fall back to manual entry.
+
 ## Backend
 
 Go, chi, SQLite-format storage via Turso Database and `turso.tech/database/tursogo` (`CGO_ENABLED=0`, native library loaded at runtime; see ADR 0005), embedded ordered migrations, strict handler → service → repository layering, `excelize` for xlsx, `certmagic` for ACME. Passwords hashed with argon2id (random salt per user, PHC string, m=19456 KiB, t=2, p=1, rehashed at login when weaker, constant-time comparison, dummy verification for unknown usernames; login answers wrong password and unknown username identically; failed logins are limited per IP and delayed per username, never hard-locked); session cookie `HttpOnly`, `SameSite=Lax`, `Secure` when `BASE_URL` is https.
