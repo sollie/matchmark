@@ -15,6 +15,9 @@ var (
 	ErrLaneNotManned      = errors.New("lane is not manned")
 	ErrAdminScoringNeeded = errors.New("admin scoring required")
 	ErrStageLocked        = errors.New("stage is locked")
+
+	ErrStageNotAwaitingAcceptance = errors.New("stage is not awaiting acceptance")
+	ErrStageNotLocked             = errors.New("stage is not locked")
 )
 
 type Service struct {

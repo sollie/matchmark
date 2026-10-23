@@ -101,6 +101,14 @@
     );
   }
 
+  async function accept(entry: EntryWithStages, stage: number) {
+    await run(
+      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept", {
+        params: { path: { ...path(entry), stage } },
+      }),
+    );
+  }
+
   async function lock(entry: EntryWithStages, stage: number) {
     await run(
       api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock", {
@@ -176,26 +184,31 @@
             <td class="category">{entry.category}</td>
           {/if}
           {#each entry.stages as st (st.stage_number)}
-            <td class="stage" class:state-locked={st.locked} class:state-scored={!st.locked && st.shots_entered >= st.expected_shots} class:state-open={!st.locked && st.shots_entered < st.expected_shots} data-label={`Stage ${st.stage_number}`}>
+            <td class="stage" class:state-locked={st.status === "accepted"} class:state-scored={st.status === "open" && st.shots_entered >= st.expected_shots} class:state-open={st.status === "open" && st.shots_entered < st.expected_shots} data-label={`Stage ${st.stage_number}`}>
               <div class="stage-cell">
                 <div class="stage-status">
-                  {#if st.locked}
-                    <span class="badge success" title={st.scorer_lane != null ? `Scored by lane ${st.scorer_lane} ${st.scorer_name ?? ""}` : `Locked by ${st.scorer_name ?? ""}`}>Locked</span>
+                  {#if st.status === "accepted"}
+                    <span class="badge success" title={st.scorer_lane != null ? `Scored by lane ${st.scorer_lane} ${st.scorer_name ?? ""}` : `Locked by ${st.scorer_name ?? ""}`}>Accepted</span>
+                  {:else if st.status === "awaiting_acceptance"}
+                    <span class="badge info" title={st.scorer_lane != null ? `Scored by lane ${st.scorer_lane} ${st.scorer_name ?? ""}` : `Locked by ${st.scorer_name ?? ""}`}>Awaiting acceptance</span>
                   {:else if st.shots_entered >= st.expected_shots}
                     <span class="badge info">Scored, not locked</span>
                   {:else}
                     <span class="badge warning">Open</span>
                   {/if}
-                  {#if st.locked || st.shots_entered > 0}
+                  {#if st.status !== "open" || st.shots_entered > 0}
                     <span class="score"><strong>{st.score}</strong> pts</span>
                   {/if}
                 </div>
-                {#if !st.locked && st.shots_entered > 0 && st.shots_entered < st.expected_shots}
+                {#if st.status === "open" && st.shots_entered > 0 && st.shots_entered < st.expected_shots}
                   <span class="muted">{st.shots_entered} / {st.expected_shots} shots</span>
                 {/if}
                 <span class="stage-actions">
                   <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Edit`} onclick={() => (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}>Edit</button>
-                  {#if st.locked}
+                  {#if st.status === "awaiting_acceptance"}
+                    <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Accept`} onclick={() => accept(entry, st.stage_number)}>Accept</button>
+                  {/if}
+                  {#if st.status !== "open"}
                     <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Unlock`} onclick={() => unlock(entry, st.stage_number)}>Unlock</button>
                   {:else}
                     <button class="secondary" aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Lock`} onclick={() => lock(entry, st.stage_number)}>Lock</button>

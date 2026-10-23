@@ -52,7 +52,7 @@ func deviceFrom(r *http.Request) service.Device {
 func scorerSessionJSON(sess service.ScorerSession) map[string]any {
 	stages := make([]map[string]any, 0, len(sess.Stages))
 	for _, s := range sess.Stages {
-		stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "locked": s.Locked})
+		stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "status": s.Status})
 	}
 	return map[string]any{
 		"lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
@@ -109,11 +109,12 @@ func (h *Handler) scorerLock(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if err := h.svc.DeviceLockStage(r.Context(), deviceFrom(r), int(stage)); err != nil {
+	status, err := h.svc.DeviceLockStage(r.Context(), deviceFrom(r), int(stage))
+	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"locked": true})
+	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
 }
 
 func (h *Handler) createPairing(w http.ResponseWriter, r *http.Request) {
@@ -193,11 +194,35 @@ func (h *Handler) lockStage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if err := h.svc.AdminLockStage(r.Context(), compID, entryID, int(stage)); err != nil {
+	status, err := h.svc.AdminLockStage(r.Context(), compID, entryID, int(stage))
+	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"locked": true})
+	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
+}
+
+func (h *Handler) acceptStage(w http.ResponseWriter, r *http.Request) {
+	compID, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	entryID, err := pathInt(r, "entryID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	stage, err := pathInt(r, "stage")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := h.svc.AdminAcceptStage(r.Context(), compID, entryID, int(stage)); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": repository.StatusAccepted})
 }
 
 func (h *Handler) unlockStage(w http.ResponseWriter, r *http.Request) {
@@ -220,7 +245,7 @@ func (h *Handler) unlockStage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"locked": false})
+	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": repository.StatusOpen})
 }
 
 type ringCountsBody struct {

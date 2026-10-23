@@ -11,7 +11,7 @@ const session = (locked: boolean[], overrides: SessionOverrides = {}) => ({
   score_lane: 2,
   entry_id: 4,
   shooter_name: "Rick Roe",
-  stages: locked.map((l, i) => ({ stage_number: i + 1, expected_shots: 30, locked: l })),
+  stages: locked.map((l, i) => ({ stage_number: i + 1, expected_shots: 30, status: l ? "awaiting_acceptance" : "open" })),
   ...overrides,
 });
 

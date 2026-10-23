@@ -67,7 +67,7 @@ test.describe("pairing and scorer device", () => {
 
     await openCompetition(page, competition.id);
     const stage = row(page, entries[1].shooter.last_name).locator("td.stage").first();
-    await expect(stage.getByText("Locked", { exact: true })).toBeVisible();
+    await expect(stage.getByText("Awaiting acceptance", { exact: true })).toBeVisible();
   });
 
   test("a locked stage is read-only for the scorer and the admin sees who locked it", async ({ adminPage: page, admin, openDevice }) => {
@@ -85,19 +85,23 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.getByLabel("10 count", { exact: true })).toHaveCount(0);
 
     await openCompetition(page, competition.id);
-    const badge = row(page, entries[1].shooter.last_name).getByText("Locked", { exact: true }).first();
+    const badge = row(page, entries[1].shooter.last_name).getByText("Awaiting acceptance", { exact: true }).first();
     await expect(badge).toBeVisible();
     await expect(badge).toHaveAttribute(
       "title",
       `Scored by lane 1 ${entries[0].shooter.first_name} ${entries[0].shooter.last_name}`,
     );
+
+    await page.getByRole("button", { name: `Lane ${entries[1].lane} stage 1: Accept` }).click();
+    await expect(row(page, entries[1].shooter.last_name).getByText("Accepted", { exact: true }).first()).toBeVisible();
+    await expect(badge).toHaveCount(0);
   });
 
   test("the admin entries refresh when a scorer locks a stage without reloading", async ({ adminPage: page, admin, openDevice }) => {
     const { competition, entries } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, competition.id, 1);
     await openCompetition(page, competition.id);
-    const lockedBadge = row(page, entries[1].shooter.last_name).getByText("Locked", { exact: true });
+    const lockedBadge = row(page, entries[1].shooter.last_name).getByText("Awaiting acceptance", { exact: true });
     await expect(lockedBadge).toHaveCount(0);
 
     const scorer = await openDevice(pairing.token);
@@ -168,7 +172,7 @@ test.describe("pairing and scorer device", () => {
     await page.getByLabel("10", { exact: true }).fill("12");
     await expect(page.getByText("✓ Shots match")).toBeVisible();
     await page.getByRole("button", { name: "Save and lock" }).click();
-    await expect(entryRow.locator("td.stage").first().getByText("Locked", { exact: true })).toBeVisible();
+    await expect(entryRow.locator("td.stage").first().getByText("Accepted", { exact: true })).toBeVisible();
   });
 
   test("a draft competition cannot be scored from a device", async ({ admin, openDevice }) => {

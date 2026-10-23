@@ -13,7 +13,7 @@ type sessionBody struct {
 	Lane      int `json:"lane"`
 	ScoreLane int `json:"score_lane"`
 	Stages    []struct {
-		Locked bool `json:"locked"`
+		Status string `json:"status"`
 	} `json:"stages"`
 }
 
@@ -57,7 +57,7 @@ func TestScorerStreamPushesAdminLockAndUnlock(t *testing.T) {
 		t.Fatalf("status %d", s.Status)
 	}
 	first := nextSession(t, s)
-	if first.Lane != 1 || first.ScoreLane != 2 || first.Stages[0].Locked {
+	if first.Lane != 1 || first.ScoreLane != 2 || first.Stages[0].Status != "open" {
 		t.Fatalf("first %+v", first)
 	}
 	base := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[2])
@@ -67,12 +67,12 @@ func TestScorerStreamPushesAdminLockAndUnlock(t *testing.T) {
 	if status, out := f.env.Do("POST", base+"/lock", nil); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
-	for !nextSession(t, s).Stages[0].Locked {
+	for nextSession(t, s).Stages[0].Status == "open" {
 	}
 	if status, out := f.env.Do("POST", base+"/unlock", nil); status != http.StatusOK && status != http.StatusNoContent {
 		t.Fatalf("unlock: %d %v", status, out)
 	}
-	for nextSession(t, s).Stages[0].Locked {
+	for nextSession(t, s).Stages[0].Status != "open" {
 	}
 }
 

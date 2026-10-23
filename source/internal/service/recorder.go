@@ -15,11 +15,9 @@ const (
 )
 
 type StageEvent struct {
-	Event         string
 	CompetitionID int64
 	EntryID       int64
 	StageNumber   int
-	Snapshot      *repository.Stage
 }
 
 type Change struct {
@@ -53,11 +51,7 @@ func (r *ChangeRecorder) Record(ctx context.Context, c Change) {
 		r.scoreLog.Reemit(ctx, *c.Reemit)
 	}
 	if e := c.Stage; e != nil {
-		if e.Snapshot != nil {
-			r.scoreLog.EmitStageSnapshot(ctx, e.Event, e.CompetitionID, e.EntryID, *e.Snapshot)
-		} else {
-			r.scoreLog.EmitStage(ctx, e.Event, e.CompetitionID, e.EntryID, e.StageNumber)
-		}
+		r.scoreLog.EmitStage(ctx, e.CompetitionID, e.EntryID, e.StageNumber)
 	}
 	switch c.Live {
 	case LiveCompetition:

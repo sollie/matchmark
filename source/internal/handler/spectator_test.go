@@ -27,6 +27,15 @@ func (f *fixture) score(t *testing.T, entry, stage int, counts map[string]any) {
 	}
 }
 
+func (f *fixture) scoreAccepted(t *testing.T, entry, stage int, counts map[string]any) {
+	t.Helper()
+	f.score(t, entry, stage, counts)
+	path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/%d/lock", f.comp, entry, stage)
+	if status, out := f.env.Do("POST", path, nil); status != http.StatusOK {
+		t.Fatalf("lock: %d %v", status, out)
+	}
+}
+
 func (f *fixture) activate(t *testing.T) {
 	t.Helper()
 	if status, out := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]string{"status": "active"}); status != http.StatusOK {
@@ -38,8 +47,8 @@ func spectatorFixture(t *testing.T) *fixture {
 	f := newFixture(t, "150")
 	one := f.addEntry(t, "Hansen", 1)
 	two := f.addEntry(t, "Berg", 2)
-	f.score(t, one, 1, map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 1})
-	f.score(t, two, 1, map[string]any{"x": 12})
+	f.scoreAccepted(t, one, 1, map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 1})
+	f.scoreAccepted(t, two, 1, map[string]any{"x": 12})
 	f.activate(t)
 	return f
 }
@@ -149,7 +158,7 @@ func TestSpectatorProgress(t *testing.T) {
 		t.Fatalf("stages %v", stages)
 	}
 	s1 := stages[0].(map[string]any)
-	if s1["stage"].(float64) != 1 || s1["entries"].(float64) != 2 || s1["locked"].(float64) != 0 {
+	if s1["stage"].(float64) != 1 || s1["entries"].(float64) != 2 || s1["accepted"].(float64) != 2 {
 		t.Fatalf("stage 1 %v", s1)
 	}
 }

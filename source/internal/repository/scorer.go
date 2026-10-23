@@ -77,34 +77,33 @@ func (r *Repository) MannedEntryByLane(ctx context.Context, competitionID int64,
 	return e, mapErr(err)
 }
 
-func (r *Repository) LockStage(ctx context.Context, stageID int64, scorerLane int, scorerName string) error {
-	res, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET locked = 1, scorer_lane = ?, scorer_name = ?, locked_at = ? WHERE id = ? AND locked = 0`,
+func (r *Repository) LockStage(ctx context.Context, stageID int64, scorerLane int, scorerName string, ev StageEvent) error {
+	return r.transition(ctx, true, ev,
+		`UPDATE stages SET status = 'awaiting_acceptance', scorer_lane = ?, scorer_name = ?, locked_at = ?,
+		        accepted_by = NULL, accepted_at = NULL, disputed_at = NULL
+		 WHERE id = ? AND status = 'open'`,
 		scorerLane, scorerName, lockTimestamp(), stageID)
-	if err != nil {
-		return mapErr(err)
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrConflict
-	}
-	return nil
 }
 
-func (r *Repository) LockStageAsUser(ctx context.Context, stageID int64, username string) error {
-	res, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET locked = 1, scorer_lane = NULL, scorer_name = ?, locked_at = ? WHERE id = ? AND locked = 0`,
-		username, lockTimestamp(), stageID)
-	if err != nil {
-		return mapErr(err)
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrConflict
-	}
-	return nil
+func (r *Repository) LockStageAsUser(ctx context.Context, stageID int64, username string, ev StageEvent) error {
+	now := lockTimestamp()
+	return r.transition(ctx, true, ev,
+		`UPDATE stages SET status = 'accepted', scorer_lane = NULL, scorer_name = ?, locked_at = ?,
+		        accepted_by = ?, accepted_at = ?, disputed_at = NULL
+		 WHERE id = ? AND status = 'open'`,
+		username, now, username, now, stageID)
 }
 
-func (r *Repository) UnlockStage(ctx context.Context, stageID int64) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET locked = 0, scorer_lane = NULL, scorer_name = NULL, locked_at = NULL WHERE id = ?`, stageID)
-	return mapErr(err)
+func (r *Repository) AcceptStage(ctx context.Context, stageID int64, acceptedBy string, ev StageEvent) error {
+	return r.transition(ctx, true, ev,
+		`UPDATE stages SET status = 'accepted', accepted_by = ?, accepted_at = ?
+		 WHERE id = ? AND status = 'awaiting_acceptance'`,
+		acceptedBy, lockTimestamp(), stageID)
+}
+
+func (r *Repository) UnlockStage(ctx context.Context, stageID int64, ev StageEvent) error {
+	return r.transition(ctx, true, ev,
+		`UPDATE stages SET status = 'open', scorer_lane = NULL, scorer_name = NULL, locked_at = NULL,
+		        accepted_by = NULL, accepted_at = NULL, disputed_at = NULL
+		 WHERE id = ? AND status <> 'open'`, stageID)
 }

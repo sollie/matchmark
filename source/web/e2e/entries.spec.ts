@@ -124,7 +124,7 @@ test.describe("admin ring counts", () => {
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
     await expect(counts).toHaveCount(0);
-    const locked = stage.getByText("Locked", { exact: true });
+    const locked = stage.getByText("Accepted", { exact: true });
     await expect(locked).toBeVisible();
     await expect(locked).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
     await expect(stage).toContainText("pts");
@@ -132,7 +132,7 @@ test.describe("admin ring counts", () => {
     await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Unlock` }).click();
     await expect(stage.getByText("Scored, not locked")).toBeVisible();
     await expect(page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Lock` })).toBeVisible();
-    await expect(stage.getByText("Locked", { exact: true })).toHaveCount(0);
+    await expect(stage.getByText("Accepted", { exact: true })).toHaveCount(0);
   });
 
   test("an admin overwrite replaces the counts of a stage that already has them", async ({ course, adminPage: page, admin }) => {
@@ -150,6 +150,6 @@ test.describe("admin ring counts", () => {
 
     await expect(counts).toHaveCount(0);
     await expect(stage.locator(".score strong")).toHaveText("108");
-    await expect(stage.getByText("Locked", { exact: true })).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
+    await expect(stage.getByText("Accepted", { exact: true })).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
   });
 });

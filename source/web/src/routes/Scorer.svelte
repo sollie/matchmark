@@ -71,7 +71,7 @@
       notice = `Score lane changed to lane ${next.score_lane}. Your unsaved ring counts were reset.`;
     }
     if (stage === null || !next.stages.some((s) => s.stage_number === stage)) {
-      stage = (next.stages.find((s) => !s.locked) ?? next.stages[0])?.stage_number ?? null;
+      stage = (next.stages.find((s) => s.status === "open") ?? next.stages[0])?.stage_number ?? null;
     }
   }
 
@@ -192,17 +192,17 @@
           role="tab"
           aria-selected={s.stage_number === stage}
           class:active={s.stage_number === stage}
-          class:is-locked={s.locked}
+          class:is-locked={s.status !== "open"}
           onclick={() => selectStage(s.stage_number)}
         >
           <span>Stage {s.stage_number}</span>
-          <span class="state">{s.locked ? "🔒 Locked" : "Open"}</span>
+          <span class="state">{s.status !== "open" ? "🔒 Locked" : "Open"}</span>
         </button>
       {/each}
     </div>
 
     {#if current}
-      {#if current.locked}
+      {#if current.status !== "open"}
         <p class="card locked banner">🔒 Stage {current.stage_number} is locked.</p>
       {:else}
         <div class="layout">
