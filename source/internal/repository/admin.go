@@ -207,3 +207,30 @@ func affected(res sql.Result, err error) error {
 	}
 	return nil
 }
+
+func (r *Repository) FindShooterByWAID(ctx context.Context, waid string) (Shooter, error) {
+	var s Shooter
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters WHERE waid = ?`, waid).
+		Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID)
+	return s, mapErr(err)
+}
+
+func (r *Repository) FindShootersByName(ctx context.Context, firstName, lastName string) ([]Shooter, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, last_name, first_name, sex, country, club, COALESCE(waid, '') FROM shooters
+		 WHERE lower(first_name) = lower(?) AND lower(last_name) = lower(?) ORDER BY id`, firstName, lastName)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	shooters := []Shooter{}
+	for rows.Next() {
+		var s Shooter
+		if err := rows.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID); err != nil {
+			return nil, err
+		}
+		shooters = append(shooters, s)
+	}
+	return shooters, rows.Err()
+}

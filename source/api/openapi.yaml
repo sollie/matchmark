@@ -456,6 +456,46 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/shooters/import:
+    post:
+      operationId: importShooter
+      tags: [shooters]
+      summary: Import a WA1500 hit as a local shooter, matching by WAID and then by name
+      description: >-
+        A WAID match updates that shooter. Without a WAID match, shooters sharing the first and last
+        name (case-insensitive) make the call answer 409 with candidates; resend with
+        update_shooter_id (one of the candidates) or create_new true. Otherwise a new shooter is created.
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShooterImportInput'
+      responses:
+        '200':
+          description: An existing shooter was updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShooterImportResult'
+        '201':
+          description: A new shooter was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShooterImportResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Local shooters share the name; the client must choose one or create a new shooter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShooterImportConflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/wa1500/search:
     get:
       operationId: searchWa1500
@@ -1885,6 +1925,39 @@ components:
               type: integer
               format: int64
         - $ref: '#/components/schemas/ShooterInput'
+    ShooterImportInput:
+      allOf:
+        - $ref: '#/components/schemas/ShooterInput'
+        - type: object
+          properties:
+            update_shooter_id:
+              type: integer
+              format: int64
+              description: A candidate from an earlier 409 to update with the imported data
+            create_new:
+              type: boolean
+              description: Create a new shooter although the name matches existing ones
+    ShooterImportResult:
+      type: object
+      required: [id, action]
+      properties:
+        id:
+          type: integer
+          format: int64
+        action:
+          type: string
+          enum: [created, updated]
+    ShooterImportConflict:
+      type: object
+      required: [error, candidates]
+      properties:
+        error:
+          type: string
+          enum: [name_conflict]
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shooter'
     ShooterInput:
       type: object
       required: [last_name, first_name, sex, country, club, waid]
