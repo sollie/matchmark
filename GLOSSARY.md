@@ -126,7 +126,7 @@ A change notice the server pushes for a competition to the spectator, admin and 
 _Avoid_: Poll, refresh, push notification
 
 **Change recorder**:
-The module that every state-changing operation reports to. Given one change (action, target, affected competition, and any locked stages whose Score log lines must be re-emitted), it writes the Audit log entry, re-emits the Score log lines, then publishes a Live update, in that fixed order. Failures in these steps are logged and never fail the request. Replication stays with the operation that needs it.
+The module that every state-changing operation reports to. Given one change (action, target, affected competition, and any stages beyond open whose Score log lines must be re-emitted), it writes the Audit log entry, re-emits the Score log lines, then publishes a Live update, in that fixed order. Failures in these steps are logged and never fail the request. Replication stays with the operation that needs it.
 _Avoid_: Event bus, notifier, hook
 
 ## Accounts
@@ -151,5 +151,5 @@ _Avoid_: Export, dump
 The module that decides whether a login attempt is allowed: it limits failures per client, slows repeated failures against one username, and deduplicates failed-login Audit log entries. It never sleeps; it returns the delay to apply.
 
 **Audit log**:
-The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records locked results.
+The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records stage status changes, and from the Dispute history.
 _Avoid_: Activity log, history
