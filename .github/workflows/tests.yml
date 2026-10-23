@@ -82,6 +82,11 @@ jobs:
     needs: web
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    env:
+      HOME: /root
     strategy:
       fail-fast: false
       matrix:
@@ -110,14 +115,9 @@ jobs:
         working-directory: source/web
         run: npm ci
 
-      - name: Install browser
+      - name: Check Playwright image matches lockfile
         working-directory: source/web
-        run: |
-          for attempt in 1 2 3; do
-            timeout 180 npx playwright install --with-deps ${{ matrix.browser }} && exit 0
-            echo "Browser install attempt $attempt failed or timed out"
-          done
-          exit 1
+        run: test "$(node -p "require('./node_modules/@playwright/test/package.json').version")" = "1.64.1"
 
       - name: E2E
         working-directory: source/web
