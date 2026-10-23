@@ -1,6 +1,7 @@
 package wa1500
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"unicode"
 
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/charset"
 )
 
 const (
@@ -60,7 +62,7 @@ func NewClient(opts ...ClientOption) *Client {
 }
 
 func (c *Client) Search(ctx context.Context, query string) ([]Shooter, error) {
-	form := "action=show&Suche=" + escapeLatin1(query) + "&Nation="
+	form := "action=show&Suche=" + url.QueryEscape(query) + "&Nation="
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+searchPath, strings.NewReader(form))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
@@ -81,31 +83,15 @@ func (c *Client) Search(ctx context.Context, query string) ([]Shooter, error) {
 	if int64(len(body)) > c.maxBytes {
 		return nil, fmt.Errorf("%w: response too large", ErrUpstream)
 	}
-	shooters, err := Parse(strings.NewReader(latin1ToUTF8(body)))
+	reader, err := charset.NewReader(bytes.NewReader(body), resp.Header.Get("Content-Type"))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
+	}
+	shooters, err := Parse(reader)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
 	}
 	return shooters, nil
-}
-
-func latin1ToUTF8(b []byte) string {
-	var sb strings.Builder
-	sb.Grow(len(b))
-	for _, c := range b {
-		sb.WriteRune(rune(c))
-	}
-	return sb.String()
-}
-
-func escapeLatin1(s string) string {
-	b := make([]byte, 0, len(s))
-	for _, r := range s {
-		if r > 0xFF {
-			r = '?'
-		}
-		b = append(b, byte(r))
-	}
-	return url.QueryEscape(string(b))
 }
 
 func Parse(r io.Reader) ([]Shooter, error) {

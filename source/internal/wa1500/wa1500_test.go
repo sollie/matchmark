@@ -67,22 +67,22 @@ func TestClientSearch(t *testing.T) {
 		path = r.URL.Path
 		_ = r.ParseForm()
 		form = r.PostForm
-		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write(latin1(string(fixture(t, "results.html"))))
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		_, _ = w.Write(fixture(t, "results.html"))
 	})
 	got, err := c.Search(context.Background(), "Åsen")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if path != "/class.php" || form.Get("action") != "show" || form.Get("Suche") != "\xc5sen" || form.Get("Nation") != "" {
+	if path != "/class.php" || form.Get("action") != "show" || form.Get("Suche") != "Åsen" || form.Get("Nation") != "" {
 		t.Fatalf("request %s %v", path, form)
 	}
 	if len(got) != 3 || got[1].LastName != "ÅSEN" {
-		t.Fatalf("latin-1 not decoded: %+v", got)
+		t.Fatalf("utf-8 not decoded: %+v", got)
 	}
 }
 
-func TestClientSendsLatin1Query(t *testing.T) {
+func TestClientSendsUTF8Query(t *testing.T) {
 	var raw string
 	c := newClient(t, func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
@@ -92,8 +92,19 @@ func TestClientSendsLatin1Query(t *testing.T) {
 	if _, err := c.Search(context.Background(), "Åsen"); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(raw, "Suche=%C5sen") {
+	if !strings.Contains(raw, "Suche=%C3%85sen") {
 		t.Fatalf("body %q", raw)
+	}
+}
+
+func TestClientHonoursDeclaredCharset(t *testing.T) {
+	c := newClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=ISO-8859-1")
+		_, _ = w.Write(latin1(string(fixture(t, "results.html"))))
+	})
+	got, err := c.Search(context.Background(), "x")
+	if err != nil || len(got) != 3 || got[1].LastName != "ÅSEN" {
+		t.Fatalf("got %+v, %v", got, err)
 	}
 }
 
