@@ -101,8 +101,8 @@
           {#each progress as p (p.stage)}
             <li>
               <span class="stage-name">Stage {p.stage}</span>
-              <progress max={p.entries} value={p.locked}></progress>
-              <span class="count">{p.locked}/{p.entries} locked</span>
+              <progress max={p.entries} value={p.accepted}></progress>
+              <span class="count">{p.accepted}/{p.entries} accepted</span>
             </li>
           {/each}
         </ul>

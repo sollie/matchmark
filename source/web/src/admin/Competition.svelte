@@ -8,6 +8,8 @@
   import { navigate } from "../lib/router.svelte";
   import type { components } from "../lib/api/schema";
   import Visibility from "./Visibility.svelte";
+  import ControlRoom from "./ControlRoom.svelte";
+  import StageHistory from "./StageHistory.svelte";
   import Entries from "./Entries.svelte";
   import Pairings from "./Pairings.svelte";
   import CompetitionEdit from "./CompetitionEdit.svelte";
@@ -23,6 +25,7 @@
   let entries = $state<EntryWithStages[]>([]);
   let error = $state("");
   let editing = $state(false);
+  let version = $state(0);
 
   async function loadCompetition() {
     const result = await api.GET("/api/competitions/{competitionID}", { params: { path: { competitionID: id } } });
@@ -54,7 +57,11 @@
     const stream = openStream({
       url: `/api/competitions/${id}/stream`,
       onEvent: (event) => {
-        if (event === "changed") void loadEntries();
+        if (event === "changed") {
+          void loadEntries();
+          void loadCompetition();
+          version += 1;
+        }
       },
     });
     return () => stream.close();
@@ -67,7 +74,7 @@
     const message =
       next === "finished"
         ? "Finish this competition? All pairings are revoked."
-        : "Start this competition? Entries can then only change between stages.";
+        : "Start this competition? Entries are then frozen and devices score one stage at a time.";
     if (!confirm(message)) return;
     error = "";
     const result = await api.POST("/api/competitions/{competitionID}/status", {
@@ -92,6 +99,7 @@
   <p>
     {competition.date} · {courseLabel(competition.course)} ·
     <span class="badge {statusTone[competition.status]}">{competition.status}</span>
+    {#if competition.status === "active"}· Stage {competition.current_stage}{/if}
   </p>
   <div class="row">
     {#if nextStatus[competition.status]}
@@ -119,7 +127,15 @@
     />
   {/if}
 
-  <Entries competitionId={id} {entries} {shooters} reload={loadEntries} />
+  {#if competition.status === "active"}
+    <ControlRoom competitionId={id} {version} changed={async () => { await loadCompetition(); await loadEntries(); }} />
+  {/if}
+
+  {#if competition.status !== "draft"}
+    <StageHistory competitionId={id} {version} />
+  {/if}
+
+  <Entries competitionId={id} status={competition.status} {entries} {shooters} reload={loadEntries} />
   <Pairings competitionId={id} {entries} finished={competition.status === "finished"} />
   <Visibility competitionId={id} />
 {:else if error}

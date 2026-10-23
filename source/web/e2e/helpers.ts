@@ -204,6 +204,30 @@ export async function createPairing(api: APIRequestContext, competitionId: numbe
   );
 }
 
+export async function deviceLock(
+  baseURL: string,
+  token: string,
+  stage: number,
+  counts: Partial<RingCounts>,
+) {
+  const api = await request.newContext({ baseURL, extraHTTPHeaders: { Authorization: `Bearer ${token}` } });
+  try {
+    await checked(await api.put(`/api/scorer/stages/${stage}`, { data: ringCounts(counts) }), "device set counts");
+    await checked(await api.post(`/api/scorer/stages/${stage}/lock`), "device lock");
+  } finally {
+    await api.dispose();
+  }
+}
+
+export async function deviceAction(baseURL: string, token: string, stage: number, action: "accept" | "dispute" | "lock") {
+  const api = await request.newContext({ baseURL, extraHTTPHeaders: { Authorization: `Bearer ${token}` } });
+  try {
+    await checked(await api.post(`/api/scorer/stages/${stage}/${action}`), `device ${action}`);
+  } finally {
+    await api.dispose();
+  }
+}
+
 function pairingPath(token: string): string {
   return `/score#token=${encodeURIComponent(token)}`;
 }
@@ -215,7 +239,7 @@ export async function signInViaUi(page: Page, password = adminPassword, username
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-export function row(page: Page, text: string | RegExp): Locator {
+export function row(page: Page | Locator, text: string | RegExp): Locator {
   return page.getByRole("row").filter({ hasText: text });
 }
 

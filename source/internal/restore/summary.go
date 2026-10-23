@@ -17,7 +17,7 @@ func WriteSummary(w io.Writer, plan Plan, stats Stats) {
 				e.ID, e.Shooter.FirstName, e.Shooter.LastName, e.Lane, e.Category, len(e.Stages))
 			for _, s := range e.Stages {
 				stages++
-				_, _ = fmt.Fprintf(w, "    stage %d: %v locked by %s\n", s.Number, s.RingCounts, s.LockedBy)
+				_, _ = fmt.Fprintf(w, "    stage %d: %v %s\n", s.Number, s.RingCounts, s.Status)
 			}
 		}
 	}
@@ -42,5 +42,5 @@ func WriteApplied(w io.Writer, stats Stats, applied Applied) {
 			_, _ = fmt.Fprintf(w, "  %s\n", c)
 		}
 	}
-	_, _ = fmt.Fprintln(w, "note: unscored entries, devices and pairings are not restored")
+	_, _ = fmt.Fprintln(w, "note: unscored entries, devices and pairings are not restored; re-pair the devices before scoring continues")
 }

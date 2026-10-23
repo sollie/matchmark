@@ -649,6 +649,123 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/next-stage:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    post:
+      operationId: startNextStage
+      tags: [competitions]
+      summary: Start the next stage once every manned, non-withdrawn lane has accepted the current one
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The new current stage
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [current_stage]
+                properties:
+                  current_stage:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/control-room:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: getControlRoom
+      tags: [competitions]
+      summary: The current stage with one row per manned lane
+      description: |
+        Answers 409 while the competition is a draft. connected is best-effort: it is true while the lane's device holds an open scorer stream and is never stored.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Control room
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlRoom'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/competitions/{competitionID}/stage-events:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: listStageEvents
+      tags: [competitions]
+      summary: Stage event history with lock and dispute counts per scorer
+      description: |
+        Events are oldest first and cover locks, acceptances, disputes, accept-all and unlocks. Device actors carry the shooter and scorer resolved from the pairing. The per-scorer counts cover the filtered events.
+      security:
+        - adminCookie: []
+      parameters:
+        - name: scorer
+          in: query
+          description: Exact scorer name
+          schema:
+            type: string
+        - name: shooter
+          in: query
+          description: Exact shooter name
+          schema:
+            type: string
+        - name: stage
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Stage event history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageHistory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/accept-all:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    post:
+      operationId: acceptAll
+      tags: [competitions]
+      summary: Accept every stage of the current stage that awaits acceptance
+      description: Answers 409 while any manned lane is still open for the current stage, or when the competition is not active. Accepting the last stage finishes the competition.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Number of stages accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted]
+                properties:
+                  accepted:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/competitions/{competitionID}/visibility:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -755,6 +872,7 @@ paths:
       - $ref: '#/components/parameters/EntryID'
     put:
       operationId: updateEntry
+      description: A draft competition allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409
       tags: [entries]
       security:
         - adminCookie: []
@@ -834,7 +952,7 @@ paths:
     put:
       operationId: setRingCounts
       tags: [entries]
-      summary: Admin overwrite of a stage's ring counts, allowed on a locked stage which stays locked
+      summary: Admin overwrite of a stage's ring counts, allowed on a stage awaiting acceptance or accepted, which then ends accepted
       security:
         - adminCookie: []
       requestBody:
@@ -864,20 +982,16 @@ paths:
     post:
       operationId: lockStage
       tags: [entries]
-      summary: Admin lock of a stage whose ring counts are complete
+      summary: Admin lock of a stage whose ring counts are complete, accepted directly
       security:
         - adminCookie: []
       responses:
         '200':
-          description: Stage locked
+          description: Stage accepted
           content:
             application/json:
               schema:
-                type: object
-                required: [locked]
-                properties:
-                  locked:
-                    type: boolean
+                $ref: '#/components/schemas/StageStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -886,6 +1000,30 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/EntryID'
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: acceptStage
+      tags: [entries]
+      summary: Admin acceptance of a stage that is awaiting acceptance
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Stage accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageStatusResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -894,23 +1032,22 @@ paths:
     post:
       operationId: unlockStage
       tags: [entries]
+      summary: Admin unlock of a stage that is awaiting acceptance or accepted, reopening it with its ring counts kept
       security:
         - adminCookie: []
       responses:
         '200':
-          description: Stage unlocked
+          description: Stage reopened
           content:
             application/json:
               schema:
-                type: object
-                required: [locked]
-                properties:
-                  locked:
-                    type: boolean
+                $ref: '#/components/schemas/StageStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/competitions/{competitionID}/lanes/{lane}/score-lane:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -1217,19 +1354,67 @@ paths:
         - deviceBearer: []
       responses:
         '200':
-          description: Stage locked
+          description: Stage awaiting acceptance
           content:
             application/json:
               schema:
-                type: object
-                required: [locked]
-                properties:
-                  locked:
-                    type: boolean
+                $ref: '#/components/schemas/StageStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/AdminScoringRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/scorer/stages/{stage}/accept:
+    parameters:
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: scorerAcceptStage
+      tags: [scorer]
+      summary: Accept the device's own locked stage
+      description: >
+        Acts on the stage of the device's own lane, never on another lane. Answers 409 unless the stage is awaiting acceptance, and 403 if the device itself locked it.
+      security:
+        - deviceBearer: []
+      responses:
+        '200':
+          description: The new stage status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageStatusResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/scorer/stages/{stage}/dispute:
+    parameters:
+      - $ref: '#/components/parameters/Stage'
+    post:
+      operationId: scorerDisputeStage
+      tags: [scorer]
+      summary: Dispute the device's own locked stage
+      description: >
+        Reopens the stage of the device's own lane with its hits kept and records the disputed time, which the next lock clears. Answers 409 unless the stage is awaiting acceptance, and 403 if the device itself locked it.
+      security:
+        - deviceBearer: []
+      responses:
+        '200':
+          description: The new stage status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageStatusResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -1294,7 +1479,7 @@ paths:
       tags: [spectator]
       responses:
         '200':
-          description: Per-stage locked counts
+          description: Per-stage accepted counts
           content:
             application/json:
               schema:
@@ -1436,6 +1621,12 @@ components:
             $ref: '#/components/schemas/Error'
     AdminScoringRequired:
       description: Single-lane competitions require admin scoring
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: The action is not permitted for this device
       content:
         application/json:
           schema:
@@ -1668,13 +1859,16 @@ components:
     Competition:
       allOf:
         - type: object
-          required: [id, status]
+          required: [id, status, current_stage]
           properties:
             id:
               type: integer
               format: int64
             status:
               $ref: '#/components/schemas/CompetitionStatus'
+            current_stage:
+              type: integer
+              description: Stage the competition is on. Stage 1 at activation; moved only by starting the next stage
         - $ref: '#/components/schemas/CompetitionInput'
     Visibility:
       type: object
@@ -1711,14 +1905,14 @@ components:
           type: boolean
     EntryStage:
       type: object
-      required: [stage_number, expected_shots, locked, scorer_lane, scorer_name, score, shots_entered]
+      required: [stage_number, expected_shots, status, scorer_lane, scorer_name, score, shots_entered]
       properties:
         stage_number:
           type: integer
         expected_shots:
           type: integer
-        locked:
-          type: boolean
+        status:
+          $ref: '#/components/schemas/StageStatus'
         scorer_lane:
           type: integer
           nullable: true
@@ -1727,7 +1921,7 @@ components:
           nullable: true
         score:
           type: integer
-          description: Points from the stored ring counts, whether or not the stage is locked
+          description: Points from the stored ring counts, whether or not the stage is accepted
         shots_entered:
           type: integer
           description: Sum of all stored ring counts
@@ -1779,12 +1973,15 @@ components:
           type: boolean
     ScorerSession:
       type: object
-      required: [lane, score_lane, entry_id, shooter_name, stages]
+      required: [lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
       properties:
         lane:
           type: integer
         score_lane:
           type: integer
+        current_stage:
+          type: integer
+          description: The competition's current stage; devices can score only this stage. Zero in the finished phase
         entry_id:
           type: integer
           format: int64
@@ -1794,23 +1991,149 @@ components:
           type: array
           items:
             type: object
-            required: [stage_number, expected_shots, locked]
-            properties:
-              stage_number:
-                type: integer
-              expected_shots:
-                type: integer
-              locked:
-                type: boolean
+            allOf:
+              - $ref: '#/components/schemas/RingCounts'
+              - type: object
+                required: [stage_number, expected_shots, status, disputed]
+                properties:
+                  stage_number:
+                    type: integer
+                  expected_shots:
+                    type: integer
+                  status:
+                    $ref: '#/components/schemas/StageStatus'
+                  disputed:
+                    type: boolean
+                    description: True from a dispute until the scorer locks the stage again
+        phase:
+          type: string
+          enum: [scoring, waiting, needs_acceptance, next_stage, finished]
+          description: Derived by the server from the current stage. scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
+        acceptance:
+          description: Present while phase is needs_acceptance
+          allOf:
+            - $ref: '#/components/schemas/RingCounts'
+            - type: object
+              required: [stage_number, total, scorer_name]
+              properties:
+                stage_number:
+                  type: integer
+                total:
+                  type: integer
+                scorer_name:
+                  type: string
+    ControlRoom:
+      type: object
+      required: [current_stage, can_start_next, can_accept_all, lanes]
+      properties:
+        current_stage:
+          type: integer
+        can_start_next:
+          type: boolean
+          description: True at the gate, when every manned lane has accepted the current stage and a later stage exists
+        can_accept_all:
+          type: boolean
+          description: True when no manned lane is open for the current stage and at least one awaits acceptance
+        lanes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ControlRoomLane'
+    ControlRoomLane:
+      type: object
+      required: [lane, entry_id, shooter_name, scorer_name, status, disputed, disputes, paired, connected]
+      properties:
+        lane:
+          type: integer
+        entry_id:
+          type: integer
+        shooter_name:
+          type: string
+        scorer_name:
+          type: string
+          description: The locking scorer, or the scorer the lane is derived to have; empty when the lane is scored by the admin
+        status:
+          $ref: '#/components/schemas/StageStatus'
+        disputed:
+          type: boolean
+          description: The stage is open again after a dispute
+        disputes:
+          type: integer
+          description: Disputes across all stages of the competition
+        paired:
+          type: boolean
+        connected:
+          type: boolean
+          description: Best-effort, from open scorer streams
+    StageHistory:
+      type: object
+      required: [events, scorers]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageHistoryEvent'
+        scorers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScorerDisputes'
+    StageHistoryEvent:
+      type: object
+      required: [id, time, stage, entry_id, event, actor_type, actor_name, shooter_name, scorer_name]
+      properties:
+        id:
+          type: integer
+          format: int64
+        time:
+          type: string
+          format: date-time
+        stage:
+          type: integer
+        entry_id:
+          type: integer
+        event:
+          type: string
+          enum: [locked, accepted, disputed, accepted_all, unlocked]
+        actor_type:
+          type: string
+          enum: [device, user]
+        actor_name:
+          type: string
+          description: device for a paired device, otherwise the username
+        shooter_name:
+          type: string
+        scorer_name:
+          type: string
+          description: The locking scorer; empty when the admin scored the stage
+    ScorerDisputes:
+      type: object
+      required: [scorer_name, locks, disputes]
+      properties:
+        scorer_name:
+          type: string
+        locks:
+          type: integer
+        disputes:
+          type: integer
+    StageStatus:
+      type: string
+      enum: [open, awaiting_acceptance, accepted]
+      description: A device lock leaves a stage awaiting acceptance, an admin lock or accept makes it accepted. Only accepted stages count in public views and reports
+    StageStatusResult:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/StageStatus'
     StageScore:
       type: object
-      required: [stage, score, locked]
+      required: [stage, score, accepted]
       properties:
         stage:
           type: integer
         score:
           type: integer
-        locked:
+          description: Zero until the stage is accepted
+        accepted:
           type: boolean
         ring_counts:
           $ref: '#/components/schemas/RingCounts'
@@ -1856,11 +2179,11 @@ components:
             $ref: '#/components/schemas/StageProgress'
     StageProgress:
       type: object
-      required: [stage, entries, locked]
+      required: [stage, entries, accepted]
       properties:
         stage:
           type: integer
         entries:
           type: integer
-        locked:
+        accepted:
           type: integer

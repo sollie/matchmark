@@ -11,14 +11,11 @@ import (
 )
 
 const (
-	scoreLogSchemaVersion = 1
+	scoreLogSchemaVersion = 2
 	emittedAtLayout       = "2006-01-02T15:04:05.000Z"
 )
 
-const (
-	eventStageLocked   = "stage_locked"
-	eventStageUnlocked = "stage_unlocked"
-)
+const eventStageStatus = "stage_status"
 
 type ScoreLog struct {
 	repo *repository.Repository
@@ -35,7 +32,7 @@ func WithScoreLog(l *slog.Logger) Option {
 	return func(s *Service) { s.scoreLogger = l }
 }
 
-func (l *ScoreLog) EmitStage(ctx context.Context, event string, competitionID, entryID int64, stageNumber int) {
+func (l *ScoreLog) EmitStage(ctx context.Context, competitionID, entryID int64, stageNumber int) {
 	if l == nil || l.log == nil {
 		return
 	}
@@ -44,32 +41,18 @@ func (l *ScoreLog) EmitStage(ctx context.Context, event string, competitionID, e
 	defer l.mu.Unlock()
 	stage, err := l.repo.GetStage(ctx, competitionID, entryID, stageNumber)
 	if err != nil {
-		l.log.ErrorContext(ctx, "score log context failed", "event", event, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageStatus, "error", err)
 		return
 	}
-	l.emitLocked(ctx, event, competitionID, entryID, stage)
-}
-
-func (l *ScoreLog) EmitStageSnapshot(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) {
-	if l == nil || l.log == nil {
-		return
-	}
-	ctx = context.WithoutCancel(ctx)
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.emitLocked(ctx, event, competitionID, entryID, stage)
-}
-
-func (l *ScoreLog) emitLocked(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) {
-	attrs, err := l.stageEventAttrs(ctx, event, competitionID, entryID, stage)
+	attrs, err := l.stageEventAttrs(ctx, competitionID, entryID, stage)
 	if err != nil {
-		l.log.ErrorContext(ctx, "score log context failed", "event", event, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageStatus, "error", err)
 		return
 	}
-	l.log.LogAttrs(ctx, slog.LevelInfo, event, attrs...)
+	l.log.LogAttrs(ctx, slog.LevelInfo, eventStageStatus, attrs...)
 }
 
-func (l *ScoreLog) stageEventAttrs(ctx context.Context, event string, competitionID, entryID int64, stage repository.Stage) ([]slog.Attr, error) {
+func (l *ScoreLog) stageEventAttrs(ctx context.Context, competitionID, entryID int64, stage repository.Stage) ([]slog.Attr, error) {
 	comp, err := l.repo.GetCompetition(ctx, competitionID)
 	if err != nil {
 		return nil, err
@@ -88,13 +71,16 @@ func (l *ScoreLog) stageEventAttrs(ctx context.Context, event string, competitio
 	}
 	l.seq++
 	c := stage.Counts
-	var lockedBy any = stage.ScorerName
-	if stage.ScorerLane != nil {
-		lockedBy = *stage.ScorerLane
+	var lockedBy any
+	if stage.Status != repository.StatusOpen {
+		lockedBy = stage.ScorerName
+		if stage.ScorerLane != nil {
+			lockedBy = *stage.ScorerLane
+		}
 	}
 	return []slog.Attr{
 		slog.Int("schema_version", scoreLogSchemaVersion),
-		slog.String("event", event),
+		slog.String("event", eventStageStatus),
 		slog.String("emitted_at", time.Now().UTC().Format(emittedAtLayout)),
 		slog.Int64("seq", l.seq),
 		slog.Group("competition",
@@ -123,9 +109,13 @@ func (l *ScoreLog) stageEventAttrs(ctx context.Context, event string, competitio
 			slog.Int("expected_shots", stage.ExpectedShots),
 		),
 		slog.Any("ring_counts", []int{c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss}),
+		slog.String("status", string(stage.Status)),
 		slog.Any("locked_by", lockedBy),
 		slog.String("scorer_name", stage.ScorerName),
 		slog.String("locked_at", stage.LockedAt),
+		slog.String("accepted_by", stage.AcceptedBy),
+		slog.String("accepted_at", stage.AcceptedAt),
+		slog.String("disputed_at", stage.DisputedAt),
 	}, nil
 }
 
@@ -136,10 +126,10 @@ func (l *ScoreLog) Reemit(ctx context.Context, f repository.LockedStageFilter) {
 	ctx = context.WithoutCancel(ctx)
 	refs, err := l.repo.ListLockedStages(ctx, f)
 	if err != nil {
-		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageLocked, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageStatus, "error", err)
 		return
 	}
 	for _, ref := range refs {
-		l.EmitStage(ctx, eventStageLocked, ref.CompetitionID, ref.EntryID, ref.Number)
+		l.EmitStage(ctx, ref.CompetitionID, ref.EntryID, ref.Number)
 	}
 }

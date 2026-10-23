@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	restoredSex    = "M"
-	restoredStatus = "finished"
+	restoredSex = "M"
 )
 
 var ErrRestoreTargetNotEmpty = errors.New("database already contains data; use --merge to apply only data whose ids match")
@@ -74,8 +73,9 @@ func buildRestoreCompetition(c restore.RestoredCompetition) (repository.RestoreC
 		expected[st.StageNumber] = st.ExpectedShots
 	}
 	rc := repository.RestoreCompetition{Competition: repository.Competition{
-		ID: c.ID, Name: c.Name, Date: c.Date, Course: c.CourseOfFire.Key, Status: restoredStatus,
+		ID: c.ID, Name: c.Name, Date: c.Date, Course: c.CourseOfFire.Key,
 	}}
+	allAccepted := true
 	for _, e := range c.Entries {
 		re := repository.RestoreEntry{
 			ID: e.ID, Category: e.Category, Lane: e.Lane,
@@ -95,19 +95,47 @@ func buildRestoreCompetition(c restore.RestoredCompetition) (repository.RestoreC
 			rs := repository.RestoreStage{Number: cs.StageNumber, Expected: cs.ExpectedShots}
 			if st, ok := scored[cs.StageNumber]; ok {
 				rs.Scored = true
+				rs.Status = repository.StageStatus(st.Status)
 				rs.Counts = ringCounts(st.RingCounts)
 				rs.ScorerName = st.ScorerName
 				rs.LockedAt = st.LockedAt
+				rs.AcceptedBy = st.AcceptedBy
+				rs.AcceptedAt = st.AcceptedAt
+				rs.DisputedAt = st.DisputedAt
 				if st.Lane > 0 {
 					lane := st.Lane
 					rs.ScorerLane = &lane
 				}
 			}
+			if rs.Status != repository.StatusAccepted {
+				allAccepted = false
+			}
 			re.Stages = append(re.Stages, rs)
 		}
 		rc.Entries = append(rc.Entries, re)
 	}
+	rc.Competition.Status = string(StatusActive)
+	rc.Competition.CurrentStage = restoredCurrentStage(rc.Entries)
+	if allAccepted {
+		rc.Competition.Status = string(StatusFinished)
+	}
 	return rc, nil
+}
+
+func restoredCurrentStage(entries []repository.RestoreEntry) int {
+	lowest, last := 0, 1
+	for _, e := range entries {
+		for _, st := range e.Stages {
+			last = max(last, st.Number)
+			if st.Status != repository.StatusAccepted && (lowest == 0 || st.Number < lowest) {
+				lowest = st.Number
+			}
+		}
+	}
+	if lowest == 0 {
+		return last
+	}
+	return lowest
 }
 
 func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreCompetition) (repository.RestoreCompetition, []string, error) {
@@ -147,7 +175,7 @@ func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreCompet
 			if err != nil {
 				return rc, nil, err
 			}
-			if cur.Locked && !sameLock(cur, st) {
+			if cur.Status != repository.StatusOpen && !sameLock(cur, st) {
 				conflicts = append(conflicts, fmt.Sprintf("competition %d entry %d stage %d: database has %+v locked by %s at %s, log has %+v locked by %s at %s",
 					id, e.ID, st.Number, cur.Counts, lockOwner(cur.ScorerLane, cur.ScorerName), cur.LockedAt,
 					st.Counts, lockOwner(st.ScorerLane, st.ScorerName), st.LockedAt))
@@ -162,7 +190,8 @@ func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreCompet
 func sameLock(cur repository.Stage, st repository.RestoreStage) bool {
 	sameLane := (cur.ScorerLane == nil) == (st.ScorerLane == nil) &&
 		(cur.ScorerLane == nil || *cur.ScorerLane == *st.ScorerLane)
-	return cur.Counts == st.Counts && sameLane && cur.ScorerName == st.ScorerName && cur.LockedAt == st.LockedAt
+	return cur.Counts == st.Counts && sameLane && cur.Status == st.Status && cur.ScorerName == st.ScorerName &&
+		cur.LockedAt == st.LockedAt && cur.AcceptedBy == st.AcceptedBy && cur.AcceptedAt == st.AcceptedAt
 }
 
 func lockOwner(lane *int, name string) string {

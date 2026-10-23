@@ -72,8 +72,30 @@ _Avoid_: Shot result
 The number of inner-ten (X) hits across an entry's stages. It breaks ties in the ranking and is the spectator column the visibility setting of the same name shows or hides.
 
 **Lock**:
-The scorer's confirmation that a stage's hits are final.
+The scorer's confirmation that a stage's hits are complete, which puts the stage awaiting acceptance. It is not final until the shooter accepts.
 _Avoid_: Submit, sign-off
+
+**Awaiting acceptance**:
+The state of a locked stage whose shooter has not yet accepted or disputed it. Its hits are frozen.
+_Avoid_: Pending, submitted
+
+**Accepted**:
+The final state of a stage: the shooter accepted the scorer's lock, or an admin accepted it or locked it directly. Only accepted stages count in standings, progress and reports.
+_Avoid_: Approved, confirmed, locked (for the final state)
+
+**Dispute**:
+The shooter's refusal of a locked stage. The stage reopens with its hits kept, and the scorer re-scores it, usually with the shooter and a range officer. A shooter can dispute any stage, without a reason.
+_Avoid_: Reject, appeal
+
+**Current stage**:
+The one stage every device scores at a given time. The admin starts the next stage once every manned, non-withdrawn lane has accepted the current one (the gate); accepting the last stage finishes the competition. Stored as `current_stage`.
+_Avoid_: Active stage, round
+
+**Dispute history**:
+The admin table of a competition's stage events (locks, acceptances, disputes, accept-all and unlocks, with actor and time), filterable by scorer, shooter and stage, with lock and dispute counts per scorer.
+
+**Control room**:
+The admin view of an active competition's current stage, with one row per manned lane (scorer, shooter, status, disputes, paired and a best-effort connected indicator) and the Start next stage, Accept all, Accept and Unlock actions. Connected means an open scorer stream and is never stored.
 
 **Results report**:
 The workbook, one sheet per category, that a club emails to the country representative. It lists a total score per shooter, plus the new shooters.
@@ -92,11 +114,11 @@ Copying the club's data to a separate host so it can be snapshotted and restored
 _Avoid_: Sync, backup
 
 **Score log**:
-The JSON `stage_locked` and `stage_unlocked` lines the server writes to stdout whenever a stage is locked or its locked state changes. Each line is self-contained, so a competition's scored results can be rebuilt by taking the latest line per stage.
+The JSON `stage_status` lines the server writes to stdout whenever a stage changes status. Each line is self-contained, so a competition's scored results, including stages awaiting acceptance, can be rebuilt by taking the latest line per stage.
 _Avoid_: Scoring log
 
 **Restore**:
-Rebuilding competitions, entries and locked stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
+Rebuilding competitions, entries and scored stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
 _Avoid_: Backup, replication
 
 **Live update**:
@@ -104,7 +126,7 @@ A change notice the server pushes for a competition to the spectator, admin and 
 _Avoid_: Poll, refresh, push notification
 
 **Change recorder**:
-The module that every state-changing operation reports to. Given one change (action, target, affected competition, and any locked stages whose Score log lines must be re-emitted), it writes the Audit log entry, re-emits the Score log lines, then publishes a Live update, in that fixed order. Failures in these steps are logged and never fail the request. Replication stays with the operation that needs it.
+The module that every state-changing operation reports to. Given one change (action, target, affected competition, and any stages beyond open whose Score log lines must be re-emitted), it writes the Audit log entry, re-emits the Score log lines, then publishes a Live update, in that fixed order. Failures in these steps are logged and never fail the request. Replication stays with the operation that needs it.
 _Avoid_: Event bus, notifier, hook
 
 ## Accounts
@@ -129,5 +151,5 @@ _Avoid_: Export, dump
 The module that decides whether a login attempt is allowed: it limits failures per client, slows repeated failures against one username, and deduplicates failed-login Audit log entries. It never sleeps; it returns the delay to apply.
 
 **Audit log**:
-The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records locked results.
+The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records stage status changes, and from the Dispute history.
 _Avoid_: Activity log, history

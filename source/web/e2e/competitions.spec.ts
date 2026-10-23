@@ -8,6 +8,7 @@ import {
   row,
   section,
   seedEntry,
+  setStatus,
   test,
   todayIso,
   uniqueName,
@@ -143,9 +144,10 @@ test.describe("competitions", () => {
   });
 
   test("a finished competition shows revoked pairings and refuses new entries", async ({ adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { status: "active" });
+    const competition = await createCompetition(admin);
     await seedEntry(admin, competition.id, 1);
     await seedEntry(admin, competition.id, 2);
+    await setStatus(admin, competition.id, "active");
     await createPairing(admin, competition.id, 1);
     const extra = await createShooter(admin);
 
@@ -162,11 +164,9 @@ test.describe("competitions", () => {
     await expect(pairings.getByRole("row", { name: /revoked/ })).toHaveCount(1);
     await expect(pairings.getByRole("button", { name: "Revoke" })).toHaveCount(0);
 
-    const entries = page.getByRole("form", { name: "Add entry" });
-    await entries.getByLabel("Shooter").selectOption({ label: `${extra.first_name} ${extra.last_name}` });
-    await page.getByLabel("Entry lane").fill("3");
-    await entries.getByRole("button", { name: "Add entry" }).click();
-    await expect(section(page, "Entries and progress").getByRole("alert")).toHaveText("conflict");
+    await expect(page.getByRole("form", { name: "Add entry" })).toHaveCount(0);
+    const refused = await admin.post(`/api/competitions/${competition.id}/entries`, { data: { shooter_id: extra.id, category: "Revolver", lane: 3 } });
+    expect(refused.status()).toBe(409);
     await expect(row(page, extra.last_name)).toHaveCount(0);
   });
 

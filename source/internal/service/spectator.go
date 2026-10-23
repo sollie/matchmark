@@ -19,10 +19,10 @@ type RingCountsView struct {
 }
 
 type StageScoreView struct {
-	Stage  int             `json:"stage"`
-	Score  int             `json:"score"`
-	Locked bool            `json:"locked"`
-	Counts *RingCountsView `json:"ring_counts,omitempty"`
+	Stage    int             `json:"stage"`
+	Score    int             `json:"score"`
+	Accepted bool            `json:"accepted"`
+	Counts   *RingCountsView `json:"ring_counts,omitempty"`
 }
 
 type StandingView struct {
@@ -40,9 +40,9 @@ type StandingView struct {
 }
 
 type StageProgress struct {
-	Stage   int `json:"stage"`
-	Entries int `json:"entries"`
-	Locked  int `json:"locked"`
+	Stage    int `json:"stage"`
+	Entries  int `json:"entries"`
+	Accepted int `json:"accepted"`
 }
 
 func (s *Service) GetVisibility(ctx context.Context, competitionID int64) (repository.Visibility, error) {
@@ -102,6 +102,10 @@ func (s *Service) Standings(ctx context.Context, competitionID int64) ([]Standin
 		var total repository.RingCounts
 		v := StandingView{Lane: e.Lane, Category: e.Category, Withdrawn: e.Withdrawn}
 		for _, st := range e.Stages {
+			accepted := st.Status == repository.StatusAccepted
+			if !accepted {
+				st.Counts = repository.RingCounts{}
+			}
 			v.Total += stagePoints(st.Counts)
 			total.X += st.Counts.X
 			total.Ten += st.Counts.Ten
@@ -111,7 +115,7 @@ func (s *Service) Standings(ctx context.Context, competitionID int64) ([]Standin
 			total.Zero += st.Counts.Zero
 			total.Miss += st.Counts.Miss
 			if vis.StageScores {
-				sv := StageScoreView{Stage: st.Number, Score: stagePoints(st.Counts), Locked: st.Locked}
+				sv := StageScoreView{Stage: st.Number, Score: stagePoints(st.Counts), Accepted: accepted}
 				if vis.RingCounts {
 					c := ringCountsView(st.Counts)
 					sv.Counts = &c
@@ -165,8 +169,8 @@ func (s *Service) Progress(ctx context.Context, competitionID int64) ([]StagePro
 				byStage[st.Number] = p
 			}
 			p.Entries++
-			if st.Locked {
-				p.Locked++
+			if st.Status == repository.StatusAccepted {
+				p.Accepted++
 			}
 		}
 	}

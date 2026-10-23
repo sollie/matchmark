@@ -13,7 +13,7 @@ type Visibility struct {
 type SpectatorStage struct {
 	Number int
 	Counts RingCounts
-	Locked bool
+	Status StageStatus
 }
 
 type SpectatorEntry struct {
@@ -61,7 +61,7 @@ func (r *Repository) ListPublicCompetitions(ctx context.Context) ([]Competition,
 func (r *Repository) ListSpectatorEntries(ctx context.Context, competitionID int64) ([]SpectatorEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT e.id, e.category, e.lane, e.withdrawn, sh.last_name, sh.first_name, sh.club, sh.country,
-		        st.stage_number, st.x, st.ten, st.nine, st.eight, st.seven, st.zero, st.miss, st.locked
+		        st.stage_number, st.x, st.ten, st.nine, st.eight, st.seven, st.zero, st.miss, st.status
 		 FROM entries e
 		 JOIN shooters sh ON sh.id = e.shooter_id
 		 JOIN stages st ON st.entry_id = e.id
@@ -76,7 +76,7 @@ func (r *Repository) ListSpectatorEntries(ctx context.Context, competitionID int
 		var e SpectatorEntry
 		var s SpectatorStage
 		if err := rows.Scan(&e.ID, &e.Category, &e.Lane, &e.Withdrawn, &e.LastName, &e.FirstName, &e.Club, &e.Country,
-			&s.Number, &s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &s.Locked); err != nil {
+			&s.Number, &s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &s.Status); err != nil {
 			return nil, err
 		}
 		if n := len(entries); n > 0 && entries[n-1].ID == e.ID {

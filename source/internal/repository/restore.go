@@ -9,10 +9,14 @@ type RestoreStage struct {
 	Number     int
 	Expected   int
 	Scored     bool
+	Status     StageStatus
 	Counts     RingCounts
 	ScorerLane *int
 	ScorerName string
 	LockedAt   string
+	AcceptedBy string
+	AcceptedAt string
+	DisputedAt string
 }
 
 type RestoreEntry struct {
@@ -72,8 +76,8 @@ func (r *Repository) RestoreCompetitions(ctx context.Context, rcs []RestoreCompe
 
 func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, counts *RestoreCounts) error {
 	res, err := tx.ExecContext(ctx,
-		`INSERT OR IGNORE INTO competitions (id, name, date, course, status) VALUES (?, ?, ?, ?, ?)`,
-		rc.Competition.ID, rc.Competition.Name, rc.Competition.Date, rc.Competition.Course, rc.Competition.Status)
+		`INSERT OR IGNORE INTO competitions (id, name, date, course, status, current_stage) VALUES (?, ?, ?, ?, ?, ?)`,
+		rc.Competition.ID, rc.Competition.Name, rc.Competition.Date, rc.Competition.Course, rc.Competition.Status, rc.Competition.CurrentStage)
 	if err != nil {
 		return mapErr(err)
 	}
@@ -108,10 +112,11 @@ func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, 
 			}
 			res, err := tx.ExecContext(ctx,
 				`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?,
-				        locked = 1, scorer_lane = ?, scorer_name = ?, locked_at = ?
-				 WHERE entry_id = ? AND stage_number = ? AND locked = 0`,
+				        status = ?, scorer_lane = ?, scorer_name = ?, locked_at = ?, accepted_by = ?, accepted_at = ?, disputed_at = ?
+				 WHERE entry_id = ? AND stage_number = ? AND status = 'open'`,
 				s.Counts.X, s.Counts.Ten, s.Counts.Nine, s.Counts.Eight, s.Counts.Seven, s.Counts.Zero, s.Counts.Miss,
-				s.ScorerLane, s.ScorerName, s.LockedAt, e.ID, s.Number)
+				s.Status, s.ScorerLane, nullIfEmpty(s.ScorerName), nullIfEmpty(s.LockedAt), nullIfEmpty(s.AcceptedBy),
+				nullIfEmpty(s.AcceptedAt), nullIfEmpty(s.DisputedAt), e.ID, s.Number)
 			if err != nil {
 				return mapErr(err)
 			}
