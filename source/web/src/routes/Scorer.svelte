@@ -21,6 +21,11 @@
   const emptyCounts = (): Record<string, number> =>
     Object.fromEntries(rings.map((r) => [r.key, 0]));
 
+  type SessionStage = Session["stages"][number];
+
+  const savedCounts = (s: SessionStage | undefined): Record<string, number> =>
+    s ? Object.fromEntries(rings.map((r) => [r.key, s[r.key]])) : emptyCounts();
+
   let token = $state(loadDeviceToken());
   let session = $state<Session | null>(null);
   let loadError = $state("");
@@ -32,8 +37,11 @@
   let notice = $state("");
   let connection = $state<StreamState>("connecting");
   let connectAttempt = $state(0);
+  let reviewing = $state(false);
 
   const current = $derived(session?.stages.find((s) => s.stage_number === stage) ?? null);
+  const waitingStage = $derived(session?.stages.find((s) => s.status !== "accepted") ?? null);
+  const acceptance = $derived(session?.acceptance ?? null);
   const sum = $derived(rings.reduce((n, r) => n + counts[r.key], 0));
 
   function auth() {
@@ -71,8 +79,15 @@
       notice = `Score lane changed to lane ${next.score_lane}. Your unsaved ring counts were reset.`;
     }
     if (stage === null || !next.stages.some((s) => s.stage_number === stage)) {
-      stage = (next.stages.find((s) => s.status === "open") ?? next.stages[0])?.stage_number ?? null;
+      const first = next.stages.find((s) => s.status === "open") ?? next.stages[0];
+      stage = first?.stage_number ?? null;
+      counts = savedCounts(first);
+    } else {
+      const was = previous?.stages.find((s) => s.stage_number === stage);
+      const now = next.stages.find((s) => s.stage_number === stage);
+      if (now?.disputed && !was?.disputed) counts = savedCounts(now);
     }
+    if (next.phase !== "needs_acceptance") reviewing = false;
   }
 
   function reconnect() {
@@ -108,7 +123,7 @@
 
   function selectStage(n: number) {
     stage = n;
-    counts = emptyCounts();
+    counts = savedCounts(session?.stages.find((s) => s.stage_number === n));
     notice = "";
     message = "";
     error = "";
@@ -164,6 +179,23 @@
     }
   }
 
+  async function respond(action: "accept" | "dispute") {
+    if (!acceptance) return;
+    busy = true;
+    error = "";
+    const { error: err, response } = await api.POST(
+      action === "accept" ? "/api/scorer/stages/{stage}/accept" : "/api/scorer/stages/{stage}/dispute",
+      { params: { path: { stage: acceptance.stage_number } }, headers: auth() },
+    );
+    busy = false;
+    if (response.ok) {
+      reviewing = false;
+      message = action === "accept" ? "Result accepted" : "Result disputed";
+    } else {
+      error = errorMessage(err, `Request failed (${response.status})`);
+    }
+  }
+
   function unpair() {
     forget();
   }
@@ -186,62 +218,99 @@
     <h1>Scoring lane {session.score_lane}: {session.shooter_name}</h1>
     <p class="muted">This device is paired to lane {session.lane}.</p>
 
-    <div class="stages" role="tablist">
-      {#each session.stages as s (s.stage_number)}
-        <button
-          role="tab"
-          aria-selected={s.stage_number === stage}
-          class:active={s.stage_number === stage}
-          class:is-locked={s.status !== "open"}
-          onclick={() => selectStage(s.stage_number)}
-        >
-          <span>Stage {s.stage_number}</span>
-          <span class="state">{s.status !== "open" ? "🔒 Locked" : "Open"}</span>
-        </button>
-      {/each}
-    </div>
+    {#if session.phase === "scoring"}
+      <div class="stages" role="tablist">
+        {#each session.stages as s (s.stage_number)}
+          <button
+            role="tab"
+            aria-selected={s.stage_number === stage}
+            class:active={s.stage_number === stage}
+            class:is-locked={s.status !== "open"}
+            onclick={() => selectStage(s.stage_number)}
+          >
+            <span>Stage {s.stage_number}</span>
+            <span class="state">{s.status !== "open" ? "🔒 Locked" : "Open"}</span>
+          </button>
+        {/each}
+      </div>
 
-    {#if current}
-      {#if current.status !== "open"}
-        <p class="card locked banner">🔒 Stage {current.stage_number} is locked.</p>
-      {:else}
-        <div class="layout">
-          <div class="rings">
-            {#each rings as r (r.key)}
-              <div class="ring">
-                <span class="label">{r.label}</span>
-                <button onclick={() => bump(r.key, -1)} aria-label="Decrease {r.label}">−</button>
-                <input
-                  type="number"
-                  inputmode="numeric"
-                  min="0"
-                  bind:value={counts[r.key]}
-                  aria-label="{r.label} count"
-                />
-                <button onclick={() => bump(r.key, 1)} aria-label="Increase {r.label}">+</button>
+      {#if current?.status === "open" && current.disputed}
+        <p class="card banner disputed">
+          Disputed: the shooter disputed stage {current.stage_number}. Correct the ring counts and lock it again.
+        </p>
+      {/if}
+
+      {#if current}
+        {#if current.status !== "open"}
+          <p class="card locked banner">🔒 Stage {current.stage_number} is locked.</p>
+        {:else}
+          <div class="layout">
+            <div class="rings">
+              {#each rings as r (r.key)}
+                <div class="ring">
+                  <span class="label">{r.label}</span>
+                  <button onclick={() => bump(r.key, -1)} aria-label="Decrease {r.label}">−</button>
+                  <input
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    bind:value={counts[r.key]}
+                    aria-label="{r.label} count"
+                  />
+                  <button onclick={() => bump(r.key, 1)} aria-label="Increase {r.label}">+</button>
+                </div>
+              {/each}
+            </div>
+            <div class="summary card">
+              <p class="total" class:mismatch={sum !== current.expected_shots}>
+                <strong>{sum}</strong> / {current.expected_shots}
+              </p>
+              <p class="total-label">
+                {#if sum === current.expected_shots}
+                  <span class="badge success">✓ Shots match</span>
+                {:else if sum > current.expected_shots}
+                  <span class="badge danger">⚠ {sum - current.expected_shots} too many</span>
+                {:else}
+                  <span class="badge warning">⚠ {current.expected_shots - sum} to go</span>
+                {/if}
+              </p>
+              <div class="actions">
+                <button class="primary" disabled={busy} onclick={save}>Save</button>
+                <button class="primary lock" disabled={busy} onclick={lock}>Lock stage</button>
               </div>
-            {/each}
-          </div>
-          <div class="summary card">
-            <p class="total" class:mismatch={sum !== current.expected_shots}>
-              <strong>{sum}</strong> / {current.expected_shots}
-            </p>
-            <p class="total-label">
-              {#if sum === current.expected_shots}
-                <span class="badge success">✓ Shots match</span>
-              {:else if sum > current.expected_shots}
-                <span class="badge danger">⚠ {sum - current.expected_shots} too many</span>
-              {:else}
-                <span class="badge warning">⚠ {current.expected_shots - sum} to go</span>
-              {/if}
-            </p>
-            <div class="actions">
-              <button class="primary" disabled={busy} onclick={save}>Save</button>
-              <button class="primary lock" disabled={busy} onclick={lock}>Lock stage</button>
             </div>
           </div>
-        </div>
+        {/if}
       {/if}
+    {:else if reviewing && acceptance}
+      <section class="card result" aria-label="Your result">
+        <h2>Your result for stage {acceptance.stage_number}</h2>
+        <p class="muted">Scored by {acceptance.scorer_name}</p>
+        <dl>
+          {#each rings as r (r.key)}
+            <dt>{r.label}</dt>
+            <dd>{acceptance[r.key]}</dd>
+          {/each}
+        </dl>
+        <p class="total"><strong>{acceptance.total} hits, {acceptance.x} X</strong></p>
+        <div class="actions">
+          <button class="primary" disabled={busy} onclick={() => respond("accept")}>Accept</button>
+          <button disabled={busy} onclick={() => respond("dispute")}>Dispute</button>
+        </div>
+      </section>
+    {:else}
+      <section class="card waiting" aria-label="Waiting">
+        <h2>Waiting</h2>
+        {#if waitingStage}
+          <p class="banner">🔒 Stage {waitingStage.stage_number} is locked. Waiting for {session.shooter_name} to accept.</p>
+        {:else}
+          <p class="banner">All stages are accepted.</p>
+        {/if}
+        {#if acceptance}
+          <p class="banner needs-acceptance">Your result for stage {acceptance.stage_number} awaits your acceptance.</p>
+          <button class="primary" onclick={() => (reviewing = true)}>Review result</button>
+        {/if}
+      </section>
     {/if}
 
     {#if connection === "stale"}<p class="muted">Connection lost. Reconnecting…</p>{/if}
@@ -259,6 +328,10 @@
   .stages button.is-locked { border-style: dashed; }
   .stages button.active { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
   .banner { font-weight: 600; font-size: var(--text-lg); }
+  .disputed { border-color: var(--danger-fg); color: var(--danger-fg); }
+  .result dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0; }
+  .result dt { font-weight: 700; }
+  .result dd { margin: 0; }
   .layout { display: grid; gap: var(--space-4); align-items: start; }
   .rings { display: grid; gap: var(--space-2); }
   .ring { display: grid; grid-template-columns: 3.5rem 1fr 5rem 1fr; gap: var(--space-2); align-items: center; }

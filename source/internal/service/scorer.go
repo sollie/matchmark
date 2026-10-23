@@ -21,6 +21,48 @@ type ScorerSession struct {
 	EntryID     int64
 	ShooterName string
 	Stages      []repository.StageInfo
+	Phase       Phase
+	Acceptance  *Acceptance
+}
+
+type Phase string
+
+const (
+	PhaseScoring         Phase = "scoring"
+	PhaseWaiting         Phase = "waiting"
+	PhaseNeedsAcceptance Phase = "needs_acceptance"
+)
+
+type Acceptance struct {
+	StageNumber int
+	Counts      repository.RingCounts
+	Total       int
+	ScorerName  string
+}
+
+func derivePhase(t ScoreTarget) (Phase, *Acceptance) {
+	for _, s := range t.Entry.Stages {
+		if s.Status == repository.StatusOpen {
+			return PhaseScoring, nil
+		}
+		if s.Status == repository.StatusAwaitingAcceptance {
+			break
+		}
+	}
+	for _, s := range t.Own.Stages {
+		if s.Status == repository.StatusAwaitingAcceptance {
+			c := s.Counts
+			name := ""
+			if s.ScorerName != nil {
+				name = *s.ScorerName
+			}
+			return PhaseNeedsAcceptance, &Acceptance{
+				StageNumber: s.Number, Counts: c, ScorerName: name,
+				Total: c.X + c.Ten + c.Nine + c.Eight + c.Seven + c.Zero + c.Miss,
+			}
+		}
+	}
+	return PhaseWaiting, nil
 }
 
 func (s *Service) CreatePairing(ctx context.Context, competitionID int64, lane int) (int64, string, error) {
@@ -83,7 +125,8 @@ func (s *Service) DeviceSession(ctx context.Context, d Device) (ScorerSession, e
 	if err != nil {
 		return ScorerSession{}, err
 	}
-	return ScorerSession{Lane: d.Lane, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages}, nil
+	phase, acceptance := derivePhase(t)
+	return ScorerSession{Lane: d.Lane, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Phase: phase, Acceptance: acceptance}, nil
 }
 
 func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber int, c repository.RingCounts) error {
@@ -141,6 +184,84 @@ func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int
 		Stage:         &StageEvent{CompetitionID: d.CompetitionID, EntryID: t.Entry.ID, StageNumber: stageNumber},
 	})
 	return repository.StatusAwaitingAcceptance, nil
+}
+
+func (s *Service) DeviceAcceptStage(ctx context.Context, d Device, stageNumber int) (repository.StageStatus, error) {
+	stage, ev, err := s.ownAwaitingStage(ctx, d, stageNumber, repository.EventAccepted)
+	if err != nil {
+		return "", err
+	}
+	if err := s.repo.AcceptStage(ctx, stage.ID, strconv.Itoa(d.Lane), ev); err != nil {
+		return "", mapAcceptanceErr(err)
+	}
+	s.recordDeviceStageChange(ctx, d, ev, "stage.accept")
+	return repository.StatusAccepted, nil
+}
+
+func (s *Service) DeviceDisputeStage(ctx context.Context, d Device, stageNumber int) (repository.StageStatus, error) {
+	stage, ev, err := s.ownAwaitingStage(ctx, d, stageNumber, repository.EventDisputed)
+	if err != nil {
+		return "", err
+	}
+	if err := s.repo.DisputeStage(ctx, stage.ID, ev); err != nil {
+		return "", mapAcceptanceErr(err)
+	}
+	s.recordDeviceStageChange(ctx, d, ev, "stage.dispute")
+	return repository.StatusOpen, nil
+}
+
+func (s *Service) ownAwaitingStage(ctx context.Context, d Device, stageNumber int, kind repository.StageEventKind) (repository.Stage, repository.StageEvent, error) {
+	comp, err := s.repo.GetCompetition(ctx, d.CompetitionID)
+	if err != nil {
+		return repository.Stage{}, repository.StageEvent{}, mapRepoErr(err)
+	}
+	if CompetitionStatus(comp.Status) != StatusActive {
+		return repository.Stage{}, repository.StageEvent{}, ErrConflict
+	}
+	entry, err := s.repo.MannedEntryByLane(ctx, d.CompetitionID, d.Lane)
+	if err != nil {
+		return repository.Stage{}, repository.StageEvent{}, mapRepoErr(err)
+	}
+	stage, err := s.repo.GetStage(ctx, d.CompetitionID, entry.ID, stageNumber)
+	if err != nil {
+		return repository.Stage{}, repository.StageEvent{}, mapRepoErr(err)
+	}
+	if stage.Status != repository.StatusAwaitingAcceptance {
+		return repository.Stage{}, repository.StageEvent{}, ErrStageNotAwaitingAcceptance
+	}
+	if stage.ScorerLane != nil && *stage.ScorerLane == d.Lane {
+		return repository.Stage{}, repository.StageEvent{}, ErrForbidden
+	}
+	shooter, err := s.repo.GetShooter(ctx, entry.ShooterID)
+	if err != nil {
+		return repository.Stage{}, repository.StageEvent{}, mapRepoErr(err)
+	}
+	ev := repository.StageEvent{
+		CompetitionID: d.CompetitionID, EntryID: entry.ID, StageNumber: stageNumber, Event: kind,
+		ActorType: "device", ActorName: DeviceActor, ScorerName: stage.ScorerName, ShooterName: shooterName(shooter),
+	}
+	return stage, ev, nil
+}
+
+func mapAcceptanceErr(err error) error {
+	if errors.Is(err, repository.ErrConflict) {
+		return ErrStageNotAwaitingAcceptance
+	}
+	return mapRepoErr(err)
+}
+
+func (s *Service) recordDeviceStageChange(ctx context.Context, d Device, ev repository.StageEvent, action string) {
+	s.changes.Record(ctx, Change{
+		Audit: AuditEvent{
+			Action:  action,
+			Target:  stageTarget(d.CompetitionID, ev.EntryID, ev.StageNumber),
+			Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
+		},
+		Actor:         &Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP},
+		CompetitionID: d.CompetitionID,
+		Live:          LiveCompetition,
+		Stage:         &StageEvent{CompetitionID: d.CompetitionID, EntryID: ev.EntryID, StageNumber: ev.StageNumber},
+	})
 }
 
 func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int64, stageNumber int) (repository.StageStatus, error) {

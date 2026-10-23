@@ -4,14 +4,31 @@ import userEvent from "@testing-library/user-event";
 import Scorer from "./Scorer.svelte";
 import { stubFetch } from "../test/fetch";
 
-type SessionOverrides = { score_lane?: number; shooter_name?: string };
+type SessionOverrides = {
+  score_lane?: number;
+  shooter_name?: string;
+  phase?: "scoring" | "waiting" | "needs_acceptance";
+  acceptance?: object;
+  disputed?: number[];
+  counts?: Record<string, number>;
+};
 
-const session = (locked: boolean[], overrides: SessionOverrides = {}) => ({
+const zeroCounts = { x: 0, 10: 0, 9: 0, 8: 0, 7: 0, 0: 0, miss: 0 };
+
+const session = (locked: boolean[], { disputed = [], counts = {}, ...overrides }: SessionOverrides = {}) => ({
   lane: 1,
   score_lane: 2,
   entry_id: 4,
   shooter_name: "Rick Roe",
-  stages: locked.map((l, i) => ({ stage_number: i + 1, expected_shots: 30, status: l ? "awaiting_acceptance" : "open" })),
+  phase: "scoring",
+  stages: locked.map((l, i) => ({
+    ...zeroCounts,
+    ...(disputed.includes(i + 1) ? counts : {}),
+    stage_number: i + 1,
+    expected_shots: 30,
+    status: l ? "awaiting_acceptance" : "open",
+    disputed: disputed.includes(i + 1),
+  })),
   ...overrides,
 });
 
@@ -102,12 +119,48 @@ describe("Scorer", () => {
     const user = userEvent.setup();
     await open(server);
     await user.click(screen.getByRole("button", { name: "Increase X" }));
-    server.streams[0].send("snapshot", session([true, true]));
-    await screen.findByText(/Stage 2 is locked/);
+    server.streams[0].send("snapshot", session([true, true], { phase: "waiting" }));
+    await screen.findByText(/Stage 1 is locked/);
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     server.streams[0].send("snapshot", session([true, false]));
     await screen.findByRole("button", { name: "Save" });
     expect(screen.getByLabelText("X count")).toHaveProperty("value", "1");
+  });
+
+  it("shows the waiting screen with a banner and a button when the own stage awaits acceptance", async () => {
+    const server = fakeStream();
+    const user = userEvent.setup();
+    const acceptance = { ...zeroCounts, x: 10, 10: 2, stage_number: 1, total: 12, scorer_name: "Ann Lee" };
+    await open(server, session([true, false], { phase: "needs_acceptance", acceptance }));
+    expect(screen.getByText(/Your result for stage 1 awaits your acceptance/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Review result" }));
+    expect(screen.getByText("Scored by Ann Lee")).toBeTruthy();
+    expect(screen.getByText(/12 hits, 10 X/)).toBeTruthy();
+    expect(screen.queryByLabelText("X count")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Accept" }));
+    const accept = calls.find((c) => c.method === "POST");
+    expect(accept?.path).toBe("/api/scorer/stages/1/accept");
+    expect(accept?.authorization).toBe("Bearer device-token");
+  });
+
+  it("disputes from the result view", async () => {
+    const server = fakeStream();
+    const user = userEvent.setup();
+    const acceptance = { ...zeroCounts, x: 12, stage_number: 2, total: 12, scorer_name: "Ann Lee" };
+    await open(server, session([false, true], { phase: "needs_acceptance", acceptance }));
+    await user.click(screen.getByRole("button", { name: "Review result" }));
+    await user.click(screen.getByRole("button", { name: "Dispute" }));
+    expect(calls.find((c) => c.method === "POST")?.path).toBe("/api/scorer/stages/2/dispute");
+  });
+
+  it("shows a persistent disputed notice with the previous values prefilled", async () => {
+    const server = fakeStream();
+    await open(server, session([false, false], { disputed: [1], counts: { x: 7, 10: 5 } }));
+    expect(screen.getByText(/Disputed: the shooter disputed stage 1/)).toBeTruthy();
+    expect(screen.getByLabelText("X count")).toHaveProperty("value", "7");
+    expect(screen.getByLabelText("10 count")).toHaveProperty("value", "5");
   });
 
   it("shows a notice and resets the counts when the score lane changes", async () => {
