@@ -8,7 +8,7 @@
 </script>
 
 <header class="site-header">
-  <a class="brand-name" href="/">MatchMark</a>
+  <a class="brand-link" href="/"><img src="/brand/logo-horizontal-dark.svg" alt="MatchMark" width="158" height="32" /></a>
 </header>
 
 <div class="app-content">

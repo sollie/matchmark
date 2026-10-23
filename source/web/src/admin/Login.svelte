@@ -28,6 +28,10 @@
 
 <main class="centered">
   <div class="card">
+    <picture class="login-logo">
+      <source srcset="/brand/logo-stacked-dark.svg" media="(prefers-color-scheme: dark)" />
+      <img src="/brand/logo-stacked.svg" alt="MatchMark" width="163" height="88" />
+    </picture>
     <h1>Admin sign in</h1>
     <form onsubmit={submit}>
       <label>
