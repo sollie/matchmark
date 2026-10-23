@@ -56,6 +56,8 @@ test.describe("lockstep stages", () => {
     }
 
     await expect(lane1.getByText("The competition is finished")).toBeVisible();
+    await expect(lane1.getByText("The competition is finished")).toBeHidden({ timeout: 15000 });
+    await expect(lane1.getByRole("heading", { name: "Finished" })).toHaveCount(0);
     await openCompetition(page, competition.id);
     await expect(page.getByText("finished", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Start next stage" })).toHaveCount(0);

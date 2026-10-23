@@ -1375,9 +1375,12 @@ paths:
       description: >
         Sends a `snapshot` event with the ScorerSession on connect and again
         after every change in the competition, coalesced over about 250 ms.
-        When the pairing is revoked or the competition finishes, a terminal
-        `revoked` event with an empty JSON object is sent and the stream ends;
-        the client must forget its token and not reconnect. A `: heartbeat`
+        When the pairing is revoked, a terminal `revoked` event with an empty
+        JSON object is sent and the stream ends. When the competition
+        finishes, a final `snapshot` with phase `finished` is sent and the
+        stream ends. In both cases the client must forget its token and not
+        reconnect; connecting with the token of a finished competition answers
+        410. A `: heartbeat`
         comment is sent every 25 seconds and the server closes the stream
         after 30 minutes. The device token is sent in the Authorization header,
         so the client uses fetch instead of EventSource. Writes are always
@@ -1403,6 +1406,12 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '410':
+          description: The competition is finished; the device must forget its token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '503':
           description: Too many open streams
           headers:
