@@ -81,8 +81,7 @@
       <p class="muted">Reload this page once a competition has started.</p>
     </div>
   {:else}
-    <div class="status-row">
-      <label class="picker">
+    <label class="picker">
         Competition
         <select bind:value={selected}>
           {#each competitions as c (c.id)}
@@ -90,14 +89,17 @@
           {/each}
         </select>
       </label>
-      <div class="status" role="status">
-        {#if current}<span class="badge neutral">{current.status}</span>{/if}
-        {#if finished}
-          <strong>Finished</strong>
-        {:else if snapshot && acceptance}
-          <strong>Stage {snapshot.current_stage} of {snapshot.total_stages}</strong>
-          <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
-        {/if}
+      <div class="status card" role="status">
+        <div class="progress-info">
+          {#if current}<span class="badge neutral">{current.status}</span>{/if}
+          {#if finished}
+            <strong>Finished</strong>
+          {:else if snapshot && acceptance}
+            <strong>Stage {snapshot.current_stage} of {snapshot.total_stages}</strong>
+            <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
+          {/if}
+        </div>
+        <div class="connection">
         {#if connection === "stale"}
           <span class="badge danger">Offline</span>
           {#if updated}<span class="muted">Last update {clockTime(updated)}</span>{/if}
@@ -107,8 +109,8 @@
         {:else}
           <span class="badge neutral">Loading</span>
         {/if}
+        </div>
       </div>
-    </div>
 
     <h2>Standings</h2>
     {#if standings.length === 0}
@@ -165,8 +167,9 @@
 
 <style>
   .picker select { font-size: var(--text-base); padding: var(--space-2) var(--space-3); max-width: 100%; }
-  .status-row { display: flex; align-items: center; gap: var(--space-2) var(--space-4); flex-wrap: wrap; margin: var(--space-3) 0; }
-  .status { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .picker { display: block; margin: var(--space-3) 0; }
+  .status { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); flex-wrap: wrap; padding: var(--space-2) var(--space-4); margin: 0 0 var(--space-4); }
+  .progress-info, .connection { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
   .empty { text-align: center; padding: var(--space-6) var(--space-4); }
   .empty p { margin: var(--space-1) 0; }
   .rank, .total { font-weight: 700; font-size: var(--text-lg); }
