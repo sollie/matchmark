@@ -21,6 +21,7 @@ type Handler struct {
 	secureCookie bool
 	servingTLS   bool
 	backupDir    string
+	version      string
 	limits       streamLimits
 	streams      [streamRoles]atomic.Int64
 }
@@ -47,6 +48,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.With(h.RequireAdmin).Put("/users/{userID}/role", h.setUserRole)
 			r.With(h.RequireAdmin).Put("/users/{userID}/backup-permission", h.setBackupPermission)
 		}
+		r.Get("/version", h.getVersion)
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
 		r.Group(func(r chi.Router) {
