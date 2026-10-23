@@ -72,8 +72,24 @@ _Avoid_: Shot result
 The number of inner-ten (X) hits across an entry's stages. It breaks ties in the ranking and is the spectator column the visibility setting of the same name shows or hides.
 
 **Lock**:
-The scorer's confirmation that a stage's hits are final.
+The scorer's confirmation that a stage's hits are complete, which puts the stage awaiting acceptance. It is not final until the shooter accepts.
 _Avoid_: Submit, sign-off
+
+**Awaiting acceptance**:
+The state of a locked stage whose shooter has not yet accepted or disputed it. Its hits are frozen.
+_Avoid_: Pending, submitted
+
+**Accepted**:
+The final state of a stage: the shooter accepted the scorer's lock, or an admin accepted it or locked it directly. Only accepted stages count in standings, progress and reports.
+_Avoid_: Approved, confirmed, locked (for the final state)
+
+**Dispute**:
+The shooter's refusal of a locked stage. The stage reopens with its hits kept, and the scorer re-scores it, usually with the shooter and a range officer. A shooter can dispute any stage, without a reason.
+_Avoid_: Reject, appeal
+
+**Current stage**:
+The one stage every device scores at a given time. The admin starts the next stage once every manned lane has accepted the current one.
+_Avoid_: Active stage, round
 
 **Results report**:
 The workbook, one sheet per category, that a club emails to the country representative. It lists a total score per shooter, plus the new shooters.
@@ -92,11 +108,11 @@ Copying the club's data to a separate host so it can be snapshotted and restored
 _Avoid_: Sync, backup
 
 **Score log**:
-The JSON `stage_locked` and `stage_unlocked` lines the server writes to stdout whenever a stage is locked or its locked state changes. Each line is self-contained, so a competition's scored results can be rebuilt by taking the latest line per stage.
+The JSON `stage_status` lines the server writes to stdout whenever a stage changes status. Each line is self-contained, so a competition's scored results, including stages awaiting acceptance, can be rebuilt by taking the latest line per stage.
 _Avoid_: Scoring log
 
 **Restore**:
-Rebuilding competitions, entries and locked stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
+Rebuilding competitions, entries and scored stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
 _Avoid_: Backup, replication
 
 **Live update**:
