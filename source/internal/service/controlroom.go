@@ -51,7 +51,7 @@ func (s *Service) ControlRoom(ctx context.Context, competitionID int64) (Control
 	}
 	disputes := map[int64]int{}
 	for _, ev := range events {
-		if ev.Event == repository.EventDisputed && ev.StageNumber == comp.CurrentStage {
+		if ev.Event == repository.EventDisputed {
 			disputes[ev.EntryID]++
 		}
 	}

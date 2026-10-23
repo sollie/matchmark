@@ -104,6 +104,13 @@ func (s *Service) userStageEvent(ctx context.Context, kind repository.StageEvent
 	}
 	return repository.StageEvent{
 		CompetitionID: competitionID, EntryID: entryID, StageNumber: stage.Number, Event: kind,
-		ActorType: "user", ActorName: username, ScorerName: stage.ScorerName, ShooterName: shooterName(shooter),
+		ActorType: "user", ActorName: username, ScorerName: deviceScorerName(stage), ShooterName: shooterName(shooter),
 	}, nil
+}
+
+func deviceScorerName(stage repository.Stage) string {
+	if stage.ScorerLane == nil {
+		return ""
+	}
+	return stage.ScorerName
 }

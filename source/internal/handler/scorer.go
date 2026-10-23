@@ -260,11 +260,12 @@ func (h *Handler) acceptStage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if err := h.svc.AdminAcceptStage(r.Context(), compID, entryID, int(stage)); err != nil {
+	status, err := h.svc.AdminAcceptStage(r.Context(), compID, entryID, int(stage))
+	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": repository.StatusAccepted})
+	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
 }
 
 func (h *Handler) unlockStage(w http.ResponseWriter, r *http.Request) {
@@ -283,11 +284,12 @@ func (h *Handler) unlockStage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if err := h.svc.UnlockStage(r.Context(), compID, entryID, int(stage)); err != nil {
+	status, err := h.svc.UnlockStage(r.Context(), compID, entryID, int(stage))
+	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": repository.StatusOpen})
+	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
 }
 
 type ringCountsBody struct {

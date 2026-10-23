@@ -80,7 +80,7 @@ func (r *Repository) MannedEntryByLane(ctx context.Context, competitionID int64,
 func (r *Repository) LockStage(ctx context.Context, stageID int64, scorerLane int, scorerName string, ev StageEvent) error {
 	return r.transition(ctx, true, ev,
 		`UPDATE stages SET status = 'awaiting_acceptance', scorer_lane = ?, scorer_name = ?, locked_at = ?,
-		        accepted_by = NULL, accepted_at = NULL, disputed_at = NULL
+		        accepted_by = NULL, accepted_at = NULL, disputed_at = NULL, started = 0
 		 WHERE id = ? AND status = 'open'`,
 		scorerLane, scorerName, lockTimestamp(), stageID)
 }
@@ -89,7 +89,7 @@ func (r *Repository) LockStageAsUser(ctx context.Context, stageID int64, usernam
 	now := lockTimestamp()
 	return r.transition(ctx, true, ev,
 		`UPDATE stages SET status = 'accepted', scorer_lane = NULL, scorer_name = ?, locked_at = ?,
-		        accepted_by = ?, accepted_at = ?, disputed_at = NULL
+		        accepted_by = ?, accepted_at = ?, disputed_at = NULL, started = 0
 		 WHERE id = ? AND status = 'open'`,
 		username, now, username, now, stageID)
 }

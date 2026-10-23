@@ -31,7 +31,7 @@ func TestRestoreIntoEmptyDatabase(t *testing.T) {
 	if _, err := f.svc.AdminLockStage(service.WithActor(ctx, service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.AdminAcceptStage(ctx, f.compID, f.entry2, 1); err != nil {
+	if _, err := f.svc.AdminAcceptStage(ctx, f.compID, f.entry2, 1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.svc.StartNextStage(ctx, f.compID); err != nil {

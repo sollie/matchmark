@@ -14,6 +14,7 @@ type StageInfo struct {
 	ScorerName    *string
 	Counts        RingCounts
 	DisputedAt    string
+	Started       bool
 }
 
 type EntryWithStages struct {
@@ -96,9 +97,22 @@ func (r *Repository) SetCompetitionStatus(ctx context.Context, id int64, from, t
 }
 
 func (r *Repository) AdvanceStage(ctx context.Context, id int64, from int) error {
-	res, err := r.db.ExecContext(ctx,
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
 		`UPDATE competitions SET current_stage = current_stage + 1 WHERE id = ? AND status = 'active' AND current_stage = ?`, id, from)
-	return conflictIfNone(res, err)
+	if err := conflictIfNone(res, err); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE stages SET started = 1 WHERE stage_number = ? AND status = 'open'
+		 AND entry_id IN (SELECT id FROM entries WHERE competition_id = ?)`, from+1, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *Repository) DeleteCompetition(ctx context.Context, id int64) error {
@@ -160,7 +174,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 
 	srows, err := r.db.QueryContext(ctx,
 		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.status, s.scorer_lane, s.scorer_name,
-		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, COALESCE(s.disputed_at, '') FROM stages s
+		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, COALESCE(s.disputed_at, ''), s.started FROM stages s
 		 JOIN entries e ON e.id = s.entry_id WHERE e.competition_id = ? ORDER BY s.entry_id, s.stage_number`,
 		competitionID)
 	if err != nil {
@@ -171,7 +185,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 		var entryID int64
 		var si StageInfo
 		if err := srows.Scan(&entryID, &si.Number, &si.ExpectedShots, &si.Status, &si.ScorerLane, &si.ScorerName,
-			&si.Counts.X, &si.Counts.Ten, &si.Counts.Nine, &si.Counts.Eight, &si.Counts.Seven, &si.Counts.Zero, &si.Counts.Miss, &si.DisputedAt); err != nil {
+			&si.Counts.X, &si.Counts.Ten, &si.Counts.Nine, &si.Counts.Eight, &si.Counts.Seven, &si.Counts.Zero, &si.Counts.Miss, &si.DisputedAt, &si.Started); err != nil {
 			return nil, err
 		}
 		i := index[entryID]
