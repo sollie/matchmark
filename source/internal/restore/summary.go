@@ -42,5 +42,5 @@ func WriteApplied(w io.Writer, stats Stats, applied Applied) {
 			_, _ = fmt.Fprintf(w, "  %s\n", c)
 		}
 	}
-	_, _ = fmt.Fprintln(w, "note: unscored entries, devices and pairings are not restored")
+	_, _ = fmt.Fprintln(w, "note: unscored entries, devices and pairings are not restored; re-pair the devices before scoring continues")
 }
