@@ -102,6 +102,10 @@ Tests seed data through the admin API with unique names and send a unique `X-For
 
 Static and ACME modes are mutually exclusive.
 
+## WA1500 lookup
+
+Admins can look up shooters in the public WA1500 register (`https://wa1500.org`, fixed host, no configuration) with `GET /api/wa1500/search?q=` and import a hit with `POST /api/shooters/import`. The server needs outbound HTTPS to `wa1500.org`; without it the lookup answers 502 and shooters are entered by hand. See ADR 0014 and `docs/spec.md`.
+
 ## Logging
 
 Text responses (SPA assets, JSON, CSV) of at least 256 bytes are compressed with Brotli, gzip or deflate according to the request `Accept-Encoding` (preference: `br`, `gzip`, `deflate`). `.xlsx` reports, other binary types, HEAD and Range requests are left alone. Browsers only offer Brotli over HTTPS.

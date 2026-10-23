@@ -12,6 +12,7 @@ import (
 
 func (h *Handler) adminRoutes(r chi.Router) {
 	r.Post("/shooters", h.createShooter)
+	r.Post("/shooters/import", h.importShooter)
 	r.Get("/shooters", h.listShooters)
 	r.Get("/shooters/{shooterID}", h.getShooter)
 	r.Put("/shooters/{shooterID}", h.updateShooter)

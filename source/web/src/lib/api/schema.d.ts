@@ -235,6 +235,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/shooters/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a WA1500 hit as a local shooter, matching by WAID and then by name
+         * @description A WAID match updates that shooter. Without a WAID match, shooters sharing the first and last name (case-insensitive) make the call answer 409 with candidates; resend with update_shooter_id (one of the candidates) or create_new true. Otherwise a new shooter is created.
+         */
+        post: operations["importShooter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wa1500/search": {
         parameters: {
             query?: never;
@@ -996,6 +1016,26 @@ export interface components {
             /** Format: int64 */
             id: number;
         } & components["schemas"]["ShooterInput"];
+        ShooterImportInput: components["schemas"]["ShooterInput"] & {
+            /**
+             * Format: int64
+             * @description A candidate from an earlier 409 to update with the imported data
+             */
+            update_shooter_id?: number;
+            /** @description Create a new shooter although the name matches existing ones */
+            create_new?: boolean;
+        };
+        ShooterImportResult: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            action: "created" | "updated";
+        };
+        ShooterImportConflict: {
+            /** @enum {string} */
+            error: "name_conflict";
+            candidates: components["schemas"]["Shooter"][];
+        };
         ShooterInput: {
             last_name: string;
             first_name: string;
@@ -1772,6 +1812,50 @@ export interface operations {
         responses: {
             201: components["responses"]["Created"];
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    importShooter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShooterImportInput"];
+            };
+        };
+        responses: {
+            /** @description An existing shooter was updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShooterImportResult"];
+                };
+            };
+            /** @description A new shooter was created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShooterImportResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Local shooters share the name; the client must choose one or create a new shooter */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShooterImportConflict"];
+                };
+            };
             422: components["responses"]["Invalid"];
         };
     };

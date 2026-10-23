@@ -20,6 +20,10 @@ _Avoid_: Competitor, participant
 The identifier the World Association assigns to a shooter and uses to match results to their record. New shooters have none yet.
 _Avoid_: WA-ID, member number
 
+**WA1500 import**:
+Copying a shooter found in the WA1500 register into the club's own shooters, with the sex chosen by the admin. A shooter with the same WAID is updated; one that only shares the name must be confirmed as the same person or created as a new shooter.
+_Avoid_: Sync
+
 **New shooter**:
 A shooter without a WAID, typically fresh from the PPC course and needing a match to get the course accepted.
 _Avoid_: Guest, beginner
