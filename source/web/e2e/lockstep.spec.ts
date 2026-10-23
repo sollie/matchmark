@@ -16,7 +16,7 @@ test.describe("lockstep stages", () => {
     for (const device of [lane1, lane2]) {
       await device.getByLabel("10 count", { exact: true }).fill("12");
       await device.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(device.getByRole("status")).toHaveText("Saved");
+      await expect(device.locator("#save-status")).toHaveText("Saved ✓");
       await device.getByRole("button", { name: "Lock stage", exact: true }).click();
     }
     for (const device of [lane1, lane2]) {

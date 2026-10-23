@@ -61,8 +61,10 @@ test.describe("pairing and scorer device", () => {
     await scorer.getByLabel("9 count", { exact: true }).fill("4");
     await expect(scorer.locator(".total strong")).toHaveText("12");
     await expect(scorer.getByText("✓ Shots match")).toBeVisible();
+    await expect(scorer.getByRole("button", { name: "Lock stage", exact: true })).toBeDisabled();
+    await expect(scorer.locator("#save-status")).toHaveText("Unsaved changes: press Save, then Lock stage.");
     await scorer.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(scorer.getByRole("status")).toHaveText("Saved");
+    await expect(scorer.locator("#save-status")).toHaveText("Saved ✓");
     await scorer.getByRole("button", { name: "Lock stage", exact: true }).click();
     await expect(scorer.getByRole("status")).toHaveText("Stage locked");
 
@@ -77,7 +79,7 @@ test.describe("pairing and scorer device", () => {
     const scorer = await openDevice(pairing.token);
     await scorer.getByLabel("10 count", { exact: true }).fill("12");
     await scorer.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(scorer.getByRole("status")).toHaveText("Saved");
+    await expect(scorer.locator("#save-status")).toHaveText("Saved ✓");
     await scorer.getByRole("button", { name: "Lock stage", exact: true }).click();
 
     await expect(scorer.getByText("🔒 Stage 1 is locked.")).toBeVisible();
@@ -108,7 +110,7 @@ test.describe("pairing and scorer device", () => {
     const scorer = await openDevice(pairing.token);
     await scorer.getByLabel("10 count", { exact: true }).fill("12");
     await scorer.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(scorer.getByRole("status")).toHaveText("Saved");
+    await expect(scorer.locator("#save-status")).toHaveText("Saved ✓");
     await scorer.getByRole("button", { name: "Lock stage", exact: true }).click();
 
     await expect(lockedBadge.first()).toBeVisible();
@@ -196,7 +198,7 @@ test.describe("pairing and scorer device", () => {
     await lane1.getByLabel("10 count", { exact: true }).fill("8");
     await lane1.getByLabel("9 count", { exact: true }).fill("4");
     await lane1.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(lane1.getByRole("status")).toHaveText("Saved");
+    await expect(lane1.locator("#save-status")).toHaveText("Saved ✓");
     await lane1.getByRole("button", { name: "Lock stage", exact: true }).click();
     await expect(lane1.getByText("Waiting for", { exact: false })).toBeVisible();
 
@@ -205,7 +207,7 @@ test.describe("pairing and scorer device", () => {
 
     await lane2.getByLabel("10 count", { exact: true }).fill("12");
     await lane2.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(lane2.getByRole("status")).toHaveText("Saved");
+    await expect(lane2.locator("#save-status")).toHaveText("Saved ✓");
     await lane2.getByRole("button", { name: "Lock stage", exact: true }).click();
     await expect(lane2.getByText(/Your result for stage 1 awaits your acceptance/)).toBeVisible();
     await lane2.getByRole("button", { name: "Review result" }).click();

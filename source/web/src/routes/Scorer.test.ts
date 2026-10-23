@@ -180,6 +180,23 @@ describe("Scorer", () => {
     expect(screen.getByLabelText("10 count")).toHaveProperty("value", "5");
   });
 
+  it("keeps Lock stage disabled until the edited counts are saved", async () => {
+    const server = fakeStream();
+    const user = userEvent.setup();
+    await open(server, session([false], { disputed: [1], counts: { 10: 30 } }));
+    const lock = screen.getByRole("button", { name: "Lock stage" });
+    expect(lock).toHaveProperty("disabled", false);
+    expect(screen.getByText("Saved ✓")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Decrease 10" }));
+    await user.click(screen.getByRole("button", { name: "Increase 9" }));
+    expect(lock).toHaveProperty("disabled", true);
+    expect(lock.getAttribute("aria-describedby")).toBe("save-status");
+    expect(screen.getByText("Unsaved changes: press Save, then Lock stage.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Saved ✓");
+    expect(lock).toHaveProperty("disabled", false);
+  });
+
   it("shows a notice and resets the counts when the score lane changes", async () => {
     const server = fakeStream();
     const user = userEvent.setup();
