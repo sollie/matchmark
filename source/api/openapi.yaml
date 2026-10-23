@@ -423,9 +423,24 @@ paths:
       tags: [shooters]
       security:
         - adminCookie: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive partial match on WAID or first/last name. Without it all shooters are returned.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of results. Defaults to 20 when q is given, otherwise unlimited.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
       responses:
         '200':
-          description: All shooters
+          description: Matching shooters
           content:
             application/json:
               schema:
@@ -438,6 +453,8 @@ paths:
                       $ref: '#/components/schemas/Shooter'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
     post:
       operationId: createShooter
       tags: [shooters]
@@ -456,6 +473,90 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/shooters/import:
+    post:
+      operationId: importShooter
+      tags: [shooters]
+      summary: Import a WA1500 hit as a local shooter, matching by WAID and then by name
+      description: >-
+        A WAID match updates that shooter. Without a WAID match, shooters sharing the first and last
+        name (case-insensitive) make the call answer 409 with candidates; resend with
+        update_shooter_id (one of the candidates, otherwise 422) or create_new true. Otherwise a new shooter is created.
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShooterImportInput'
+      responses:
+        '200':
+          description: An existing shooter was updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShooterImportResult'
+        '201':
+          description: A new shooter was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShooterImportResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Local shooters share the name; the client must choose one or create a new shooter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShooterImportConflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/wa1500/search:
+    get:
+      operationId: searchWa1500
+      tags: [shooters]
+      summary: Search the WA1500 register by name, club or WAID (cached, rate limited)
+      security:
+        - adminCookie: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      responses:
+        '200':
+          description: Matching WA1500 shooters
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Wa1500Shooter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many WA1500 searches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: WA1500 is unreachable or returned an unusable response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/shooters/{shooterID}:
     parameters:
       - $ref: '#/components/parameters/ShooterID'
@@ -1632,6 +1733,20 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    Wa1500Shooter:
+      type: object
+      required: [waid, first_name, last_name, country, club]
+      properties:
+        waid:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        country:
+          type: string
+        club:
+          type: string
     Rulebook:
       type: object
       required: [courses, weapon_classes, rings]
@@ -1827,6 +1942,39 @@ components:
               type: integer
               format: int64
         - $ref: '#/components/schemas/ShooterInput'
+    ShooterImportInput:
+      allOf:
+        - $ref: '#/components/schemas/ShooterInput'
+        - type: object
+          properties:
+            update_shooter_id:
+              type: integer
+              format: int64
+              description: A candidate from an earlier 409 to update with the imported data
+            create_new:
+              type: boolean
+              description: Create a new shooter although the name matches existing ones
+    ShooterImportResult:
+      type: object
+      required: [id, action]
+      properties:
+        id:
+          type: integer
+          format: int64
+        action:
+          type: string
+          enum: [created, updated]
+    ShooterImportConflict:
+      type: object
+      required: [error, candidates]
+      properties:
+        error:
+          type: string
+          enum: [name_conflict]
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shooter'
     ShooterInput:
       type: object
       required: [last_name, first_name, sex, country, club, waid]

@@ -68,7 +68,8 @@ Coverage, by area:
 - Users: an admin creates a user with a temporary password, the user is forced to change it at first login and then works as a regular user without the Users or Backup links. Admins can allow or forbid backup downloads per admin (the Backup link shows only for admins with the permission), and can also deactivate and reactivate users, reset a password to a new temporary one, and promote or demote; deactivation, reset and demotion end that user's sessions, and the last active admin is protected.
 - Audit log: an admin finds entries filtered by user, action and date and pages through them; regular users never see the screen.
 - Auth: wrong password, unknown username and correct login, per-client login lockout, sign out, 401 on unauthenticated admin API calls, the not-found page, and the unpaired scorer page.
-- Shooters: add, edit, cancel an edit, delete with confirmation, and form validation.
+- Shooter search: picking a shooter for an entry through the search combobox, the no-match state and hiding shooters already entered.
+- Shooters: add, edit, cancel an edit, delete with confirmation, form validation, local search, and WA1500 import (sex selector, name-conflict dialog, manual fallback; the WA1500 search is mocked).
 - Competitions: creation for each course of fire with its stage columns, the prefilled ISO 8601 date and invalid-date blocking, the list with statuses, start and finish with confirmation, finished competitions (revoked pairings, no new entries), editing a draft (name, date, course, locked course once entries exist, no edit once started), delete with confirmation, and visibility flags persisting.
 - Entries and admin scoring: adding entries with category and default lane, taken-lane rejection, move, withdraw and remove, live shot totals with rejection of wrong totals, and save and lock as the signed-in user (an accepted stage), accepting a stage that awaits acceptance, and unlock.
 - Dispute history: the stage event table with scorer, shooter and stage filters and the dispute count per scorer.
@@ -100,6 +101,10 @@ Tests seed data through the admin API with unique names and send a unique `X-For
 | `REPLICATION_INTERVAL` | `60s` | Push interval as a Go duration (for example `30s`, `5m`); must be positive |
 
 Static and ACME modes are mutually exclusive.
+
+## WA1500 lookup
+
+Admins can look up shooters in the public WA1500 register (`https://wa1500.org`, fixed host, no configuration) with `GET /api/wa1500/search?q=` and import a hit with `POST /api/shooters/import`. The server needs outbound HTTPS to `wa1500.org`; without it the lookup answers 502 and shooters are entered by hand. See ADR 0014 and `docs/spec.md`.
 
 ## Logging
 

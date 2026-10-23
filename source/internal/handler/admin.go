@@ -12,6 +12,7 @@ import (
 
 func (h *Handler) adminRoutes(r chi.Router) {
 	r.Post("/shooters", h.createShooter)
+	r.Post("/shooters/import", h.importShooter)
 	r.Get("/shooters", h.listShooters)
 	r.Get("/shooters/{shooterID}", h.getShooter)
 	r.Put("/shooters/{shooterID}", h.updateShooter)
@@ -76,7 +77,12 @@ func entryJSON(e repository.Entry) map[string]any {
 }
 
 func (h *Handler) listShooters(w http.ResponseWriter, r *http.Request) {
-	shooters, err := h.svc.ListShooters(r.Context())
+	limit, err := queryInt(r, "limit", 0)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	shooters, err := h.svc.ListShooters(r.Context(), r.URL.Query().Get("q"), limit)
 	if err != nil {
 		writeError(w, err)
 		return
