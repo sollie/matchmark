@@ -139,9 +139,23 @@ describe("openStream", () => {
     expect(server.conns).toHaveLength(1);
   });
 
-  it("does not retry on 401, 403, 404 or 409", async () => {
+  it("keeps backing off when connections close immediately", async () => {
     const server = fakeServer();
-    server.statuses.push(409);
+    open(server, { backoff: { initialMs: 1000, maxMs: 30000 } });
+    await tick();
+    server.conns[0].end();
+    await tick(1000);
+    expect(server.conns).toHaveLength(2);
+    server.conns[1].end();
+    await tick(1999);
+    expect(server.conns).toHaveLength(2);
+    await tick(1);
+    expect(server.conns).toHaveLength(3);
+  });
+
+  it("does not retry on 401, 403, 404, 409 or 410", async () => {
+    const server = fakeServer();
+    server.statuses.push(410);
     const { states } = open(server);
     await tick(60000);
     expect(states.at(-1)).toBe("ended");

@@ -12,6 +12,7 @@ var (
 	ErrNotFound           = errors.New("not found")
 	ErrConflict           = errors.New("conflict")
 	ErrInvalid            = errors.New("invalid input")
+	ErrGone               = errors.New("gone")
 	ErrLaneNotManned      = errors.New("lane is not manned")
 	ErrAdminScoringNeeded = errors.New("admin scoring required")
 	ErrStageLocked        = errors.New("stage is locked")

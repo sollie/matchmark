@@ -73,6 +73,8 @@
         : `Enter ring counts that add up to ${current?.expected_shots} shots, then press Save.`,
   );
 
+  const finishedScreenMs = 8000;
+
   function auth() {
     return deviceHeaders(token ?? "");
   }
@@ -85,7 +87,7 @@
     if (data) {
       apply(data);
       loadError = "";
-    } else if (response.status === 401) {
+    } else if (response.status === 401 || response.status === 410) {
       forget();
     } else {
       loadError = errorMessage(err, `Request failed (${response.status})`);
@@ -133,24 +135,31 @@
     void connectAttempt;
     if (!token) return;
     let disposed = false;
+    let finishTimer: ReturnType<typeof setTimeout> | undefined;
     const stream = openStream({
       url: "/api/scorer/stream",
       headers: auth(),
       onEvent: (event, data) => {
         if (event === "snapshot") {
           loadError = "";
-          apply(JSON.parse(data));
+          const next: Session = JSON.parse(data);
+          apply(next);
+          if (next.phase === "finished") {
+            stream.close();
+            finishTimer = setTimeout(forget, finishedScreenMs);
+          }
         } else if (event === "revoked") {
           forget();
         }
       },
       onState: (next) => {
         connection = next;
-        if (next === "ended" && !disposed) void load();
+        if (next === "ended" && !disposed && session?.phase !== "finished") void load();
       },
     });
     return () => {
       disposed = true;
+      clearTimeout(finishTimer);
       stream.close();
     };
   });

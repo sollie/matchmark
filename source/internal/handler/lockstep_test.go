@@ -191,6 +191,9 @@ func TestLastAcceptanceFinishesTheCompetitionAndRevokesPairings(t *testing.T) {
 	if stages, _ := sess["stages"].([]any); len(stages) != 0 || sess["shooter_name"] != "" {
 		t.Fatalf("finished session leaks scores: %v", sess)
 	}
+	if status, _ := f.env.DoToken(lane1, "GET", "/api/scorer/stream", nil); status != http.StatusGone {
+		t.Fatalf("finished stream: %d", status)
+	}
 	if status, _ := f.startNext(f.comp); status != http.StatusConflict {
 		t.Fatalf("start next on finished: %d", status)
 	}
