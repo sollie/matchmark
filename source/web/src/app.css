@@ -22,6 +22,7 @@
   --touch: 44px;
   --header-h: 3rem;
 
+  --brand-primary: #0f172a;
   --brand: #1f3a5f;
   --brand-hover: #2a4d7e;
   --brand-tint: #e1e9f4;
@@ -102,10 +103,12 @@ a { color: var(--link); }
 
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-.site-header { display: flex; align-items: center; min-height: var(--header-h); padding: 0 var(--space-4); background: var(--brand); color: var(--on-brand); }
-.site-header :focus-visible { outline-color: var(--on-brand); }
-.brand-name { color: var(--on-brand); font-size: var(--text-lg); font-weight: 700; letter-spacing: 0.02em; text-decoration: none; }
-.brand-name::before { content: ""; display: inline-block; width: 0.7em; height: 0.7em; margin-right: 0.5em; border: 0.18em solid currentColor; border-radius: 50%; box-shadow: inset 0 0 0 0.12em var(--brand), inset 0 0 0 0.3em currentColor; }
+.site-header { display: flex; align-items: center; min-height: var(--header-h); padding: 0 var(--space-4); background: var(--brand-primary); border-bottom: 1px solid var(--border); }
+.site-header :focus-visible { outline-color: #ffffff; }
+.brand-link { display: inline-flex; align-items: center; }
+.brand-link img { display: block; height: 2rem; width: auto; }
+.login-logo { display: flex; justify-content: center; margin-bottom: var(--space-3); }
+.login-logo img { display: block; height: 5.5rem; width: auto; }
 
 .site-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1) var(--space-4); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--text-sm); }
 
