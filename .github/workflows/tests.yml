@@ -81,6 +81,7 @@ jobs:
     name: E2E (${{ matrix.browser }} ${{ matrix.shard }}/3)
     needs: web
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -111,7 +112,12 @@ jobs:
 
       - name: Install browser
         working-directory: source/web
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: |
+          for attempt in 1 2 3; do
+            timeout 180 npx playwright install --with-deps ${{ matrix.browser }} && exit 0
+            echo "Browser install attempt $attempt failed or timed out"
+          done
+          exit 1
 
       - name: E2E
         working-directory: source/web
