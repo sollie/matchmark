@@ -103,4 +103,84 @@ test.describe("shooters", () => {
     await expect(row(page, lastName)).toHaveCount(0);
     await expect(form.getByLabel("Last name")).toHaveValue(lastName);
   });
+
+  test("local search narrows the list by name or WAID", async ({ adminPage: page, admin }) => {
+    const found = await createShooter(admin, { last_name: uniqueName("Findable"), waid: `E${Date.now()}` });
+    const hidden = await createShooter(admin, { last_name: uniqueName("Hidden") });
+    await openShooters(page);
+
+    await page.getByLabel("Search shooters").fill(found.waid);
+    await expect(row(page, found.last_name)).toBeVisible();
+    await expect(row(page, hidden.last_name)).toHaveCount(0);
+
+    await page.getByLabel("Search shooters").fill("no-such-shooter-zzz");
+    await expect(page.getByText("No matching shooters.")).toBeVisible();
+  });
+
+  test("importing a WA1500 hit needs a sex and then lists the shooter", async ({ adminPage: page }) => {
+    const lastName = uniqueName("Imported").replace(" ", "");
+    const waid = `W${Date.now()}`;
+    await page.route("**/api/wa1500/search*", (route) =>
+      route.fulfill({
+        json: { results: [{ waid, first_name: "Ida", last_name: lastName, country: "SWE", club: "Remote Club" }] },
+      }),
+    );
+    await openShooters(page);
+    await page.getByRole("button", { name: "Import from WA1500" }).click();
+    await page.getByRole("textbox", { name: "Search WA1500" }).fill(lastName);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+
+    const importButton = page.getByRole("button", { name: `Import Ida ${lastName}` });
+    await expect(importButton).toBeDisabled();
+    await page.getByLabel(`Sex for Ida ${lastName}`).selectOption("F");
+    await importButton.click();
+
+    await expect(page.getByRole("status")).toContainText(`Saved Ida ${lastName}`);
+    const added = row(page, lastName);
+    await expect(added.getByRole("cell", { name: "Remote Club" })).toBeVisible();
+    await expect(added.getByRole("cell", { name: "F", exact: true })).toBeVisible();
+  });
+
+  test("a name conflict asks whether to update or create new", async ({ adminPage: page, admin }) => {
+    const existing = await createShooter(admin, { last_name: uniqueName("Twin").replace(" ", ""), first_name: "Tim", club: "Local Club" });
+    const waid = `W${Date.now()}`;
+    await page.route("**/api/wa1500/search*", (route) =>
+      route.fulfill({
+        json: { results: [{ waid, first_name: "Tim", last_name: existing.last_name, country: "DEN", club: "Remote Club" }] },
+      }),
+    );
+    await openShooters(page);
+    await page.getByRole("button", { name: "Import from WA1500" }).click();
+    await page.getByRole("textbox", { name: "Search WA1500" }).fill(existing.last_name);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByLabel(`Sex for Tim ${existing.last_name}`).selectOption("M");
+    await page.getByRole("button", { name: `Import Tim ${existing.last_name}` }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Name already exists" });
+    await dialog.getByRole("button", { name: /Update Tim .* Local Club/ }).click();
+
+    const updated = row(page, existing.last_name);
+    await expect(updated.getByRole("cell", { name: "Remote Club" })).toBeVisible();
+    await expect(updated.getByRole("cell", { name: waid })).toBeVisible();
+    await expect(updated).toHaveCount(1);
+  });
+
+  test("manual entry is offered when WA1500 is unavailable", async ({ adminPage: page }) => {
+    const lastName = uniqueName("Manual").replace(" ", "");
+    await page.route("**/api/wa1500/search*", (route) => route.fulfill({ status: 502, json: { error: "wa1500 unavailable" } }));
+    await openShooters(page);
+    await page.getByRole("button", { name: "Import from WA1500" }).click();
+    await page.getByRole("textbox", { name: "Search WA1500" }).fill("anything");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("wa1500 unavailable");
+
+    const manual = page.getByRole("form", { name: "Manual shooter entry" });
+    await manual.getByLabel("Last name").fill(lastName);
+    await manual.getByLabel("First name").fill("Max");
+    await manual.getByLabel("Country").fill("NOR");
+    await manual.getByLabel("Club").fill("Manual Club");
+    await manual.getByRole("button", { name: "Save shooter" }).click();
+
+    await expect(row(page, lastName).getByRole("cell", { name: "Manual Club" })).toBeVisible();
+  });
 });
