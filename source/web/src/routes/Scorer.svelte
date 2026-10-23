@@ -38,11 +38,26 @@
   let connectAttempt = $state(0);
   let reviewing = $state(false);
   let started = $state(false);
+  let confirmingDispute = $state(false);
 
   const stage = $derived(session?.current_stage ?? null);
   const current = $derived(session?.stages.find((s) => s.stage_number === stage) ?? null);
   const waitingStage = $derived(session?.stages.find((s) => s.stage_number === stage && s.status !== "accepted") ?? null);
   const acceptance = $derived(session?.acceptance ?? null);
+  const maxRing = $derived(acceptance ? Math.max(1, ...rings.map((r) => acceptance[r.key])) : 1);
+  const announcement = $derived(
+    !session
+      ? ""
+      : session.phase === "finished"
+        ? "Status: finished."
+        : session.phase === "next_stage"
+          ? `Status: stage ${session.current_stage} started.`
+          : session.phase === "needs_acceptance"
+            ? `Status: action needed, review your result.`
+            : session.phase === "waiting"
+              ? `Status: waiting.`
+              : `Status: scoring lane ${session.score_lane}.`,
+  );
   const sum = $derived(rings.reduce((n, r) => n + counts[r.key], 0));
 
   function auth() {
@@ -89,7 +104,10 @@
       if (now?.disputed && !was?.disputed) counts = savedCounts(now);
     }
     if (next.phase !== "next_stage") started = false;
-    if (next.phase !== "needs_acceptance") reviewing = false;
+    if (next.phase !== "needs_acceptance") {
+      reviewing = false;
+      confirmingDispute = false;
+    }
   }
 
   function reconnect() {
@@ -182,6 +200,7 @@
       { params: { path: { stage: acceptance.stage_number } }, headers: auth() },
     );
     busy = false;
+    confirmingDispute = false;
     if (response.ok) {
       reviewing = false;
       message = action === "accept" ? "Result accepted" : "Result disputed";
@@ -196,6 +215,7 @@
 </script>
 
 <main class="scorer">
+  <div class="sr-only" aria-live="polite">{announcement}</div>
   {#if !token}
     <h1>Scorer</h1>
     <p>Open a pairing link from the admin to score a lane.</p>
@@ -277,18 +297,32 @@
       {/if}
     {:else if reviewing && acceptance}
       <section class="card result" aria-label="Your result">
-        <h2>Your result for stage {acceptance.stage_number}</h2>
-        <p class="muted">Scored by {acceptance.scorer_name}</p>
-        <dl>
+        <div class="hero">
+          <span class="chip">Stage {acceptance.stage_number} of {session.stages.length}</span>
+          <h2>Your result for stage {acceptance.stage_number}</h2>
+          <p class="total">{acceptance.total} hits, {acceptance.x} X</p>
+          <p class="muted">Scored by {acceptance.scorer_name}</p>
+        </div>
+        <ul class="breakdown">
           {#each rings as r (r.key)}
-            <dt>{r.label}</dt>
-            <dd>{acceptance[r.key]}</dd>
+            <li>
+              <span class="ring-label">{r.label}</span>
+              <span class="ring-count">{acceptance[r.key]}</span>
+              <span class="bar" aria-hidden="true"><span style="width: {(acceptance[r.key] / maxRing) * 100}%"></span></span>
+            </li>
           {/each}
-        </dl>
-        <p class="total"><strong>{acceptance.total} hits, {acceptance.x} X</strong></p>
-        <div class="actions">
-          <button class="primary" disabled={busy} onclick={() => respond("accept")}>Accept</button>
-          <button disabled={busy} onclick={() => respond("dispute")}>Dispute</button>
+        </ul>
+        <div class="action-bar">
+          {#if confirmingDispute}
+            <p class="confirm-text" role="alert">Dispute this result? The scorer will re-score the stage.</p>
+            <div class="actions">
+              <button disabled={busy} onclick={() => (confirmingDispute = false)}>Cancel</button>
+              <button class="danger" disabled={busy} onclick={() => respond("dispute")}>Confirm dispute</button>
+            </div>
+          {:else}
+            <button class="primary accept" disabled={busy} onclick={() => respond("accept")}>Accept</button>
+            <button class="dispute" disabled={busy} onclick={() => (confirmingDispute = true)}>Dispute</button>
+          {/if}
         </div>
       </section>
     {:else}
@@ -300,8 +334,11 @@
           <p class="banner">🔒 Stage {session.current_stage} is locked. Waiting for the other lanes and the admin.</p>
         {/if}
         {#if acceptance}
-          <p class="banner needs-acceptance">Your result for stage {acceptance.stage_number} awaits your acceptance.</p>
-          <button class="primary" onclick={() => (reviewing = true)}>Review result</button>
+          <div class="attention" role="group" aria-label="Action needed">
+            <span class="attention-icon" aria-hidden="true">!</span>
+            <p class="banner needs-acceptance">Your result for stage {acceptance.stage_number} awaits your acceptance.</p>
+            <button class="primary" onclick={() => (reviewing = true)}>Review result</button>
+          </div>
         {/if}
       </section>
     {/if}
@@ -318,9 +355,28 @@
 <style>
   .banner { font-weight: 600; font-size: var(--text-lg); }
   .disputed { border-color: var(--danger-fg); color: var(--danger-fg); }
-  .result dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0; }
-  .result dt { font-weight: 700; }
-  .result dd { margin: 0; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hero { text-align: center; }
+  .hero h2 { margin: var(--space-2) 0; font-size: var(--text-lg); }
+  .hero .total { font-size: 2.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .chip { display: inline-block; padding: var(--space-1) var(--space-3); border-radius: 999px; background: var(--brand-tint); color: var(--text); font-size: var(--text-sm); font-weight: 600; }
+  .breakdown { list-style: none; margin: var(--space-4) 0; padding: 0; display: grid; gap: var(--space-2); }
+  .breakdown li { display: grid; grid-template-columns: 3rem 3.5rem 1fr; gap: var(--space-3); align-items: center; min-height: var(--touch); }
+  .ring-label { font-weight: 700; font-size: var(--text-lg); }
+  .ring-count { font-size: var(--text-xl); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { display: block; height: 0.75rem; border-radius: var(--radius-sm); background: var(--surface-alt); border: 1px solid var(--border); overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--accent); }
+  .action-bar { position: sticky; bottom: 0; display: grid; gap: var(--space-2); margin: 0 calc(var(--space-4) * -1) calc(var(--space-4) * -1); padding: var(--space-3) var(--space-4); background: var(--surface); border-top: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+  .action-bar button { min-height: 3.5rem; font-size: var(--text-lg); }
+  .action-bar .danger { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
+  .confirm-text { margin: 0; font-weight: 600; }
+  .attention { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: center; padding: var(--space-4); border: 2px solid var(--warning-fg); border-radius: var(--radius-lg); background: var(--warning-bg); color: var(--warning-fg); }
+  .attention .banner { margin: 0; }
+  .attention button { grid-column: 1 / -1; min-height: 3.5rem; font-size: var(--text-lg); }
+  .attention-icon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--warning-fg); color: var(--warning-bg); font-weight: 800; font-size: var(--text-lg); }
+  @media (min-width: 48rem) {
+    .action-bar { position: static; margin: var(--space-4) 0 0; padding: 0; border: 0; box-shadow: none; grid-auto-flow: column; }
+  }
   .layout { display: grid; gap: var(--space-4); align-items: start; }
   .rings { display: grid; gap: var(--space-2); }
   .ring { display: grid; grid-template-columns: 3.5rem 1fr 5rem 1fr; gap: var(--space-2); align-items: center; }

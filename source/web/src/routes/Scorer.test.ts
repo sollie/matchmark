@@ -140,6 +140,7 @@ describe("Scorer", () => {
     await user.click(screen.getByRole("button", { name: "Review result" }));
     expect(screen.getByText("Scored by Ann Lee")).toBeTruthy();
     expect(screen.getByText(/12 hits, 10 X/)).toBeTruthy();
+    expect(screen.getByText("Stage 1 of 2")).toBeTruthy();
     expect(screen.queryByLabelText("X count")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Accept" }));
     const accept = calls.find((c) => c.method === "POST");
@@ -154,7 +155,21 @@ describe("Scorer", () => {
     await open(server, session([false, true], { phase: "needs_acceptance", acceptance }));
     await user.click(screen.getByRole("button", { name: "Review result" }));
     await user.click(screen.getByRole("button", { name: "Dispute" }));
+    expect(calls.find((c) => c.method === "POST")).toBeUndefined();
+    await user.click(screen.getByRole("button", { name: "Confirm dispute" }));
     expect(calls.find((c) => c.method === "POST")?.path).toBe("/api/scorer/stages/2/dispute");
+  });
+
+  it("cancels a dispute without sending anything", async () => {
+    const server = fakeStream();
+    const user = userEvent.setup();
+    const acceptance = { ...zeroCounts, x: 12, stage_number: 2, total: 12, scorer_name: "Ann Lee" };
+    await open(server, session([false, true], { phase: "needs_acceptance", acceptance }));
+    await user.click(screen.getByRole("button", { name: "Review result" }));
+    await user.click(screen.getByRole("button", { name: "Dispute" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Accept" })).toBeTruthy();
+    expect(calls.find((c) => c.method === "POST")).toBeUndefined();
   });
 
   it("shows a persistent disputed notice with the previous values prefilled", async () => {

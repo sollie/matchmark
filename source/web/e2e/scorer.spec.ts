@@ -215,6 +215,10 @@ test.describe("pairing and scorer device", () => {
     await expect(lane2.getByText(/Your result for stage 1 awaits your acceptance/)).toBeVisible();
     await lane2.getByRole("button", { name: "Review result" }).click();
     await lane2.getByRole("button", { name: "Dispute" }).click();
+    await lane2.getByRole("button", { name: "Cancel" }).click();
+    await expect(lane2.getByRole("button", { name: "Accept" })).toBeVisible();
+    await lane2.getByRole("button", { name: "Dispute" }).click();
+    await lane2.getByRole("button", { name: "Confirm dispute" }).click();
 
     await expect(lane1.getByText(/Disputed: the shooter disputed stage 1/)).toBeVisible();
     await expect(lane1.getByLabel("10 count", { exact: true })).toHaveValue("8");
