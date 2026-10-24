@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/sollie/matchmark/internal/report"
@@ -37,18 +36,12 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		CourseLabel: view.Competition.CourseLabel,
 		Stages:      view.Stages,
 	}
-	club, err := s.GetClub(ctx)
-	if err != nil {
+	var logo ClubLogo
+	var err error
+	if data.ClubName, logo, err = s.clubBranding(ctx); err != nil {
 		return Download{}, err
 	}
-	data.ClubName = club.Name
-	if club.HasLogo {
-		logo, err := s.GetClubLogo(ctx)
-		if err != nil && !errors.Is(err, ErrNotFound) {
-			return Download{}, err
-		}
-		data.Logo, data.LogoType = logo.Data, logo.ContentType
-	}
+	data.Logo, data.LogoType = logo.Data, logo.ContentType
 	for _, c := range view.Categories {
 		cat := report.ResultsPDFCategory{Category: c.Category}
 		for _, r := range c.Rows {

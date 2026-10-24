@@ -49,3 +49,20 @@ func (h *Handler) download(w http.ResponseWriter, r *http.Request, ext, contentT
 	w.Header().Set("Content-Disposition", contentDisposition(file.BaseName, ext))
 	_, _ = w.Write(file.Data)
 }
+
+func requireFormat(r *http.Request, want string) error {
+	if r.URL.Query().Has("format") && r.URL.Query().Get("format") != want {
+		return service.ErrInvalid
+	}
+	return nil
+}
+
+func writeRendered(w http.ResponseWriter, contentType, ext string, file service.Download, attachment bool) {
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "private, no-cache")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if attachment {
+		w.Header().Set("Content-Disposition", contentDisposition(file.BaseName, ext))
+	}
+	_, _ = w.Write(file.Data)
+}

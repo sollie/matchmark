@@ -22,8 +22,8 @@ func (h *Handler) adminResultsPDF(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) resultsPDF(w http.ResponseWriter, r *http.Request, build func(ctx context.Context, id int64) (service.Download, error)) {
-	if r.URL.Query().Has("format") && r.URL.Query().Get("format") != "pdf" {
-		writeError(w, service.ErrInvalid)
+	if err := requireFormat(r, "pdf"); err != nil {
+		writeError(w, err)
 		return
 	}
 	id, err := pathInt(r, "competitionID")
@@ -36,9 +36,5 @@ func (h *Handler) resultsPDF(w http.ResponseWriter, r *http.Request, build func(
 		writeError(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Cache-Control", "private, no-cache")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Disposition", contentDisposition(file.BaseName, "pdf"))
-	_, _ = w.Write(file.Data)
+	writeRendered(w, "application/pdf", "pdf", file, true)
 }
