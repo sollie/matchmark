@@ -23,6 +23,7 @@ type Handler struct {
 	backupDir    string
 	version      string
 	limits       streamLimits
+	render       *RenderGuard
 	streams      [streamRoles]atomic.Int64
 }
 
@@ -30,6 +31,9 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 	h := &Handler{svc: svc, limits: defaultStreamLimits()}
 	for _, opt := range opts {
 		opt(h)
+	}
+	if h.render == nil {
+		h.render = NewRenderGuard(DefaultRenderLimits())
 	}
 	r := chi.NewRouter()
 	r.Route("/api", func(r chi.Router) {
@@ -47,10 +51,16 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.With(h.RequireAdmin).Post("/users/{userID}/reset-password", h.resetUserPassword)
 			r.With(h.RequireAdmin).Put("/users/{userID}/role", h.setUserRole)
 			r.With(h.RequireAdmin).Put("/users/{userID}/backup-permission", h.setBackupPermission)
+			r.With(h.RequireAdmin).Put("/club", h.setClub)
+			r.With(h.RequireAdmin).Put("/club/logo", h.putClubLogo)
+			r.With(h.RequireAdmin).Delete("/club/logo", h.deleteClubLogo)
 		}
 		r.Get("/version", h.getVersion)
+		h.clubPublicRoutes(r)
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
+		h.scorecardRoutes(r)
+		h.resultsPDFRoutes(r)
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireDevice)
 			h.scorerRoutes(r)

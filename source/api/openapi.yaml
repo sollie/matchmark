@@ -9,6 +9,7 @@ tags:
   - name: admin-auth
   - name: users
   - name: audit
+  - name: club
   - name: shooters
   - name: competitions
   - name: entries
@@ -192,6 +193,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/club:
+    get:
+      operationId: getClub
+      tags: [club]
+      summary: Club name and logo state, shown on public pages
+      responses:
+        '200':
+          description: Club settings; version changes on every edit and is used as an image cache-buster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+    put:
+      operationId: setClub
+      tags: [club]
+      summary: Set the club name, trimmed and at most 100 characters (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+      responses:
+        '200':
+          description: Updated club settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/club/logo:
+    get:
+      operationId: getClubLogo
+      tags: [club]
+      summary: The club logo; sends Cache-Control no-cache, so append ?v=version as a cache-buster
+      parameters:
+        - name: v
+          in: query
+          description: Cache-buster, ignored by the server
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The logo image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: setClubLogo
+      tags: [club]
+      summary: Upload the club logo as the raw request body; PNG or JPEG only, at most 512 KB and 2048 by 2048 pixels (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: Logo stored
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: deleteClubLogo
+      tags: [club]
+      summary: Remove the club logo (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '204':
+          description: Logo removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/users:
     get:
       operationId: listUsers
@@ -1345,6 +1452,209 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/competitions/{competitionID}/results:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadPublicResultsPdf
+      tags: [reports]
+      summary: The Results PDF of a finished competition, rendered on demand and honouring the visibility flags; public and never stored
+      parameters:
+        - name: format
+          in: query
+          description: Output format; pdf is the default and the only one supported
+          schema:
+            type: string
+            enum: [pdf]
+            default: pdf
+      responses:
+        '200':
+          description: The Results PDF, A4 portrait with one page per category; sends Cache-Control private, no-cache
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: The competition is unknown or not finished
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many requests for this resource from this address
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The server is busy rendering; retry later
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/admin/competitions/{competitionID}/results:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadAdminResultsPdf
+      tags: [reports]
+      summary: The Results PDF with every column shown, whatever the visibility flags; audited as a report download
+      security:
+        - adminCookie: []
+      parameters:
+        - name: format
+          in: query
+          description: Output format; pdf is the default and the only one supported
+          schema:
+            type: string
+            enum: [pdf]
+            default: pdf
+      responses:
+        '200':
+          description: The Results PDF; sends Cache-Control private, no-cache
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/scorer/scorecard/{competitionID}/{lane}:
+    get:
+      operationId: getScorecard
+      tags: [scorer]
+      summary: The Scorecard copy of the entry on a lane, rendered on demand once the competition is finished; public, ignores spectator visibility flags and is never stored
+      parameters:
+        - $ref: '#/components/parameters/CompetitionID'
+        - name: lane
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: format
+          in: query
+          description: Output format; png is the default and the only one supported
+          schema:
+            type: string
+            enum: [png]
+            default: png
+        - name: download
+          in: query
+          description: When 1, sends Content-Disposition with a filename
+          schema:
+            type: string
+            enum: ['1']
+      responses:
+        '200':
+          description: The Scorecard copy; sends Cache-Control private, no-cache, so append a data-version cache-buster to image URLs
+          headers:
+            Content-Disposition:
+              description: Present when download=1
+              schema:
+                type: string
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: The competition is unknown or not finished, or the lane is empty or its entry withdrawn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many requests for this resource from this address
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The server is busy rendering; retry later
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/scorer/scorecard/{competitionID}/{lane}/summary:
+    get:
+      operationId: getScorecardSummary
+      tags: [scorer]
+      summary: The shooter and the scorer of each accepted stage on a Scorecard copy, as text; public, ignores spectator visibility flags and has the same availability as the Scorecard copy
+      parameters:
+        - $ref: '#/components/parameters/CompetitionID'
+        - name: lane
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: The names shown on the Scorecard copy; sends Cache-Control private, no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScorecardSummary'
+        '404':
+          description: The competition is unknown or not finished, or the lane is empty or its entry withdrawn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests for this resource from this address
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The server is busy; retry later
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/scorer/session:
     get:
       operationId: getScorerSession
@@ -1598,6 +1908,33 @@ paths:
                       $ref: '#/components/schemas/Standing'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/spectator/competitions/{competitionID}/results:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: getSpectatorResults
+      tags: [spectator]
+      summary: Printable results of a finished competition, filtered by the visibility flags
+      description: >
+        Ranked per category by total then X count; entries tie only when both
+        are equal and withdrawn entries are left out. Hidden names also hide
+        WAID and the new shooters list; hidden stage scores omit `score`;
+        hidden ring counts omit `x_count`. Answers 404 unless the competition
+        is finished.
+      responses:
+        '200':
+          description: The results
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Results'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/spectator/competitions/{competitionID}/stream:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -1738,6 +2075,18 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    Club:
+      type: object
+      required: [name, has_logo, version]
+      properties:
+        name:
+          type: string
+          description: Empty when no name is set
+        has_logo:
+          type: boolean
+        version:
+          type: integer
+          format: int64
     Wa1500Shooter:
       type: object
       required: [waid, first_name, last_name, country, club]
@@ -2124,10 +2473,32 @@ components:
           type: integer
         revoked:
           type: boolean
+    ScorecardSummary:
+      type: object
+      required: [shooter, lane, scorers]
+      properties:
+        shooter:
+          type: string
+        lane:
+          type: integer
+        scorers:
+          type: array
+          description: One item per accepted stage; Range admin when the admin scored the stage
+          items:
+            type: object
+            required: [stage, scorer]
+            properties:
+              stage:
+                type: integer
+              scorer:
+                type: string
     ScorerSession:
       type: object
-      required: [lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
+      required: [competition_id, lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
       properties:
+        competition_id:
+          type: integer
+          format: int64
         lane:
           type: integer
         score_lane:
@@ -2320,14 +2691,111 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StageScore'
+    Results:
+      type: object
+      required: [competition, stages, categories, new_shooters]
+      properties:
+        competition:
+          type: object
+          required: [id, name, date, course, course_label]
+          properties:
+            id:
+              type: integer
+              format: int64
+            name:
+              type: string
+            date:
+              type: string
+            course:
+              type: string
+              description: Course of fire key from the rulebook
+            course_label:
+              type: string
+        stages:
+          type: array
+          items:
+            type: integer
+          description: Stage numbers of the course of fire, in order
+        categories:
+          type: array
+          description: Categories with at least one non-withdrawn entry, in rulebook order
+          items:
+            type: object
+            required: [category, rows]
+            properties:
+              category:
+                type: string
+              rows:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResultsRow'
+        new_shooters:
+          type: array
+          description: Shooters without a WAID; empty when names are hidden
+          items:
+            $ref: '#/components/schemas/ResultsNewShooter'
+    ResultsRow:
+      type: object
+      required: [rank, stages, total]
+      properties:
+        rank:
+          type: integer
+          description: Shared only when total and X count are both equal
+        last_name:
+          type: string
+        first_name:
+          type: string
+        waid:
+          type: string
+        club:
+          type: string
+        country:
+          type: string
+        stages:
+          type: array
+          items:
+            type: object
+            required: [stage]
+            properties:
+              stage:
+                type: integer
+              score:
+                type: integer
+                description: Present for accepted stages when stage scores are visible
+        total:
+          type: integer
+        x_count:
+          type: integer
+    ResultsNewShooter:
+      type: object
+      required: [last_name, first_name, category, total]
+      properties:
+        last_name:
+          type: string
+        first_name:
+          type: string
+        category:
+          type: string
+        club:
+          type: string
+        country:
+          type: string
+        total:
+          type: integer
+        x_count:
+          type: integer
     SpectatorStageState:
       type: string
       enum: [not_started, in_progress, awaiting_acceptance, accepted]
       description: A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
     SpectatorSnapshot:
       type: object
-      required: [current_stage, total_stages, standings]
+      required: [current_stage, total_stages, status, standings]
       properties:
+        status:
+          type: string
+          enum: [draft, active, finished]
+          description: The competition's status, so a viewer notices when it finishes without reloading the list
         current_stage:
           type: integer
           description: The competition's current stage number

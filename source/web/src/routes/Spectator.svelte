@@ -57,6 +57,8 @@
         snapshot = JSON.parse(data);
         standings = snapshot?.standings ?? [];
         updated = new Date();
+        const status = snapshot?.status;
+        if (status) competitions = competitions.map((c) => (c.id === selected ? { ...c, status } : c));
       },
       onState: (next) => {
         connection = next;
@@ -94,6 +96,7 @@
           {#if current}<span class="badge neutral">{current.status}</span>{/if}
           {#if finished}
             <strong>Finished</strong>
+            <a href={`/results/${selected}`}>View results</a>
           {:else if snapshot && acceptance}
             <strong>Stage {snapshot.current_stage} of {snapshot.total_stages}</strong>
             <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
@@ -131,6 +134,7 @@
               {#each stageNumbers as n (n)}<th class="num">S{n}</th>{/each}
               <th class="num">Total</th>
               {#if showX}<th class="num">X</th>{/if}
+              {#if finished}<th>Scorecard</th>{/if}
             </tr>
           </thead>
           <tbody>
@@ -147,6 +151,7 @@
                 {/each}
                 <td class="num total">{s.total}</td>
                 {#if showX}<td class="num">{s.x_count}</td>{/if}
+                {#if finished}<td>{#if !s.withdrawn}<a href={`/scorecard/${selected}/${s.lane}`} aria-label={`Scorecard for lane ${s.lane}`}>View</a>{/if}</td>{/if}
               </tr>
             {/each}
           </tbody>

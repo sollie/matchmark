@@ -9,6 +9,7 @@
   import Competition from "./Competition.svelte";
   import Users from "./Users.svelte";
   import AuditLog from "./AuditLog.svelte";
+  import ClubSettings from "./ClubSettings.svelte";
 
   onMount(refreshAdminSession);
 
@@ -21,7 +22,9 @@
         ? "users"
         : router.path.startsWith("/admin/audit")
           ? "audit"
-          : "competitions",
+          : router.path.startsWith("/admin/club")
+            ? "club"
+            : "competitions",
   );
 
   async function signOut() {
@@ -42,6 +45,7 @@
     <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}>Shooters</a>
     {#if admin.isAdmin}
       <a href="/admin/users" aria-current={activeSection === "users" ? "page" : undefined}>Users</a>
+      <a href="/admin/club" aria-current={activeSection === "club" ? "page" : undefined}>Club</a>
       <a href="/admin/audit" aria-current={activeSection === "audit" ? "page" : undefined}>Audit log</a>
     {/if}
     {#if admin.isAdmin && admin.canDownloadBackup}
@@ -63,6 +67,13 @@
       {:else}
         <h1>Not allowed</h1>
         <p>Only admins can manage users.</p>
+      {/if}
+    {:else if router.path === "/admin/club"}
+      {#if admin.isAdmin}
+        <ClubSettings />
+      {:else}
+        <h1>Not allowed</h1>
+        <p>Only admins can edit the club settings.</p>
       {/if}
     {:else if router.path === "/admin/audit"}
       {#if admin.isAdmin}

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import Scorer from "./Scorer.svelte";
 import { stubFetch } from "../test/fetch";
+import { navigate } from "../lib/router.svelte";
 
 type SessionOverrides = {
   score_lane?: number;
@@ -78,6 +79,7 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
   vi.restoreAllMocks();
   localStorage.clear();
+  navigate("/");
 });
 
 describe("Scorer", () => {
@@ -244,13 +246,13 @@ describe("Scorer", () => {
     expect(screen.getByText(/paired to lane 2/)).toBeTruthy();
   });
 
-  it("shows the finished screen and keeps the token", async () => {
+  it("drops the token and opens its own lane's scorecard when the competition finishes", async () => {
     const server = fakeStream();
     render(Scorer);
     await waitFor(() => expect(server.streams.length).toBe(1));
-    server.streams[0].send("snapshot", { lane: 1, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" });
-    await screen.findByText(/The competition is finished/);
-    expect(localStorage.getItem("mm_device_token")).toBe("device-token");
+    server.streams[0].send("snapshot", { competition_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" });
+    await waitFor(() => expect(window.location.pathname).toBe("/scorecard/7/3"));
+    expect(localStorage.getItem("mm_device_token")).toBeNull();
   });
 
   it("forgets the token and does not reconnect after a revoked event", async () => {
@@ -269,6 +271,19 @@ describe("Scorer", () => {
     calls = stubFetch((c) => (c.path === "/api/scorer/session" ? { status: 401 } : undefined));
     render(Scorer);
     await screen.findByText("Open a pairing link from the admin to score a lane.");
+    expect(localStorage.getItem("mm_device_token")).toBeNull();
+  });
+
+  it("opens its lane's scorecard and drops the token when the device is opened after the competition finished", async () => {
+    const server = fakeStream();
+    server.respondStatus = 410;
+    calls = stubFetch((c) =>
+      c.path === "/api/scorer/session"
+        ? { body: { competition_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" } }
+        : undefined,
+    );
+    render(Scorer);
+    await waitFor(() => expect(window.location.pathname).toBe("/scorecard/7/3"));
     expect(localStorage.getItem("mm_device_token")).toBeNull();
   });
 });

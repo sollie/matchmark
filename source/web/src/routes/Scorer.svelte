@@ -2,6 +2,7 @@
   import { api, deviceHeaders } from "../lib/api/client";
   import { errorMessage } from "../lib/api/util";
   import { openStream, type StreamState } from "../lib/sse";
+  import { navigate } from "../lib/router.svelte";
   import { forgetDeviceToken, loadDeviceToken } from "../lib/pairing";
   import type { components } from "../lib/api/schema";
 
@@ -52,9 +53,7 @@
       ? ""
       : session.phase === "not_started"
         ? "Status: waiting for the competition to start."
-      : session.phase === "finished"
-        ? "Status: finished."
-        : session.phase === "next_stage"
+      : session.phase === "next_stage"
           ? `Status: stage ${session.current_stage} started.`
           : session.phase === "needs_acceptance"
             ? `Status: action needed, review your result.`
@@ -76,8 +75,6 @@
         ? "Saved ✓"
         : `Enter ring counts that add up to ${current?.expected_shots} shots, then press Save.`,
   );
-
-  const finishedScreenMs = 8000;
 
   function auth() {
     return deviceHeaders(token ?? "");
@@ -105,6 +102,11 @@
   }
 
   function apply(next: Session) {
+    if (next.phase === "finished") {
+      forget();
+      navigate(`/scorecard/${next.competition_id}/${next.lane}`);
+      return;
+    }
     const previous = session;
     session = next;
     if (previous && previous.score_lane !== next.score_lane) {
@@ -139,7 +141,6 @@
     void connectAttempt;
     if (!token) return;
     let disposed = false;
-    let finishTimer: ReturnType<typeof setTimeout> | undefined;
     const stream = openStream({
       url: "/api/scorer/stream",
       headers: auth(),
@@ -148,22 +149,17 @@
           loadError = "";
           const next: Session = JSON.parse(data);
           apply(next);
-          if (next.phase === "finished") {
-            stream.close();
-            finishTimer = setTimeout(forget, finishedScreenMs);
-          }
         } else if (event === "revoked") {
           forget();
         }
       },
       onState: (next) => {
         connection = next;
-        if (next === "ended" && !disposed && session?.phase !== "finished") void load();
+        if (next === "ended" && !disposed) void load();
       },
     });
     return () => {
       disposed = true;
-      clearTimeout(finishTimer);
       stream.close();
     };
   });
@@ -265,13 +261,7 @@
       <p class="muted">Loading…</p>
     {/if}
   {:else}
-    {#if session.phase === "finished"}
-      <h1>Scorer</h1>
-      <section class="card finished" aria-label="Finished">
-        <h2>Finished</h2>
-        <p class="banner">The competition is finished. Thank you for scoring.</p>
-      </section>
-    {:else if session.phase === "not_started"}
+    {#if session.phase === "not_started"}
       <h1>Scorer</h1>
       <p class="muted">This device is paired to lane {session.lane}.</p>
       <section class="card" aria-label="Not started">
