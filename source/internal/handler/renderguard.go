@@ -89,14 +89,30 @@ func ResourceByPath(r *http.Request) string {
 }
 
 func (g *RenderGuard) Middleware(resource func(*http.Request) string) func(http.Handler) http.Handler {
+	return g.middleware(resource, true)
+}
+
+func (g *RenderGuard) MiddlewareUncoalesced(resource func(*http.Request) string) func(http.Handler) http.Handler {
+	return g.middleware(resource, false)
+}
+
+func (g *RenderGuard) middleware(resource func(*http.Request) string, coalesce bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if retry, ok := g.allow(clientKey(r) + "|" + resource(r)); !ok {
 				writeRetry(w, http.StatusTooManyRequests, "too many requests, try again shortly", retry)
 				return
 			}
-			rendered := g.coalesce(r, next)
-			rendered.writeTo(w)
+			if coalesce {
+				g.coalesce(r, next).writeTo(w)
+				return
+			}
+			if !g.acquire(r.Context()) {
+				busyResponse(g.limits.QueueWait).writeTo(w)
+				return
+			}
+			defer g.release()
+			next.ServeHTTP(w, r)
 		})
 	}
 }

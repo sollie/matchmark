@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"image/png"
 	"io"
@@ -19,7 +20,17 @@ type scorecardFixture struct {
 
 func newScorecardFixture(t *testing.T) *scorecardFixture {
 	t.Helper()
+	return newNamedScorecardFixture(t, "")
+}
+
+func newNamedScorecardFixture(t *testing.T, name string) *scorecardFixture {
+	t.Helper()
 	f := newFixture(t, "150")
+	if name != "" {
+		if status, out := f.env.Do("PUT", fmt.Sprintf("/api/competitions/%d", f.comp), map[string]any{"name": name, "date": "2026-05-01", "course": "150"}); status != http.StatusOK {
+			t.Fatalf("rename: %d %v", status, out)
+		}
+	}
 	entry := f.addEntry(t, "Hansen", 3)
 	f.addEntry(t, "Berg", 5)
 	base := fmt.Sprintf("/api/competitions/%d", f.comp)
@@ -175,5 +186,45 @@ func TestScorecardWithClubLogo(t *testing.T) {
 	}
 	if !strings.HasPrefix(string(body), "\x89PNG") {
 		t.Fatal("not a png")
+	}
+}
+
+func TestScorecardSummaryNamesShooterAndScorers(t *testing.T) {
+	f := newScorecardFixture(t)
+	if status, _, _ := anonymousGet(t, f.env, f.path(3, "/summary")); status != http.StatusNotFound {
+		t.Fatalf("unfinished: %d", status)
+	}
+	f.finish(t)
+	status, header, body := anonymousGet(t, f.env, f.path(3, "/summary"))
+	if status != http.StatusOK {
+		t.Fatalf("status %d", status)
+	}
+	if ct := header.Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("content type %q", ct)
+	}
+	want := `{"lane":3,"scorers":[{"scorer":"Range admin","stage":1}],"shooter":"A Hansen"}`
+	var got map[string]any
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	canonical, _ := json.Marshal(got)
+	if string(canonical) != want {
+		t.Fatalf("summary %s", canonical)
+	}
+	if status, _, _ := anonymousGet(t, f.env, f.path(4, "/summary")); status != http.StatusNotFound {
+		t.Fatalf("empty lane: %d", status)
+	}
+	if status, _, _ := anonymousGet(t, f.env, f.path(5, "/summary")); status != http.StatusOK {
+		t.Fatalf("unscored entry: %d", status)
+	}
+}
+
+func TestScorecardDownloadFilenameWithNonASCIIName(t *testing.T) {
+	f := newNamedScorecardFixture(t, "Åre cup")
+	f.finish(t)
+	_, header, _ := anonymousGet(t, f.env, f.path(3, "?download=1"))
+	want := `attachment; filename="_re-cup-2026-05-01-lane-3.png"; filename*=UTF-8''%C3%85re-cup-2026-05-01-lane-3.png`
+	if got := header.Get("Content-Disposition"); got != want {
+		t.Fatalf("disposition %q", got)
 	}
 }

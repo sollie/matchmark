@@ -15,7 +15,7 @@ let originalFetch: typeof fetch;
 let send: ((data: unknown) => void) | null;
 
 function install(status: string) {
-  stubFetch(() => ({
+  const calls = stubFetch(() => ({
     body: { competitions: [{ id: 7, name: "Club Match", date: "2026-05-01", course: "150", status }] },
   }));
   const previous = globalThis.fetch;
@@ -28,6 +28,7 @@ function install(status: string) {
     send = (data) => controller.enqueue(enc.encode(`event: snapshot\ndata: ${JSON.stringify(data)}\n\n`));
     return Promise.resolve(new Response(body, { headers: { "Content-Type": "text/event-stream" } }));
   }) as typeof fetch;
+  return calls;
 }
 
 beforeEach(() => {
@@ -92,5 +93,20 @@ describe("Spectator status row", () => {
     send!({ current_stage: 2, total_stages: 10, standings: [standing(1, ["accepted"])] });
     await screen.findByRole("table");
     expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
+  });
+
+  it("notices a competition finishing from the snapshot without reloading the list", async () => {
+    const calls = install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    const loads = () => calls.filter((c) => c.path === "/api/spectator/competitions").length;
+    const before = loads();
+    send!({ current_stage: 2, total_stages: 10, status: "active", standings: [standing(1, ["accepted"])] });
+    await screen.findByRole("table");
+    expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
+    send!({ current_stage: 10, total_stages: 10, status: "finished", standings: [standing(1, ["accepted"])] });
+    expect(await screen.findByRole("link", { name: "Scorecard for lane 1" })).toBeTruthy();
+    expect(loads()).toBe(before);
   });
 });

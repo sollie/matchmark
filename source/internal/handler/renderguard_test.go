@@ -109,3 +109,41 @@ func TestRenderGuardShedsLoadWhenSaturated(t *testing.T) {
 		t.Fatalf("after release: %d", rec.Code)
 	}
 }
+
+func TestRenderGuardWithoutCoalescingRunsEveryRequestAndSharesLimits(t *testing.T) {
+	g := handler.NewRenderGuard(handler.RenderLimits{Concurrent: 2, Queue: 0, QueueWait: 10 * time.Millisecond, PerResource: 100, Window: time.Minute})
+	var calls atomic.Int32
+	release := make(chan struct{})
+	slow := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		<-release
+		_, _ = w.Write([]byte("own"))
+	})
+	guard := g.MiddlewareUncoalesced(handler.ResourceByPath)(slow)
+
+	var wg sync.WaitGroup
+	recs := make([]*httptest.ResponseRecorder, 2)
+	for i := range recs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			recs[i] = guardRequest(guard, "/r/1", "10.0.0."+strconv.Itoa(i+1))
+		}()
+	}
+	for calls.Load() < 2 {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if rec := guardRequest(guard, "/r/1", "10.0.0.9"); rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("saturated: %d %v", rec.Code, rec.Header())
+	}
+	close(release)
+	wg.Wait()
+	if n := calls.Load(); n != 2 {
+		t.Fatalf("handler ran %d times", n)
+	}
+	for _, rec := range recs {
+		if rec.Code != http.StatusOK || rec.Body.String() != "own" {
+			t.Fatalf("response %d %q", rec.Code, rec.Body.String())
+		}
+	}
+}

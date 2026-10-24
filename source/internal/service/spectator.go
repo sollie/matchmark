@@ -181,6 +181,7 @@ func (s *Service) standings(ctx context.Context, comp repository.Competition) ([
 type SpectatorSnapshot struct {
 	CurrentStage int            `json:"current_stage"`
 	TotalStages  int            `json:"total_stages"`
+	Status       string         `json:"status"`
 	Standings    []StandingView `json:"standings"`
 }
 
@@ -242,7 +243,7 @@ func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (S
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
-	snap := SpectatorSnapshot{CurrentStage: comp.CurrentStage, TotalStages: len(course.Stages), Standings: standings}
+	snap := SpectatorSnapshot{CurrentStage: comp.CurrentStage, TotalStages: len(course.Stages), Status: comp.Status, Standings: standings}
 	slot.cached = &cachedSnapshot{version: version, snapshot: snap}
 	return snap, nil
 }

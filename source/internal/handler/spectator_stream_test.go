@@ -17,6 +17,7 @@ type snapshotBody struct {
 	CurrentStage int              `json:"current_stage"`
 	Standings    []map[string]any `json:"standings"`
 	TotalStages  int              `json:"total_stages"`
+	Status       string           `json:"status"`
 }
 
 func streamPath(f *fixture) string {
@@ -232,6 +233,9 @@ func TestSpectatorSnapshotStageStates(t *testing.T) {
 	}
 	if snap.CurrentStage != 1 {
 		t.Fatalf("current stage %d", snap.CurrentStage)
+	}
+	if snap.Status != "active" {
+		t.Fatalf("status %q", snap.Status)
 	}
 	states := map[string][]string{}
 	for _, row := range snap.Standings {

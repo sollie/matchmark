@@ -17,7 +17,8 @@ test.describe("scorecard", () => {
     await setStatus(admin, competition.id, "finished");
     await page.getByRole("link", { name: "Scorecard for lane 1" }).click();
     await expect(page).toHaveURL(`/scorecard/${competition.id}/1`);
-    const image = page.getByRole("img", { name: "Scorecard for lane 1" });
+    await expect(page.getByText(`${shooter.first_name} ${shooter.last_name}`, { exact: true })).toBeVisible();
+    const image = page.getByRole("img", { name: /^Scorecard for .+, lane 1$/ });
     await expect(image).toBeVisible();
     await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
     await expect(page.getByRole("link", { name: "Download PNG" })).toHaveAttribute(
@@ -34,7 +35,7 @@ test.describe("scorecard", () => {
     await setStatus(admin, competition.id, "finished");
     await page.setViewportSize({ width: 393, height: 659 });
     await page.goto(`/scorecard/${competition.id}/1`);
-    await expect(page.getByRole("img", { name: "Scorecard for lane 1" })).toBeVisible();
+    await expect(page.getByRole("img", { name: /^Scorecard for .+, lane 1$/ })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download PNG" })).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
