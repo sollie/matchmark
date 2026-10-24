@@ -60,7 +60,10 @@
         {/each}
       </select>
     </label>
-    {#if results}<button type="button" onclick={() => window.print()}>Print</button>{/if}
+    {#if results}
+      <button type="button" onclick={() => window.print()}>Print</button>
+      <a class="button" href={`/api/competitions/${results.competition.id}/results?format=pdf`} download>Download PDF</a>
+    {/if}
   </div>
 
   {#if missing}
