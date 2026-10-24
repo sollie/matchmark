@@ -1452,6 +1452,73 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/scorer/scorecard/{competitionID}/{lane}:
+    get:
+      operationId: getScorecard
+      tags: [scorer]
+      summary: The Scorecard copy of the entry on a lane, rendered on demand once the competition is finished; public, ignores spectator visibility flags and is never stored
+      parameters:
+        - $ref: '#/components/parameters/CompetitionID'
+        - name: lane
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: format
+          in: query
+          description: Output format; png is the default and the only one supported
+          schema:
+            type: string
+            enum: [png]
+            default: png
+        - name: download
+          in: query
+          description: When 1, sends Content-Disposition with a filename
+          schema:
+            type: string
+            enum: ['1']
+      responses:
+        '200':
+          description: The Scorecard copy; sends Cache-Control private, no-cache, so append a data-version cache-buster to image URLs
+          headers:
+            Content-Disposition:
+              description: Present when download=1
+              schema:
+                type: string
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: The competition is unknown or not finished, or the lane is empty or its entry withdrawn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many requests for this resource from this address
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The server is busy rendering; retry later
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/scorer/session:
     get:
       operationId: getScorerSession

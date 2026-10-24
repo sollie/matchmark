@@ -23,6 +23,7 @@ type Handler struct {
 	backupDir    string
 	version      string
 	limits       streamLimits
+	render       *RenderGuard
 	streams      [streamRoles]atomic.Int64
 }
 
@@ -30,6 +31,9 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 	h := &Handler{svc: svc, limits: defaultStreamLimits()}
 	for _, opt := range opts {
 		opt(h)
+	}
+	if h.render == nil {
+		h.render = NewRenderGuard(DefaultRenderLimits())
 	}
 	r := chi.NewRouter()
 	r.Route("/api", func(r chi.Router) {
@@ -55,6 +59,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 		h.clubPublicRoutes(r)
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
+		h.scorecardRoutes(r)
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireDevice)
 			h.scorerRoutes(r)
