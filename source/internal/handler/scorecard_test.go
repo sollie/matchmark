@@ -20,7 +20,17 @@ type scorecardFixture struct {
 
 func newScorecardFixture(t *testing.T) *scorecardFixture {
 	t.Helper()
+	return newNamedScorecardFixture(t, "")
+}
+
+func newNamedScorecardFixture(t *testing.T, name string) *scorecardFixture {
+	t.Helper()
 	f := newFixture(t, "150")
+	if name != "" {
+		if status, out := f.env.Do("PUT", fmt.Sprintf("/api/competitions/%d", f.comp), map[string]any{"name": name, "date": "2026-05-01", "course": "150"}); status != http.StatusOK {
+			t.Fatalf("rename: %d %v", status, out)
+		}
+	}
 	entry := f.addEntry(t, "Hansen", 3)
 	f.addEntry(t, "Berg", 5)
 	base := fmt.Sprintf("/api/competitions/%d", f.comp)
@@ -206,5 +216,15 @@ func TestScorecardSummaryNamesShooterAndScorers(t *testing.T) {
 	}
 	if status, _, _ := anonymousGet(t, f.env, f.path(5, "/summary")); status != http.StatusOK {
 		t.Fatalf("unscored entry: %d", status)
+	}
+}
+
+func TestScorecardDownloadFilenameWithNonASCIIName(t *testing.T) {
+	f := newNamedScorecardFixture(t, "Åre cup")
+	f.finish(t)
+	_, header, _ := anonymousGet(t, f.env, f.path(3, "?download=1"))
+	want := `attachment; filename="_re-cup-2026-05-01-lane-3.png"; filename*=UTF-8''%C3%85re-cup-2026-05-01-lane-3.png`
+	if got := header.Get("Content-Disposition"); got != want {
+		t.Fatalf("disposition %q", got)
 	}
 }
