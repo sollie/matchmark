@@ -30,6 +30,10 @@ func WithTLS(serving bool) Option {
 	return func(h *Handler) { h.servingTLS = serving }
 }
 
+func WithRenderGuard(g *RenderGuard) Option {
+	return func(h *Handler) { h.render = g }
+}
+
 func WithAudit(a *service.Audit) Option {
 	return func(h *Handler) { h.audit = a }
 }

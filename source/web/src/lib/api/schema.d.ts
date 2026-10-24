@@ -740,6 +740,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scorer/scorecard/{competitionID}/{lane}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Scorecard copy of the entry on a lane, rendered on demand once the competition is finished; public, ignores spectator visibility flags and is never stored */
+        get: operations["getScorecard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scorer/session": {
         parameters: {
             query?: never;
@@ -2890,6 +2907,66 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getScorecard: {
+        parameters: {
+            query?: {
+                /** @description Output format; png is the default and the only one supported */
+                format?: "png";
+                /** @description When 1, sends Content-Disposition with a filename */
+                download?: "1";
+            };
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+                lane: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Scorecard copy; sends Cache-Control private, no-cache, so append a data-version cache-buster to image URLs */
+            200: {
+                headers: {
+                    /** @description Present when download=1 */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description The competition is unknown or not finished, or the lane is empty or its entry withdrawn */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["Invalid"];
+            /** @description Too many requests for this resource from this address */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The server is busy rendering; retry later */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     getScorerSession: {
