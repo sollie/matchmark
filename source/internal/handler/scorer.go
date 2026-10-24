@@ -62,7 +62,7 @@ func scorerSessionJSON(sess service.ScorerSession) map[string]any {
 		stages = append(stages, stage)
 	}
 	out := map[string]any{
-		"lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
+		"competition_id": sess.CompetitionID, "lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
 		"shooter_name": sess.ShooterName, "stages": stages, "phase": sess.Phase, "current_stage": sess.CurrentStage,
 	}
 	if a := sess.Acceptance; a != nil {

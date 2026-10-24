@@ -2429,8 +2429,11 @@ components:
           type: boolean
     ScorerSession:
       type: object
-      required: [lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
+      required: [competition_id, lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
       properties:
+        competition_id:
+          type: integer
+          format: int64
         lane:
           type: integer
         score_lane:
