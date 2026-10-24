@@ -37,7 +37,7 @@ test.describe("lockstep stages", () => {
     }
   });
 
-  test("the last acceptance finishes the competition and devices show the finished screen", async ({ adminPage: page, admin, openDevice }) => {
+  test("the last acceptance finishes the competition and a device lands on its lane's scorecard", async ({ adminPage: page, admin, openDevice }) => {
     const course = await defaultCourse(admin);
     const competition = await createCompetition(admin);
     const first = await seedEntry(admin, competition.id, 1);
@@ -55,9 +55,9 @@ test.describe("lockstep stages", () => {
       }
     }
 
-    await expect(lane1.getByText("The competition is finished")).toBeVisible();
-    await expect(lane1.getByText("The competition is finished")).toBeHidden({ timeout: 15000 });
-    await expect(lane1.getByRole("heading", { name: "Finished" })).toHaveCount(0);
+    await expect(lane1).toHaveURL(`/scorecard/${competition.id}/1`);
+    await expect(lane1.getByRole("link", { name: "Download PNG" })).toBeVisible();
+    expect(await lane1.evaluate(() => localStorage.getItem("mm_device_token"))).toBeNull();
     await openCompetition(page, competition.id);
     await expect(page.getByText("finished", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Start next stage" })).toHaveCount(0);

@@ -57,6 +57,7 @@
         snapshot = JSON.parse(data);
         standings = snapshot?.standings ?? [];
         updated = new Date();
+        if (!finished) void loadCompetitions();
       },
       onState: (next) => {
         connection = next;
@@ -132,6 +133,7 @@
               {#each stageNumbers as n (n)}<th class="num">S{n}</th>{/each}
               <th class="num">Total</th>
               {#if showX}<th class="num">X</th>{/if}
+              {#if finished}<th>Scorecard</th>{/if}
             </tr>
           </thead>
           <tbody>
@@ -148,6 +150,7 @@
                 {/each}
                 <td class="num total">{s.total}</td>
                 {#if showX}<td class="num">{s.x_count}</td>{/if}
+                {#if finished}<td>{#if !s.withdrawn}<a href={`/scorecard/${selected}/${s.lane}`} aria-label={`Scorecard for lane ${s.lane}`}>View</a>{/if}</td>{/if}
               </tr>
             {/each}
           </tbody>
