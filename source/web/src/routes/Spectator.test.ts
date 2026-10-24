@@ -74,4 +74,23 @@ describe("Spectator status row", () => {
     expect(within(row).queryByText(/Stage \d+ of/)).toBeNull();
     expect(within(row).queryByText(/accepted/)).toBeNull();
   });
+
+  it("links standings rows to the scorecard only once finished", async () => {
+    install("finished");
+    const { unmount } = render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    send!({ current_stage: 10, total_stages: 10, standings: [standing(1, ["accepted"])] });
+    const link = await screen.findByRole("link", { name: "Scorecard for lane 1" });
+    expect(link.getAttribute("href")).toMatch(/^\/scorecard\/\d+\/1$/);
+    unmount();
+    send = null;
+    install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    send!({ current_stage: 2, total_stages: 10, standings: [standing(1, ["accepted"])] });
+    await screen.findByRole("table");
+    expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
+  });
 });
