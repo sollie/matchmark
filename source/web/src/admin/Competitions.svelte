@@ -65,6 +65,7 @@
           {#if c.status === "finished"}
             <a class="button" href={`/api/competitions/${c.id}/results.xlsx`} download title="Results report (.xlsx)" aria-label={`Results report (.xlsx) for ${c.name}`}><svg class="icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 2v7.5M4.5 6.5 8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>XLSX</a>
             <a class="button" href={`/api/competitions/${c.id}/results.csv`} download title="Detailed CSV" aria-label={`Detailed CSV for ${c.name}`}><svg class="icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 2v7.5M4.5 6.5 8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>CSV</a>
+            <a class="button" href={`/api/admin/competitions/${c.id}/results?format=pdf`} download title="Results PDF" aria-label={`Results PDF for ${c.name}`}><svg class="icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 2v7.5M4.5 6.5 8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>PDF</a>
           {/if}
         </td>
       </tr>
