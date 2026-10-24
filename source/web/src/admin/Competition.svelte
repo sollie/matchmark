@@ -134,7 +134,7 @@
   {/if}
 
   <Entries competitionId={id} status={competition.status} {entries} {shooters} reload={loadEntries} />
-  <Pairings competitionId={id} {entries} finished={competition.status === "finished"} />
+  <Pairings competitionId={id} {entries} finished={competition.status === "finished"} draft={competition.status === "draft"} />
   <Visibility competitionId={id} />
 {:else if error}
   <p class="error">{error}</p>

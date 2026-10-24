@@ -35,6 +35,7 @@ const (
 	PhaseNeedsAcceptance Phase = "needs_acceptance"
 	PhaseNextStage       Phase = "next_stage"
 	PhaseFinished        Phase = "finished"
+	PhaseNotStarted      Phase = "not_started"
 )
 
 type Acceptance struct {
@@ -139,6 +140,13 @@ func shooterName(sh repository.Shooter) string {
 func (s *Service) DeviceSession(ctx context.Context, d Device) (ScorerSession, error) {
 	if d.Finished {
 		return ScorerSession{Lane: d.Lane, Phase: PhaseFinished}, nil
+	}
+	comp, err := s.repo.GetCompetition(ctx, d.CompetitionID)
+	if err != nil {
+		return ScorerSession{}, mapRepoErr(err)
+	}
+	if CompetitionStatus(comp.Status) == StatusDraft {
+		return ScorerSession{Lane: d.Lane, Phase: PhaseNotStarted}, nil
 	}
 	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
