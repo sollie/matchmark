@@ -47,8 +47,12 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 			r.With(h.RequireAdmin).Post("/users/{userID}/reset-password", h.resetUserPassword)
 			r.With(h.RequireAdmin).Put("/users/{userID}/role", h.setUserRole)
 			r.With(h.RequireAdmin).Put("/users/{userID}/backup-permission", h.setBackupPermission)
+			r.With(h.RequireAdmin).Put("/club", h.setClub)
+			r.With(h.RequireAdmin).Put("/club/logo", h.putClubLogo)
+			r.With(h.RequireAdmin).Delete("/club/logo", h.deleteClubLogo)
 		}
 		r.Get("/version", h.getVersion)
+		h.clubPublicRoutes(r)
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
 		r.Group(func(r chi.Router) {

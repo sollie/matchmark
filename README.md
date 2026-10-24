@@ -66,6 +66,7 @@ Coverage, by area:
 
 - Password change: wrong current password, other sessions ended, change and revert.
 - Users: an admin creates a user with a temporary password, the user is forced to change it at first login and then works as a regular user without the Users or Backup links. Admins can allow or forbid backup downloads per admin (the Backup link shows only for admins with the permission), and can also deactivate and reactivate users, reset a password to a new temporary one, and promote or demote; deactivation, reset and demotion end that user's sessions, and the last active admin is protected.
+- Club settings: an admin sets the club name and uploads or removes a PNG or JPEG logo (at most 512 KB and 2048 by 2048 pixels) at `/admin/club`; the name shows on the public page, and regular users never see the screen.
 - Audit log: an admin finds entries filtered by user, action and date and pages through them; regular users never see the screen.
 - Auth: wrong password, unknown username and correct login, per-client login lockout, sign out, 401 on unauthenticated admin API calls, the not-found page, and the unpaired scorer page.
 - Shooter search: picking a shooter for an entry through the search combobox, the no-match state and hiding shooters already entered.
