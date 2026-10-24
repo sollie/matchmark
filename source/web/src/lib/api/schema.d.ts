@@ -1410,6 +1410,11 @@ export interface components {
          */
         SpectatorStageState: "not_started" | "in_progress" | "awaiting_acceptance" | "accepted";
         SpectatorSnapshot: {
+            /**
+             * @description The competition's status, so a viewer notices when it finishes without reloading the list
+             * @enum {string}
+             */
+            status: "draft" | "active" | "finished";
             /** @description The competition's current stage number */
             current_stage: number;
             /** @description Number of stages in the competition's course of fire */

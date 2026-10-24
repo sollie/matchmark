@@ -57,7 +57,8 @@
         snapshot = JSON.parse(data);
         standings = snapshot?.standings ?? [];
         updated = new Date();
-        if (!finished) void loadCompetitions();
+        const status = snapshot?.status;
+        if (status) competitions = competitions.map((c) => (c.id === selected ? { ...c, status } : c));
       },
       onState: (next) => {
         connection = next;
