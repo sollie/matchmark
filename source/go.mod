@@ -9,7 +9,9 @@ require (
 	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.58.0
+	golang.org/x/image v0.47.0
 	golang.org/x/net v0.61.0
+	golang.org/x/sync v0.24.0
 	turso.tech/database/tursogo v0.8.3
 )
 
