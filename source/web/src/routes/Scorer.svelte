@@ -40,6 +40,7 @@
   let reviewing = $state(false);
   let started = $state(false);
   let confirmingDispute = $state(false);
+  let stageFull = $state(false);
 
   const stage = $derived(session?.current_stage ?? null);
   const current = $derived(session?.stages.find((s) => s.stage_number === stage) ?? null);
@@ -60,6 +61,7 @@
               : `Status: scoring lane ${session.score_lane}.`,
   );
   const sum = $derived(rings.reduce((n, r) => n + counts[r.key], 0));
+  const atCap = $derived(current !== null && sum >= current.expected_shots);
   const unsaved = $derived(rings.some((r) => counts[r.key] !== saved[r.key]));
   const savedValid = $derived(
     current !== null && rings.reduce((n, r) => n + saved[r.key], 0) === current.expected_shots,
@@ -164,8 +166,17 @@
     };
   });
 
+  function setCount(key: string, value: number, input?: HTMLInputElement) {
+    const wanted = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+    const room = Math.max(0, (current?.expected_shots ?? Infinity) - sum);
+    const next = wanted > counts[key] ? Math.min(wanted, counts[key] + room) : wanted;
+    stageFull = next < wanted;
+    counts[key] = next;
+    if (input && next !== wanted) input.value = String(next);
+  }
+
   function bump(key: string, delta: number) {
-    counts[key] = Math.max(0, counts[key] + delta);
+    setCount(key, counts[key] + delta);
   }
 
   async function save() {
@@ -290,10 +301,11 @@
                     type="number"
                     inputmode="numeric"
                     min="0"
-                    bind:value={counts[r.key]}
+                    value={counts[r.key]}
+                    oninput={(e) => setCount(r.key, e.currentTarget.valueAsNumber, e.currentTarget)}
                     aria-label="{r.label} count"
                   />
-                  <button onclick={() => bump(r.key, 1)} aria-label="Increase {r.label}">+</button>
+                  <button disabled={atCap} onclick={() => bump(r.key, 1)} aria-label="Increase {r.label}">+</button>
                 </div>
               {/each}
             </div>
@@ -310,6 +322,9 @@
                   <span class="badge warning">⚠ {current.expected_shots - sum} to go</span>
                 {/if}
               </p>
+              {#if stageFull}
+                <p class="save-status unsaved" role="status">Stage is full: all {current.expected_shots} shots are entered.</p>
+              {/if}
               <div class="actions">
                 <button class="primary" class:emphasis={unsaved} disabled={busy} onclick={save}>Save</button>
                 <button
