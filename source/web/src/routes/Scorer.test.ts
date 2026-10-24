@@ -244,13 +244,13 @@ describe("Scorer", () => {
     expect(screen.getByText(/paired to lane 2/)).toBeTruthy();
   });
 
-  it("shows the finished screen and keeps the token", async () => {
+  it("drops the token and opens its own lane's scorecard when the competition finishes", async () => {
     const server = fakeStream();
     render(Scorer);
     await waitFor(() => expect(server.streams.length).toBe(1));
-    server.streams[0].send("snapshot", { lane: 1, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" });
-    await screen.findByText(/The competition is finished/);
-    expect(localStorage.getItem("mm_device_token")).toBe("device-token");
+    server.streams[0].send("snapshot", { competition_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" });
+    await waitFor(() => expect(window.location.pathname).toBe("/scorecard/7/3"));
+    expect(localStorage.getItem("mm_device_token")).toBeNull();
   });
 
   it("forgets the token and does not reconnect after a revoked event", async () => {
