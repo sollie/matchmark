@@ -2790,8 +2790,12 @@ components:
       description: A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
     SpectatorSnapshot:
       type: object
-      required: [current_stage, total_stages, standings]
+      required: [current_stage, total_stages, status, standings]
       properties:
+        status:
+          type: string
+          enum: [draft, active, finished]
+          description: The competition's status, so a viewer notices when it finishes without reloading the list
         current_stage:
           type: integer
           description: The competition's current stage number
