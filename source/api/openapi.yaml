@@ -1609,6 +1609,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/scorer/scorecard/{competitionID}/{lane}/summary:
+    get:
+      operationId: getScorecardSummary
+      tags: [scorer]
+      summary: The shooter and the scorer of each accepted stage on a Scorecard copy, as text; public, ignores spectator visibility flags and has the same availability as the Scorecard copy
+      parameters:
+        - $ref: '#/components/parameters/CompetitionID'
+        - name: lane
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: The names shown on the Scorecard copy; sends Cache-Control private, no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScorecardSummary'
+        '404':
+          description: The competition is unknown or not finished, or the lane is empty or its entry withdrawn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests for this resource from this address
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The server is busy; retry later
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/scorer/session:
     get:
       operationId: getScorerSession
@@ -2427,6 +2473,25 @@ components:
           type: integer
         revoked:
           type: boolean
+    ScorecardSummary:
+      type: object
+      required: [shooter, lane, scorers]
+      properties:
+        shooter:
+          type: string
+        lane:
+          type: integer
+        scorers:
+          type: array
+          description: One item per accepted stage; Range admin when the admin scored the stage
+          items:
+            type: object
+            required: [stage, scorer]
+            properties:
+              stage:
+                type: integer
+              scorer:
+                type: string
     ScorerSession:
       type: object
       required: [competition_id, lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]

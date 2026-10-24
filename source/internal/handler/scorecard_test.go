@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"image/png"
 	"io"
@@ -175,5 +176,35 @@ func TestScorecardWithClubLogo(t *testing.T) {
 	}
 	if !strings.HasPrefix(string(body), "\x89PNG") {
 		t.Fatal("not a png")
+	}
+}
+
+func TestScorecardSummaryNamesShooterAndScorers(t *testing.T) {
+	f := newScorecardFixture(t)
+	if status, _, _ := anonymousGet(t, f.env, f.path(3, "/summary")); status != http.StatusNotFound {
+		t.Fatalf("unfinished: %d", status)
+	}
+	f.finish(t)
+	status, header, body := anonymousGet(t, f.env, f.path(3, "/summary"))
+	if status != http.StatusOK {
+		t.Fatalf("status %d", status)
+	}
+	if ct := header.Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("content type %q", ct)
+	}
+	want := `{"lane":3,"scorers":[{"scorer":"Range admin","stage":1}],"shooter":"A Hansen"}`
+	var got map[string]any
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatal(err)
+	}
+	canonical, _ := json.Marshal(got)
+	if string(canonical) != want {
+		t.Fatalf("summary %s", canonical)
+	}
+	if status, _, _ := anonymousGet(t, f.env, f.path(4, "/summary")); status != http.StatusNotFound {
+		t.Fatalf("empty lane: %d", status)
+	}
+	if status, _, _ := anonymousGet(t, f.env, f.path(5, "/summary")); status != http.StatusOK {
+		t.Fatalf("unscored entry: %d", status)
 	}
 }

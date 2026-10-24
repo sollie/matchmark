@@ -795,6 +795,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scorer/scorecard/{competitionID}/{lane}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The shooter and the scorer of each accepted stage on a Scorecard copy, as text; public, ignores spectator visibility flags and has the same availability as the Scorecard copy */
+        get: operations["getScorecardSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scorer/session": {
         parameters: {
             query?: never;
@@ -1225,6 +1242,15 @@ export interface components {
             id: number;
             lane: number;
             revoked: boolean;
+        };
+        ScorecardSummary: {
+            shooter: string;
+            lane: number;
+            /** @description One item per accepted stage; Range admin when the admin scored the stage */
+            scorers: {
+                stage: number;
+                scorer: string;
+            }[];
         };
         ScorerSession: {
             /** Format: int64 */
@@ -3150,6 +3176,58 @@ export interface operations {
                 };
             };
             /** @description The server is busy rendering; retry later */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getScorecardSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+                lane: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The names shown on the Scorecard copy; sends Cache-Control private, no-cache */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardSummary"];
+                };
+            };
+            /** @description The competition is unknown or not finished, or the lane is empty or its entry withdrawn */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests for this resource from this address */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The server is busy; retry later */
             503: {
                 headers: {
                     "Retry-After"?: number;
