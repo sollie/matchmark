@@ -106,6 +106,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/club": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Club name and logo state, shown on public pages */
+        get: operations["getClub"];
+        /** Set the club name, trimmed and at most 100 characters (admin only) */
+        put: operations["setClub"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/club/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The club logo; sends Cache-Control no-cache, so append ?v=version as a cache-buster */
+        get: operations["getClubLogo"];
+        /** Upload the club logo as the raw request body; PNG or JPEG only, at most 512 KB and 2048 by 2048 pixels (admin only) */
+        put: operations["setClubLogo"];
+        post?: never;
+        /** Remove the club logo (admin only) */
+        delete: operations["deleteClubLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users": {
         parameters: {
             query?: never;
@@ -703,6 +740,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/competitions/{competitionID}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /** The Results PDF of a finished competition, rendered on demand and honouring the visibility flags; public and never stored */
+        get: operations["downloadPublicResultsPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/competitions/{competitionID}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /** The Results PDF with every column shown, whatever the visibility flags; audited as a report download */
+        get: operations["downloadAdminResultsPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scorer/scorecard/{competitionID}/{lane}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Scorecard copy of the entry on a lane, rendered on demand once the competition is finished; public, ignores spectator visibility flags and is never stored */
+        get: operations["getScorecard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scorer/scorecard/{competitionID}/{lane}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The shooter and the scorer of each accepted stage on a Scorecard copy, as text; public, ignores spectator visibility flags and has the same availability as the Scorecard copy */
+        get: operations["getScorecardSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scorer/session": {
         parameters: {
             query?: never;
@@ -891,6 +1000,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/spectator/competitions/{competitionID}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Printable results of a finished competition, filtered by the visibility flags
+         * @description Ranked per category by total then X count; entries tie only when both are equal and withdrawn entries are left out. Hidden names also hide WAID and the new shooters list; hidden stage scores omit `score`; hidden ring counts omit `x_count`. Answers 404 unless the competition is finished.
+         */
+        get: operations["getSpectatorResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/spectator/competitions/{competitionID}/stream": {
         parameters: {
             query?: never;
@@ -917,6 +1048,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Club: {
+            /** @description Empty when no name is set */
+            name: string;
+            has_logo: boolean;
+            /** Format: int64 */
+            version: number;
+        };
         Wa1500Shooter: {
             waid: string;
             first_name: string;
@@ -1105,7 +1243,18 @@ export interface components {
             lane: number;
             revoked: boolean;
         };
+        ScorecardSummary: {
+            shooter: string;
+            lane: number;
+            /** @description One item per accepted stage; Range admin when the admin scored the stage */
+            scorers: {
+                stage: number;
+                scorer: string;
+            }[];
+        };
         ScorerSession: {
+            /** Format: int64 */
+            competition_id: number;
             lane: number;
             score_lane: number;
             /** @description The competition's current stage; devices can score only this stage. Zero in the finished phase */
@@ -1210,12 +1359,62 @@ export interface components {
             ring_counts?: components["schemas"]["RingCounts"];
             stages?: components["schemas"]["StageScore"][];
         };
+        Results: {
+            competition: {
+                /** Format: int64 */
+                id: number;
+                name: string;
+                date: string;
+                /** @description Course of fire key from the rulebook */
+                course: string;
+                course_label: string;
+            };
+            /** @description Stage numbers of the course of fire, in order */
+            stages: number[];
+            /** @description Categories with at least one non-withdrawn entry, in rulebook order */
+            categories: {
+                category: string;
+                rows: components["schemas"]["ResultsRow"][];
+            }[];
+            /** @description Shooters without a WAID; empty when names are hidden */
+            new_shooters: components["schemas"]["ResultsNewShooter"][];
+        };
+        ResultsRow: {
+            /** @description Shared only when total and X count are both equal */
+            rank: number;
+            last_name?: string;
+            first_name?: string;
+            waid?: string;
+            club?: string;
+            country?: string;
+            stages: {
+                stage: number;
+                /** @description Present for accepted stages when stage scores are visible */
+                score?: number;
+            }[];
+            total: number;
+            x_count?: number;
+        };
+        ResultsNewShooter: {
+            last_name: string;
+            first_name: string;
+            category: string;
+            club?: string;
+            country?: string;
+            total: number;
+            x_count?: number;
+        };
         /**
          * @description A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
          * @enum {string}
          */
         SpectatorStageState: "not_started" | "in_progress" | "awaiting_acceptance" | "accepted";
         SpectatorSnapshot: {
+            /**
+             * @description The competition's status, so a viewer notices when it finishes without reloading the list
+             * @enum {string}
+             */
+            status: "draft" | "active" | "finished";
             /** @description The competition's current stage number */
             current_stage: number;
             /** @description Number of stages in the competition's course of fire */
@@ -1509,6 +1708,126 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+        };
+    };
+    getClub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Club settings; version changes on every edit and is used as an image cache-buster */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Club"];
+                };
+            };
+        };
+    };
+    setClub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated club settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Club"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    getClubLogo: {
+        parameters: {
+            query?: {
+                /** @description Cache-buster, ignored by the server */
+                v?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "image/jpeg": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setClubLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "image/png": string;
+                "image/jpeg": string;
+            };
+        };
+        responses: {
+            /** @description Logo stored */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    deleteClubLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logo removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listUsers: {
@@ -2728,6 +3047,203 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    downloadPublicResultsPdf: {
+        parameters: {
+            query?: {
+                /** @description Output format; pdf is the default and the only one supported */
+                format?: "pdf";
+            };
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Results PDF, A4 portrait with one page per category; sends Cache-Control private, no-cache */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description The competition is unknown or not finished */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["Invalid"];
+            /** @description Too many requests for this resource from this address */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The server is busy rendering; retry later */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    downloadAdminResultsPdf: {
+        parameters: {
+            query?: {
+                /** @description Output format; pdf is the default and the only one supported */
+                format?: "pdf";
+            };
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Results PDF; sends Cache-Control private, no-cache */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    getScorecard: {
+        parameters: {
+            query?: {
+                /** @description Output format; png is the default and the only one supported */
+                format?: "png";
+                /** @description When 1, sends Content-Disposition with a filename */
+                download?: "1";
+            };
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+                lane: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The Scorecard copy; sends Cache-Control private, no-cache, so append a data-version cache-buster to image URLs */
+            200: {
+                headers: {
+                    /** @description Present when download=1 */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description The competition is unknown or not finished, or the lane is empty or its entry withdrawn */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["Invalid"];
+            /** @description Too many requests for this resource from this address */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The server is busy rendering; retry later */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getScorecardSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+                lane: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The names shown on the Scorecard copy; sends Cache-Control private, no-cache */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardSummary"];
+                };
+            };
+            /** @description The competition is unknown or not finished, or the lane is empty or its entry withdrawn */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests for this resource from this address */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The server is busy; retry later */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getScorerSession: {
         parameters: {
             query?: never;
@@ -2989,6 +3505,30 @@ export interface operations {
                     "application/json": {
                         standings: components["schemas"]["Standing"][];
                     };
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSpectatorResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The results */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Results"];
                 };
             };
             404: components["responses"]["NotFound"];

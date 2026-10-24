@@ -1,5 +1,5 @@
 export type Call = { method: string; path: string; search: string; body: unknown; authorization: string | null };
-type Reply = { status?: number; body?: unknown } | undefined;
+type Reply = { status?: number; body?: unknown; headers?: Record<string, string> } | undefined;
 
 let handler: (request: Request) => Promise<Response> = async () => new Response(null, { status: 500 });
 
@@ -23,7 +23,7 @@ export function stubFetch(respond: (call: Call) => Reply = () => undefined) {
     const reply = respond(call) ?? {};
     return new Response(reply.body === undefined ? null : JSON.stringify(reply.body), {
       status: reply.status ?? 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...reply.headers },
     });
   };
   return calls;

@@ -99,8 +99,8 @@ test.describe("competitions", () => {
       await expect(r).toContainText(c.date);
       await expect(r).toContainText(course);
       await expect(r.getByText(status, { exact: true })).toBeVisible();
-      const downloads = r.getByRole("link", { name: /^(Results report \(\.xlsx\)|Detailed CSV) for / });
-      await expect(downloads).toHaveCount(status === "finished" ? 2 : 0);
+      const downloads = r.getByRole("link", { name: /^(Results report \(\.xlsx\)|Detailed CSV|Results PDF) for / });
+      await expect(downloads).toHaveCount(status === "finished" ? 3 : 0);
     }
     await expect(table).toBeVisible();
 
