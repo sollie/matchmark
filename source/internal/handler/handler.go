@@ -60,6 +60,7 @@ func NewRouter(svc *service.Service, opts ...Option) http.Handler {
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
 		h.scorecardRoutes(r)
+		h.resultsPDFRoutes(r)
 		r.Group(func(r chi.Router) {
 			r.Use(h.RequireDevice)
 			h.scorerRoutes(r)
