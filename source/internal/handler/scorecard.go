@@ -1,12 +1,9 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-
-	"github.com/sollie/matchmark/internal/service"
 )
 
 func (h *Handler) scorecardRoutes(r chi.Router) {
@@ -15,8 +12,8 @@ func (h *Handler) scorecardRoutes(r chi.Router) {
 }
 
 func (h *Handler) getScorecard(w http.ResponseWriter, r *http.Request) {
-	if f := r.URL.Query().Get("format"); r.URL.Query().Has("format") && f != "png" {
-		writeError(w, service.ErrInvalid)
+	if err := requireFormat(r, "png"); err != nil {
+		writeError(w, err)
 		return
 	}
 	compID, err := pathInt(r, "competitionID")
@@ -34,13 +31,7 @@ func (h *Handler) getScorecard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Cache-Control", "private, no-cache")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	if r.URL.Query().Get("download") == "1" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", card.BaseName+".png"))
-	}
-	_, _ = w.Write(card.Data)
+	writeRendered(w, "image/png", "png", card, r.URL.Query().Get("download") == "1")
 }
 
 func (h *Handler) getScorecardSummary(w http.ResponseWriter, r *http.Request) {
