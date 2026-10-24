@@ -9,6 +9,7 @@ tags:
   - name: admin-auth
   - name: users
   - name: audit
+  - name: club
   - name: shooters
   - name: competitions
   - name: entries
@@ -192,6 +193,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/club:
+    get:
+      operationId: getClub
+      tags: [club]
+      summary: Club name and logo state, shown on public pages
+      responses:
+        '200':
+          description: Club settings; version changes on every edit and is used as an image cache-buster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+    put:
+      operationId: setClub
+      tags: [club]
+      summary: Set the club name, trimmed and at most 100 characters (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+      responses:
+        '200':
+          description: Updated club settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/club/logo:
+    get:
+      operationId: getClubLogo
+      tags: [club]
+      summary: The club logo; sends Cache-Control no-cache, so append ?v=version as a cache-buster
+      parameters:
+        - name: v
+          in: query
+          description: Cache-buster, ignored by the server
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The logo image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: setClubLogo
+      tags: [club]
+      summary: Upload the club logo as the raw request body; PNG or JPEG only, at most 512 KB and 2048 by 2048 pixels (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: Logo stored
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: deleteClubLogo
+      tags: [club]
+      summary: Remove the club logo (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '204':
+          description: Logo removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/users:
     get:
       operationId: listUsers
@@ -1738,6 +1845,18 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    Club:
+      type: object
+      required: [name, has_logo, version]
+      properties:
+        name:
+          type: string
+          description: Empty when no name is set
+        has_logo:
+          type: boolean
+        version:
+          type: integer
+          format: int64
     Wa1500Shooter:
       type: object
       required: [waid, first_name, last_name, country, club]
