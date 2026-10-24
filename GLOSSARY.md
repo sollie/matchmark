@@ -113,6 +113,22 @@ _Avoid_: Export, results file
 The record of one entry's hits per ring for each match, with the scorer's and shooter's names.
 _Avoid_: Score sheet
 
+**Scorecard copy**:
+The Scorecard of one entry rendered as an image on demand once its competition is finished, for the shooter to keep. It shows each stage's ring counts with that stage's scorer (the range admin for admin-scored stages) and counts only accepted stages. It is public, ignores spectator visibility flags, is addressed by competition and lane, is never stored and answers 404 for an unfinished competition, a withdrawn entry or an empty lane.
+_Avoid_: Receipt, printout
+
+**Results view**:
+The printable, public page of a finished competition's standings, chosen from a picker of finished competitions and honouring spectator visibility flags. It is the source of the Results PDF and is separate from the live spectator screen.
+_Avoid_: Results page, leaderboard
+
+**Results PDF**:
+The Results view rendered as a PDF on demand and never stored. The public one honours visibility flags; the admin one, downloaded from the competition list, shows everything.
+_Avoid_: Results report (that is the `.xlsx`)
+
+**Club settings**:
+The club's name and optional logo, edited by admins. The logo appears on the Results view, the Results PDF and the Scorecard copy.
+_Avoid_: Branding, profile
+
 **Device**:
 A phone or tablet paired to one lane for a competition and used to score that lane's score lane.
 _Avoid_: Terminal, client
