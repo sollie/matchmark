@@ -161,7 +161,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 			for _, n := range ringCounts(st.Counts) {
 				cells = append(cells, strconv.Itoa(n))
 			}
-			cells = append(cells, strconv.Itoa(Score(st.Counts)), scorerLabel(st))
+			cells = append(cells, strconv.Itoa(Score(st.Counts)), ScorerLabel(st))
 			totals = addCounts(totals, st.Counts)
 			totalScore += Score(st.Counts)
 			totalShots += stage.ExpectedShots
@@ -190,7 +190,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func scorerLabel(s repository.ReportStage) string {
+func ScorerLabel(s repository.ReportStage) string {
 	if s.ScorerLane == nil {
 		return adminScorer
 	}
