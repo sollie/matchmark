@@ -94,6 +94,7 @@
           {#if current}<span class="badge neutral">{current.status}</span>{/if}
           {#if finished}
             <strong>Finished</strong>
+            <a href={`/results/${selected}`}>View results</a>
           {:else if snapshot && acceptance}
             <strong>Stage {snapshot.current_stage} of {snapshot.total_stages}</strong>
             <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>

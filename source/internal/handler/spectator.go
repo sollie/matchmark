@@ -13,6 +13,7 @@ import (
 func (h *Handler) spectatorRoutes(r chi.Router) {
 	r.Get("/spectator/competitions", h.spectatorCompetitions)
 	r.Get("/spectator/competitions/{competitionID}/standings", h.spectatorStandings)
+	r.Get("/spectator/competitions/{competitionID}/results", h.spectatorResults)
 	r.Get("/spectator/competitions/{competitionID}/stream", h.spectatorStream)
 }
 
@@ -103,4 +104,19 @@ func (h *Handler) spectatorStream(w http.ResponseWriter, r *http.Request) {
 		snap, err := h.svc.SpectatorSnapshot(ctx, id)
 		return streamEvent{Name: "snapshot", Data: snap}, err
 	})
+}
+
+func (h *Handler) spectatorResults(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	res, err := h.svc.PublicResults(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-cache")
+	writeJSON(w, http.StatusOK, res)
 }
