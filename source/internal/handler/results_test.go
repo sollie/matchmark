@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/sollie/matchmark/internal/handler"
 )
 
 func (f *fixture) addShooterEntry(t *testing.T, last, waid, category string, lane int) int {
@@ -20,8 +22,8 @@ func resultsPath(f *fixture) string {
 	return fmt.Sprintf("/api/spectator/competitions/%d/results", f.comp)
 }
 
-func resultsFixture(t *testing.T) *fixture {
-	f := newFixture(t, "150")
+func resultsFixture(t *testing.T, opts ...handler.Option) *fixture {
+	f := newFixture(t, "150", opts...)
 	alpha := f.addShooterEntry(t, "Alpha", "1001", "Revolver", 1)
 	bravo := f.addShooterEntry(t, "Bravo", "1002", "Revolver", 2)
 	charlie := f.addShooterEntry(t, "Charlie", "", "Revolver", 3)
