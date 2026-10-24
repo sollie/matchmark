@@ -126,7 +126,7 @@ The Results view rendered as a PDF on demand and never stored. The public one ho
 _Avoid_: Results report (that is the `.xlsx`)
 
 **Club settings**:
-The club's name and optional logo, edited by admins at `/admin/club`. The logo appears on the Results view, the Results PDF and the Scorecard copy.
+The club's name and optional logo, edited by admins. The logo appears on the Results view, the Results PDF and the Scorecard copy.
 _Avoid_: Branding, profile
 
 **Device**:
