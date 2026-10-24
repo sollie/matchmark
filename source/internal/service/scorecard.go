@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/sollie/matchmark/internal/report"
@@ -67,18 +66,11 @@ func (s *Service) ScorecardPNG(ctx context.Context, competitionID int64, lane in
 	if err != nil {
 		return Download{}, err
 	}
-	club, err := s.GetClub(ctx)
-	if err != nil {
+	var logo ClubLogo
+	if card.ClubName, logo, err = s.clubBranding(ctx); err != nil {
 		return Download{}, err
 	}
-	card.ClubName = club.Name
-	if club.HasLogo {
-		logo, err := s.GetClubLogo(ctx)
-		if err != nil && !errors.Is(err, ErrNotFound) {
-			return Download{}, err
-		}
-		card.Logo = logo.Data
-	}
+	card.Logo = logo.Data
 	png, err := report.ScorecardPNG(card)
 	if err != nil {
 		return Download{}, err

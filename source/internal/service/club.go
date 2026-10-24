@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"errors"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -25,6 +26,21 @@ type ClubLogo = repository.ClubLogo
 func (s *Service) GetClub(ctx context.Context) (ClubSettings, error) {
 	c, err := s.repo.GetClub(ctx)
 	return c, mapRepoErr(err)
+}
+
+func (s *Service) clubBranding(ctx context.Context) (string, ClubLogo, error) {
+	club, err := s.GetClub(ctx)
+	if err != nil {
+		return "", ClubLogo{}, err
+	}
+	if !club.HasLogo {
+		return club.Name, ClubLogo{}, nil
+	}
+	logo, err := s.GetClubLogo(ctx)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return "", ClubLogo{}, err
+	}
+	return club.Name, logo, nil
 }
 
 func (s *Service) SetClubName(ctx context.Context, name string) (ClubSettings, error) {
