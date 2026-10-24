@@ -30,6 +30,16 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.getByText("This device is paired to lane 1.")).toBeVisible();
   });
 
+  test("the total and Save stay visible on a small phone without scrolling", async ({ admin, openDevice }) => {
+    const { competition } = await seedActive(admin, [1, 2]);
+    const pairing = await createPairing(admin, competition.id, 1);
+    const scorer = await openDevice(pairing.token);
+    await scorer.setViewportSize({ width: 393, height: 659 });
+    await expect(scorer.getByRole("heading", { name: /Scoring lane 2/ })).toBeVisible();
+    await expect(scorer.locator(".summary .total")).toBeInViewport();
+    await expect(scorer.getByRole("button", { name: "Save" })).toBeInViewport();
+  });
+
   test("the score lane wraps from the last manned lane to the first", async ({ admin, openDevice }) => {
     const { competition, entries } = await seedActive(admin, [1, 4, 7]);
     const pairing = await createPairing(admin, competition.id, 7);
