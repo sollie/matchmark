@@ -225,6 +225,9 @@ func TestPairingLifecycle(t *testing.T) {
 		if status != http.StatusOK || out["phase"] != "finished" {
 			t.Fatalf("status %d %v", status, out)
 		}
+		if out["competition_id"] != float64(f.comp) || out["lane"] != float64(2) {
+			t.Fatalf("finished session must identify the scorecard: %v", out)
+		}
 		if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0)); status != http.StatusConflict {
 			t.Fatalf("write after finish: %d", status)
 		}

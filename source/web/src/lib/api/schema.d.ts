@@ -1189,6 +1189,8 @@ export interface components {
             revoked: boolean;
         };
         ScorerSession: {
+            /** Format: int64 */
+            competition_id: number;
             lane: number;
             score_lane: number;
             /** @description The competition's current stage; devices can score only this stage. Zero in the finished phase */
