@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/sollie/matchmark/internal/handler"
 )
 
 func publicPDFPath(f *fixture, query string) string {
@@ -83,6 +85,24 @@ func TestAdminResultsPDFRequiresLoginAndIsAudited(t *testing.T) {
 	}
 	rows := auditEntries(t, f.env, "?action=report.download")
 	if len(rows) != 1 || rows[0]["details"] != "pdf" {
+		t.Fatalf("audit: %v", rows)
+	}
+}
+
+func TestAdminResultsPDFIsRateLimitedAndAuditedPerRequest(t *testing.T) {
+	guard := handler.NewRenderGuard(handler.RenderLimits{Concurrent: 4, Queue: 4, PerResource: 2})
+	f := resultsFixture(t, handler.WithRenderGuard(guard))
+	path := fmt.Sprintf("/api/admin/competitions/%d/results", f.comp)
+	for i := 0; i < 2; i++ {
+		if status, _, _ := f.env.Raw("GET", path); status != http.StatusOK {
+			t.Fatalf("request %d: %d", i, status)
+		}
+	}
+	status, header, _ := f.env.Raw("GET", path)
+	if status != http.StatusTooManyRequests || header.Get("Retry-After") == "" {
+		t.Fatalf("over limit: %d %v", status, header)
+	}
+	if rows := auditEntries(t, f.env, "?action=report.download"); len(rows) != 2 {
 		t.Fatalf("audit: %v", rows)
 	}
 }

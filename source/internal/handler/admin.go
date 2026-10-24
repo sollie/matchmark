@@ -36,7 +36,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Put("/competitions/{competitionID}/entries/{entryID}/stages/{stage}", h.setRingCounts)
 	r.Get("/competitions/{competitionID}/results.xlsx", h.resultsWorkbook)
 	r.Get("/competitions/{competitionID}/results.csv", h.resultsCSV)
-	r.Get("/admin/competitions/{competitionID}/results", h.adminResultsPDF)
+	r.With(h.render.MiddlewareUncoalesced(ResourceByPath)).Get("/admin/competitions/{competitionID}/results", h.adminResultsPDF)
 	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock", h.lockStage)
 	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept", h.acceptStage)
 	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock", h.unlockStage)
