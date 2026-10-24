@@ -945,6 +945,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/spectator/competitions/{competitionID}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Printable results of a finished competition, filtered by the visibility flags
+         * @description Ranked per category by total then X count; entries tie only when both are equal and withdrawn entries are left out. Hidden names also hide WAID and the new shooters list; hidden stage scores omit `score`; hidden ring counts omit `x_count`. Answers 404 unless the competition is finished.
+         */
+        get: operations["getSpectatorResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/spectator/competitions/{competitionID}/stream": {
         parameters: {
             query?: never;
@@ -1270,6 +1292,51 @@ export interface components {
             x_count?: number;
             ring_counts?: components["schemas"]["RingCounts"];
             stages?: components["schemas"]["StageScore"][];
+        };
+        Results: {
+            competition: {
+                /** Format: int64 */
+                id: number;
+                name: string;
+                date: string;
+                /** @description Course of fire key from the rulebook */
+                course: string;
+                course_label: string;
+            };
+            /** @description Stage numbers of the course of fire, in order */
+            stages: number[];
+            /** @description Categories with at least one non-withdrawn entry, in rulebook order */
+            categories: {
+                category: string;
+                rows: components["schemas"]["ResultsRow"][];
+            }[];
+            /** @description Shooters without a WAID; empty when names are hidden */
+            new_shooters: components["schemas"]["ResultsNewShooter"][];
+        };
+        ResultsRow: {
+            /** @description Shared only when total and X count are both equal */
+            rank: number;
+            last_name?: string;
+            first_name?: string;
+            waid?: string;
+            club?: string;
+            country?: string;
+            stages: {
+                stage: number;
+                /** @description Present for accepted stages when stage scores are visible */
+                score?: number;
+            }[];
+            total: number;
+            x_count?: number;
+        };
+        ResultsNewShooter: {
+            last_name: string;
+            first_name: string;
+            category: string;
+            club?: string;
+            country?: string;
+            total: number;
+            x_count?: number;
         };
         /**
          * @description A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
@@ -3230,6 +3297,30 @@ export interface operations {
                     "application/json": {
                         standings: components["schemas"]["Standing"][];
                     };
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSpectatorResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The results */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Results"];
                 };
             };
             404: components["responses"]["NotFound"];
