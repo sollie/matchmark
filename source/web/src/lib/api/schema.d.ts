@@ -1121,10 +1121,10 @@ export interface components {
                 disputed: boolean;
             })[];
             /**
-             * @description Derived by the server from the current stage. scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
+             * @description Derived by the server from the current stage. not_started while the competition is a draft (the device is paired but shows only its lane; the other fields are empty); scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
              * @enum {string}
              */
-            phase: "scoring" | "waiting" | "needs_acceptance" | "next_stage" | "finished";
+            phase: "not_started" | "scoring" | "waiting" | "needs_acceptance" | "next_stage" | "finished";
             /** @description Present while phase is needs_acceptance */
             acceptance?: components["schemas"]["RingCounts"] & {
                 stage_number: number;

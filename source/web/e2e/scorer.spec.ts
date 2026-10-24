@@ -178,13 +178,13 @@ test.describe("pairing and scorer device", () => {
     await expect(entryRow.locator("td.stage").first().getByText("Accepted", { exact: true })).toBeVisible();
   });
 
-  test("a draft competition cannot be scored from a device", async ({ admin, openDevice }) => {
+  test("a device paired to a draft competition waits and cannot score", async ({ admin, openDevice }) => {
     const competition = await createCompetition(admin, { status: "draft" });
     await seedEntry(admin, competition.id, 1);
     await seedEntry(admin, competition.id, 2);
     const pairing = await createPairing(admin, competition.id, 1);
     const scorer = await openDevice(pairing.token);
-    await expect(scorer.getByRole("alert")).toHaveText("conflict");
+    await expect(scorer.getByRole("heading", { name: "Waiting for the competition to start" })).toBeVisible();
     await expect(scorer.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
   });
 

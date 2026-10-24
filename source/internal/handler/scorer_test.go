@@ -89,6 +89,25 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 	})
 }
 
+func TestDevicePairedInDraftWaitsForStart(t *testing.T) {
+	f := &scoringFixture{fixture: newFixture(t, "150"), entries: map[int]int{}}
+	f.entries[1] = f.addEntry(t, "Shooter1", 1)
+	f.entries[3] = f.addEntry(t, "Shooter3", 3)
+	token := f.pair(t, 1)
+	status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil)
+	if status != http.StatusOK || out["phase"] != "not_started" || out["shooter_name"] != "" {
+		t.Fatalf("draft session: %d %v", status, out)
+	}
+	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(5, 0)); status != http.StatusConflict {
+		t.Fatalf("draft scoring status %d", status)
+	}
+	f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "active"})
+	status, out = f.env.DoToken(token, "GET", "/api/scorer/session", nil)
+	if status != http.StatusOK || out["phase"] == "not_started" || int(out["score_lane"].(float64)) != 3 {
+		t.Fatalf("active session: %d %v", status, out)
+	}
+}
+
 func TestSessionFollowsLaneChanges(t *testing.T) {
 	f := newScoringFixture(t, 1, 3, 5)
 	token := f.pair(t, 1)

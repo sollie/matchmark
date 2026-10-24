@@ -7,7 +7,7 @@ import { stubFetch } from "../test/fetch";
 type SessionOverrides = {
   score_lane?: number;
   shooter_name?: string;
-  phase?: "scoring" | "waiting" | "needs_acceptance" | "next_stage" | "finished";
+  phase?: "scoring" | "waiting" | "needs_acceptance" | "next_stage" | "finished" | "not_started";
   current_stage?: number;
   acceptance?: object;
   disputed?: number[];
@@ -216,6 +216,15 @@ describe("Scorer", () => {
     expect(screen.queryByLabelText("X count")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByLabelText("X count")).toBeTruthy();
+  });
+
+  it("shows a waiting screen before the competition starts", async () => {
+    const server = fakeStream();
+    render(Scorer);
+    await waitFor(() => expect(server.streams.length).toBe(1));
+    server.streams[0].send("snapshot", { lane: 2, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "not_started" });
+    await screen.findByText("Waiting for the competition to start");
+    expect(screen.getByText(/paired to lane 2/)).toBeTruthy();
   });
 
   it("shows the finished screen and keeps the token", async () => {

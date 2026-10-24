@@ -12,7 +12,8 @@
     competitionId,
     entries,
     finished,
-  }: { competitionId: number; entries: EntryWithStages[]; finished: boolean } = $props();
+    draft = false,
+  }: { competitionId: number; entries: EntryWithStages[]; finished: boolean; draft?: boolean } = $props();
 
   let pairings = $state<Pairing[]>([]);
   let lane = $state<number | null>(null);
@@ -71,6 +72,9 @@
       </label>
       <button type="submit" class="primary">Create pairing link</button>
     </form>
+    {#if draft}
+      <p class="muted">You can pair devices before the start. They show a waiting screen until the competition is started. Re-check pairings if you change lanes.</p>
+    {/if}
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
