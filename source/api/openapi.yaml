@@ -1452,6 +1452,96 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/competitions/{competitionID}/results:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadPublicResultsPdf
+      tags: [reports]
+      summary: The Results PDF of a finished competition, rendered on demand and honouring the visibility flags; public and never stored
+      parameters:
+        - name: format
+          in: query
+          description: Output format; pdf is the default and the only one supported
+          schema:
+            type: string
+            enum: [pdf]
+            default: pdf
+      responses:
+        '200':
+          description: The Results PDF, A4 portrait with one page per category; sends Cache-Control private, no-cache
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: The competition is unknown or not finished
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          description: Too many requests for this resource from this address
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: The server is busy rendering; retry later
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/admin/competitions/{competitionID}/results:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadAdminResultsPdf
+      tags: [reports]
+      summary: The Results PDF with every column shown, whatever the visibility flags; audited as a report download
+      security:
+        - adminCookie: []
+      parameters:
+        - name: format
+          in: query
+          description: Output format; pdf is the default and the only one supported
+          schema:
+            type: string
+            enum: [pdf]
+            default: pdf
+      responses:
+        '200':
+          description: The Results PDF; sends Cache-Control private, no-cache
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/scorer/scorecard/{competitionID}/{lane}:
     get:
       operationId: getScorecard

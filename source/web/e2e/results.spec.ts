@@ -24,6 +24,11 @@ test.describe("results", () => {
     await expect(row(page, known.last_name).first().getByRole("cell").first()).toHaveText("2");
     await expect(row(page, fresh.last_name).first().getByRole("cell").first()).toHaveText("1");
     await expect(page.getByRole("cell", { name: known.waid })).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download PDF" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/-results\.pdf$/);
   });
 
   test("an unfinished competition has no results", async ({ page, admin }) => {
