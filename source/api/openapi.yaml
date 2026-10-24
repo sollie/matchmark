@@ -1705,6 +1705,33 @@ paths:
                       $ref: '#/components/schemas/Standing'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/spectator/competitions/{competitionID}/results:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: getSpectatorResults
+      tags: [spectator]
+      summary: Printable results of a finished competition, filtered by the visibility flags
+      description: >
+        Ranked per category by total then X count; entries tie only when both
+        are equal and withdrawn entries are left out. Hidden names also hide
+        WAID and the new shooters list; hidden stage scores omit `score`;
+        hidden ring counts omit `x_count`. Answers 404 unless the competition
+        is finished.
+      responses:
+        '200':
+          description: The results
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Results'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/spectator/competitions/{competitionID}/stream:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
@@ -2439,6 +2466,99 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StageScore'
+    Results:
+      type: object
+      required: [competition, stages, categories, new_shooters]
+      properties:
+        competition:
+          type: object
+          required: [id, name, date, course, course_label]
+          properties:
+            id:
+              type: integer
+              format: int64
+            name:
+              type: string
+            date:
+              type: string
+            course:
+              type: string
+              description: Course of fire key from the rulebook
+            course_label:
+              type: string
+        stages:
+          type: array
+          items:
+            type: integer
+          description: Stage numbers of the course of fire, in order
+        categories:
+          type: array
+          description: Categories with at least one non-withdrawn entry, in rulebook order
+          items:
+            type: object
+            required: [category, rows]
+            properties:
+              category:
+                type: string
+              rows:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResultsRow'
+        new_shooters:
+          type: array
+          description: Shooters without a WAID; empty when names are hidden
+          items:
+            $ref: '#/components/schemas/ResultsNewShooter'
+    ResultsRow:
+      type: object
+      required: [rank, stages, total]
+      properties:
+        rank:
+          type: integer
+          description: Shared only when total and X count are both equal
+        last_name:
+          type: string
+        first_name:
+          type: string
+        waid:
+          type: string
+        club:
+          type: string
+        country:
+          type: string
+        stages:
+          type: array
+          items:
+            type: object
+            required: [stage]
+            properties:
+              stage:
+                type: integer
+              score:
+                type: integer
+                description: Present for accepted stages when stage scores are visible
+        total:
+          type: integer
+        x_count:
+          type: integer
+    ResultsNewShooter:
+      type: object
+      required: [last_name, first_name, category, total]
+      properties:
+        last_name:
+          type: string
+        first_name:
+          type: string
+        category:
+          type: string
+        club:
+          type: string
+        country:
+          type: string
+        total:
+          type: integer
+        x_count:
+          type: integer
     SpectatorStageState:
       type: string
       enum: [not_started, in_progress, awaiting_acceptance, accepted]
