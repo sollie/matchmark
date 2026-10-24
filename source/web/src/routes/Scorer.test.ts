@@ -96,6 +96,23 @@ describe("Scorer", () => {
     expect(save?.body).toMatchObject({ x: 1 });
   });
 
+  it("stops accepting shots once the stage is full", async () => {
+    const server = fakeStream();
+    const user = userEvent.setup();
+    await open(server);
+    const tens = screen.getByLabelText("10 count");
+    await user.clear(tens);
+    await user.type(tens, "25");
+    const nines = screen.getByLabelText("9 count");
+    await user.type(nines, "9");
+    expect(nines).toHaveProperty("value", "5");
+    expect(screen.getByText(/Stage is full/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Increase X" })).toHaveProperty("disabled", true);
+    await user.click(screen.getByRole("button", { name: "Decrease 10" }));
+    expect(screen.getByRole("button", { name: "Increase X" })).toHaveProperty("disabled", false);
+    expect(screen.queryByText(/Stage is full/)).toBeNull();
+  });
+
   it("shows a locked banner for a locked stage and saves nothing", async () => {
     const server = fakeStream();
     const user = userEvent.setup();
