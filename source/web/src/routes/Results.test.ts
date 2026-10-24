@@ -52,6 +52,7 @@ describe("Results", () => {
     expect(screen.getByRole("cell", { name: "230" })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "S1" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "X" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Download PDF" }).getAttribute("href")).toBe("/api/competitions/7/results?format=pdf");
   });
 
   it("says so when the results are not available", async () => {
