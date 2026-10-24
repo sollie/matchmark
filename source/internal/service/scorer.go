@@ -17,14 +17,15 @@ type Device struct {
 }
 
 type ScorerSession struct {
-	Lane         int
-	CurrentStage int
-	ScoreLane    int
-	EntryID      int64
-	ShooterName  string
-	Stages       []repository.StageInfo
-	Phase        Phase
-	Acceptance   *Acceptance
+	CompetitionID int64
+	Lane          int
+	CurrentStage  int
+	ScoreLane     int
+	EntryID       int64
+	ShooterName   string
+	Stages        []repository.StageInfo
+	Phase         Phase
+	Acceptance    *Acceptance
 }
 
 type Phase string
@@ -139,21 +140,21 @@ func shooterName(sh repository.Shooter) string {
 
 func (s *Service) DeviceSession(ctx context.Context, d Device) (ScorerSession, error) {
 	if d.Finished {
-		return ScorerSession{Lane: d.Lane, Phase: PhaseFinished}, nil
+		return ScorerSession{CompetitionID: d.CompetitionID, Lane: d.Lane, Phase: PhaseFinished}, nil
 	}
 	comp, err := s.repo.GetCompetition(ctx, d.CompetitionID)
 	if err != nil {
 		return ScorerSession{}, mapRepoErr(err)
 	}
 	if CompetitionStatus(comp.Status) == StatusDraft {
-		return ScorerSession{Lane: d.Lane, Phase: PhaseNotStarted}, nil
+		return ScorerSession{CompetitionID: d.CompetitionID, Lane: d.Lane, Phase: PhaseNotStarted}, nil
 	}
 	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return ScorerSession{}, err
 	}
 	phase, acceptance := derivePhase(t)
-	return ScorerSession{Lane: d.Lane, CurrentStage: t.CurrentStage, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Phase: phase, Acceptance: acceptance}, nil
+	return ScorerSession{CompetitionID: d.CompetitionID, Lane: d.Lane, CurrentStage: t.CurrentStage, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Phase: phase, Acceptance: acceptance}, nil
 }
 
 func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber int, c repository.RingCounts) error {
