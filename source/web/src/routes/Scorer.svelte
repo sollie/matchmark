@@ -49,6 +49,8 @@
   const announcement = $derived(
     !session
       ? ""
+      : session.phase === "not_started"
+        ? "Status: waiting for the competition to start."
       : session.phase === "finished"
         ? "Status: finished."
         : session.phase === "next_stage"
@@ -257,6 +259,13 @@
       <section class="card finished" aria-label="Finished">
         <h2>Finished</h2>
         <p class="banner">The competition is finished. Thank you for scoring.</p>
+      </section>
+    {:else if session.phase === "not_started"}
+      <h1>Scorer</h1>
+      <p class="muted">This device is paired to lane {session.lane}.</p>
+      <section class="card" aria-label="Not started">
+        <h2>Waiting for the competition to start</h2>
+        <p class="banner">This device is paired. Scoring begins when the admin starts the competition.</p>
       </section>
     {:else}
     <h1>Scoring lane {session.score_lane}: {session.shooter_name}</h1>
