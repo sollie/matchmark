@@ -398,6 +398,8 @@
 </main>
 
 <style>
+  .scorer { touch-action: manipulation; }
+  .scorer :global(button), .scorer :global(input) { touch-action: manipulation; }
   .banner { font-weight: 600; font-size: var(--text-lg); }
   .disputed { border-color: var(--danger-fg); color: var(--danger-fg); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -428,7 +430,11 @@
   .ring .label { font-weight: 700; font-size: var(--text-lg); }
   .ring button { font-size: 1.75rem; min-height: 3.25rem; min-width: var(--touch); }
   .ring input { font-size: 1.5rem; text-align: center; min-height: 3.25rem; width: 100%; }
-  .summary { margin: 0; text-align: center; }
+  .summary { margin: 0; text-align: center; position: sticky; bottom: 0; z-index: 1; padding-bottom: max(var(--space-3), env(safe-area-inset-bottom)); box-shadow: var(--shadow-lg); }
+  .summary { display: grid; grid-template-columns: auto 1fr; column-gap: var(--space-3); align-items: center; }
+  .summary .total { font-size: 2rem; }
+  .summary .total-label { margin: 0; text-align: left; }
+  .summary .actions, .summary .save-status { grid-column: 1 / -1; }
   .total { margin: 0; font-size: 2.5rem; line-height: 1.2; }
   .total.mismatch { color: var(--danger-fg); }
   .total-label { margin: var(--space-1) 0 var(--space-3); }
@@ -441,7 +447,9 @@
   .actions .lock { background: var(--accent); border-color: var(--accent); color: var(--on-brand); }
   @media (min-width: 48rem) {
     .layout { grid-template-columns: 1fr 18rem; }
-    .summary { position: sticky; top: var(--space-4); }
+    .summary { top: var(--space-4); bottom: auto; display: block; padding-bottom: var(--space-4); box-shadow: none; }
+    .summary .total { font-size: 2.5rem; }
+    .summary .total-label { margin: var(--space-1) 0 var(--space-3); text-align: center; }
     .ring { grid-template-columns: 4.5rem 1fr 7rem 1fr; gap: var(--space-3); }
     .rings { gap: var(--space-3); }
   }
