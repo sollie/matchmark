@@ -115,7 +115,7 @@ func TestPhaseFollowsLockAndAcceptanceAndSurvivesReload(t *testing.T) {
 	sess := f.session(t, lane2)
 	acc := sess["acceptance"].(map[string]any)
 	if acc["stage_number"] != float64(1) || acc["x"] != float64(10) || acc["10"] != float64(2) || acc["total"] != float64(12) ||
-		acc["scorer_name"] != "A Shooter1" {
+		acc["scorer_name"] != "A SHOOTER1" {
 		t.Fatalf("acceptance: %v", acc)
 	}
 

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { createShooter, expect, row, test, uniqueName } from "./helpers";
+import { createShooter, expect, row, test, uniqueLastName } from "./helpers";
 
 async function openShooters(page: Page) {
   await page.goto("/admin/shooters");
@@ -8,7 +8,7 @@ async function openShooters(page: Page) {
 
 test.describe("shooters", () => {
   test("adding a shooter lists it", async ({ adminPage: page }) => {
-    const lastName = uniqueName("Added");
+    const lastName = uniqueLastName("Added");
     await openShooters(page);
 
     const form = page.locator("form");
@@ -28,9 +28,51 @@ test.describe("shooters", () => {
     await expect(form.getByLabel("Last name")).toHaveValue("");
   });
 
+  test("first name comes before last name and typing shows the normalized form", async ({ adminPage: page }) => {
+    await openShooters(page);
+
+    const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Add shooter" }) });
+    const labels = await form.locator("label").allTextContents();
+    expect(labels.findIndex((l) => l.startsWith("First name"))).toBeLessThan(labels.findIndex((l) => l.startsWith("Last name")));
+
+    const first = form.getByLabel("First name");
+    const last = form.getByLabel("Last name");
+    await first.pressSequentially("anna-lise o'neil");
+    await last.pressSequentially("van der berg");
+    await expect(first).toHaveValue("Anna-Lise O'Neil");
+    await expect(last).toHaveValue("VAN DER BERG");
+
+    await first.fill("mARY   ann ");
+    await first.blur();
+    await expect(first).toHaveValue("Mary Ann");
+  });
+
+  test("a lowercase name typed in the manual entry form is saved normalized", async ({ adminPage: page }) => {
+    const suffix = uniqueLastName("Typed").replace(" ", "").toLowerCase();
+    await page.route("**/api/wa1500/search*", (route) => route.fulfill({ status: 502, json: { error: "wa1500 unavailable" } }));
+    await openShooters(page);
+    await page.getByRole("button", { name: "Import from WA1500" }).click();
+    await page.getByRole("textbox", { name: "Search WA1500" }).fill("anything");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+
+    const manual = page.getByRole("form", { name: "Manual shooter entry" });
+    await expect(manual).toBeVisible();
+    const labels = await manual.locator("label").allTextContents();
+    expect(labels.findIndex((l) => l.startsWith("First name"))).toBeLessThan(labels.findIndex((l) => l.startsWith("Last name")));
+    await manual.getByLabel("First name").pressSequentially("lars-erik");
+    await manual.getByLabel("Last name").pressSequentially(suffix);
+    await expect(manual.getByLabel("First name")).toHaveValue("Lars-Erik");
+    await expect(manual.getByLabel("Last name")).toHaveValue(suffix.toUpperCase());
+    await manual.getByLabel("Country").fill("NOR");
+    await manual.getByLabel("Club").fill("Typed Club");
+    await manual.getByRole("button", { name: "Save shooter" }).click();
+
+    await expect(row(page, suffix.toUpperCase()).getByRole("cell", { name: `Lars-Erik ${suffix.toUpperCase()}` })).toBeVisible();
+  });
+
   test("editing a shooter saves the change and cancelling restores the add form", async ({ adminPage: page, admin }) => {
-    const shooter = await createShooter(admin, { last_name: uniqueName("Editable"), club: "Old Club" });
-    const other = await createShooter(admin, { last_name: uniqueName("Untouched") });
+    const shooter = await createShooter(admin, { last_name: uniqueLastName("Editable"), club: "Old Club" });
+    const other = await createShooter(admin, { last_name: uniqueLastName("Untouched") });
     await openShooters(page);
 
     const form = page.locator("form");
@@ -60,7 +102,7 @@ test.describe("shooters", () => {
   });
 
   test("deleting asks for confirmation and keeps the shooter when declined", async ({ adminPage: page, admin }) => {
-    const shooter = await createShooter(admin, { last_name: uniqueName("Doomed") });
+    const shooter = await createShooter(admin, { last_name: uniqueLastName("Doomed") });
     await openShooters(page);
 
     const dialogs: string[] = [];
@@ -85,7 +127,7 @@ test.describe("shooters", () => {
   });
 
   test("an incomplete form is blocked", async ({ adminPage: page }) => {
-    const lastName = uniqueName("Incomplete");
+    const lastName = uniqueLastName("Incomplete");
     await openShooters(page);
 
     const form = page.locator("form");
@@ -105,8 +147,8 @@ test.describe("shooters", () => {
   });
 
   test("local search narrows the list by name or WAID", async ({ adminPage: page, admin }) => {
-    const found = await createShooter(admin, { last_name: uniqueName("Findable"), waid: `E${Date.now()}` });
-    const hidden = await createShooter(admin, { last_name: uniqueName("Hidden") });
+    const found = await createShooter(admin, { last_name: uniqueLastName("Findable"), waid: `E${Date.now()}` });
+    const hidden = await createShooter(admin, { last_name: uniqueLastName("Hidden") });
     await openShooters(page);
 
     await page.getByLabel("Search shooters").fill(found.waid);
@@ -118,7 +160,7 @@ test.describe("shooters", () => {
   });
 
   test("importing a WA1500 hit needs a sex and then lists the shooter", async ({ adminPage: page }) => {
-    const lastName = uniqueName("Imported").replace(" ", "");
+    const lastName = uniqueLastName("Imported").replace(" ", "");
     const waid = `W${Date.now()}`;
     await page.route("**/api/wa1500/search*", (route) =>
       route.fulfill({
@@ -142,7 +184,7 @@ test.describe("shooters", () => {
   });
 
   test("a name conflict asks whether to update or create new", async ({ adminPage: page, admin }) => {
-    const existing = await createShooter(admin, { last_name: uniqueName("Twin").replace(" ", ""), first_name: "Tim", club: "Local Club" });
+    const existing = await createShooter(admin, { last_name: uniqueLastName("Twin").replace(" ", ""), first_name: "Tim", club: "Local Club" });
     const waid = `W${Date.now()}`;
     await page.route("**/api/wa1500/search*", (route) =>
       route.fulfill({
@@ -166,7 +208,7 @@ test.describe("shooters", () => {
   });
 
   test("manual entry is offered when WA1500 is unavailable", async ({ adminPage: page }) => {
-    const lastName = uniqueName("Manual").replace(" ", "");
+    const lastName = uniqueLastName("Manual").replace(" ", "");
     await page.route("**/api/wa1500/search*", (route) => route.fulfill({ status: 502, json: { error: "wa1500 unavailable" } }));
     await openShooters(page);
     await page.getByRole("button", { name: "Import from WA1500" }).click();

@@ -22,7 +22,7 @@ func TestBackupRequiresAdmin(t *testing.T) {
 
 func TestBackupDownloadsUsableDatabase(t *testing.T) {
 	env := apitest.NewAdmin(t)
-	env.ID("POST", "/api/shooters", map[string]any{"last_name": "Berg", "first_name": "Ola", "sex": "M", "country": "NOR", "club": "Oslo PPC"})
+	env.ID("POST", "/api/shooters", map[string]any{"last_name": "BERG", "first_name": "Ola", "sex": "M", "country": "NOR", "club": "Oslo PPC"})
 
 	status, header, body := env.Raw("GET", "/api/admin/backup")
 	if status != http.StatusOK {
@@ -41,7 +41,7 @@ func TestBackupDownloadsUsableDatabase(t *testing.T) {
 	}
 	defer func() { _ = conn.Close() }()
 	var n int
-	if err := conn.QueryRow(`SELECT COUNT(*) FROM shooters WHERE last_name = 'Berg'`).Scan(&n); err != nil || n != 1 {
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM shooters WHERE last_name = 'BERG'`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("restored shooters = %d, err %v", n, err)
 	}
 }

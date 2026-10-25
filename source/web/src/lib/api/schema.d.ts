@@ -1176,7 +1176,9 @@ export interface components {
             candidates: components["schemas"]["Shooter"][];
         };
         ShooterInput: {
+            /** @description Must already be normalized (uppercase, single spaces, trimmed); otherwise the call answers 422. */
             last_name: string;
+            /** @description Must already be normalized (each word capitalised, also after a hyphen or apostrophe, single spaces, trimmed); otherwise the call answers 422. */
             first_name: string;
             /** @enum {string} */
             sex: "M" | "F";

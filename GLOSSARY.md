@@ -20,6 +20,10 @@ _Avoid_: Competitor, participant
 The identifier the World Association assigns to a shooter and uses to match results to their record. New shooters have none yet.
 _Avoid_: WA-ID, member number
 
+**Normalized name**:
+A shooter's name in the one canonical form the registry stores: the last name in uppercase, the first name with every word capitalised (also after a hyphen or apostrophe), whitespace trimmed and collapsed to single spaces. Creating or updating a shooter with any other form is rejected; WA1500 import normalizes before saving.
+_Avoid_: Cleaned name, formatted name
+
 **WA1500 import**:
 Copying a shooter found in the WA1500 register into the club's own shooters, with the sex chosen by the admin. A shooter with the same WAID is updated; one that only shares the name must be confirmed as the same person or created as a new shooter.
 _Avoid_: Sync

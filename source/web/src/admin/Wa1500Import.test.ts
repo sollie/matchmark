@@ -89,14 +89,14 @@ describe("Wa1500Import", () => {
     );
     await search(user);
     expect((await screen.findByRole("alert")).textContent).toContain("wa1500 unavailable");
-    await user.type(screen.getByRole("textbox", { name: "Last name" }), "Anderson");
-    await user.type(screen.getByRole("textbox", { name: "First name" }), "Mike");
+    await user.type(screen.getByRole("textbox", { name: "Last name" }), "anderson");
+    await user.type(screen.getByRole("textbox", { name: "First name" }), "mIKE");
     await user.type(screen.getByRole("textbox", { name: "Country" }), "SWE");
     await user.type(screen.getByRole("textbox", { name: "Club" }), "Alpha");
     await user.click(screen.getByRole("button", { name: "Save shooter" }));
     await waitFor(() => expect(onsaved).toHaveBeenCalledWith(expect.objectContaining({ id: 5 })));
     expect(calls.find((c) => c.method === "POST" && c.path === "/api/shooters")?.body).toEqual({
-      last_name: "Anderson",
+      last_name: "ANDERSON",
       first_name: "Mike",
       sex: "M",
       country: "SWE",

@@ -3,6 +3,7 @@ package db_test
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -221,5 +222,122 @@ func TestMigrationMapsLockedStagesToAccepted(t *testing.T) {
 	want := []string{"accepted|Admin|2026-10-19T10:00:00Z", "open||"}
 	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("stages = %v", got)
+	}
+}
+
+func reopenBeforeNormalization(t *testing.T, rows [][2]string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "mm.db")
+	conn, err := db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(`DELETE FROM schema_migrations WHERE version = 20`); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rows {
+		if _, err := conn.Exec(`INSERT INTO shooters (last_name, first_name, sex, country, club) VALUES (?, ?, 'M', 'NOR', 'C')`, r[0], r[1]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = conn.Close()
+	return path
+}
+
+func shooterNames(t *testing.T, conn *sql.DB) [][2]string {
+	t.Helper()
+	rs, err := conn.Query(`SELECT last_name, first_name FROM shooters ORDER BY id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rs.Close() }()
+	var out [][2]string
+	for rs.Next() {
+		var n [2]string
+		if err := rs.Scan(&n[0], &n[1]); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+func captureLogs(t *testing.T) *strings.Builder {
+	t.Helper()
+	var buf strings.Builder
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+func TestMigrationNormalizesShooterNames(t *testing.T) {
+	path := reopenBeforeNormalization(t, [][2]string{
+		{"anderson", "MIKE"},
+		{"  smith   jones ", "anna-lisa"},
+		{"østergård", "ÉMILIE"},
+		{"ALREADY", "Fine"},
+	})
+	conn, err := db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	want := [][2]string{
+		{"ANDERSON", "Mike"},
+		{"SMITH JONES", "Anna-Lisa"},
+		{"ØSTERGÅRD", "Émilie"},
+		{"ALREADY", "Fine"},
+	}
+	got := shooterNames(t, conn)
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("shooter %d = %v, want %v", i, got[i], want[i])
+		}
+	}
+}
+
+func TestMigrationLogsCollisionsWithoutMerging(t *testing.T) {
+	logs := captureLogs(t)
+	path := reopenBeforeNormalization(t, [][2]string{
+		{"anderson", "mike"},
+		{"ANDERSON", "MIKE"},
+		{"Other", "Person"},
+	})
+	conn, err := db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	got := shooterNames(t, conn)
+	if len(got) != 3 || got[0] != [2]string{"ANDERSON", "Mike"} || got[1] != got[0] {
+		t.Fatalf("shooters = %v", got)
+	}
+	out := logs.String()
+	if !strings.Contains(out, "shooter name collision") || !strings.Contains(out, `"shooter_ids":[1,2]`) {
+		t.Fatalf("collision not logged: %s", out)
+	}
+	if strings.Contains(out, "Other") {
+		t.Fatalf("non-colliding shooter logged: %s", out)
+	}
+}
+
+func TestMigrationNormalizationIsIdempotent(t *testing.T) {
+	path := reopenBeforeNormalization(t, [][2]string{{"anderson", "mike"}})
+	conn, err := db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(`UPDATE shooters SET first_name = 'edited'`); err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.Close()
+	conn, err = db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	if got := shooterNames(t, conn); got[0][1] != "edited" {
+		t.Fatalf("normalization ran again: %v", got)
 	}
 }
