@@ -252,13 +252,13 @@ func TestEntryUpdate(t *testing.T) {
 	path := fmt.Sprintf("/api/competitions/%d/entries/%d", f.comp, e1)
 
 	t.Run("change category and lane", func(t *testing.T) {
-		status, out := f.env.Do("PUT", path, map[string]any{"category": "Rifle", "lane": 5})
-		if status != http.StatusOK || out["category"] != "Rifle" || out["lane"].(float64) != 5 {
+		status, out := f.env.Do("PUT", path, map[string]any{"category": "Pistol OS", "lane": 5})
+		if status != http.StatusOK || out["category"] != "Pistol OS" || out["lane"].(float64) != 5 {
 			t.Fatalf("got %d %v", status, out)
 		}
 	})
 	t.Run("occupied lane conflicts", func(t *testing.T) {
-		if status, _ := f.env.Do("PUT", path, map[string]any{"category": "Rifle", "lane": 2}); status != http.StatusConflict {
+		if status, _ := f.env.Do("PUT", path, map[string]any{"category": "Pistol OS", "lane": 2}); status != http.StatusConflict {
 			t.Fatalf("status %d", status)
 		}
 	})
@@ -267,9 +267,14 @@ func TestEntryUpdate(t *testing.T) {
 			t.Fatalf("status %d", status)
 		}
 	})
+	t.Run("category not allowed for the course", func(t *testing.T) {
+		if status, _ := f.env.Do("PUT", path, map[string]any{"category": "Rifle", "lane": 5}); status != http.StatusUnprocessableEntity {
+			t.Fatalf("status %d", status)
+		}
+	})
 	t.Run("unknown entry", func(t *testing.T) {
 		p := fmt.Sprintf("/api/competitions/%d/entries/999", f.comp)
-		if status, _ := f.env.Do("PUT", p, map[string]any{"category": "Rifle", "lane": 7}); status != http.StatusNotFound {
+		if status, _ := f.env.Do("PUT", p, map[string]any{"category": "Pistol OS", "lane": 7}); status != http.StatusNotFound {
 			t.Fatalf("status %d", status)
 		}
 	})

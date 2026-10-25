@@ -2121,7 +2121,7 @@ components:
             $ref: '#/components/schemas/RulebookRing'
     RulebookCourse:
       type: object
-      required: [key, label, discipline, total_shots, stages]
+      required: [key, label, discipline, total_shots, categories, stages]
       properties:
         key:
           type: string
@@ -2131,6 +2131,11 @@ components:
           type: string
         total_shots:
           type: integer
+        categories:
+          type: array
+          description: Categories an entry may have in this course.
+          items:
+            type: string
         stages:
           type: array
           items:

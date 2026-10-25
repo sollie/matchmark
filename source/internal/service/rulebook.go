@@ -15,6 +15,7 @@ type RulebookCourse struct {
 	Label      string
 	Discipline string
 	TotalShots int
+	Categories []string
 	Stages     []RulebookStage
 }
 
@@ -36,7 +37,11 @@ func (s *Service) Rulebook() (RulebookView, error) {
 		if err != nil {
 			return RulebookView{}, err
 		}
-		course := RulebookCourse{Key: key, Label: c.Label, Discipline: c.Discipline, TotalShots: c.TotalShots}
+		allowed, err := rulebook.CategoriesForCourse(key)
+		if err != nil {
+			return RulebookView{}, err
+		}
+		course := RulebookCourse{Key: key, Label: c.Label, Discipline: c.Discipline, TotalShots: c.TotalShots, Categories: allowed}
 		for _, st := range c.Stages {
 			course.Stages = append(course.Stages, RulebookStage(st))
 		}

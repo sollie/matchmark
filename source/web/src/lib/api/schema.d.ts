@@ -1074,6 +1074,8 @@ export interface components {
             label: string;
             discipline: string;
             total_shots: number;
+            /** @description Categories an entry may have in this course. */
+            categories: string[];
             stages: components["schemas"]["RulebookStage"][];
         };
         RulebookStage: {

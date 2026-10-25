@@ -19,6 +19,7 @@ type rulebookCourseBody struct {
 	Label      string              `json:"label"`
 	Discipline string              `json:"discipline"`
 	TotalShots int                 `json:"total_shots"`
+	Categories []string            `json:"categories"`
 	Stages     []rulebookStageBody `json:"stages"`
 }
 
@@ -57,7 +58,7 @@ func (h *Handler) getRulebook(w http.ResponseWriter, _ *http.Request) {
 		Rings:         make([]rulebookRingBody, 0, len(view.Rings)),
 	}
 	for _, c := range view.Courses {
-		course := rulebookCourseBody{Key: c.Key, Label: c.Label, Discipline: c.Discipline, TotalShots: c.TotalShots, Stages: make([]rulebookStageBody, 0, len(c.Stages))}
+		course := rulebookCourseBody{Key: c.Key, Label: c.Label, Discipline: c.Discipline, TotalShots: c.TotalShots, Categories: c.Categories, Stages: make([]rulebookStageBody, 0, len(c.Stages))}
 		for _, st := range c.Stages {
 			course.Stages = append(course.Stages, rulebookStageBody(st))
 		}

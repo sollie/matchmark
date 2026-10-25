@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { adminUsername, createCompetition, createShooter, expect, openCompetition, row, section, seedEntry, setCounts, setStatus, test } from "./helpers";
+import { adminUsername, type Category, createCompetition, createShooter, expect, openCompetition, row, section, seedEntry, setCounts, setStatus, test } from "./helpers";
 
 function addForm(page: Page) {
   return page.getByRole("form", { name: "Add entry" });
@@ -55,10 +55,10 @@ test.describe("entries", () => {
     const entryRow = row(page, entry.shooter.last_name);
     await entryRow.getByRole("button", { name: "Move", exact: true }).click();
     await entryRow.getByLabel("Move lane").fill("5");
-    await entryRow.getByLabel("Move category").selectOption("Rifle");
+    await entryRow.getByLabel("Move category").selectOption("Pistol OS");
     await entryRow.getByRole("button", { name: "Save", exact: true }).click();
     await expect(entryRow.locator("td.lane")).toHaveText("5");
-    await expect(entryRow.locator("td.category")).toHaveText("Rifle");
+    await expect(entryRow.locator("td.category")).toHaveText("Pistol OS");
 
     await entryRow.getByRole("button", { name: "Withdraw" }).click();
     await expect(entryRow.getByText("Withdrawn", { exact: true })).toBeVisible();
@@ -180,5 +180,20 @@ test.describe("admin ring counts", () => {
     await expect(form.getByRole("combobox", { name: "Shooter" })).toHaveValue(`Ida ${lastName}`);
     await form.getByRole("button", { name: "Add entry" }).click();
     await expect(row(page, lastName)).toBeVisible();
+  });
+
+  test("category dropdowns list only the categories the course allows", async ({ courses, adminPage: page, admin }) => {
+    for (const key of ["40", "150"]) {
+      const expected = courses.find((c) => c.key === key)?.categories;
+      expect(expected).toBeDefined();
+      const competition = await createCompetition(admin, { course: key });
+      const entry = await seedEntry(admin, competition.id, 1, expected![0] as Category);
+      await openCompetition(page, competition.id);
+
+      await expect(addForm(page).getByLabel("Entry category").getByRole("option")).toHaveText(expected!);
+      const entryRow = row(page, entry.shooter.last_name);
+      await entryRow.getByRole("button", { name: "Move", exact: true }).click();
+      await expect(entryRow.getByLabel("Move category").getByRole("option")).toHaveText(expected!);
+    }
   });
 });

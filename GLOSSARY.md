@@ -37,7 +37,7 @@ A shooter's participation in one competition, in one category, on one lane.
 _Avoid_: Registration
 
 **Category**:
-The class a shooter competes in: Revolver, Pistol, Revolver OS, Pistol OS or Rifle. Each category is one sheet of the results report.
+The class a shooter competes in: Revolver, Pistol, Revolver OS, Pistol OS or Rifle; the rulebook limits which ones a course allows. Each category is one sheet of the results report.
 _Avoid_: Weapon class, class, division
 
 **Lane**:
