@@ -45,8 +45,8 @@ func (f *fixture) activate(t *testing.T) {
 
 func spectatorFixture(t *testing.T) *fixture {
 	f := newFixture(t, "150")
-	one := f.addEntry(t, "Hansen", 1)
-	two := f.addEntry(t, "Berg", 2)
+	one := f.addEntry(t, "HANSEN", 1)
+	two := f.addEntry(t, "BERG", 2)
 	f.scoreAccepted(t, one, 1, map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 1})
 	f.scoreAccepted(t, two, 1, map[string]any{"x": 12})
 	f.activate(t)
@@ -68,11 +68,11 @@ func TestSpectatorStandings(t *testing.T) {
 		t.Fatalf("rows %v", rows)
 	}
 	first := rows[0].(map[string]any)
-	if first["last_name"] != "Berg" || first["total"].(float64) != 120 {
+	if first["last_name"] != "BERG" || first["total"].(float64) != 120 {
 		t.Fatalf("first %v", first)
 	}
 	second := rows[1].(map[string]any)
-	if second["last_name"] != "Hansen" || second["total"].(float64) != 112 {
+	if second["last_name"] != "HANSEN" || second["total"].(float64) != 112 {
 		t.Fatalf("second %v", second)
 	}
 }

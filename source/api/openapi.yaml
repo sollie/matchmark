@@ -2335,8 +2335,10 @@ components:
       properties:
         last_name:
           type: string
+          description: Must already be normalized (uppercase, single spaces, trimmed); otherwise the call answers 422.
         first_name:
           type: string
+          description: Must already be normalized (each word capitalised, also after a hyphen or apostrophe, single spaces, trimmed); otherwise the call answers 422.
         sex:
           type: string
           enum: [M, F]

@@ -3,6 +3,7 @@ package handler_test
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/sollie/matchmark/internal/handler"
@@ -10,7 +11,7 @@ import (
 
 func (f *fixture) addShooterEntry(t *testing.T, last, waid, category string, lane int) int {
 	t.Helper()
-	body := map[string]any{"last_name": last, "first_name": "A", "sex": "M", "country": "NOR", "club": "Club " + last}
+	body := map[string]any{"last_name": strings.ToUpper(last), "first_name": "A", "sex": "M", "country": "NOR", "club": "Club " + last}
 	if waid != "" {
 		body["waid"] = waid
 	}
@@ -24,9 +25,9 @@ func resultsPath(f *fixture) string {
 
 func resultsFixture(t *testing.T, opts ...handler.Option) *fixture {
 	f := newFixture(t, "150", opts...)
-	alpha := f.addShooterEntry(t, "Alpha", "1001", "Revolver", 1)
-	bravo := f.addShooterEntry(t, "Bravo", "1002", "Revolver", 2)
-	charlie := f.addShooterEntry(t, "Charlie", "", "Revolver", 3)
+	alpha := f.addShooterEntry(t, "ALPHA", "1001", "Revolver", 1)
+	bravo := f.addShooterEntry(t, "BRAVO", "1002", "Revolver", 2)
+	charlie := f.addShooterEntry(t, "CHARLIE", "", "Revolver", 3)
 	delta := f.addShooterEntry(t, "Delta", "1004", "Revolver", 4)
 	echo := f.addShooterEntry(t, "Echo", "1005", "Pistol", 5)
 	f.activate(t)
@@ -91,7 +92,7 @@ func TestResultsRankingAndGrouping(t *testing.T) {
 		names = append(names, m["last_name"].(string))
 		ranks = append(ranks, m["rank"].(float64))
 	}
-	if fmt.Sprint(names) != "[Alpha Bravo Charlie]" || fmt.Sprint(ranks) != "[1 1 3]" {
+	if fmt.Sprint(names) != "[ALPHA BRAVO CHARLIE]" || fmt.Sprint(ranks) != "[1 1 3]" {
 		t.Fatalf("names %v ranks %v", names, ranks)
 	}
 	first := rows[0].(map[string]any)
@@ -103,22 +104,22 @@ func TestResultsRankingAndGrouping(t *testing.T) {
 		t.Fatalf("stages %v", stages)
 	}
 	fresh := out["new_shooters"].([]any)
-	if len(fresh) != 1 || fresh[0].(map[string]any)["last_name"] != "Charlie" || fresh[0].(map[string]any)["category"] != "Revolver" {
+	if len(fresh) != 1 || fresh[0].(map[string]any)["last_name"] != "CHARLIE" || fresh[0].(map[string]any)["category"] != "Revolver" {
 		t.Fatalf("new shooters %v", fresh)
 	}
 }
 
 func TestResultsRankBreaksTieOnXCount(t *testing.T) {
 	f := newFixture(t, "150")
-	a := f.addShooterEntry(t, "Alpha", "1", "Revolver", 1)
-	b := f.addShooterEntry(t, "Bravo", "2", "Revolver", 2)
+	a := f.addShooterEntry(t, "ALPHA", "1", "Revolver", 1)
+	b := f.addShooterEntry(t, "BRAVO", "2", "Revolver", 2)
 	f.activate(t)
 	f.scoreAccepted(t, a, 1, map[string]any{"x": 2, "10": 8, "9": 2})
 	f.scoreAccepted(t, b, 1, map[string]any{"x": 5, "10": 5, "9": 2})
 	f.finishActive(t)
 	_, out := publicGet(t, f, resultsPath(f))
 	rows := out["categories"].([]any)[0].(map[string]any)["rows"].([]any)
-	if rows[0].(map[string]any)["last_name"] != "Bravo" || rows[1].(map[string]any)["rank"].(float64) != 2 {
+	if rows[0].(map[string]any)["last_name"] != "BRAVO" || rows[1].(map[string]any)["rank"].(float64) != 2 {
 		t.Fatalf("rows %v", rows)
 	}
 }

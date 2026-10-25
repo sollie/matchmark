@@ -212,7 +212,7 @@ func pairingsOf(t *testing.T, f *scoringFixture) []bool {
 func TestEntryChangesAreFrozenOnceActiveAndWithdrawalOnlyAtTheGate(t *testing.T) {
 	f := newScoringFixture(t, 1, 2, 3)
 	base := fmt.Sprintf("/api/competitions/%d", f.comp)
-	shooter := f.env.ID("POST", "/api/shooters", shooterBody("Late"))
+	shooter := f.env.ID("POST", "/api/shooters", shooterBody("LATE"))
 	if status, _ := f.env.Do("POST", base+"/entries", map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 9}); status != http.StatusConflict {
 		t.Fatalf("add entry: %d", status)
 	}
