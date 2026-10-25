@@ -125,7 +125,7 @@ func (s *Service) results(ctx context.Context, comp repository.Competition, vis 
 		}
 		byCategory[e.Category] = append(byCategory[e.Category], r)
 	}
-	for _, category := range categories {
+	for _, category := range rulebook.Categories() {
 		ranked := byCategory[category]
 		if len(ranked) == 0 {
 			continue

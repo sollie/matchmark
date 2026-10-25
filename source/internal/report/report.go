@@ -9,12 +9,13 @@ import (
 	"github.com/xuri/excelize/v2"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 //go:embed template.xlsx
 var template []byte
 
-var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Rifle"}
+var categories = rulebook.Categories()
 
 const (
 	firstKnownRow     = 3
