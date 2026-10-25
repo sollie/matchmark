@@ -2,6 +2,8 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
+  import { normalizeFirstName, normalizeLastName } from "../lib/names";
+  import NameFields from "./NameFields.svelte";
 
   type Shooter = components["schemas"]["Shooter"];
   type ShooterInput = components["schemas"]["ShooterInput"];
@@ -84,7 +86,8 @@
     e.preventDefault();
     error = "";
     busy = true;
-    const result = await api.POST("/api/shooters", { body: form });
+    const body = { ...form, first_name: normalizeFirstName(form.first_name), last_name: normalizeLastName(form.last_name) };
+    const result = await api.POST("/api/shooters", { body });
     busy = false;
     if (!result.data) {
       error = failure(result);
@@ -131,8 +134,7 @@
     <button type="button" class="secondary" onclick={() => (manual = true)}>Enter manually</button>
   {:else}
     <form class="row" onsubmit={saveManual} aria-label="Manual shooter entry">
-      <label>Last name <input bind:value={form.last_name} maxlength="64" required /></label>
-      <label>First name <input bind:value={form.first_name} maxlength="64" required /></label>
+      <NameFields bind:first={form.first_name} bind:last={form.last_name} />
       <label>
         Sex
         <select bind:value={form.sex}>
