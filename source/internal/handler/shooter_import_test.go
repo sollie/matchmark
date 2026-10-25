@@ -31,20 +31,20 @@ func TestImportShooterCreates(t *testing.T) {
 func TestImportShooterWAIDMatchUpdatesSilently(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	_, first := env.Do("POST", "/api/shooters/import", importBody(nil))
-	status, out := env.Do("POST", "/api/shooters/import", importBody(map[string]any{"club": "New Club", "last_name": "Anderson-Smith"}))
+	status, out := env.Do("POST", "/api/shooters/import", importBody(map[string]any{"club": "New Club", "last_name": "ANDERSON-SMITH"}))
 	if status != http.StatusOK || out["action"] != "updated" || out["id"] != first["id"] {
 		t.Fatalf("got %d %v", status, out)
 	}
 	_, got := env.Do("GET", "/api/shooters/"+itoa(first["id"]), nil)
-	if got["club"] != "New Club" || got["last_name"] != "Anderson-Smith" {
+	if got["club"] != "New Club" || got["last_name"] != "ANDERSON-SMITH" {
 		t.Fatalf("stored %v", got)
 	}
 }
 
 func TestImportShooterNameConflict(t *testing.T) {
 	env := apitest.NewAdmin(t)
-	manual := env.ID("POST", "/api/shooters", map[string]any{"waid": "", "first_name": "mike", "last_name": "anderson", "country": "Canada", "club": "Old", "sex": "M"})
-	other := env.ID("POST", "/api/shooters", map[string]any{"waid": "999", "first_name": "Mike", "last_name": "Anderson", "country": "Sweden", "club": "X", "sex": "M"})
+	manual := env.ID("POST", "/api/shooters", map[string]any{"waid": "", "first_name": "Mike", "last_name": "ANDERSON", "country": "Canada", "club": "Old", "sex": "M"})
+	other := env.ID("POST", "/api/shooters", map[string]any{"waid": "999", "first_name": "Mike", "last_name": "ANDERSON", "country": "Sweden", "club": "X", "sex": "M"})
 
 	status, out := env.Do("POST", "/api/shooters/import", importBody(nil))
 	candidates, _ := out["candidates"].([]any)
@@ -88,7 +88,7 @@ func TestImportShooterNameConflictNonASCII(t *testing.T) {
 
 func TestImportShooterCreateNew(t *testing.T) {
 	env := apitest.NewAdmin(t)
-	env.ID("POST", "/api/shooters", map[string]any{"waid": "999", "first_name": "Mike", "last_name": "Anderson", "country": "Sweden", "club": "X", "sex": "M"})
+	env.ID("POST", "/api/shooters", map[string]any{"waid": "999", "first_name": "Mike", "last_name": "ANDERSON", "country": "Sweden", "club": "X", "sex": "M"})
 	status, out := env.Do("POST", "/api/shooters/import", importBody(map[string]any{"create_new": true}))
 	if status != http.StatusCreated || out["action"] != "created" {
 		t.Fatalf("got %d %v", status, out)
@@ -116,3 +116,36 @@ func TestImportShooterRequiresAdmin(t *testing.T) {
 }
 
 func itoa(v any) string { return fmt.Sprint(v) }
+
+func TestImportShooterNormalizesNames(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	status, out := env.Do("POST", "/api/shooters/import", importBody(map[string]any{"first_name": "  anna-lisa   o'neil ", "last_name": "øvrebø  hansen"}))
+	if status != http.StatusCreated {
+		t.Fatalf("got %d %v", status, out)
+	}
+	_, got := env.Do("GET", "/api/shooters/"+itoa(out["id"]), nil)
+	if got["first_name"] != "Anna-Lisa O'Neil" || got["last_name"] != "ØVREBØ HANSEN" {
+		t.Fatalf("stored %v", got)
+	}
+}
+
+func TestShooterWriteRejectsNonNormalizedNames(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	for _, c := range []struct{ first, last string }{
+		{"Mike", "Anderson"},
+		{"mike", "ANDERSON"},
+		{"Mike", " ANDERSON"},
+		{"Anna-lisa", "ANDERSON"},
+		{"Mike  Jr", "ANDERSON"},
+	} {
+		body := map[string]any{"first_name": c.first, "last_name": c.last, "country": "NOR", "club": "Club", "sex": "M"}
+		if status, _ := env.Do("POST", "/api/shooters", body); status != http.StatusUnprocessableEntity {
+			t.Errorf("create %q %q: got %d", c.first, c.last, status)
+		}
+	}
+	id := env.ID("POST", "/api/shooters", map[string]any{"first_name": "Mike", "last_name": "ANDERSON", "country": "NOR", "club": "Club", "sex": "M"})
+	body := map[string]any{"first_name": "Mike", "last_name": "Anderson", "country": "NOR", "club": "Club", "sex": "M"}
+	if status, _ := env.Do("PUT", "/api/shooters/"+itoa(id), body); status != http.StatusUnprocessableEntity {
+		t.Errorf("update: got %d", status)
+	}
+}

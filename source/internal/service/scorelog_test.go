@@ -104,7 +104,7 @@ func TestStageLockedLines(t *testing.T) {
 		t.Fatalf("competition = %+v", l.Competition)
 	}
 	if l.Entry.ID != f.entry2 || l.Entry.Lane != 2 || l.Entry.Category != "Pistol" ||
-		l.Entry.Shooter.WAID != "W2" || l.Entry.Shooter.FirstName != "Bo" || l.Entry.Shooter.LastName != "Berg" || l.Entry.Shooter.Club != "Club B" {
+		l.Entry.Shooter.WAID != "W2" || l.Entry.Shooter.FirstName != "Bo" || l.Entry.Shooter.LastName != "BERG" || l.Entry.Shooter.Club != "Club B" {
 		t.Fatalf("entry = %+v", l.Entry)
 	}
 	if l.Stage.Number != 1 || l.Stage.ExpectedShots != 12 {
@@ -113,7 +113,7 @@ func TestStageLockedLines(t *testing.T) {
 	if len(l.RingCounts) != 7 || l.RingCounts[0] != 2 || l.RingCounts[1] != 4 || l.RingCounts[2] != 6 {
 		t.Fatalf("ring_counts = %v", l.RingCounts)
 	}
-	if l.LockedBy != float64(1) || l.ScorerName != "Al Alm" {
+	if l.LockedBy != float64(1) || l.ScorerName != "Al ALM" {
 		t.Fatalf("locked_by = %v scorer = %q", l.LockedBy, l.ScorerName)
 	}
 	if ts, err := time.Parse(time.RFC3339, l.LockedAt); err != nil || ts.Location() != time.UTC {
@@ -313,11 +313,11 @@ func buildDraftFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buf
 	t.Helper()
 	ctx := context.Background()
 	svc := service.New(repo, service.WithScoreLog(logger))
-	s1, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "Alm", Sex: "M", Country: "NOR", Club: "Club A", WAID: "W1"})
+	s1, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "ALM", Sex: "M", Country: "NOR", Club: "Club A", WAID: "W1"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	s2, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Bo", LastName: "Berg", Sex: "M", Country: "NOR", Club: "Club B", WAID: "W2"})
+	s2, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Bo", LastName: "BERG", Sex: "M", Country: "NOR", Club: "Club B", WAID: "W2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -520,7 +520,7 @@ func TestCompetitionEditReemitsLockedStages(t *testing.T) {
 	buf := &bytes.Buffer{}
 	repo := repository.New(conn)
 	svc := service.New(repo, service.WithScoreLog(newLogger(buf)))
-	sh, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "Alm", Sex: "M", Country: "NOR", Club: "Club A", WAID: "W1"})
+	sh, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "ALM", Sex: "M", Country: "NOR", Club: "Club A", WAID: "W1"})
 	if err != nil {
 		t.Fatal(err)
 	}

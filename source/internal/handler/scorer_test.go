@@ -15,7 +15,7 @@ func newScoringFixture(t *testing.T, lanes ...int) *scoringFixture {
 	t.Helper()
 	f := &scoringFixture{fixture: newFixture(t, "150"), entries: map[int]int{}}
 	for _, l := range lanes {
-		f.entries[l] = f.addEntry(t, fmt.Sprintf("Shooter%d", l), l)
+		f.entries[l] = f.addEntry(t, fmt.Sprintf("SHOOTER%d", l), l)
 	}
 	f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "active"})
 	return f
@@ -55,7 +55,7 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 	if status != http.StatusOK || int(out["lane"].(float64)) != 1 || int(out["score_lane"].(float64)) != 3 {
 		t.Fatalf("session: %d %v", status, out)
 	}
-	if out["shooter_name"] != "A Shooter3" {
+	if out["shooter_name"] != "A SHOOTER3" {
 		t.Fatalf("shooter_name: %v", out["shooter_name"])
 	}
 
@@ -91,8 +91,8 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 
 func TestDevicePairedInDraftWaitsForStart(t *testing.T) {
 	f := &scoringFixture{fixture: newFixture(t, "150"), entries: map[int]int{}}
-	f.entries[1] = f.addEntry(t, "Shooter1", 1)
-	f.entries[3] = f.addEntry(t, "Shooter3", 3)
+	f.entries[1] = f.addEntry(t, "SHOOTER1", 1)
+	f.entries[3] = f.addEntry(t, "SHOOTER3", 3)
 	token := f.pair(t, 1)
 	status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil)
 	if status != http.StatusOK || out["phase"] != "not_started" || out["shooter_name"] != "" {
@@ -117,7 +117,7 @@ func TestSessionFollowsLaneChanges(t *testing.T) {
 		t.Fatalf("withdraw status %d", status)
 	}
 	status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil)
-	if status != http.StatusOK || int(out["score_lane"].(float64)) != 5 || out["shooter_name"] != "A Shooter5" {
+	if status != http.StatusOK || int(out["score_lane"].(float64)) != 5 || out["shooter_name"] != "A SHOOTER5" {
 		t.Fatalf("session after withdraw: %d %v", status, out)
 	}
 
@@ -155,7 +155,7 @@ func TestLockRecordsScorerAndAdminUnlock(t *testing.T) {
 			stage = m["stages"].([]any)[0].(map[string]any)
 		}
 	}
-	if stage["scorer_lane"] != float64(1) || stage["scorer_name"] != "A Shooter1" {
+	if stage["scorer_lane"] != float64(1) || stage["scorer_name"] != "A SHOOTER1" {
 		t.Fatalf("lock record: %v", stage)
 	}
 

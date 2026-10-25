@@ -31,8 +31,8 @@ func newNamedScorecardFixture(t *testing.T, name string) *scorecardFixture {
 			t.Fatalf("rename: %d %v", status, out)
 		}
 	}
-	entry := f.addEntry(t, "Hansen", 3)
-	f.addEntry(t, "Berg", 5)
+	entry := f.addEntry(t, "HANSEN", 3)
+	f.addEntry(t, "BERG", 5)
 	base := fmt.Sprintf("/api/competitions/%d", f.comp)
 	f.env.Do("POST", base+"/status", map[string]any{"status": "active"})
 	stage := fmt.Sprintf("%s/entries/%d/stages/1", base, entry)
@@ -130,8 +130,8 @@ func TestScorecardNotFoundForEmptyLaneOrWithdrawnEntry(t *testing.T) {
 
 func TestScorecardNotFoundForWithdrawnEntry(t *testing.T) {
 	f := newFixture(t, "150")
-	f.addEntry(t, "Hansen", 3)
-	gone := f.addEntry(t, "Berg", 5)
+	f.addEntry(t, "HANSEN", 3)
+	gone := f.addEntry(t, "BERG", 5)
 	base := fmt.Sprintf("/api/competitions/%d", f.comp)
 	if status, out := f.env.Do("POST", fmt.Sprintf("%s/entries/%d/withdraw", base, gone), nil); status != http.StatusOK {
 		t.Fatalf("withdraw: %d %v", status, out)
@@ -202,7 +202,7 @@ func TestScorecardSummaryNamesShooterAndScorers(t *testing.T) {
 	if ct := header.Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("content type %q", ct)
 	}
-	want := `{"lane":3,"scorers":[{"scorer":"Range admin","stage":1}],"shooter":"A Hansen"}`
+	want := `{"lane":3,"scorers":[{"scorer":"Range admin","stage":1}],"shooter":"A HANSEN"}`
 	var got map[string]any
 	if err := json.Unmarshal(body, &got); err != nil {
 		t.Fatal(err)

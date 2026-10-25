@@ -3,35 +3,36 @@ package handler_test
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/sollie/matchmark/internal/apitest"
 )
 
 func shooterBody(last string) map[string]any {
-	return map[string]any{"last_name": last, "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"}
+	return map[string]any{"last_name": strings.ToUpper(last), "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"}
 }
 
 func TestShooterRegistry(t *testing.T) {
 	env := apitest.NewAdmin(t)
-	id := env.ID("POST", "/api/shooters", shooterBody("Hansen"))
+	id := env.ID("POST", "/api/shooters", shooterBody("HANSEN"))
 
 	t.Run("get", func(t *testing.T) {
 		status, out := env.Do("GET", fmt.Sprintf("/api/shooters/%d", id), nil)
-		if status != http.StatusOK || out["last_name"] != "Hansen" {
+		if status != http.StatusOK || out["last_name"] != "HANSEN" {
 			t.Fatalf("got %d %v", status, out)
 		}
 	})
 	t.Run("update", func(t *testing.T) {
-		body := shooterBody("Olsen")
+		body := shooterBody("OLSEN")
 		body["waid"] = "W123"
 		status, out := env.Do("PUT", fmt.Sprintf("/api/shooters/%d", id), body)
-		if status != http.StatusOK || out["last_name"] != "Olsen" || out["waid"] != "W123" {
+		if status != http.StatusOK || out["last_name"] != "OLSEN" || out["waid"] != "W123" {
 			t.Fatalf("got %d %v", status, out)
 		}
 	})
 	t.Run("list", func(t *testing.T) {
-		env.ID("POST", "/api/shooters", shooterBody("Berg"))
+		env.ID("POST", "/api/shooters", shooterBody("BERG"))
 		status, out := env.Do("GET", "/api/shooters", nil)
 		if status != http.StatusOK || len(out["shooters"].([]any)) != 2 {
 			t.Fatalf("got %d %v", status, out)
@@ -49,14 +50,14 @@ func TestShooterRegistry(t *testing.T) {
 			}
 			return got
 		}
-		if got := names("bER"); len(got) != 1 || got[0] != "Berg" {
+		if got := names("bER"); len(got) != 1 || got[0] != "BERG" {
 			t.Fatalf("name search got %v", got)
 		}
-		if got := names("w12"); len(got) != 1 || got[0] != "Olsen" {
+		if got := names("w12"); len(got) != 1 || got[0] != "OLSEN" {
 			t.Fatalf("waid search got %v", got)
 		}
-		env.ID("POST", "/api/shooters", shooterBody("Øvrebø"))
-		if got := names("%C3%B8vre"); len(got) != 1 || got[0] != "Øvrebø" {
+		env.ID("POST", "/api/shooters", shooterBody("ØVREBØ"))
+		if got := names("%C3%B8vre"); len(got) != 1 || got[0] != "ØVREBØ" {
 			t.Fatalf("non-ascii search got %v", got)
 		}
 		if got := names("zzz"); len(got) != 0 {
@@ -74,7 +75,7 @@ func TestShooterRegistry(t *testing.T) {
 		}
 	})
 	t.Run("duplicate waid conflicts", func(t *testing.T) {
-		body := shooterBody("Dup")
+		body := shooterBody("DUP")
 		body["waid"] = "W123"
 		if status, _ := env.Do("POST", "/api/shooters", body); status != http.StatusConflict {
 			t.Fatalf("status %d", status)
@@ -247,7 +248,7 @@ func TestEntriesListStageScores(t *testing.T) {
 func TestEntryUpdate(t *testing.T) {
 	f := newFixture(t, "150")
 	e1 := f.addEntry(t, "One", 1)
-	f.addEntry(t, "Two", 2)
+	f.addEntry(t, "TWO", 2)
 	path := fmt.Sprintf("/api/competitions/%d/entries/%d", f.comp, e1)
 
 	t.Run("change category and lane", func(t *testing.T) {
@@ -290,7 +291,7 @@ func TestEntryUpdate(t *testing.T) {
 func TestEntryDeleteOnlyInDraft(t *testing.T) {
 	f := newFixture(t, "150")
 	e1 := f.addEntry(t, "One", 1)
-	e2 := f.addEntry(t, "Two", 2)
+	e2 := f.addEntry(t, "TWO", 2)
 	base := fmt.Sprintf("/api/competitions/%d", f.comp)
 
 	if status, _ := f.env.Do("DELETE", fmt.Sprintf("%s/entries/%d", base, e1), nil); status != http.StatusOK {

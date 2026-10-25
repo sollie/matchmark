@@ -3,6 +3,7 @@ package handler_test
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/sollie/matchmark/internal/apitest"
@@ -23,7 +24,7 @@ func newFixture(t *testing.T, course string, opts ...handler.Option) *fixture {
 
 func (f *fixture) addEntry(t *testing.T, name string, lane int) int {
 	t.Helper()
-	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": name, "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
+	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": strings.ToUpper(name), "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
 	return f.env.ID("POST", fmt.Sprintf("/api/competitions/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Revolver", "lane": lane})
 }
 
@@ -85,7 +86,7 @@ func TestScoreLaneSingleLaneRequiresAdmin(t *testing.T) {
 func TestLaneIsExclusive(t *testing.T) {
 	f := newFixture(t, "150")
 	f.addEntry(t, "One", 1)
-	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "Two", "first_name": "B", "sex": "F", "country": "NOR", "club": "Club"})
+	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "TWO", "first_name": "B", "sex": "F", "country": "NOR", "club": "Club"})
 	status, _ := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 1})
 	if status != http.StatusConflict {
 		t.Fatalf("status %d", status)
