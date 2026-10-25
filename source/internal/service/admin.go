@@ -316,7 +316,7 @@ func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64,
 	if err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
-	if rulebook.ValidateCategory(comp.Course, category) != nil {
+	if category != current.Category && rulebook.ValidateCategory(comp.Course, category) != nil {
 		return repository.Entry{}, ErrInvalid
 	}
 	switch CompetitionStatus(comp.Status) {

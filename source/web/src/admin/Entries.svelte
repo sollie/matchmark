@@ -204,7 +204,7 @@
             <td class="shooter">{shooterName(entry.shooter_id)}</td>
             <td class="category">
               <select aria-label="Move category" bind:value={editing.category}>
-                {#each categories as c (c)}<option value={c}>{c}</option>{/each}
+                {#each categories.includes(entry.category) ? categories : [entry.category, ...categories] as c (c)}<option value={c}>{c}</option>{/each}
               </select>
             </td>
           {:else}
