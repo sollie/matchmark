@@ -58,14 +58,14 @@ func TestSpectatorStreamSendsSnapshotOnConnect(t *testing.T) {
 		t.Fatalf("x-accel-buffering %q", got)
 	}
 	snap := nextSnapshot(t, s)
-	if len(snap.Standings) != 2 || snap.Standings[0]["last_name"] != "Berg" {
+	if len(snap.Standings) != 2 || snap.Standings[0]["last_name"] != "BERG" {
 		t.Fatalf("standings %v", snap.Standings)
 	}
 }
 
 func TestSpectatorStreamPushesSnapshotAfterLock(t *testing.T) {
 	f := newFixture(t, "150")
-	entry := f.addEntry(t, "Hansen", 1)
+	entry := f.addEntry(t, "HANSEN", 1)
 	f.score(t, entry, 1, map[string]any{"x": 12})
 	f.activate(t)
 	s := f.env.OpenStream(streamPath(f), nil)
@@ -109,7 +109,7 @@ func TestSpectatorStreamHiddenForDraftCompetition(t *testing.T) {
 func TestSpectatorStreamSendsHeartbeat(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(50*time.Millisecond, time.Minute, 10, 10, 10))
 	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
-	f.addEntry(t, "Hansen", 1)
+	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	s := env.OpenStream(streamPath(f), nil)
 	for {
@@ -126,7 +126,7 @@ func TestSpectatorStreamSendsHeartbeat(t *testing.T) {
 func TestSpectatorStreamEndsAtLifetime(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, 100*time.Millisecond, 10, 10, 10))
 	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
-	f.addEntry(t, "Hansen", 1)
+	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	s := env.OpenStream(streamPath(f), nil)
 	if !s.Closed(eventWait) {
@@ -137,7 +137,7 @@ func TestSpectatorStreamEndsAtLifetime(t *testing.T) {
 func TestSpectatorStreamCapsConcurrentStreams(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
 	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
-	f.addEntry(t, "Hansen", 1)
+	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	first := env.OpenStream(streamPath(f), nil)
 	nextSnapshot(t, first)
@@ -159,8 +159,8 @@ func TestSpectatorStreamCapsConcurrentStreams(t *testing.T) {
 func TestSpectatorFloodDoesNotBlockAdminOrScorerStreams(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
 	f := &scoringFixture{fixture: &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}, entries: map[int]int{}}
-	f.entries[1] = f.addEntry(t, "Hansen", 1)
-	f.entries[2] = f.addEntry(t, "Berg", 2)
+	f.entries[1] = f.addEntry(t, "HANSEN", 1)
+	f.entries[2] = f.addEntry(t, "BERG", 2)
 	f.activate(t)
 	token := f.pair(t, 1)
 	nextSnapshot(t, env.OpenStream(streamPath(f.fixture), nil))
@@ -194,7 +194,7 @@ func TestRejectedStreamRequestsConsumeNoCapacity(t *testing.T) {
 			t.Fatalf("unknown admin status %d", s.Status)
 		}
 	}
-	f.addEntry(t, "Hansen", 1)
+	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	if s := env.OpenStream(streamPath(f), nil); s.Status != http.StatusOK {
 		t.Fatalf("status %d", s.Status)
@@ -204,7 +204,7 @@ func TestRejectedStreamRequestsConsumeNoCapacity(t *testing.T) {
 func TestRejectedStreamRequestsDoNotConsumeCapAtCapacity(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
 	f := &fixture{env: env, comp: env.ID("POST", "/api/competitions", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
-	f.addEntry(t, "Hansen", 1)
+	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	nextSnapshot(t, env.OpenStream(streamPath(f), nil))
 	adminOpen := env.OpenStream(fmt.Sprintf("/api/competitions/%d/stream", f.comp), nil)
@@ -221,8 +221,8 @@ func TestRejectedStreamRequestsDoNotConsumeCapAtCapacity(t *testing.T) {
 
 func TestSpectatorSnapshotStageStates(t *testing.T) {
 	f := newFixture(t, "150")
-	one := f.addEntry(t, "Hansen", 1)
-	two := f.addEntry(t, "Berg", 2)
+	one := f.addEntry(t, "HANSEN", 1)
+	two := f.addEntry(t, "BERG", 2)
 	f.env.Do("PUT", fmt.Sprintf("/api/competitions/%d/visibility", f.comp), map[string]any{"show_names": true, "show_stage_scores": true})
 	f.scoreAccepted(t, one, 1, map[string]any{"x": 12})
 	f.score(t, two, 1, map[string]any{"x": 12})
@@ -245,10 +245,10 @@ func TestSpectatorSnapshotStageStates(t *testing.T) {
 		}
 		states[row["last_name"].(string)] = list
 	}
-	if got := states["Hansen"]; got[0] != "accepted" || got[1] != "not_started" {
+	if got := states["HANSEN"]; got[0] != "accepted" || got[1] != "not_started" {
 		t.Fatalf("hansen %v", got)
 	}
-	if got := states["Berg"]; got[0] != "in_progress" || got[1] != "not_started" {
+	if got := states["BERG"]; got[0] != "in_progress" || got[1] != "not_started" {
 		t.Fatalf("berg %v", got)
 	}
 }

@@ -91,11 +91,11 @@ func TestControlRoomListsEveryMannedLaneWithScorerShooterAndStatus(t *testing.T)
 		t.Fatalf("room %+v", room)
 	}
 	locked := room.lane(t, 2)
-	if locked.Status != "awaiting_acceptance" || locked.ShooterName != "A Shooter2" || locked.ScorerName != "A Shooter1" || locked.Paired {
+	if locked.Status != "awaiting_acceptance" || locked.ShooterName != "A SHOOTER2" || locked.ScorerName != "A SHOOTER1" || locked.Paired {
 		t.Fatalf("lane 2 %+v", locked)
 	}
 	open := room.lane(t, 3)
-	if open.Status != "open" || open.ScorerName != "A Shooter2" || open.Paired {
+	if open.Status != "open" || open.ScorerName != "A SHOOTER2" || open.Paired {
 		t.Fatalf("lane 3 %+v", open)
 	}
 	if !room.lane(t, 1).Paired {
@@ -333,17 +333,17 @@ func TestStageEventHistoryResolvesDeviceActorsAndCountsDisputesPerScorer(t *test
 		t.Fatalf("events %+v", events)
 	}
 	first := events[0]
-	if first.Event != "locked" || first.ActorType != "device" || first.ScorerName != "A Shooter1" || first.ShooterName != "A Shooter2" || first.Stage != 1 || first.Time == "" {
+	if first.Event != "locked" || first.ActorType != "device" || first.ScorerName != "A SHOOTER1" || first.ShooterName != "A SHOOTER2" || first.Stage != 1 || first.Time == "" {
 		t.Fatalf("first %+v", first)
 	}
-	if events[1].Event != "disputed" || events[1].ShooterName != "A Shooter2" || events[1].ScorerName != "A Shooter1" {
+	if events[1].Event != "disputed" || events[1].ShooterName != "A SHOOTER2" || events[1].ScorerName != "A SHOOTER1" {
 		t.Fatalf("dispute %+v", events[1])
 	}
 	last := events[5]
 	if last.Event != "accepted" || last.ActorType != "user" || last.ActorName != apitest.AdminUsername {
 		t.Fatalf("last %+v", last)
 	}
-	want := map[string]scorerCount{"A Shooter1": {Locks: 2, Disputes: 1}, "A Shooter2": {Locks: 1}}
+	want := map[string]scorerCount{"A SHOOTER1": {Locks: 2, Disputes: 1}, "A SHOOTER2": {Locks: 1}}
 	for _, c := range counts {
 		w, ok := want[c.ScorerName]
 		if ok && (c.Locks != w.Locks || c.Disputes != w.Disputes) {
@@ -363,11 +363,11 @@ func TestStageEventHistoryFiltersByScorerShooterAndStage(t *testing.T) {
 	f.lockOnDevice(t, f.pair(t, 2))
 	f.lockOnDevice(t, f.pair(t, 3))
 
-	if events, _ := f.history(t, "?scorer=A+Shooter1"); len(events) != 2 {
+	if events, _ := f.history(t, "?scorer=A+SHOOTER1"); len(events) != 2 {
 		t.Fatalf("scorer filter %+v", events)
 	}
-	events, counts := f.history(t, "?shooter=A+Shooter3")
-	if len(events) != 1 || events[0].ShooterName != "A Shooter3" || len(counts) != 1 || counts[0].Disputes != 0 {
+	events, counts := f.history(t, "?shooter=A+SHOOTER3")
+	if len(events) != 1 || events[0].ShooterName != "A SHOOTER3" || len(counts) != 1 || counts[0].Disputes != 0 {
 		t.Fatalf("shooter filter %+v %+v", events, counts)
 	}
 	if events, _ := f.history(t, "?stage=2"); len(events) != 0 {

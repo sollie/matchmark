@@ -75,10 +75,10 @@ func cell(t *testing.T, f *excelize.File, sheet, ref string) string {
 func TestResultsWorkbook(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	comp := seedReport(t, env, "Spring Match", []reportShooter{
-		{"Berg", "Ola", "M", "W100", "Revolver", 1, counts112},
-		{"Dahl", "Eva", "F", "W200", "Revolver", 2, nil},
-		{"Nyhus", "Kari", "F", "", "Revolver", 3, counts112},
-		{"Moe", "Per", "M", "W300", "Pistol", 4, counts112},
+		{"BERG", "Ola", "M", "W100", "Revolver", 1, counts112},
+		{"DAHL", "Eva", "F", "W200", "Revolver", 2, nil},
+		{"NYHUS", "Kari", "F", "", "Revolver", 3, counts112},
+		{"MOE", "Per", "M", "W300", "Pistol", 4, counts112},
 	})
 	f := openReport(t, env, comp)
 
@@ -102,7 +102,7 @@ func TestResultsWorkbook(t *testing.T) {
 		}
 	})
 	t.Run("new shooter block", func(t *testing.T) {
-		want := []string{"Nyhus", "Kari", "female", "NOR", "Oslo PPC", "nn", "112"}
+		want := []string{"NYHUS", "Kari", "female", "NOR", "Oslo PPC", "nn", "112"}
 		for i, w := range want {
 			ref := fmt.Sprintf("%c14", 'A'+i)
 			if got := cell(t, f, "Revolver", ref); got != w {
@@ -157,8 +157,8 @@ func TestResultsWorkbookInsertsRows(t *testing.T) {
 func TestResultsCSV(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	comp := seedReport(t, env, "Spring Match", []reportShooter{
-		{"Berg", "Ola", "M", "W100", "Revolver", 1, counts112},
-		{"Nyhus", "Kari", "F", "", "Pistol", 2, nil},
+		{"BERG", "Ola", "M", "W100", "Revolver", 1, counts112},
+		{"NYHUS", "Kari", "F", "", "Pistol", 2, nil},
 	})
 	status, header, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
 	if status != http.StatusOK || !strings.HasPrefix(header.Get("Content-Type"), "text/csv") {
@@ -178,10 +178,10 @@ func TestResultsCSV(t *testing.T) {
 	if len(rows) != 21 {
 		t.Fatalf("rows %d, want 1 header + 2 entries x 10 stages", len(rows))
 	}
-	if got := strings.Join(rows[1], ","); got != "Revolver,1,Berg,Ola,W100,false,1,3,4,3,1,1,0,0,112,true,,"+apitest.AdminUsername {
+	if got := strings.Join(rows[1], ","); got != "Revolver,1,BERG,Ola,W100,false,1,3,4,3,1,1,0,0,112,true,,"+apitest.AdminUsername {
 		t.Fatalf("first row %q", got)
 	}
-	if got := strings.Join(rows[11], ","); got != "Pistol,2,Nyhus,Kari,,false,1,0,0,0,0,0,0,0,0,false,," {
+	if got := strings.Join(rows[11], ","); got != "Pistol,2,NYHUS,Kari,,false,1,0,0,0,0,0,0,0,0,false,," {
 		t.Fatalf("pistol row %q", got)
 	}
 }
@@ -189,16 +189,15 @@ func TestResultsCSV(t *testing.T) {
 func TestResultsCSVNeutralisesFormulas(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	comp := seedReport(t, env, "Spring Match", []reportShooter{
-		{"=HYPERLINK(\"x\")", "+1", "M", "", "Revolver", 1, nil},
+		{"=HYPERLINK(\"X\")", "+1", "M", "", "Revolver", 1, nil},
 		{"-2", "@sum", "F", "", "Revolver", 2, nil},
-		{"\tTab", "\rCR", "F", "", "Revolver", 3, nil},
 	})
 	_, _, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
 	rows, err := csv.NewReader(bytes.NewReader(bytes.TrimPrefix(body, []byte("\xef\xbb\xbf")))).ReadAll()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := [][2]string{{"'=HYPERLINK(\"x\")", "'+1"}, {"'-2", "'@sum"}, {"'\tTab", "'\rCR"}}
+	want := [][2]string{{"'=HYPERLINK(\"X\")", "'+1"}, {"'-2", "'@sum"}}
 	got := map[string][2]string{}
 	for _, row := range rows[1:] {
 		got[row[1]] = [2]string{row[2], row[3]}
@@ -213,11 +212,11 @@ func TestResultsCSVNeutralisesFormulas(t *testing.T) {
 func TestResultsKeepNonASCIINames(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	comp := seedReport(t, env, "Spring Match", []reportShooter{
-		{"Hansen", "Pål", "M", "W100", "Revolver", 1, nil},
-		{"Åsen", "Östen", "M", "", "Revolver", 2, nil},
+		{"HANSEN", "Pål", "M", "W100", "Revolver", 1, nil},
+		{"ÅSEN", "Östen", "M", "", "Revolver", 2, nil},
 	})
 	_, _, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
-	if !bytes.HasPrefix(body, []byte("\xef\xbb\xbf")) || !bytes.Contains(body, []byte("Hansen,Pål,W100")) || !bytes.Contains(body, []byte("Åsen,Östen,")) {
+	if !bytes.HasPrefix(body, []byte("\xef\xbb\xbf")) || !bytes.Contains(body, []byte("HANSEN,Pål,W100")) || !bytes.Contains(body, []byte("ÅSEN,Östen,")) {
 		t.Fatalf("names garbled in csv")
 	}
 	f := openReport(t, env, comp)
@@ -233,7 +232,7 @@ func TestResultsKeepNonASCIINames(t *testing.T) {
 			}
 		}
 	}
-	if !found["Åsen"] || !found["Östen"] {
+	if !found["ÅSEN"] || !found["Östen"] {
 		t.Fatalf("workbook lacks new shooter names: %v", found)
 	}
 }

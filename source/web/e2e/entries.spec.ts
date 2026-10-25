@@ -161,7 +161,7 @@ test.describe("admin ring counts", () => {
 
   test("a shooter imported from WA1500 in the picker is selected for the entry", async ({ course, adminPage: page, admin }) => {
     const competition = await createCompetition(admin);
-    const lastName = `Imported${Date.now()}`;
+    const lastName = `IMPORTED${Date.now()}`;
     const waid = `W${Date.now()}`;
     await page.route("**/api/wa1500/search*", (route) =>
       route.fulfill({ json: { results: [{ waid, first_name: "Ida", last_name: lastName, country: "SWE", club: "Remote Club" }] } }),

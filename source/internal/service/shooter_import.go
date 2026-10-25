@@ -29,7 +29,7 @@ func (e *NameConflictError) Is(target error) bool { return target == ErrConflict
 
 func (s *Service) ImportShooter(ctx context.Context, in ShooterImport) (ShooterImportResult, error) {
 	sh := in.Shooter
-	sh.FirstName, sh.LastName = strings.TrimSpace(sh.FirstName), strings.TrimSpace(sh.LastName)
+	sh.FirstName, sh.LastName = NormalizeFirstName(sh.FirstName), NormalizeLastName(sh.LastName)
 	sh.WAID = strings.TrimSpace(sh.WAID)
 	if sh.WAID == "" || !validShooter(sh) || (in.CreateNew && in.UpdateShooterID != 0) {
 		return ShooterImportResult{}, ErrInvalid
