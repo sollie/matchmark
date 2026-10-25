@@ -6,6 +6,7 @@ const simpleUpper = (ch: string) => {
 };
 
 const simpleLower = (ch: string) => {
+  if (ch === "\u0130") return "i";
   const l = ch.toLowerCase();
   return [...l].length === 1 ? l : ch;
 };
