@@ -15,8 +15,6 @@ func validDate(d string) bool {
 	return err == nil && t.Format(time.DateOnly) == d
 }
 
-var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Rifle"}
-
 func (s *Service) CreateShooter(ctx context.Context, sh repository.Shooter) (int64, error) {
 	if !validShooter(sh) {
 		return 0, ErrInvalid
@@ -45,12 +43,15 @@ func (s *Service) CreateCompetition(ctx context.Context, c repository.Competitio
 }
 
 func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, error) {
-	if e.Lane < 1 || !contains(categories, e.Category) {
+	if e.Lane < 1 {
 		return 0, ErrInvalid
 	}
 	comp, err := s.requireDraft(ctx, e.CompetitionID)
 	if err != nil {
 		return 0, err
+	}
+	if rulebook.ValidateCategory(comp.Course, e.Category) != nil {
+		return 0, ErrInvalid
 	}
 	course, err := rulebook.CourseByKey(comp.Course)
 	if err != nil {
@@ -89,13 +90,4 @@ func entryTarget(competitionID, entryID int64) string {
 
 func stageTarget(competitionID, entryID int64, stage int) string {
 	return entryTarget(competitionID, entryID) + "/stage:" + strconv.Itoa(stage)
-}
-
-func contains(list []string, v string) bool {
-	for _, x := range list {
-		if x == v {
-			return true
-		}
-	}
-	return false
 }

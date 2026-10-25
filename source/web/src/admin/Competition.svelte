@@ -133,7 +133,7 @@
     <StageHistory competitionId={id} {version} />
   {/if}
 
-  <Entries competitionId={id} status={competition.status} {entries} {shooters} reload={loadEntries} />
+  <Entries competitionId={id} course={competition.course} status={competition.status} {entries} {shooters} reload={loadEntries} />
   <Pairings competitionId={id} {entries} finished={competition.status === "finished"} draft={competition.status === "draft"} />
   <Visibility competitionId={id} />
 {:else if error}

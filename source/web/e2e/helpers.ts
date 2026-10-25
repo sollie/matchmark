@@ -32,10 +32,11 @@ export interface Course {
   stages: number;
   stageOneShots: number;
   stageShots: number[];
+  categories: string[];
 }
 
 interface RulebookResponse {
-  courses: { key: string; label: string; stages: { expected_shots: number }[] }[];
+  courses: { key: string; label: string; categories: string[]; stages: { expected_shots: number }[] }[];
 }
 
 let rulebook: Promise<Course[]> | undefined;
@@ -45,6 +46,7 @@ async function fetchCourses(api: APIRequestContext): Promise<Course[]> {
   return body.courses.map((c) => ({
     key: c.key,
     label: c.label,
+    categories: c.categories,
     stages: c.stages.length,
     stageOneShots: c.stages[0].expected_shots,
     stageShots: c.stages.map((st) => st.expected_shots),

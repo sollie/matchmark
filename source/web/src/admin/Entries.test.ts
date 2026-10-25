@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import Entries from "./Entries.svelte";
 import { stubFetch } from "../test/fetch";
+import { rulebook, type RulebookCourse } from "../lib/rulebook.svelte";
 import type { components } from "../lib/api/schema";
 
 type EntryWithStages = components["schemas"]["EntryWithStages"];
@@ -26,16 +27,42 @@ const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
   ...overrides,
 });
 
-function setup(entries: EntryWithStages[] = [entry()]) {
+const course = (key: string, categories: string[]) => ({ key, label: key, categories }) as RulebookCourse;
+
+function setup(entries: EntryWithStages[] = [entry()], courseKey = "150") {
+  rulebook.courses = [course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]), course("40", ["Revolver"])];
   const calls = stubFetch();
   const reload = vi.fn(async () => {});
-  render(Entries, { competitionId: 5, entries, shooters, reload });
-  return { calls, reload, user: userEvent.setup() };
+  const view = render(Entries, { competitionId: 5, course: courseKey, entries, shooters, reload });
+  return { calls, reload, view, user: userEvent.setup() };
 }
+
+const options = (name: string) => within(screen.getByRole("combobox", { name })).getAllByRole("option").map((o) => o.textContent);
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("Entries", () => {
+  it("offers only the categories the course allows when adding and editing", async () => {
+    const { user } = setup([entry({ category: "Revolver" })], "40");
+    expect(options("Entry category")).toEqual(["Revolver"]);
+    await user.click(screen.getByRole("button", { name: "Move" }));
+    expect(options("Move category")).toEqual(["Revolver"]);
+  });
+
+  it("keeps the current category of a legacy entry selectable when editing", async () => {
+    const { user } = setup([entry({ category: "Pistol" })], "40");
+    await user.click(screen.getByRole("button", { name: "Move" }));
+    expect(options("Move category")).toEqual(["Pistol", "Revolver"]);
+  });
+
+  it("falls back to the first allowed category when the course changes", async () => {
+    const { view, user } = setup([], "150");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Entry category" }), "Pistol OS");
+    await view.rerender({ course: "40" });
+    expect(options("Entry category")).toEqual(["Revolver"]);
+    expect((screen.getByRole("combobox", { name: "Entry category" }) as HTMLSelectElement).value).toBe("Revolver");
+  });
+
   it("labels each stage as Accepted or Open", () => {
     setup();
     const row = screen.getByRole("row", { name: /Jane Doe/ });
@@ -156,7 +183,7 @@ describe("Entries awaiting acceptance", () => {
       if (c.path === "/api/shooters/11") return { body: imported };
       return { status: 201, body: {} };
     });
-    render(Entries, { competitionId: 5, entries: [], shooters, reload: vi.fn(async () => {}) });
+    render(Entries, { competitionId: 5, course: "150", entries: [], shooters, reload: vi.fn(async () => {}) });
     const user = userEvent.setup();
     await user.type(screen.getByRole("combobox", { name: "Shooter" }), "ande");
     await user.click(await screen.findByRole("option", { name: "Search WA1500 / add new" }));
