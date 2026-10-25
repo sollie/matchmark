@@ -43,10 +43,16 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("Entries", () => {
   it("offers only the categories the course allows when adding and editing", async () => {
-    const { user } = setup([entry()], "40");
+    const { user } = setup([entry({ category: "Revolver" })], "40");
     expect(options("Entry category")).toEqual(["Revolver"]);
     await user.click(screen.getByRole("button", { name: "Move" }));
     expect(options("Move category")).toEqual(["Revolver"]);
+  });
+
+  it("keeps the current category of a legacy entry selectable when editing", async () => {
+    const { user } = setup([entry({ category: "Pistol" })], "40");
+    await user.click(screen.getByRole("button", { name: "Move" }));
+    expect(options("Move category")).toEqual(["Pistol", "Revolver"]);
   });
 
   it("falls back to the first allowed category when the course changes", async () => {
