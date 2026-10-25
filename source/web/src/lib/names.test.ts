@@ -21,6 +21,7 @@ describe("normalizeFirstName", () => {
     ["åse bjørg", "Åse Bjørg"],
     ["ÉMILIE", "Émilie"],
     ["ßa", "ßa"],
+    ["MEHMET İSMAİL", "Mehmet İsmail"],
   ])("%j -> %j", (input, want) => expect(normalizeFirstName(input)).toBe(want));
 });
 

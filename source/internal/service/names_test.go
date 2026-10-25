@@ -33,6 +33,7 @@ func TestNormalizeFirstName(t *testing.T) {
 		"jean-claude van":    "Jean-Claude Van",
 		"åse":                "Åse",
 		"ÉMILIE":             "Émilie",
+		"MEHMET İSMAİL":      "Mehmet İsmail",
 		"\tbjörn\u00a0erik ": "Björn Erik",
 		"":                   "",
 	}
