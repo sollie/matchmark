@@ -1,4 +1,4 @@
-import { expect, newApi, row, signInViaUi, test, uniqueName } from "./helpers";
+import { expect, newApi, row, signInViaUi, test, uniqueLastName, uniqueName } from "./helpers";
 
 const temporaryPassword = "e2e-temporary-password-1";
 const chosenPassword = "e2e-chosen-password-5678";
@@ -97,7 +97,7 @@ test.describe("user management", () => {
       (await api.post("/api/admin/password", { data: { current_password: temporaryPassword, new_password: chosenPassword } })).status(),
     ).toBe(204);
     const shooter = await api.post("/api/shooters", {
-      data: { last_name: uniqueName("User"), first_name: "Test", sex: "M", country: "NOR", club: "E2E Club", waid: "" },
+      data: { last_name: uniqueLastName("User"), first_name: "Test", sex: "M", country: "NOR", club: "E2E Club", waid: "" },
     });
     expect(shooter.status()).toBe(201);
     expect((await api.get("/api/users")).status()).toBe(403);

@@ -64,6 +64,10 @@ export function uniqueName(prefix: string): string {
   return `${prefix} ${randomBytes(4).toString("hex")}`;
 }
 
+export function uniqueLastName(prefix: string): string {
+  return uniqueName(prefix).toUpperCase();
+}
+
 function uniqueClientIp(): string {
   const [a, b] = randomBytes(2);
   return `198.18.${a}.${b}`;
@@ -110,7 +114,7 @@ interface ShooterSeed {
 
 export async function createShooter(api: APIRequestContext, seed: ShooterSeed = {}) {
   const shooter = {
-    last_name: uniqueName("Shooter"),
+    last_name: uniqueLastName("Shooter"),
     first_name: "Test",
     sex: "M" as const,
     country: "NOR",

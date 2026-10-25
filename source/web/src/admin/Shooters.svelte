@@ -4,6 +4,8 @@
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
   import Wa1500Import from "./Wa1500Import.svelte";
+  import NameFields from "./NameFields.svelte";
+  import { normalizeFirstName, normalizeLastName } from "../lib/names";
 
   type Shooter = components["schemas"]["Shooter"];
   type ShooterInput = components["schemas"]["ShooterInput"];
@@ -43,10 +45,11 @@
   async function save(e: SubmitEvent) {
     e.preventDefault();
     error = "";
+    const body = { ...form, first_name: normalizeFirstName(form.first_name), last_name: normalizeLastName(form.last_name) };
     const result =
       editing === null
-        ? await api.POST("/api/shooters", { body: form })
-        : await api.PUT("/api/shooters/{shooterID}", { params: { path: { shooterID: editing } }, body: form });
+        ? await api.POST("/api/shooters", { body })
+        : await api.PUT("/api/shooters/{shooterID}", { params: { path: { shooterID: editing } }, body });
     if (!result.response.ok) {
       error = failure(result);
       return;
@@ -91,8 +94,7 @@
 {/if}
 
 <form class="row card" onsubmit={save}>
-  <label>Last name <input bind:value={form.last_name} maxlength="64" required /></label>
-  <label>First name <input bind:value={form.first_name} maxlength="64" required /></label>
+  <NameFields bind:first={form.first_name} bind:last={form.last_name} />
   <label>
     Sex
     <select bind:value={form.sex}>
