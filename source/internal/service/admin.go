@@ -305,7 +305,7 @@ func (s *Service) finishIfComplete(ctx context.Context, competitionID int64, act
 }
 
 func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64, category string, lane int) (repository.Entry, error) {
-	if lane < 1 || !contains(categories, category) {
+	if lane < 1 {
 		return repository.Entry{}, ErrInvalid
 	}
 	current, err := s.repo.GetEntry(ctx, competitionID, entryID)
@@ -315,6 +315,9 @@ func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64,
 	comp, err := s.repo.GetCompetition(ctx, competitionID)
 	if err != nil {
 		return repository.Entry{}, mapRepoErr(err)
+	}
+	if category != current.Category && rulebook.ValidateCategory(comp.Course, category) != nil {
+		return repository.Entry{}, ErrInvalid
 	}
 	switch CompetitionStatus(comp.Status) {
 	case StatusDraft:

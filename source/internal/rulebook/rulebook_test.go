@@ -1,6 +1,7 @@
 package rulebook_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/sollie/matchmark/internal/rulebook"
@@ -170,5 +171,35 @@ func TestCourseLabelsAndKeys(t *testing.T) {
 		if c.Label != want[key] {
 			t.Errorf("label for %q = %q, want %q", key, c.Label, want[key])
 		}
+	}
+}
+
+func TestCategoriesPerCourse(t *testing.T) {
+	cases := map[string][]string{
+		"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
+		"60":  {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
+		"48":  {"Revolver", "Pistol"},
+		"40":  {"Revolver"},
+	}
+	for key, want := range cases {
+		got, err := rulebook.CategoriesForCourse(key)
+		if err != nil {
+			t.Fatalf("CategoriesForCourse(%q): %v", key, err)
+		}
+		if !slices.Equal(got, want) {
+			t.Errorf("CategoriesForCourse(%q) = %v, want %v", key, got, want)
+		}
+		if err := rulebook.ValidateCategory(key, "Rifle"); err == nil {
+			t.Errorf("ValidateCategory(%q, Rifle) accepted", key)
+		}
+	}
+	if _, err := rulebook.CategoriesForCourse("99"); err == nil {
+		t.Error("unknown course accepted")
+	}
+	if err := rulebook.ValidateCategory("40", "Pistol"); err == nil {
+		t.Error("Pistol accepted for 40")
+	}
+	if err := rulebook.ValidateCategory("48", "Pistol"); err != nil {
+		t.Errorf("Pistol rejected for 48: %v", err)
 	}
 }

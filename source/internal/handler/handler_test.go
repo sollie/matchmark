@@ -27,6 +27,18 @@ func (f *fixture) addEntry(t *testing.T, name string, lane int) int {
 	return f.env.ID("POST", fmt.Sprintf("/api/competitions/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Revolver", "lane": lane})
 }
 
+func TestAddEntryRejectsCategoryNotAllowedForCourse(t *testing.T) {
+	f := newFixture(t, "40")
+	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "One", "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
+	path := fmt.Sprintf("/api/competitions/%d/entries", f.comp)
+	if status, _ := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 1}); status != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d", status)
+	}
+	if status, _ := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Revolver", "lane": 1}); status != http.StatusCreated {
+		t.Fatalf("status %d", status)
+	}
+}
+
 func (f *fixture) scoreLane(lane int) (int, map[string]any) {
 	return f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/lanes/%d/score-lane", f.comp, lane), nil)
 }

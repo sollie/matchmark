@@ -19,3 +19,7 @@ export function loadRulebook(): Promise<void> {
 export function courseLabel(key: string): string {
   return rulebook.courses.find((c) => c.key === key)?.label ?? key;
 }
+
+export function courseCategories(key: string): string[] {
+  return rulebook.courses.find((c) => c.key === key)?.categories ?? [];
+}

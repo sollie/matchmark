@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
-  import { categories } from "../lib/domain";
+  import { courseCategories } from "../lib/rulebook.svelte";
   import ShooterPicker from "./ShooterPicker.svelte";
   import Wa1500Import from "./Wa1500Import.svelte";
   import type { components } from "../lib/api/schema";
@@ -12,12 +12,14 @@
 
   let {
     competitionId,
+    course,
     entries,
     shooters,
     reload,
     status = "draft",
   }: {
     competitionId: number;
+    course: string;
     entries: EntryWithStages[];
     shooters: Shooter[];
     reload: () => Promise<void>;
@@ -32,7 +34,7 @@
   let importQuery = $state<string | null>(null);
   let imported = $state<Shooter[]>([]);
   let chosen = $state<Shooter | null>(null);
-  let category = $state(categories[0]);
+  let chosenCategory = $state<string | null>(null);
   let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
   let scoring = $state<{ entry: EntryWithStages; stage: number; counts: RingCounts } | null>(null);
@@ -46,6 +48,8 @@
   });
   const entered = $derived(entries.map((e) => e.shooter_id));
   const lane = $derived(laneInput ?? nextLane);
+  const categories = $derived(courseCategories(course));
+  const category = $derived(chosenCategory !== null && categories.includes(chosenCategory) ? chosenCategory : (categories[0] ?? ""));
   const stageNumbers = $derived(entries[0]?.stages.map((s) => s.stage_number) ?? []);
   const shooterName = (id: number) => {
     const s = shooters.find((x) => x.id === id) ?? imported.find((x) => x.id === id);
@@ -170,7 +174,7 @@
     {/key}
     <label>
       Category
-      <select aria-label="Entry category" bind:value={category}>
+      <select aria-label="Entry category" bind:value={() => category, (v) => (chosenCategory = v)}>
         {#each categories as c (c)}<option value={c}>{c}</option>{/each}
       </select>
     </label>
@@ -200,7 +204,7 @@
             <td class="shooter">{shooterName(entry.shooter_id)}</td>
             <td class="category">
               <select aria-label="Move category" bind:value={editing.category}>
-                {#each categories as c (c)}<option value={c}>{c}</option>{/each}
+                {#each categories.includes(entry.category) ? categories : [entry.category, ...categories] as c (c)}<option value={c}>{c}</option>{/each}
               </select>
             </td>
           {:else}
