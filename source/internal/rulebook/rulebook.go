@@ -99,6 +99,15 @@ var courseKeys = []string{"150", "60", "48", "40"}
 
 var disciplines = []string{"1500", "60", "48"}
 
+var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Rifle"}
+
+var courseCategories = map[string][]string{
+	"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
+	"60":  {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
+	"48":  {"Revolver", "Pistol"},
+	"40":  {"Revolver"},
+}
+
 var ringValues = []string{"X", "10", "9", "8", "7", "0", "M"}
 
 func CourseKeys() []string {
@@ -107,6 +116,31 @@ func CourseKeys() []string {
 
 func Disciplines() []string {
 	return append([]string(nil), disciplines...)
+}
+
+func Categories() []string {
+	return append([]string(nil), categories...)
+}
+
+func CategoriesForCourse(key string) ([]string, error) {
+	allowed, ok := courseCategories[key]
+	if !ok {
+		return nil, fmt.Errorf("unknown course %q", key)
+	}
+	return append([]string(nil), allowed...), nil
+}
+
+func ValidateCategory(courseKey, category string) error {
+	allowed, err := CategoriesForCourse(courseKey)
+	if err != nil {
+		return err
+	}
+	for _, c := range allowed {
+		if c == category {
+			return nil
+		}
+	}
+	return fmt.Errorf("category %q is not allowed for course %q", category, courseKey)
 }
 
 func WeaponClasses(discipline string) []string {
