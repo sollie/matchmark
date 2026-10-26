@@ -2156,11 +2156,11 @@ components:
           type: string
     RulebookRing:
       type: object
-      required: [ring, points]
+      required: [ring, value]
       properties:
         ring:
           type: string
-        points:
+        value:
           type: integer
     Error:
       type: object
@@ -2430,7 +2430,7 @@ components:
           nullable: true
         score:
           type: integer
-          description: Points from the stored ring counts, whether or not the stage is accepted
+          description: Stage score from the stored ring counts, whether or not the stage is accepted
         shots_entered:
           type: integer
           description: Sum of all stored ring counts

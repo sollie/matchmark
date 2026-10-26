@@ -37,7 +37,7 @@ func TestRingCountsScoreMatchesRulebook(t *testing.T) {
 		"M":  {Miss: 1},
 	}
 	for _, ring := range rulebook.RingValues() {
-		want, err := rulebook.RingPoints(ring)
+		want, err := rulebook.RingValue(ring)
 		if err != nil {
 			t.Fatal(err)
 		}
