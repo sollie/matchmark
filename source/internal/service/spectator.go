@@ -63,21 +63,12 @@ type StandingView struct {
 	Stages     []StageScoreView `json:"stages,omitempty"`
 }
 
-func (s *Service) GetVisibility(ctx context.Context, competitionID int64) (repository.Visibility, error) {
-	v, err := s.repo.GetVisibility(ctx, competitionID)
-	return v, mapRepoErr(err)
-}
-
 func (s *Service) SetVisibility(ctx context.Context, competitionID int64, v repository.Visibility) error {
 	if err := s.repo.SetVisibility(ctx, competitionID, v); err != nil {
 		return mapRepoErr(err)
 	}
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.visibility", Target: idTarget("competition", competitionID)}, CompetitionID: competitionID, Live: LiveCompetition})
 	return nil
-}
-
-func (s *Service) ListPublicCompetitions(ctx context.Context) ([]repository.Competition, error) {
-	return s.repo.ListPublicCompetitions(ctx)
 }
 
 func (s *Service) publicCompetition(ctx context.Context, id int64) (repository.Competition, error) {
@@ -212,8 +203,8 @@ func (s *Service) CheckPublicStream(ctx context.Context, competitionID int64) er
 }
 
 func (s *Service) CheckAdminStream(ctx context.Context, competitionID int64) error {
-	_, err := s.GetCompetition(ctx, competitionID)
-	return err
+	_, err := s.repo.GetCompetition(ctx, competitionID)
+	return mapRepoErr(err)
 }
 
 func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (SpectatorSnapshot, error) {

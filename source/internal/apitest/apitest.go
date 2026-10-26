@@ -181,7 +181,7 @@ func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	if err := auth.SeedAdmin(AdminUsername, AdminPassword); err != nil {
 		t.Fatalf("seed admin: %v", err)
 	}
-	e.Server = httptest.NewServer(handler.NewRouter(service.New(repo, service.WithAudit(audit), service.WithScoreLog(slog.New(slog.NewJSONHandler(&e.scores, nil)))), append([]handler.Option{handler.WithAuth(auth, baseURL), handler.WithAudit(audit)}, opts...)...))
+	e.Server = httptest.NewServer(handler.NewRouter(service.New(repo, service.WithAudit(audit), service.WithScoreLog(slog.New(slog.NewJSONHandler(&e.scores, nil)))), repo, append([]handler.Option{handler.WithAuth(auth, baseURL), handler.WithAudit(audit)}, opts...)...))
 	t.Cleanup(e.Server.Close)
 	jar, err := cookiejar.New(nil)
 	if err != nil {

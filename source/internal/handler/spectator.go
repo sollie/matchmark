@@ -40,7 +40,7 @@ func (h *Handler) getVisibility(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	v, err := h.svc.GetVisibility(r.Context(), id)
+	v, err := h.repo.GetVisibility(r.Context(), id)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -68,7 +68,7 @@ func (h *Handler) setVisibility(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) spectatorCompetitions(w http.ResponseWriter, r *http.Request) {
-	comps, err := h.svc.ListPublicCompetitions(r.Context())
+	comps, err := h.repo.ListPublicCompetitions(r.Context())
 	if err != nil {
 		writeError(w, err)
 		return
