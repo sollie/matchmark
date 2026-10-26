@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -81,7 +82,12 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 		return nil, err
 	}
 	defer func() { _ = stmt.Close() }()
-	if _, err := stmt.Exec(nil); err != nil { //nolint:staticcheck
+	se, ok := stmt.(driver.StmtExecContext)
+	if !ok {
+		_ = dc.Close()
+		return nil, errors.New("driver statement does not support ExecContext")
+	}
+	if _, err := se.ExecContext(ctx, nil); err != nil {
 		_ = dc.Close()
 		return nil, err
 	}
