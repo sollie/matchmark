@@ -5,22 +5,30 @@ import (
 	"time"
 
 	"github.com/sollie/matchmark/internal/report"
+	"github.com/sollie/matchmark/internal/repository"
 )
 
 func (s *Service) PublicResultsPDF(ctx context.Context, competitionID int64) (Download, error) {
-	view, err := s.PublicResults(ctx, competitionID)
+	comp, err := s.repo.GetCompetition(ctx, competitionID)
 	if err != nil {
-		return Download{}, err
+		return Download{}, mapRepoErr(err)
 	}
-	return s.renderResultsPDF(ctx, view)
+	if CompetitionStatus(comp.Status) != StatusFinished {
+		return Download{}, ErrNotFound
+	}
+	vis, err := s.repo.GetVisibility(ctx, competitionID)
+	if err != nil {
+		return Download{}, mapRepoErr(err)
+	}
+	return s.renderResultsPDF(ctx, comp, vis)
 }
 
 func (s *Service) AdminResultsPDF(ctx context.Context, competitionID int64) (Download, error) {
-	view, err := s.AdminResults(ctx, competitionID)
+	comp, err := s.repo.GetCompetition(ctx, competitionID)
 	if err != nil {
-		return Download{}, err
+		return Download{}, mapRepoErr(err)
 	}
-	file, err := s.renderResultsPDF(ctx, view)
+	file, err := s.renderResultsPDF(ctx, comp, repository.AllVisible())
 	if err != nil {
 		return Download{}, err
 	}
@@ -28,43 +36,20 @@ func (s *Service) AdminResultsPDF(ctx context.Context, competitionID int64) (Dow
 	return file, nil
 }
 
-func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Download, error) {
-	data := report.ResultsPDFData{
-		Generated:   time.Now(),
-		Name:        view.Competition.Name,
-		Date:        view.Competition.Date,
-		CourseLabel: view.Competition.CourseLabel,
-		Stages:      view.Stages,
+func (s *Service) renderResultsPDF(ctx context.Context, comp repository.Competition, vis repository.Visibility) (Download, error) {
+	res, err := s.resultsProjection(ctx, comp, vis)
+	if err != nil {
+		return Download{}, err
 	}
+	data := report.ResultsPDFData{Generated: time.Now(), Results: res}
 	var logo ClubLogo
-	var err error
 	if data.ClubName, logo, err = s.clubBranding(ctx); err != nil {
 		return Download{}, err
 	}
 	data.Logo, data.LogoType = logo.Data, logo.ContentType
-	for _, c := range view.Categories {
-		cat := report.ResultsPDFCategory{Category: c.Category}
-		for _, r := range c.Rows {
-			row := report.ResultsPDFRow{
-				Rank: r.Rank, LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
-				Club: r.Club, Country: r.Country, Total: r.Total, XCount: r.XCount,
-			}
-			for _, st := range r.Stages {
-				row.Stages = append(row.Stages, report.ResultsPDFStage{Stage: st.Stage, Score: st.Score})
-			}
-			cat.Rows = append(cat.Rows, row)
-		}
-		data.Categories = append(data.Categories, cat)
-	}
-	for _, n := range view.NewShooters {
-		data.NewShooters = append(data.NewShooters, report.ResultsPDFNewShooter{
-			LastName: n.LastName, FirstName: n.FirstName, Category: n.Category,
-			Club: n.Club, Country: n.Country, Total: n.Total, XCount: n.XCount,
-		})
-	}
 	pdf, err := report.ResultsPDF(data)
 	if err != nil {
 		return Download{}, err
 	}
-	return Download{BaseName: downloadBaseName(view.Competition.Name, view.Competition.Date) + "-results", Data: pdf}, nil
+	return Download{BaseName: downloadBaseName(comp.Name, comp.Date) + "-results", Data: pdf}, nil
 }

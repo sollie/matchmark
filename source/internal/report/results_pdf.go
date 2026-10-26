@@ -19,6 +19,7 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/core"
 	"github.com/johnfercher/maroto/v2/pkg/fontrepository"
 	"github.com/johnfercher/maroto/v2/pkg/props"
+	"github.com/sollie/matchmark/internal/repository"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"
 )
@@ -35,49 +36,12 @@ var (
 	pdfMuted      = &props.Color{Red: 92, Green: 92, Blue: 92}
 )
 
-type ResultsPDFStage struct {
-	Stage int
-	Score *int
-}
-
-type ResultsPDFRow struct {
-	Rank      int
-	LastName  *string
-	FirstName *string
-	WAID      *string
-	Club      *string
-	Country   *string
-	Stages    []ResultsPDFStage
-	Total     int
-	XCount    *int
-}
-
-type ResultsPDFCategory struct {
-	Category string
-	Rows     []ResultsPDFRow
-}
-
-type ResultsPDFNewShooter struct {
-	LastName  string
-	FirstName string
-	Category  string
-	Club      *string
-	Country   *string
-	Total     int
-	XCount    *int
-}
-
 type ResultsPDFData struct {
-	ClubName    string
-	Logo        []byte
-	LogoType    string
-	Generated   time.Time
-	Name        string
-	Date        string
-	CourseLabel string
-	Stages      []int
-	Categories  []ResultsPDFCategory
-	NewShooters []ResultsPDFNewShooter
+	ClubName  string
+	Logo      []byte
+	LogoType  string
+	Generated time.Time
+	Results   Results
 }
 
 type pdfColumn struct {
@@ -94,8 +58,9 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	columns, cells := resultsColumns(d)
-	newColumns, newCells := newShooterColumns(d)
+	vis := d.Results.Visibility
+	columns, cells := resultsColumns(d.Results.Stages, vis)
+	newColumns, newCells := newShooterColumns(vis)
 	grid := columnGrid(columns)
 	if g := columnGrid(newColumns); g > grid {
 		grid = g
@@ -108,7 +73,7 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 		WithCustomFonts(fonts).
 		WithDefaultFont(&props.Font{Family: pdfFamily, Size: pdfFontSize}).
 		WithCreationDate(d.Generated).
-		WithTitle(d.Name, true).
+		WithTitle(d.Results.Competition.Name, true).
 		WithSequentialMode().
 		Build()
 	m := maroto.New(cfg)
@@ -119,22 +84,30 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 		return nil, err
 	}
 
-	for _, c := range d.Categories {
+	type newShooter struct {
+		category string
+		row      Row
+	}
+	var newShooters []newShooter
+	for _, c := range d.Results.Categories {
+		for _, r := range c.New {
+			newShooters = append(newShooters, newShooter{c.Name, r})
+		}
 		p := page.New()
-		p.Add(sectionRow(c.Category, grid), tableHeader(columns, grid))
+		p.Add(sectionRow(c.Name, grid), tableHeader(columns, grid))
 		for _, r := range c.Rows {
 			p.Add(tableRow(columns, cells(r), grid, false))
 		}
 		m.AddPages(p)
 	}
-	if len(d.Categories) == 0 {
+	if len(d.Results.Categories) == 0 {
 		m.AddPages(page.New().Add(textRow("No results.", grid, props.Text{Size: pdfFontSize, Color: pdfMuted})))
 	}
-	if len(d.NewShooters) > 0 {
+	if len(newShooters) > 0 {
 		p := page.New()
 		p.Add(sectionRow("New shooters", grid), tableHeader(newColumns, grid))
-		for _, s := range d.NewShooters {
-			p.Add(tableRow(newColumns, newCells(s), grid, false))
+		for _, s := range newShooters {
+			p.Add(tableRow(newColumns, newCells(s.category, s.row), grid, false))
 		}
 		m.AddPages(p)
 	}
@@ -154,107 +127,83 @@ func columnGrid(columns []pdfColumn) int {
 	return n
 }
 
-func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string) {
-	var first ResultsPDFRow
-	found := false
-	for _, c := range d.Categories {
-		if len(c.Rows) > 0 {
-			first, found = c.Rows[0], true
-			break
-		}
-	}
-	showNames := found && first.LastName != nil
-	showClubs := found && first.Club != nil
-	showCountries := found && first.Country != nil
-	showStages := found && len(first.Stages) > 0 && first.Stages[0].Score != nil
-	showX := found && first.XCount != nil
-
+func resultsColumns(stages []int, v repository.Visibility) ([]pdfColumn, func(Row) []string) {
 	columns := []pdfColumn{{"#", 2, true}}
-	if showNames {
+	if v.Names {
 		columns = append(columns, pdfColumn{"Shooter", 7, false}, pdfColumn{"WAID", 3, false})
 	}
-	if showClubs {
+	if v.Clubs {
 		columns = append(columns, pdfColumn{"Club", 6, false})
 	}
-	if showCountries {
+	if v.Countries {
 		columns = append(columns, pdfColumn{"Country", 3, false})
 	}
-	if showStages {
-		for _, n := range d.Stages {
+	if v.StageScores {
+		for _, n := range stages {
 			columns = append(columns, pdfColumn{"S" + strconv.Itoa(n), 2, true})
 		}
 	}
 	columns = append(columns, pdfColumn{"Total", 3, true})
-	if showX {
+	if v.RingCounts {
 		columns = append(columns, pdfColumn{"X", 2, true})
 	}
-	return columns, func(r ResultsPDFRow) []string {
+	return columns, func(r Row) []string {
 		cells := []string{strconv.Itoa(r.Rank)}
-		if showNames {
-			cells = append(cells, derefString(r.FirstName)+" "+derefString(r.LastName), derefString(r.WAID))
+		if v.Names {
+			cells = append(cells, r.Shooter.FirstName+" "+r.Shooter.LastName, r.Shooter.WAID)
 		}
-		if showClubs {
-			cells = append(cells, derefString(r.Club))
+		if v.Clubs {
+			cells = append(cells, r.Shooter.Club)
 		}
-		if showCountries {
-			cells = append(cells, derefString(r.Country))
+		if v.Countries {
+			cells = append(cells, r.Shooter.Country)
 		}
-		if showStages {
+		if v.StageScores {
 			for _, s := range r.Stages {
-				cells = append(cells, derefInt(s.Score))
+				cells = append(cells, stageScoreCell(s))
 			}
 		}
 		cells = append(cells, strconv.Itoa(r.Total))
-		if showX {
-			cells = append(cells, derefInt(r.XCount))
+		if v.RingCounts {
+			cells = append(cells, strconv.Itoa(r.XCount))
 		}
 		return cells
 	}
 }
 
-func newShooterColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFNewShooter) []string) {
-	showClubs := len(d.NewShooters) > 0 && d.NewShooters[0].Club != nil
-	showCountries := len(d.NewShooters) > 0 && d.NewShooters[0].Country != nil
-	showX := len(d.NewShooters) > 0 && d.NewShooters[0].XCount != nil
+func stageScoreCell(s Stage) string {
+	if !s.Accepted {
+		return ""
+	}
+	return strconv.Itoa(s.Score)
+}
+
+func newShooterColumns(v repository.Visibility) ([]pdfColumn, func(string, Row) []string) {
 	columns := []pdfColumn{{"Shooter", 8, false}, {"Category", 4, false}}
-	if showClubs {
+	if v.Clubs {
 		columns = append(columns, pdfColumn{"Club", 6, false})
 	}
-	if showCountries {
+	if v.Countries {
 		columns = append(columns, pdfColumn{"Country", 3, false})
 	}
 	columns = append(columns, pdfColumn{"Total", 3, true})
-	if showX {
+	if v.RingCounts {
 		columns = append(columns, pdfColumn{"X", 2, true})
 	}
-	return columns, func(s ResultsPDFNewShooter) []string {
-		cells := []string{s.FirstName + " " + s.LastName, s.Category}
-		if showClubs {
-			cells = append(cells, derefString(s.Club))
+	return columns, func(category string, r Row) []string {
+		cells := []string{r.Shooter.FirstName + " " + r.Shooter.LastName, category}
+		if v.Clubs {
+			cells = append(cells, r.Shooter.Club)
 		}
-		if showCountries {
-			cells = append(cells, derefString(s.Country))
+		if v.Countries {
+			cells = append(cells, r.Shooter.Country)
 		}
-		cells = append(cells, strconv.Itoa(s.Total))
-		if showX {
-			cells = append(cells, derefInt(s.XCount))
+		cells = append(cells, strconv.Itoa(r.Total))
+		if v.RingCounts {
+			cells = append(cells, strconv.Itoa(r.XCount))
 		}
 		return cells
 	}
-}
-
-func derefString(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
-func derefInt(n *int) string {
-	if n == nil {
-		return ""
-	}
-	return strconv.Itoa(*n)
 }
 
 func headerRows(d ResultsPDFData, grid int) []core.Row {
@@ -268,8 +217,9 @@ func headerRows(d ResultsPDFData, grid int) []core.Row {
 	if title == "" {
 		title = "Results"
 	}
-	info := d.Name + "  ·  " + d.Date + "  ·  " + d.CourseLabel
-	textCol := col.New(grid - logoCols).Add(
+	c := d.Results.Competition
+	info := c.Name + "  ·  " + c.Date + "  ·  " + d.Results.CourseLabel
+	textCol := col.New(grid-logoCols).Add(
 		text.New(title, props.Text{Size: 16, Style: fontstyle.Bold, Top: 2, Left: 2}),
 		text.New(info, props.Text{Size: 10, Top: 10, Left: 2, Color: pdfMuted}),
 	)
