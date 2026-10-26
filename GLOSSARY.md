@@ -72,8 +72,12 @@ _Avoid_: Course of fire (as a noun for the whole set), program
 One course-of-fire segment shot by a shooter, with a fixed number of shots.
 _Avoid_: String, round
 
+**Ring value**:
+What a hit is worth for its ring: X and 10 are worth ten, 9 nine, 8 eight, 7 seven, and 0 and M nothing.
+_Avoid_: Points, ring score
+
 **Stage score**:
-The sum of the ring values of a stage's hits. An X scores as a ten; zeros and misses score nothing. An entry's total is the sum of its stage scores.
+The sum of the ring values of a stage's hits. An entry's total is the sum of its stage scores.
 _Avoid_: Points
 
 **Stage state**:

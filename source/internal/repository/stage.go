@@ -50,10 +50,10 @@ type RingCounts struct {
 }
 
 func (c RingCounts) Score() int {
-	return rulebook.TenRingPoints*(c.X+c.Ten) +
-		rulebook.NineRingPoints*c.Nine +
-		rulebook.EightRingPoints*c.Eight +
-		rulebook.SevenRingPoints*c.Seven
+	return rulebook.TenRingValue*(c.X+c.Ten) +
+		rulebook.NineRingValue*c.Nine +
+		rulebook.EightRingValue*c.Eight +
+		rulebook.SevenRingValue*c.Seven
 }
 
 type Stage struct {

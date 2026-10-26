@@ -45,7 +45,7 @@ func TestRulebookView(t *testing.T) {
 			t.Errorf("weapon classes for %s = %d, want %d", discipline, got, n)
 		}
 	}
-	if len(view.Rings) != 7 || view.Rings[0].Ring != "X" || view.Rings[0].Points != 10 {
+	if len(view.Rings) != 7 || view.Rings[0].Ring != "X" || view.Rings[0].Value != 10 {
 		t.Errorf("rings = %+v", view.Rings)
 	}
 }

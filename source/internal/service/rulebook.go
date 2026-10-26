@@ -20,8 +20,8 @@ type RulebookCourse struct {
 }
 
 type RulebookRing struct {
-	Ring   string
-	Points int
+	Ring  string
+	Value int
 }
 
 type RulebookView struct {
@@ -52,11 +52,11 @@ func (s *Service) Rulebook() (RulebookView, error) {
 		view.WeaponClasses[d] = rulebook.WeaponClasses(d)
 	}
 	for _, ring := range rulebook.RingValues() {
-		points, err := rulebook.RingPoints(ring)
+		value, err := rulebook.RingValue(ring)
 		if err != nil {
 			return RulebookView{}, err
 		}
-		view.Rings = append(view.Rings, RulebookRing{Ring: ring, Points: points})
+		view.Rings = append(view.Rings, RulebookRing{Ring: ring, Value: value})
 	}
 	return view, nil
 }
