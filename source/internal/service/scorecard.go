@@ -21,16 +21,16 @@ type ScorecardSummary struct {
 }
 
 func (s *Service) loadScorecard(ctx context.Context, competitionID int64, lane int) (report.ScorecardData, error) {
-	data, err := s.loadReport(ctx, competitionID)
+	comp, entries, err := s.loadReport(ctx, competitionID)
 	if err != nil {
 		return report.ScorecardData{}, err
 	}
-	if data.Competition.Status != string(StatusFinished) {
+	if comp.Status != string(StatusFinished) {
 		return report.ScorecardData{}, ErrNotFound
 	}
-	card := report.ScorecardData{Competition: data.Competition}
+	card := report.ScorecardData{Competition: comp}
 	found := false
-	for _, e := range data.Entries {
+	for _, e := range entries {
 		if e.Lane == lane && !e.Withdrawn {
 			card.Entry = e
 			found = true
@@ -40,7 +40,7 @@ func (s *Service) loadScorecard(ctx context.Context, competitionID int64, lane i
 	if !found {
 		return report.ScorecardData{}, ErrNotFound
 	}
-	if card.Course, err = rulebook.CourseByKey(data.Competition.Course); err != nil {
+	if card.Course, err = rulebook.CourseByKey(comp.Course); err != nil {
 		return report.ScorecardData{}, err
 	}
 	return card, nil
