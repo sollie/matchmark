@@ -184,7 +184,7 @@ func (s *Service) ListEntries(ctx context.Context, competitionID int64) ([]Entry
 			c := st.Counts
 			p.Stages = append(p.Stages, StageScoring{
 				StageInfo:    st,
-				Score:        stagePoints(c),
+				Score:        c.Score(),
 				ShotsEntered: c.X + c.Ten + c.Nine + c.Eight + c.Seven + c.Zero + c.Miss,
 			})
 		}
