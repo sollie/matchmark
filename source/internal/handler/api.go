@@ -6,133 +6,90 @@ import (
 	"github.com/sollie/matchmark/internal/repository"
 )
 
-func (h *Handler) createShooter(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createShooter(r *http.Request) (int, any, error) {
+	req := in(r)
 	var body shooterBody
-	if err := decode(r, &body); err != nil {
-		writeError(w, err)
-		return
+	req.body(&body)
+	if req.err != nil {
+		return fail(req.err)
 	}
 	id, err := h.svc.CreateShooter(r.Context(), body.shooter(0))
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
+	return http.StatusCreated, map[string]int64{"id": id}, nil
 }
 
-func (h *Handler) createCompetition(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Name   string `json:"name"`
-		Date   string `json:"date"`
-		Course string `json:"course"`
-	}
-	if err := decode(r, &body); err != nil {
-		writeError(w, err)
-		return
+func (h *Handler) createCompetition(r *http.Request) (int, any, error) {
+	req := in(r)
+	var body competitionBody
+	req.body(&body)
+	if req.err != nil {
+		return fail(req.err)
 	}
 	id, err := h.svc.CreateCompetition(r.Context(), repository.Competition{Name: body.Name, Date: body.Date, Course: body.Course})
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
+	return http.StatusCreated, map[string]int64{"id": id}, nil
 }
 
-func (h *Handler) addEntry(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
+func (h *Handler) addEntry(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID := req.path("competitionID")
 	var body struct {
 		ShooterID int64  `json:"shooter_id"`
 		Category  string `json:"category"`
 		Lane      int    `json:"lane"`
 	}
-	if err := decode(r, &body); err != nil {
-		writeError(w, err)
-		return
+	req.body(&body)
+	if req.err != nil {
+		return fail(req.err)
 	}
 	id, err := h.svc.AddEntry(r.Context(), repository.Entry{
 		CompetitionID: compID, ShooterID: body.ShooterID, Category: body.Category, Lane: body.Lane,
 	})
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
+	return http.StatusCreated, map[string]int64{"id": id}, nil
 }
 
-func (h *Handler) withdrawEntry(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	entryID, err := pathInt(r, "entryID")
-	if err != nil {
-		writeError(w, err)
-		return
+func (h *Handler) withdrawEntry(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID, entryID := req.path("competitionID"), req.path("entryID")
+	if req.err != nil {
+		return fail(req.err)
 	}
 	if err := h.svc.WithdrawEntry(r.Context(), compID, entryID); err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"withdrawn": true})
+	return okJSON(map[string]bool{"withdrawn": true})
 }
 
-func (h *Handler) scoreLane(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	lane, err := pathInt(r, "lane")
-	if err != nil {
-		writeError(w, err)
-		return
+func (h *Handler) scoreLane(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID, lane := req.path("competitionID"), req.path("lane")
+	if req.err != nil {
+		return fail(req.err)
 	}
 	scoreLane, err := h.svc.ScoreLane(r.Context(), compID, int(lane))
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusOK, map[string]int{"score_lane": scoreLane})
+	return okJSON(map[string]int{"score_lane": scoreLane})
 }
 
-func (h *Handler) setRingCounts(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
+func (h *Handler) setRingCounts(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID, entryID, stage := req.path("competitionID"), req.path("entryID"), req.path("stage")
+	var body ringCountsBody
+	req.body(&body)
+	if req.err != nil {
+		return fail(req.err)
 	}
-	entryID, err := pathInt(r, "entryID")
-	if err != nil {
-		writeError(w, err)
-		return
+	if err := h.svc.AdminSetRingCounts(r.Context(), compID, entryID, int(stage), body.counts()); err != nil {
+		return fail(err)
 	}
-	stage, err := pathInt(r, "stage")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	var body struct {
-		X     int `json:"x"`
-		Ten   int `json:"10"`
-		Nine  int `json:"9"`
-		Eight int `json:"8"`
-		Seven int `json:"7"`
-		Zero  int `json:"0"`
-		Miss  int `json:"miss"`
-	}
-	if err := decode(r, &body); err != nil {
-		writeError(w, err)
-		return
-	}
-	counts := repository.RingCounts{X: body.X, Ten: body.Ten, Nine: body.Nine, Eight: body.Eight, Seven: body.Seven, Zero: body.Zero, Miss: body.Miss}
-	if err := h.svc.AdminSetRingCounts(r.Context(), compID, entryID, int(stage), counts); err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, body)
+	return okJSON(body)
 }
