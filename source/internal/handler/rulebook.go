@@ -24,8 +24,8 @@ type rulebookCourseBody struct {
 }
 
 type rulebookRingBody struct {
-	Ring   string `json:"ring"`
-	Points int    `json:"points"`
+	Ring  string `json:"ring"`
+	Value int    `json:"value"`
 }
 
 type rulebookBody struct {

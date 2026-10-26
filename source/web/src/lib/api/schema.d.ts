@@ -1087,7 +1087,7 @@ export interface components {
         };
         RulebookRing: {
             ring: string;
-            points: number;
+            value: number;
         };
         Error: {
             error: string;
@@ -1224,7 +1224,7 @@ export interface components {
             status: components["schemas"]["StageStatus"];
             scorer_lane: number | null;
             scorer_name: string | null;
-            /** @description Points from the stored ring counts, whether or not the stage is accepted */
+            /** @description Stage score from the stored ring counts, whether or not the stage is accepted */
             score: number;
             /** @description Sum of all stored ring counts */
             shots_entered: number;
