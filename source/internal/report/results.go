@@ -38,11 +38,11 @@ type Results struct {
 	CourseLabel string
 	Stages      []int
 	Categories  []Category
-	Visibility  *repository.Visibility
+	Visibility  repository.Visibility
 }
 
 func Build(comp repository.Competition, entries []repository.ReportEntry) Results {
-	res := Results{Competition: comp, Categories: []Category{}}
+	res := Results{Competition: comp, Categories: []Category{}, Visibility: repository.AllVisible()}
 	if course, err := rulebook.CourseByKey(comp.Course); err == nil {
 		res.CourseLabel = course.Label
 		for _, s := range course.Stages {
@@ -112,7 +112,7 @@ func rank(rows []Row) {
 
 func (r Results) Redact(v repository.Visibility) Results {
 	out := r
-	out.Visibility = &v
+	out.Visibility = v
 	out.Categories = make([]Category, len(r.Categories))
 	for i, c := range r.Categories {
 		cat := Category{Name: c.Name, Rows: redactRows(c.Rows, v)}

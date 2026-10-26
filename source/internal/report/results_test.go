@@ -135,7 +135,7 @@ func TestRedact(t *testing.T) {
 		entry("Pistol", 1, "Known", "W1", false, accepted(1, 2, 1)),
 		entry("Pistol", 2, "Fresh", "", false, accepted(1, 0, 1)),
 	})
-	all := repository.Visibility{Names: true, Clubs: true, Countries: true, StageScores: true, RingCounts: true}
+	all := repository.AllVisible()
 	cases := []struct {
 		name  string
 		hide  func(*repository.Visibility)
@@ -172,7 +172,7 @@ func TestRedact(t *testing.T) {
 			vis := all
 			tc.hide(&vis)
 			res := base.Redact(vis)
-			if res.Visibility == nil || *res.Visibility != vis {
+			if res.Visibility != vis {
 				t.Fatalf("visibility = %+v", res.Visibility)
 			}
 			cat := res.Categories[0]

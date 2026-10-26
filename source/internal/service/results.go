@@ -55,8 +55,6 @@ type ResultsView struct {
 	NewShooters []ResultsNewShooter `json:"new_shooters"`
 }
 
-var showAll = repository.Visibility{Names: true, Clubs: true, Countries: true, StageScores: true, RingCounts: true}
-
 func (s *Service) PublicResults(ctx context.Context, competitionID int64) (ResultsView, error) {
 	comp, err := s.repo.GetCompetition(ctx, competitionID)
 	if err != nil {
@@ -77,7 +75,7 @@ func (s *Service) AdminResults(ctx context.Context, competitionID int64) (Result
 	if err != nil {
 		return ResultsView{}, mapRepoErr(err)
 	}
-	return s.results(ctx, comp, showAll)
+	return s.results(ctx, comp, repository.AllVisible())
 }
 
 func (s *Service) resultsProjection(ctx context.Context, comp repository.Competition, vis repository.Visibility) (report.Results, error) {
@@ -106,7 +104,7 @@ func (s *Service) results(ctx context.Context, comp repository.Competition, vis 
 }
 
 func resultsView(res report.Results) ResultsView {
-	vis := *res.Visibility
+	vis := res.Visibility
 	comp := res.Competition
 	out := ResultsView{
 		Competition: ResultsCompetition{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: res.CourseLabel},

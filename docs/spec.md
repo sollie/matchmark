@@ -57,7 +57,7 @@ The endpoints run behind the render guard (`handler.RenderGuard`, ADR 0016): at 
 
 Filled in from the embedded `Results reporting mal.xlsx` using `excelize`. One sheet per category; competition name and date in the header; known shooters as WAID + total result, extra rows inserted as needed; new shooters in the "New shooters" block with last name, first name, sex, country, club, result. The template is a replaceable embedded file.
 
-Withdrawn shooters stay in the `.xlsx` report with the totals of their accepted stages, ranked and listed like other shooters (the detailed CSV keeps them too, flagged `withdrawn`); the Results view, the Results PDF and the Scorecard exclude them. Handling of withdrawn shooters in every output is still open (#328). All renderers read one unredacted `Results` projection (`internal/report`: `Build`, then `Redact` on the public path).
+Withdrawn shooters stay in the `.xlsx` report with the totals of their accepted stages, unranked (rank 0) and listed after the active shooters of their category (the detailed CSV keeps them too, flagged `withdrawn`); the Results view, the Results PDF and the Scorecard exclude them. Handling of withdrawn shooters in every output is still open (#328). All renderers read one unredacted `Results` projection (`internal/report`: `Build`, then `Redact` on the public path).
 
 The `.xlsx` report and the detailed CSV are downloaded with buttons in the admin competition list, shown only for finished competitions; the endpoints themselves do not check the status.
 
