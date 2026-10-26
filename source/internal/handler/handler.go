@@ -119,7 +119,7 @@ func writeError(w http.ResponseWriter, err error) {
 	case errors.Is(err, service.ErrUnauthenticated):
 		status, msg = http.StatusUnauthorized, "unauthorized"
 	case errors.Is(err, wa1500.ErrUpstream):
-		status, msg = http.StatusBadGateway, "wa1500 unavailable"
+		status, msg = http.StatusServiceUnavailable, "wa1500 unavailable"
 	case errors.Is(err, service.ErrRateLimited):
 		status, msg = http.StatusTooManyRequests, "too many searches, try again shortly"
 	case errors.Is(err, errTooManyStreams):

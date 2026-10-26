@@ -49,7 +49,7 @@ test.describe("shooters", () => {
 
   test("a lowercase name typed in the manual entry form is saved normalized", async ({ adminPage: page }) => {
     const suffix = uniqueLastName("Typed").replace(" ", "").toLowerCase();
-    await page.route("**/api/wa1500/search*", (route) => route.fulfill({ status: 502, json: { error: "wa1500 unavailable" } }));
+    await page.route("**/api/wa1500/search*", (route) => route.fulfill({ status: 503, json: { error: "wa1500 unavailable" } }));
     await openShooters(page);
     await page.getByRole("button", { name: "Import from WA1500" }).click();
     await page.getByRole("textbox", { name: "Search WA1500" }).fill("anything");
@@ -209,7 +209,7 @@ test.describe("shooters", () => {
 
   test("manual entry is offered when WA1500 is unavailable", async ({ adminPage: page }) => {
     const lastName = uniqueLastName("Manual").replace(" ", "");
-    await page.route("**/api/wa1500/search*", (route) => route.fulfill({ status: 502, json: { error: "wa1500 unavailable" } }));
+    await page.route("**/api/wa1500/search*", (route) => route.fulfill({ status: 503, json: { error: "wa1500 unavailable" } }));
     await openShooters(page);
     await page.getByRole("button", { name: "Import from WA1500" }).click();
     await page.getByRole("textbox", { name: "Search WA1500" }).fill("anything");

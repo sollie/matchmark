@@ -43,11 +43,11 @@ func TestWA1500Search(t *testing.T) {
 func TestWA1500SearchUpstreamFailure(t *testing.T) {
 	fake := &fakeSearcher{err: wa1500.ErrUpstream}
 	env := apitest.NewAdmin(t, handler.WithWA1500(service.NewWA1500Lookup(fake)))
-	if status, _ := env.Do("GET", "/api/wa1500/search?q=x", nil); status != http.StatusBadGateway {
+	if status, _ := env.Do("GET", "/api/wa1500/search?q=x", nil); status != http.StatusServiceUnavailable {
 		t.Fatalf("status %d", status)
 	}
 	fake.err = errors.New("boom")
-	if status, _ := env.Do("GET", "/api/wa1500/search?q=y", nil); status != http.StatusBadGateway {
+	if status, _ := env.Do("GET", "/api/wa1500/search?q=y", nil); status != http.StatusServiceUnavailable {
 		t.Fatalf("status %d", status)
 	}
 }
