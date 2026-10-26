@@ -122,7 +122,7 @@ func TestCourseOfFire_ShotCountsMatchTotal(t *testing.T) {
 	}
 }
 
-func TestRingPoints(t *testing.T) {
+func TestRingValue(t *testing.T) {
 	tests := []struct {
 		ring    string
 		want    int
@@ -141,13 +141,13 @@ func TestRingPoints(t *testing.T) {
 		{"miss", 0, true},
 	}
 	for _, tc := range tests {
-		got, err := rulebook.RingPoints(tc.ring)
+		got, err := rulebook.RingValue(tc.ring)
 		if (err != nil) != tc.wantErr {
-			t.Errorf("RingPoints(%q) error = %v, wantErr %v", tc.ring, err, tc.wantErr)
+			t.Errorf("RingValue(%q) error = %v, wantErr %v", tc.ring, err, tc.wantErr)
 			continue
 		}
 		if !tc.wantErr && got != tc.want {
-			t.Errorf("RingPoints(%q) = %d, want %d", tc.ring, got, tc.want)
+			t.Errorf("RingValue(%q) = %d, want %d", tc.ring, got, tc.want)
 		}
 	}
 }

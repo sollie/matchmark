@@ -109,10 +109,10 @@ var courseCategories = map[string][]string{
 }
 
 const (
-	TenRingPoints   = 10
-	NineRingPoints  = 9
-	EightRingPoints = 8
-	SevenRingPoints = 7
+	TenRingValue   = 10
+	NineRingValue  = 9
+	EightRingValue = 8
+	SevenRingValue = 7
 )
 
 var ringValues = []string{"X", "10", "9", "8", "7", "0", "M"}
@@ -186,16 +186,16 @@ func CourseOfFire(discipline, weaponClass string) (Course, error) {
 	return Course{}, fmt.Errorf("unknown discipline %q", discipline)
 }
 
-func RingPoints(ring string) (int, error) {
+func RingValue(ring string) (int, error) {
 	switch ring {
 	case "X", "10":
-		return TenRingPoints, nil
+		return TenRingValue, nil
 	case "9":
-		return NineRingPoints, nil
+		return NineRingValue, nil
 	case "8":
-		return EightRingPoints, nil
+		return EightRingValue, nil
 	case "7":
-		return SevenRingPoints, nil
+		return SevenRingValue, nil
 	case "0", "M":
 		return 0, nil
 	}
