@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -57,6 +58,7 @@ func (l *WA1500Lookup) Search(ctx context.Context, query string) ([]wa1500.Shoot
 	}
 	results, err := l.searcher.Search(ctx, query)
 	if err != nil {
+		slog.WarnContext(ctx, "wa1500 lookup failed", "error", err)
 		return nil, errors.Join(wa1500.ErrUpstream, err)
 	}
 	if results == nil {
