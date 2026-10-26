@@ -185,6 +185,20 @@ func TestRedact(t *testing.T) {
 		})
 	}
 
+	t.Run("new shooters need names", func(t *testing.T) {
+		if len(base.Categories[0].New) != 1 {
+			t.Fatal("fixture has no new shooter")
+		}
+		vis := all
+		vis.Names = false
+		if got := base.Redact(vis).Categories[0].New; len(got) != 0 {
+			t.Fatalf("new shooters leaked: %+v", got)
+		}
+		if got := base.Redact(all).Categories[0].New; len(got) != 1 {
+			t.Fatalf("new = %+v", got)
+		}
+	})
+
 	t.Run("all visible", func(t *testing.T) {
 		res := base.Redact(all)
 		if got, want := names(res.Categories[0].Rows), names(base.Categories[0].Rows); !reflect.DeepEqual(got, want) || res.Categories[0].Rows[0].Total != base.Categories[0].Rows[0].Total {

@@ -115,7 +115,11 @@ func (r Results) Redact(v repository.Visibility) Results {
 	out.Visibility = &v
 	out.Categories = make([]Category, len(r.Categories))
 	for i, c := range r.Categories {
-		out.Categories[i] = Category{Name: c.Name, Rows: redactRows(c.Rows, v), New: redactRows(c.New, v)}
+		cat := Category{Name: c.Name, Rows: redactRows(c.Rows, v)}
+		if v.Names {
+			cat.New = redactRows(c.New, v)
+		}
+		out.Categories[i] = cat
 	}
 	return out
 }
