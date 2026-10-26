@@ -19,7 +19,7 @@ RUN CGO_ENABLED=0 go build -tags musl -trimpath \
     -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
     -o /out/matchmark ./cmd/server
 
-FROM alpine:3.24.2
+FROM alpine:3.24.3
 RUN apk add --no-cache ca-certificates libgcc \
     && addgroup -g 65532 -S matchmark \
     && adduser -u 65532 -S -G matchmark -H -h /nonexistent matchmark \
