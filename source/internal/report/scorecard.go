@@ -161,9 +161,9 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 			for _, n := range ringCounts(st.Counts) {
 				cells = append(cells, strconv.Itoa(n))
 			}
-			cells = append(cells, strconv.Itoa(Score(st.Counts)), ScorerLabel(st))
+			cells = append(cells, strconv.Itoa(st.Counts.Score()), ScorerLabel(st))
 			totals = addCounts(totals, st.Counts)
-			totalScore += Score(st.Counts)
+			totalScore += st.Counts.Score()
 			totalShots += stage.ExpectedShots
 		} else {
 			for len(cells) < len(columns) {

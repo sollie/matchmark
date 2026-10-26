@@ -114,7 +114,7 @@ func (s *Service) results(ctx context.Context, comp repository.Competition, vis 
 		for _, st := range e.Stages {
 			rs := ResultsStage{Stage: st.Number}
 			if st.Status == repository.StatusAccepted {
-				score := stagePoints(st.Counts)
+				score := st.Counts.Score()
 				r.total += score
 				r.x += st.Counts.X
 				if vis.StageScores {

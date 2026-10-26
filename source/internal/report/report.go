@@ -28,14 +28,10 @@ type Data struct {
 	Entries     []repository.ReportEntry
 }
 
-func Score(c repository.RingCounts) int {
-	return 10*(c.X+c.Ten) + 9*c.Nine + 8*c.Eight + 7*c.Seven
-}
-
 func total(e repository.ReportEntry) int {
 	sum := 0
 	for _, s := range e.Stages {
-		sum += Score(s.Counts)
+		sum += s.Counts.Score()
 	}
 	return sum
 }

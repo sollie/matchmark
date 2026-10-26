@@ -37,7 +37,7 @@ func CSV(d Data) ([]byte, error) {
 				strconv.FormatBool(e.Withdrawn), strconv.Itoa(s.Number),
 				strconv.Itoa(c.X), strconv.Itoa(c.Ten), strconv.Itoa(c.Nine), strconv.Itoa(c.Eight),
 				strconv.Itoa(c.Seven), strconv.Itoa(c.Zero), strconv.Itoa(c.Miss),
-				strconv.Itoa(Score(c)), strconv.FormatBool(s.Status == repository.StatusAccepted), scorerLane, safeCell(s.ScorerName),
+				strconv.Itoa(c.Score()), strconv.FormatBool(s.Status == repository.StatusAccepted), scorerLane, safeCell(s.ScorerName),
 			}
 			if err := w.Write(rec); err != nil {
 				return nil, err
