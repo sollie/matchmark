@@ -1,398 +1,164 @@
 <script lang="ts">
-  import { api, deviceHeaders } from "../lib/api/client";
-  import { errorMessage } from "../lib/api/util";
-  import { openStream, type StreamState } from "../lib/sse";
-  import { navigate } from "../lib/router.svelte";
-  import { forgetDeviceToken, loadDeviceToken } from "../lib/pairing";
-  import type { components } from "../lib/api/schema";
+  import { ScorerSession, rings } from "../lib/scorer.svelte";
 
-  type Session = components["schemas"]["ScorerSession"];
-  type Rings = components["schemas"]["RingCounts"];
-
-  const rings = [
-    { key: "x", label: "X" },
-    { key: "10", label: "10" },
-    { key: "9", label: "9" },
-    { key: "8", label: "8" },
-    { key: "7", label: "7" },
-    { key: "0", label: "0" },
-    { key: "miss", label: "Miss" },
-  ] as const;
-
-  const emptyCounts = (): Record<string, number> =>
-    Object.fromEntries(rings.map((r) => [r.key, 0]));
-
-  type SessionStage = Session["stages"][number];
-
-  const savedCounts = (s: SessionStage | undefined): Record<string, number> =>
-    s ? Object.fromEntries(rings.map((r) => [r.key, s[r.key]])) : emptyCounts();
-
-  let token = $state(loadDeviceToken());
-  let session = $state<Session | null>(null);
-  let loadError = $state("");
-  let counts = $state<Record<string, number>>(emptyCounts());
-  let saved = $state<Record<string, number>>(emptyCounts());
-  let message = $state("");
-  let error = $state("");
-  let busy = $state(false);
-  let notice = $state("");
-  let connection = $state<StreamState>("connecting");
-  let connectAttempt = $state(0);
-  let reviewing = $state(false);
-  let started = $state(false);
-  let confirmingDispute = $state(false);
-  let stageFull = $state(false);
-
-  const stage = $derived(session?.current_stage ?? null);
-  const current = $derived(session?.stages.find((s) => s.stage_number === stage) ?? null);
-  const waitingStage = $derived(session?.stages.find((s) => s.stage_number === stage && s.status !== "accepted") ?? null);
-  const acceptance = $derived(session?.acceptance ?? null);
-  const maxRing = $derived(acceptance ? Math.max(1, ...rings.map((r) => acceptance[r.key])) : 1);
-  const announcement = $derived(
-    !session
-      ? ""
-      : session.phase === "not_started"
-        ? "Status: waiting for the competition to start."
-      : session.phase === "next_stage"
-          ? `Status: stage ${session.current_stage} started.`
-          : session.phase === "needs_acceptance"
-            ? `Status: action needed, review your result.`
-            : session.phase === "waiting"
-              ? `Status: waiting.`
-              : `Status: scoring lane ${session.score_lane}.`,
-  );
-  const sum = $derived(rings.reduce((n, r) => n + counts[r.key], 0));
-  const atCap = $derived(current !== null && sum >= current.expected_shots);
-  const unsaved = $derived(rings.some((r) => counts[r.key] !== saved[r.key]));
-  const savedValid = $derived(
-    current !== null && rings.reduce((n, r) => n + saved[r.key], 0) === current.expected_shots,
-  );
-  const canLock = $derived(!unsaved && savedValid);
-  const saveStatus = $derived(
-    unsaved
-      ? "Unsaved changes: press Save, then Lock stage."
-      : savedValid
-        ? "Saved ✓"
-        : `Enter ring counts that add up to ${current?.expected_shots} shots, then press Save.`,
-  );
-
-  function auth() {
-    return deviceHeaders(token ?? "");
-  }
-
-  async function load() {
-    if (!token) return;
-    const { data, error: err, response } = await api.GET("/api/scorer/session", {
-      headers: auth(),
-    });
-    if (data) {
-      apply(data);
-      loadError = "";
-    } else if (response.status === 401 || response.status === 410) {
-      forget();
-    } else {
-      loadError = errorMessage(err, `Request failed (${response.status})`);
-    }
-  }
-
-  function forget() {
-    forgetDeviceToken();
-    token = null;
-    session = null;
-  }
-
-  function apply(next: Session) {
-    if (next.phase === "finished") {
-      forget();
-      navigate(`/scorecard/${next.competition_id}/${next.lane}`);
-      return;
-    }
-    const previous = session;
-    session = next;
-    if (previous && previous.score_lane !== next.score_lane) {
-      counts = emptyCounts();
-      message = "";
-      error = "";
-      notice = `Score lane changed to lane ${next.score_lane}. Your unsaved ring counts were reset.`;
-    }
-    const now = next.stages.find((s) => s.stage_number === next.current_stage);
-    saved = savedCounts(now);
-    if (!previous || previous.current_stage !== next.current_stage) {
-      counts = savedCounts(now);
-      message = "";
-      error = "";
-    } else {
-      const was = previous.stages.find((s) => s.stage_number === next.current_stage);
-      if (now?.disputed && !was?.disputed) counts = savedCounts(now);
-    }
-    if (next.phase !== "next_stage") started = false;
-    if (next.phase !== "needs_acceptance") {
-      reviewing = false;
-      confirmingDispute = false;
-    }
-  }
-
-  function reconnect() {
-    loadError = "";
-    connectAttempt++;
-  }
+  const scorer = new ScorerSession();
 
   $effect(() => {
-    void connectAttempt;
-    if (!token) return;
-    let disposed = false;
-    const stream = openStream({
-      url: "/api/scorer/stream",
-      headers: auth(),
-      onEvent: (event, data) => {
-        if (event === "snapshot") {
-          loadError = "";
-          const next: Session = JSON.parse(data);
-          apply(next);
-        } else if (event === "revoked") {
-          forget();
-        }
-      },
-      onState: (next) => {
-        connection = next;
-        if (next === "ended" && !disposed) void load();
-      },
-    });
-    return () => {
-      disposed = true;
-      stream.close();
-    };
+    void scorer.connectAttempt;
+    return scorer.start();
   });
-
-  function setCount(key: string, value: number, input?: HTMLInputElement) {
-    const wanted = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-    const room = Math.max(0, (current?.expected_shots ?? Infinity) - sum);
-    const next = wanted > counts[key] ? Math.min(wanted, counts[key] + room) : wanted;
-    stageFull = next < wanted;
-    counts[key] = next;
-    if (input && next !== wanted) input.value = String(next);
-  }
-
-  function bump(key: string, delta: number) {
-    setCount(key, counts[key] + delta);
-  }
-
-  async function save() {
-    if (stage === null) return;
-    busy = true;
-    notice = "";
-    message = "";
-    error = "";
-    const { error: err, response } = await api.PUT("/api/scorer/stages/{stage}", {
-      params: { path: { stage } },
-      headers: auth(),
-      body: {
-        x: counts.x,
-        10: counts["10"],
-        9: counts["9"],
-        8: counts["8"],
-        7: counts["7"],
-        0: counts["0"],
-        miss: counts.miss,
-      } as Rings,
-    });
-    busy = false;
-    if (response.ok) saved = { ...counts };
-    else if (response.status === 422)
-      error = `Ring counts must add up to ${current?.expected_shots} shots (entered ${sum}).`;
-    else error = errorMessage(err, `Request failed (${response.status})`);
-  }
-
-  async function lock() {
-    if (stage === null) return;
-    busy = true;
-    notice = "";
-    message = "";
-    error = "";
-    const { error: err, response } = await api.POST("/api/scorer/stages/{stage}/lock", {
-      params: { path: { stage } },
-      headers: auth(),
-    });
-    busy = false;
-    if (response.ok) {
-      message = "Stage locked";
-    } else if (response.status === 422) {
-      error = "Save valid ring counts before locking the stage.";
-    } else {
-      error = errorMessage(err, `Request failed (${response.status})`);
-    }
-  }
-
-  async function respond(action: "accept" | "dispute") {
-    if (!acceptance) return;
-    busy = true;
-    error = "";
-    const { error: err, response } = await api.POST(
-      action === "accept" ? "/api/scorer/stages/{stage}/accept" : "/api/scorer/stages/{stage}/dispute",
-      { params: { path: { stage: acceptance.stage_number } }, headers: auth() },
-    );
-    busy = false;
-    confirmingDispute = false;
-    if (response.ok) {
-      reviewing = false;
-      message = action === "accept" ? "Result accepted" : "Result disputed";
-    } else {
-      error = errorMessage(err, `Request failed (${response.status})`);
-    }
-  }
-
-  function unpair() {
-    forget();
-  }
 </script>
 
 <main class="scorer">
-  <div class="sr-only" aria-live="polite">{announcement}</div>
-  {#if !token}
+  <div class="sr-only" aria-live="polite">{scorer.announcement}</div>
+  {#if !scorer.token}
     <h1>Scorer</h1>
     <p>Open a pairing link from the admin to score a lane.</p>
-  {:else if !session}
+  {:else if !scorer.session}
     <h1>Scorer</h1>
-    {#if loadError}
-      <p class="error" role="alert">{loadError}</p>
-      <button onclick={reconnect}>Retry</button>
-      <button onclick={unpair}>Unpair device</button>
+    {#if scorer.loadError}
+      <p class="error" role="alert">{scorer.loadError}</p>
+      <button onclick={() => scorer.reconnect()}>Retry</button>
+      <button onclick={() => scorer.unpair()}>Unpair device</button>
     {:else}
       <p class="muted">Loading…</p>
     {/if}
   {:else}
-    {#if session.phase === "not_started"}
+    {#if scorer.session.phase === "not_started"}
       <h1>Scorer</h1>
-      <p class="muted">This device is paired to lane {session.lane}.</p>
+      <p class="muted">This device is paired to lane {scorer.session.lane}.</p>
       <section class="card" aria-label="Not started">
         <h2>Waiting for the competition to start</h2>
         <p class="banner">This device is paired. Scoring begins when the admin starts the competition.</p>
       </section>
     {:else}
-    <h1>Scoring lane {session.score_lane}: {session.shooter_name}</h1>
-    <p class="muted">This device is paired to lane {session.lane}. Stage {session.current_stage}.</p>
+    <h1>Scoring lane {scorer.session.score_lane}: {scorer.session.shooter_name}</h1>
+    <p class="muted">This device is paired to lane {scorer.session.lane}. Stage {scorer.session.current_stage}.</p>
 
-    {#if session.phase === "next_stage" && !started}
+    {#if scorer.session.phase === "next_stage" && !scorer.started}
       <section class="card next-stage" aria-label="Next stage">
-        <h2>Stage {session.current_stage} has started</h2>
-        <p class="banner">The next stage has started. Get ready to score lane {session.score_lane}.</p>
-        <button class="primary" onclick={() => (started = true)}>Continue</button>
+        <h2>Stage {scorer.session.current_stage} has started</h2>
+        <p class="banner">The next stage has started. Get ready to score lane {scorer.session.score_lane}.</p>
+        <button class="primary" onclick={() => scorer.continueToScoring()}>Continue</button>
       </section>
-    {:else if session.phase === "scoring" || session.phase === "next_stage"}
+    {:else if scorer.session.phase === "scoring" || scorer.session.phase === "next_stage"}
 
-      {#if current?.status === "open" && current.disputed}
+      {#if scorer.current?.status === "open" && scorer.current.disputed}
         <p class="card banner disputed">
-          Disputed: the shooter disputed stage {current.stage_number}. Correct the ring counts and lock it again.
+          Disputed: the shooter disputed stage {scorer.current.stage_number}. Correct the ring counts and lock it again.
         </p>
       {/if}
 
-      {#if current}
-        {#if current.status !== "open"}
-          <p class="card locked banner">🔒 Stage {current.stage_number} is locked.</p>
+      {#if scorer.current}
+        {#if scorer.current.status !== "open"}
+          <p class="card locked banner">🔒 Stage {scorer.current.stage_number} is locked.</p>
         {:else}
           <div class="layout">
             <div class="rings">
               {#each rings as r (r.key)}
                 <div class="ring">
                   <span class="label">{r.label}</span>
-                  <button onclick={() => bump(r.key, -1)} aria-label="Decrease {r.label}">−</button>
+                  <button onclick={() => scorer.bump(r.key, -1)} aria-label="Decrease {r.label}">−</button>
                   <input
                     type="number"
                     inputmode="numeric"
                     min="0"
-                    value={counts[r.key]}
-                    oninput={(e) => setCount(r.key, e.currentTarget.valueAsNumber, e.currentTarget)}
+                    value={scorer.counts[r.key]}
+                    oninput={(e) => {
+                      const capped = scorer.setCount(r.key, e.currentTarget.valueAsNumber);
+                      if (capped) e.currentTarget.value = String(scorer.counts[r.key]);
+                    }}
                     aria-label="{r.label} count"
                   />
-                  <button disabled={atCap} onclick={() => bump(r.key, 1)} aria-label="Increase {r.label}">+</button>
+                  <button disabled={scorer.atCap} onclick={() => scorer.bump(r.key, 1)} aria-label="Increase {r.label}">+</button>
                 </div>
               {/each}
             </div>
             <div class="summary card">
-              <p class="total" class:mismatch={sum !== current.expected_shots}>
-                <strong>{sum}</strong> / {current.expected_shots}
+              <p class="total" class:mismatch={scorer.sum !== scorer.current.expected_shots}>
+                <strong>{scorer.sum}</strong> / {scorer.current.expected_shots}
               </p>
               <p class="total-label">
-                {#if sum === current.expected_shots}
+                {#if scorer.sum === scorer.current.expected_shots}
                   <span class="badge success">✓ Shots match</span>
-                {:else if sum > current.expected_shots}
-                  <span class="badge danger">⚠ {sum - current.expected_shots} too many</span>
+                {:else if scorer.sum > scorer.current.expected_shots}
+                  <span class="badge danger">⚠ {scorer.sum - scorer.current.expected_shots} too many</span>
                 {:else}
-                  <span class="badge warning">⚠ {current.expected_shots - sum} to go</span>
+                  <span class="badge warning">⚠ {scorer.current.expected_shots - scorer.sum} to go</span>
                 {/if}
               </p>
-              {#if stageFull}
-                <p class="save-status unsaved" role="status">Stage is full: all {current.expected_shots} shots are entered.</p>
+              {#if scorer.stageFull}
+                <p class="save-status unsaved" role="status">Stage is full: all {scorer.current.expected_shots} shots are entered.</p>
               {/if}
               <div class="actions">
-                <button class="primary" class:emphasis={unsaved} disabled={busy} onclick={save}>Save</button>
+                <button class="primary" class:emphasis={scorer.unsaved} disabled={scorer.busy} onclick={() => scorer.save()}>Save</button>
                 <button
                   class="primary lock"
-                  class:secondary={!canLock}
-                  disabled={busy || !canLock}
-                  aria-describedby={canLock ? undefined : "save-status"}
-                  title={canLock ? undefined : saveStatus}
-                  onclick={lock}>Lock stage</button>
+                  class:secondary={!scorer.canLock}
+                  disabled={scorer.busy || !scorer.canLock}
+                  aria-describedby={scorer.canLock ? undefined : "save-status"}
+                  title={scorer.canLock ? undefined : scorer.saveStatus}
+                  onclick={() => scorer.lock()}>Lock stage</button>
               </div>
-              <p id="save-status" class="save-status" class:unsaved aria-live="polite">{saveStatus}</p>
+              <p id="save-status" class="save-status" class:unsaved={scorer.unsaved} aria-live="polite">{scorer.saveStatus}</p>
             </div>
           </div>
         {/if}
       {/if}
-    {:else if reviewing && acceptance}
+    {:else if scorer.reviewing && scorer.acceptance}
       <section class="card result" aria-label="Your result">
         <div class="hero">
-          <span class="chip">Stage {acceptance.stage_number} of {session.stages.length}</span>
-          <h2>Your result for stage {acceptance.stage_number}</h2>
-          <p class="total">{acceptance.total} hits, {acceptance.x} X</p>
-          <p class="muted">Scored by {acceptance.scorer_name}</p>
+          <span class="chip">Stage {scorer.acceptance.stage_number} of {scorer.session.stages.length}</span>
+          <h2>Your result for stage {scorer.acceptance.stage_number}</h2>
+          <p class="total">{scorer.acceptance.total} hits, {scorer.acceptance.x} X</p>
+          <p class="muted">Scored by {scorer.acceptance.scorer_name}</p>
         </div>
         <ul class="breakdown">
           {#each rings as r (r.key)}
             <li>
               <span class="ring-label">{r.label}</span>
-              <span class="ring-count">{acceptance[r.key]}</span>
-              <span class="bar" aria-hidden="true"><span style="width: {(acceptance[r.key] / maxRing) * 100}%"></span></span>
+              <span class="ring-count">{scorer.acceptance[r.key]}</span>
+              <span class="bar" aria-hidden="true"><span style="width: {(scorer.acceptance[r.key] / scorer.maxRing) * 100}%"></span></span>
             </li>
           {/each}
         </ul>
         <div class="action-bar">
-          {#if confirmingDispute}
+          {#if scorer.confirmingDispute}
             <p class="confirm-text" role="alert">Dispute this result? The scorer will re-score the stage.</p>
             <div class="actions">
-              <button disabled={busy} onclick={() => (confirmingDispute = false)}>Cancel</button>
-              <button class="danger" disabled={busy} onclick={() => respond("dispute")}>Confirm dispute</button>
+              <button disabled={scorer.busy} onclick={() => scorer.cancelDispute()}>Cancel</button>
+              <button class="danger" disabled={scorer.busy} onclick={() => scorer.respond("dispute")}>Confirm dispute</button>
             </div>
           {:else}
-            <button class="primary accept" disabled={busy} onclick={() => respond("accept")}>Accept</button>
-            <button class="dispute" disabled={busy} onclick={() => (confirmingDispute = true)}>Dispute</button>
+            <button class="primary accept" disabled={scorer.busy} onclick={() => scorer.respond("accept")}>Accept</button>
+            <button class="dispute" disabled={scorer.busy} onclick={() => scorer.askDispute()}>Dispute</button>
           {/if}
         </div>
       </section>
     {:else}
       <section class="card waiting" aria-label="Waiting">
         <h2>Waiting</h2>
-        {#if waitingStage}
-          <p class="banner">🔒 Stage {waitingStage.stage_number} is locked. Waiting for {session.shooter_name} to accept.</p>
+        {#if scorer.waitingStage}
+          <p class="banner">🔒 Stage {scorer.waitingStage.stage_number} is locked. Waiting for {scorer.session.shooter_name} to accept.</p>
         {:else}
-          <p class="banner">🔒 Stage {session.current_stage} is locked. Waiting for the other lanes and the admin.</p>
+          <p class="banner">🔒 Stage {scorer.session.current_stage} is locked. Waiting for the other lanes and the admin.</p>
         {/if}
-        {#if acceptance}
+        {#if scorer.acceptance}
           <div class="attention" role="group" aria-label="Action needed">
             <span class="attention-icon" aria-hidden="true">!</span>
-            <p class="banner needs-acceptance">Your result for stage {acceptance.stage_number} awaits your acceptance.</p>
-            <button class="primary" onclick={() => (reviewing = true)}>Review result</button>
+            <p class="banner needs-acceptance">Your result for stage {scorer.acceptance.stage_number} awaits your acceptance.</p>
+            <button class="primary" onclick={() => scorer.startReview()}>Review result</button>
           </div>
         {/if}
       </section>
     {/if}
     {/if}
 
-    {#if connection === "stale"}<p class="muted">Connection lost. Reconnecting…</p>{/if}
-    {#if notice}<p role="status">{notice}</p>{/if}
-    {#if message}<p role="status">{message}</p>{/if}
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <p><button onclick={unpair}>Unpair device</button></p>
+    {#if scorer.connection === "stale"}<p class="muted">Connection lost. Reconnecting…</p>{/if}
+    {#if scorer.notice}<p role="status">{scorer.notice}</p>{/if}
+    {#if scorer.message}<p role="status">{scorer.message}</p>{/if}
+    {#if scorer.error}<p class="error" role="alert">{scorer.error}</p>{/if}
+    <p><button onclick={() => scorer.unpair()}>Unpair device</button></p>
   {/if}
 </main>
 
