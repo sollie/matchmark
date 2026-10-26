@@ -50,7 +50,7 @@
     }
     hits = [];
     error = failure(result);
-    if (result.response.status === 502) manual = true;
+    if (result.response.status === 503) manual = true;
   }
 
   async function finish(id: number) {
