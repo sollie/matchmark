@@ -15,12 +15,12 @@ import (
 type deviceKey struct{}
 
 func (h *Handler) scorerRoutes(r chi.Router) {
-	r.Get("/scorer/session", h.scorerSession)
+	r.Get("/scorer/session", serve(h.scorerSession))
 	r.Get("/scorer/stream", h.scorerStream)
-	r.Put("/scorer/stages/{stage}", h.scorerSetCounts)
-	r.Post("/scorer/stages/{stage}/lock", h.scorerLock)
-	r.Post("/scorer/stages/{stage}/accept", h.scorerAccept)
-	r.Post("/scorer/stages/{stage}/dispute", h.scorerDispute)
+	r.Put("/scorer/stages/{stage}", serve(h.scorerSetCounts))
+	r.Post("/scorer/stages/{stage}/lock", serve(h.scorerLock))
+	r.Post("/scorer/stages/{stage}/accept", serve(h.scorerAccept))
+	r.Post("/scorer/stages/{stage}/dispute", serve(h.scorerDispute))
 }
 
 func (h *Handler) RequireDevice(next http.Handler) http.Handler {
@@ -75,13 +75,12 @@ func scorerSessionJSON(sess service.ScorerSession) map[string]any {
 	return out
 }
 
-func (h *Handler) scorerSession(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) scorerSession(r *http.Request) (int, any, error) {
 	sess, err := h.svc.DeviceSession(r.Context(), deviceFrom(r))
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusOK, scorerSessionJSON(sess))
+	return okJSON(scorerSessionJSON(sess))
 }
 
 func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
@@ -106,195 +105,122 @@ func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) scorerSetCounts(w http.ResponseWriter, r *http.Request) {
-	stage, err := pathInt(r, "stage")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
+func (h *Handler) scorerSetCounts(r *http.Request) (int, any, error) {
+	req := in(r)
+	stage := req.path("stage")
 	var body ringCountsBody
-	if err := decode(r, &body); err != nil {
-		writeError(w, err)
-		return
+	req.body(&body)
+	if req.err != nil {
+		return fail(req.err)
 	}
 	if err := h.svc.DeviceSetRingCounts(r.Context(), deviceFrom(r), int(stage), body.counts()); err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusOK, body)
+	return okJSON(body)
 }
 
-func (h *Handler) scorerLock(w http.ResponseWriter, r *http.Request) {
-	stage, err := pathInt(r, "stage")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	status, err := h.svc.DeviceLockStage(r.Context(), deviceFrom(r), int(stage))
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
+func (h *Handler) scorerLock(r *http.Request) (int, any, error) {
+	return h.scorerTransition(r, h.svc.DeviceLockStage)
 }
 
 func ringCountsJSON(c repository.RingCounts) map[string]any {
 	return map[string]any{"x": c.X, "10": c.Ten, "9": c.Nine, "8": c.Eight, "7": c.Seven, "0": c.Zero, "miss": c.Miss}
 }
 
-func (h *Handler) scorerAccept(w http.ResponseWriter, r *http.Request) {
-	h.scorerTransition(w, r, h.svc.DeviceAcceptStage)
+func (h *Handler) scorerAccept(r *http.Request) (int, any, error) {
+	return h.scorerTransition(r, h.svc.DeviceAcceptStage)
 }
 
-func (h *Handler) scorerDispute(w http.ResponseWriter, r *http.Request) {
-	h.scorerTransition(w, r, h.svc.DeviceDisputeStage)
+func (h *Handler) scorerDispute(r *http.Request) (int, any, error) {
+	return h.scorerTransition(r, h.svc.DeviceDisputeStage)
 }
 
-func (h *Handler) scorerTransition(w http.ResponseWriter, r *http.Request, act func(context.Context, service.Device, int) (repository.StageStatus, error)) {
-	stage, err := pathInt(r, "stage")
-	if err != nil {
-		writeError(w, err)
-		return
+func (h *Handler) scorerTransition(r *http.Request, act func(context.Context, service.Device, int) (repository.StageStatus, error)) (int, any, error) {
+	req := in(r)
+	stage := req.path("stage")
+	if req.err != nil {
+		return fail(req.err)
 	}
 	status, err := act(r.Context(), deviceFrom(r), int(stage))
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
+	return okJSON(map[string]repository.StageStatus{"status": status})
 }
 
-func (h *Handler) createPairing(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
+func (h *Handler) createPairing(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID := req.path("competitionID")
 	var body struct {
 		Lane int `json:"lane"`
 	}
-	if err := decode(r, &body); err != nil {
-		writeError(w, err)
-		return
+	req.body(&body)
+	if req.err != nil {
+		return fail(req.err)
 	}
 	id, token, err := h.svc.CreatePairing(r.Context(), compID, body.Lane)
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "lane": body.Lane, "token": token})
+	return http.StatusCreated, map[string]any{"id": id, "lane": body.Lane, "token": token}, nil
 }
 
-func (h *Handler) listPairings(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
+func (h *Handler) listPairings(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID := req.path("competitionID")
+	if req.err != nil {
+		return fail(req.err)
 	}
 	pairings, err := h.svc.ListPairings(r.Context(), compID)
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
 	out := make([]map[string]any, 0, len(pairings))
 	for _, p := range pairings {
 		out = append(out, pairingJSON(p))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"pairings": out})
+	return okJSON(map[string]any{"pairings": out})
 }
 
 func pairingJSON(p repository.Pairing) map[string]any {
 	return map[string]any{"id": p.ID, "lane": p.Lane, "revoked": p.Revoked}
 }
 
-func (h *Handler) revokePairing(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	id, err := pathInt(r, "pairingID")
-	if err != nil {
-		writeError(w, err)
-		return
+func (h *Handler) revokePairing(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID, id := req.path("competitionID"), req.path("pairingID")
+	if req.err != nil {
+		return fail(req.err)
 	}
 	if err := h.svc.RevokePairing(r.Context(), compID, id); err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return http.StatusNoContent, nil, nil
 }
 
-func (h *Handler) lockStage(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	entryID, err := pathInt(r, "entryID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	stage, err := pathInt(r, "stage")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	status, err := h.svc.AdminLockStage(r.Context(), compID, entryID, int(stage))
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
+func (h *Handler) lockStage(r *http.Request) (int, any, error) {
+	return h.adminTransition(r, h.svc.AdminLockStage)
 }
 
-func (h *Handler) acceptStage(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	entryID, err := pathInt(r, "entryID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	stage, err := pathInt(r, "stage")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	status, err := h.svc.AdminAcceptStage(r.Context(), compID, entryID, int(stage))
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
+func (h *Handler) acceptStage(r *http.Request) (int, any, error) {
+	return h.adminTransition(r, h.svc.AdminAcceptStage)
 }
 
-func (h *Handler) unlockStage(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
+func (h *Handler) unlockStage(r *http.Request) (int, any, error) {
+	return h.adminTransition(r, h.svc.UnlockStage)
+}
+
+func (h *Handler) adminTransition(r *http.Request, act func(context.Context, int64, int64, int) (repository.StageStatus, error)) (int, any, error) {
+	req := in(r)
+	compID, entryID, stage := req.path("competitionID"), req.path("entryID"), req.path("stage")
+	if req.err != nil {
+		return fail(req.err)
 	}
-	entryID, err := pathInt(r, "entryID")
+	status, err := act(r.Context(), compID, entryID, int(stage))
 	if err != nil {
-		writeError(w, err)
-		return
+		return fail(err)
 	}
-	stage, err := pathInt(r, "stage")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	status, err := h.svc.UnlockStage(r.Context(), compID, entryID, int(stage))
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]repository.StageStatus{"status": status})
+	return okJSON(map[string]repository.StageStatus{"status": status})
 }
 
 type ringCountsBody struct {
