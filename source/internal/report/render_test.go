@@ -64,3 +64,42 @@ func TestWorkbookSplitsKnownAndNewShooters(t *testing.T) {
 		t.Fatalf("new row: %q %q", get("A14"), get("G14"))
 	}
 }
+
+func TestCSVNeutralisesFormulas(t *testing.T) {
+	res := Build(repository.Competition{Name: "Spring", Date: "2026-05-01", Course: "wa1500"}, []repository.ReportEntry{
+		entry("Revolver", 1, "=HYPERLINK(\"X\")", "", false, accepted(1, 0, 1)),
+	})
+	out, err := CSV(res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out, []byte("'=HYPERLINK(")) {
+		t.Fatalf("formula not neutralised: %s", out)
+	}
+}
+
+func TestWorkbookInsertsRowsForManyShooters(t *testing.T) {
+	var entries []repository.ReportEntry
+	for i := 1; i <= 10; i++ {
+		entries = append(entries, entry("Revolver", i, "K"+strings.Repeat("a", i), "W"+strings.Repeat("1", i), false, accepted(1, 0, 1)))
+	}
+	for i := 11; i <= 14; i++ {
+		entries = append(entries, entry("Revolver", i, "N"+strings.Repeat("a", i), "", false, accepted(1, 0, 1)))
+	}
+	out, err := Workbook(Build(repository.Competition{Name: "Big", Date: "2026-05-01", Course: "wa1500"}, entries))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	get := func(ref string) string {
+		v, _ := f.GetCellValue("Revolver", ref)
+		return v
+	}
+	if get("A14") != "New shooters:" || get("A15") != "Last name" || get("A19") == "" || get("A20") != "" {
+		t.Fatalf("block not shifted: %q %q %q", get("A14"), get("A15"), get("A19"))
+	}
+}
