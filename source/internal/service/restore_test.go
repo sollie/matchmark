@@ -209,7 +209,7 @@ func reportOutputs(t *testing.T, repo *repository.Repository, compID int64) ([]b
 	if err != nil {
 		t.Fatal(err)
 	}
-	data := report.Data{Competition: comp, Entries: entries}
+	data := report.Build(comp, entries)
 	csvBytes, err := report.CSV(data)
 	if err != nil {
 		t.Fatal(err)

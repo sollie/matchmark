@@ -10,6 +10,10 @@ type Visibility struct {
 	RingCounts  bool
 }
 
+func AllVisible() Visibility {
+	return Visibility{Names: true, Clubs: true, Countries: true, StageScores: true, RingCounts: true}
+}
+
 type SpectatorStage struct {
 	Number int
 	Counts RingCounts

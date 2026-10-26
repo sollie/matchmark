@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/sollie/matchmark/internal/repository"
 )
 
 var pdfPage = regexp.MustCompile(`/Type /Page[^s]`)
@@ -16,27 +18,26 @@ func pageCount(pdf []byte) int {
 	return len(pdfPage.FindAll(pdf, -1))
 }
 
-func ptr[T any](v T) *T { return &v }
-
 func sampleResults() ResultsPDFData {
-	row := func(rank int, last string) ResultsPDFRow {
-		return ResultsPDFRow{
-			Rank: rank, LastName: ptr(last), FirstName: ptr("Åse"), WAID: ptr("1001"), Club: ptr("Łódź SK"), Country: ptr("NOR"),
-			Stages: []ResultsPDFStage{{Stage: 1, Score: ptr(90)}, {Stage: 2, Score: ptr(88)}}, Total: 178, XCount: ptr(9),
+	row := func(rank int, last, waid string) Row {
+		return Row{
+			Rank: rank, Shooter: repository.Shooter{LastName: last, FirstName: "Åse", WAID: waid, Club: "Łódź SK", Country: "NOR"},
+			Stages: []Stage{{Number: 1, Accepted: true, Score: 90}, {Number: 2, Accepted: true, Score: 88}}, Total: 178, XCount: 9,
 		}
 	}
+	fresh := row(2, "Ny", "")
 	return ResultsPDFData{
-		ClubName:    "Test Club",
-		Generated:   time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC),
-		Name:        "Autumn Match",
-		Date:        "2026-10-24",
-		CourseLabel: "WA1500 150",
-		Stages:      []int{1, 2},
-		Categories: []ResultsPDFCategory{
-			{Category: "Revolver", Rows: []ResultsPDFRow{row(1, "Ørn"), row(2, "Berg")}},
-			{Category: "Pistol", Rows: []ResultsPDFRow{row(1, "Dahl")}},
+		ClubName:  "Test Club",
+		Generated: time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC),
+		Results: Results{
+			Competition: repository.Competition{Name: "Autumn Match", Date: "2026-10-24"},
+			CourseLabel: "WA1500 150",
+			Stages:      []int{1, 2},
+			Categories: []Category{
+				{Name: "Revolver", Rows: []Row{row(1, "Ørn", "1001"), row(2, "Berg", "1002")}},
+				{Name: "Pistol", Rows: []Row{row(1, "Dahl", "1003"), fresh}, New: []Row{fresh}},
+			},
 		},
-		NewShooters: []ResultsPDFNewShooter{{LastName: "Ny", FirstName: "Nina", Category: "Pistol", Club: ptr("Łódź SK"), Total: 170, XCount: ptr(4)}},
 	}
 }
 
@@ -55,16 +56,7 @@ func TestResultsPDFHasOnePagePerCategory(t *testing.T) {
 
 func TestResultsPDFWithHiddenColumnsAndLogo(t *testing.T) {
 	d := sampleResults()
-	for i := range d.Categories {
-		for j := range d.Categories[i].Rows {
-			r := &d.Categories[i].Rows[j]
-			r.LastName, r.FirstName, r.WAID, r.Club, r.Country, r.XCount = nil, nil, nil, nil, nil, nil
-			for k := range r.Stages {
-				r.Stages[k].Score = nil
-			}
-		}
-	}
-	d.NewShooters = nil
+	d.Results = d.Results.Redact(repository.Visibility{})
 	var logo bytes.Buffer
 	if err := png.Encode(&logo, image.NewRGBA(image.Rect(0, 0, 40, 20))); err != nil {
 		t.Fatal(err)
@@ -82,15 +74,14 @@ func TestResultsPDFWithHiddenColumnsAndLogo(t *testing.T) {
 
 func TestResultsPDFPaginatesLongCategories(t *testing.T) {
 	d := sampleResults()
-	var rows []ResultsPDFRow
+	var rows []Row
 	for i := 1; i <= 120; i++ {
-		r := d.Categories[0].Rows[0]
+		r := d.Results.Categories[0].Rows[0]
 		r.Rank = i
-		r.LastName = ptr(fmt.Sprintf("Shooter%d", i))
+		r.Shooter.LastName = fmt.Sprintf("Shooter%d", i)
 		rows = append(rows, r)
 	}
-	d.Categories = []ResultsPDFCategory{{Category: "Revolver", Rows: rows}}
-	d.NewShooters = nil
+	d.Results.Categories = []Category{{Name: "Revolver", Rows: rows}}
 	out, err := ResultsPDF(d)
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +93,7 @@ func TestResultsPDFPaginatesLongCategories(t *testing.T) {
 
 func TestResultsPDFWithoutCategories(t *testing.T) {
 	d := sampleResults()
-	d.Categories, d.NewShooters = nil, nil
+	d.Results.Categories = nil
 	out, err := ResultsPDF(d)
 	if err != nil {
 		t.Fatal(err)
