@@ -29,11 +29,13 @@ func (s *Service) loadScorecard(ctx context.Context, competitionID int64, lane i
 	}
 	card := report.ScorecardData{Competition: comp}
 	found := false
+search:
 	for _, c := range report.Build(comp, entries).Categories {
 		for _, r := range c.Rows {
 			if r.Lane == lane && !r.Withdrawn {
 				card.Category, card.Row = c.Name, r
 				found = true
+				break search
 			}
 		}
 	}

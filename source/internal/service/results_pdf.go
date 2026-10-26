@@ -28,7 +28,7 @@ func (s *Service) AdminResultsPDF(ctx context.Context, competitionID int64) (Dow
 	if err != nil {
 		return Download{}, mapRepoErr(err)
 	}
-	file, err := s.renderResultsPDF(ctx, comp, showAll)
+	file, err := s.renderResultsPDF(ctx, comp, repository.AllVisible())
 	if err != nil {
 		return Download{}, err
 	}

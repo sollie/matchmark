@@ -58,7 +58,7 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	vis := pdfVisibility(d.Results)
+	vis := d.Results.Visibility
 	columns, cells := resultsColumns(d.Results.Stages, vis)
 	newColumns, newCells := newShooterColumns(vis)
 	grid := columnGrid(columns)
@@ -125,13 +125,6 @@ func columnGrid(columns []pdfColumn) int {
 		n += c.weight
 	}
 	return n
-}
-
-func pdfVisibility(r Results) repository.Visibility {
-	if r.Visibility != nil {
-		return *r.Visibility
-	}
-	return repository.Visibility{Names: true, Clubs: true, Countries: true, StageScores: true, RingCounts: true}
 }
 
 func resultsColumns(stages []int, v repository.Visibility) ([]pdfColumn, func(Row) []string) {
