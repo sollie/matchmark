@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/sollie/matchmark/internal/report"
-	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
@@ -30,11 +29,12 @@ func (s *Service) loadScorecard(ctx context.Context, competitionID int64, lane i
 	}
 	card := report.ScorecardData{Competition: comp}
 	found := false
-	for _, e := range entries {
-		if e.Lane == lane && !e.Withdrawn {
-			card.Entry = e
-			found = true
-			break
+	for _, c := range report.Build(comp, entries).Categories {
+		for _, r := range c.Rows {
+			if r.Lane == lane && !r.Withdrawn {
+				card.Category, card.Row = c.Name, r
+				found = true
+			}
 		}
 	}
 	if !found {
@@ -51,11 +51,11 @@ func (s *Service) ScorecardSummary(ctx context.Context, competitionID int64, lan
 	if err != nil {
 		return ScorecardSummary{}, err
 	}
-	shooter := card.Entry.Shooter
+	shooter := card.Row.Shooter
 	summary := ScorecardSummary{Shooter: shooter.FirstName + " " + shooter.LastName, Lane: lane, Scorers: []ScorecardScorer{}}
-	for _, st := range card.Entry.Stages {
-		if st.Status == repository.StatusAccepted {
-			summary.Scorers = append(summary.Scorers, ScorecardScorer{Stage: st.Number, Scorer: report.ScorerLabel(st)})
+	for _, st := range card.Row.Stages {
+		if st.Accepted {
+			summary.Scorers = append(summary.Scorers, ScorecardScorer{Stage: st.Number, Scorer: st.ScorerLabel})
 		}
 	}
 	return summary, nil
