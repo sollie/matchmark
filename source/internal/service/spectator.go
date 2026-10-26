@@ -91,10 +91,6 @@ func (s *Service) publicCompetition(ctx context.Context, id int64) (repository.C
 	return c, nil
 }
 
-func stagePoints(c repository.RingCounts) int {
-	return (c.X+c.Ten)*10 + c.Nine*9 + c.Eight*8 + c.Seven*7
-}
-
 func ringCountsView(c repository.RingCounts) RingCountsView {
 	return RingCountsView{X: c.X, Ten: c.Ten, Nine: c.Nine, Eight: c.Eight, Seven: c.Seven, Zero: c.Zero, Miss: c.Miss}
 }
@@ -130,7 +126,7 @@ func (s *Service) standings(ctx context.Context, comp repository.Competition) ([
 			if !accepted {
 				st.Counts = repository.RingCounts{}
 			}
-			v.Total += stagePoints(st.Counts)
+			v.Total += st.Counts.Score()
 			total.X += st.Counts.X
 			total.Ten += st.Counts.Ten
 			total.Nine += st.Counts.Nine
@@ -140,7 +136,7 @@ func (s *Service) standings(ctx context.Context, comp repository.Competition) ([
 			total.Miss += st.Counts.Miss
 			sv := StageScoreView{Stage: st.Number, Accepted: accepted, State: stageState(st.Status, st.Number, comp.CurrentStage)}
 			if vis.StageScores && accepted {
-				score := stagePoints(st.Counts)
+				score := st.Counts.Score()
 				sv.Score = &score
 				if vis.RingCounts {
 					c := ringCountsView(st.Counts)

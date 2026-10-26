@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 type StageStatus string
@@ -45,6 +47,13 @@ type RingCounts struct {
 	Seven int
 	Zero  int
 	Miss  int
+}
+
+func (c RingCounts) Score() int {
+	return rulebook.TenRingPoints*(c.X+c.Ten) +
+		rulebook.NineRingPoints*c.Nine +
+		rulebook.EightRingPoints*c.Eight +
+		rulebook.SevenRingPoints*c.Seven
 }
 
 type Stage struct {
