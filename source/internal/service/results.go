@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
+	"sort"
 
-	"github.com/sollie/matchmark/internal/report"
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
 )
@@ -55,6 +55,8 @@ type ResultsView struct {
 	NewShooters []ResultsNewShooter `json:"new_shooters"`
 }
 
+var showAll = repository.Visibility{Names: true, Clubs: true, Countries: true, StageScores: true, RingCounts: true}
+
 func (s *Service) PublicResults(ctx context.Context, competitionID int64) (ResultsView, error) {
 	comp, err := s.repo.GetCompetition(ctx, competitionID)
 	if err != nil {
@@ -75,66 +77,84 @@ func (s *Service) AdminResults(ctx context.Context, competitionID int64) (Result
 	if err != nil {
 		return ResultsView{}, mapRepoErr(err)
 	}
-	return s.results(ctx, comp, repository.AllVisible())
+	return s.results(ctx, comp, showAll)
 }
 
-func (s *Service) resultsProjection(ctx context.Context, comp repository.Competition, vis repository.Visibility) (report.Results, error) {
-	if _, err := rulebook.CourseByKey(comp.Course); err != nil {
-		return report.Results{}, err
-	}
-	entries, err := s.repo.ReportEntries(ctx, comp.ID)
-	if err != nil {
-		return report.Results{}, err
-	}
-	active := make([]repository.ReportEntry, 0, len(entries))
-	for _, e := range entries {
-		if !e.Withdrawn {
-			active = append(active, e)
-		}
-	}
-	return report.Build(comp, active).Redact(vis), nil
+type rankedEntry struct {
+	entry repository.ReportEntry
+	total int
+	x     int
+	view  []ResultsStage
 }
 
 func (s *Service) results(ctx context.Context, comp repository.Competition, vis repository.Visibility) (ResultsView, error) {
-	res, err := s.resultsProjection(ctx, comp, vis)
+	course, err := rulebook.CourseByKey(comp.Course)
 	if err != nil {
 		return ResultsView{}, err
 	}
-	return resultsView(res), nil
-}
-
-func resultsView(res report.Results) ResultsView {
-	vis := res.Visibility
-	comp := res.Competition
+	entries, err := s.repo.ReportEntries(ctx, comp.ID)
+	if err != nil {
+		return ResultsView{}, err
+	}
 	out := ResultsView{
-		Competition: ResultsCompetition{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: res.CourseLabel},
-		Stages:      res.Stages,
+		Competition: ResultsCompetition{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: course.Label},
+		Stages:      make([]int, len(course.Stages)),
 		Categories:  []ResultsCategory{},
 		NewShooters: []ResultsNewShooter{},
 	}
-	for _, c := range res.Categories {
-		cat := ResultsCategory{Category: c.Name, Rows: make([]ResultsRow, len(c.Rows))}
-		for i, r := range c.Rows {
-			cat.Rows[i] = resultsRow(r, vis)
+	for i := range course.Stages {
+		out.Stages[i] = course.Stages[i].StageNumber
+	}
+	byCategory := map[string][]rankedEntry{}
+	for _, e := range entries {
+		if e.Withdrawn {
+			continue
 		}
-		for _, r := range c.New {
-			out.NewShooters = append(out.NewShooters, resultsNewShooter(r, c.Name, vis))
+		r := rankedEntry{entry: e}
+		for _, st := range e.Stages {
+			rs := ResultsStage{Stage: st.Number}
+			if st.Status == repository.StatusAccepted {
+				score := st.Counts.Score()
+				r.total += score
+				r.x += st.Counts.X
+				if vis.StageScores {
+					rs.Score = &score
+				}
+			}
+			r.view = append(r.view, rs)
+		}
+		byCategory[e.Category] = append(byCategory[e.Category], r)
+	}
+	for _, category := range rulebook.Categories() {
+		ranked := byCategory[category]
+		if len(ranked) == 0 {
+			continue
+		}
+		sort.SliceStable(ranked, func(i, j int) bool {
+			if ranked[i].total != ranked[j].total {
+				return ranked[i].total > ranked[j].total
+			}
+			return ranked[i].x > ranked[j].x
+		})
+		cat := ResultsCategory{Category: category, Rows: make([]ResultsRow, len(ranked))}
+		rank := 0
+		for i, r := range ranked {
+			if i == 0 || r.total != ranked[i-1].total || r.x != ranked[i-1].x {
+				rank = i + 1
+			}
+			cat.Rows[i] = resultsRow(r, rank, vis)
+			if vis.Names && r.entry.Shooter.WAID == "" {
+				out.NewShooters = append(out.NewShooters, resultsNewShooter(r, category, vis))
+			}
 		}
 		out.Categories = append(out.Categories, cat)
 	}
-	return out
+	return out, nil
 }
 
-func resultsRow(r report.Row, vis repository.Visibility) ResultsRow {
-	sh := r.Shooter
-	row := ResultsRow{Rank: r.Rank, Stages: make([]ResultsStage, len(r.Stages)), Total: r.Total}
-	for i, st := range r.Stages {
-		row.Stages[i] = ResultsStage{Stage: st.Number}
-		if vis.StageScores && st.Accepted {
-			score := st.Score
-			row.Stages[i].Score = &score
-		}
-	}
+func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
+	sh := r.entry.Shooter
+	row := ResultsRow{Rank: rank, Stages: r.view, Total: r.total}
 	if vis.Names {
 		row.LastName, row.FirstName = &sh.LastName, &sh.FirstName
 		if sh.WAID != "" {
@@ -148,15 +168,15 @@ func resultsRow(r report.Row, vis repository.Visibility) ResultsRow {
 		row.Country = &sh.Country
 	}
 	if vis.RingCounts {
-		x := r.XCount
+		x := r.x
 		row.XCount = &x
 	}
 	return row
 }
 
-func resultsNewShooter(r report.Row, category string, vis repository.Visibility) ResultsNewShooter {
-	sh := r.Shooter
-	n := ResultsNewShooter{LastName: sh.LastName, FirstName: sh.FirstName, Category: category, Total: r.Total}
+func resultsNewShooter(r rankedEntry, category string, vis repository.Visibility) ResultsNewShooter {
+	sh := r.entry.Shooter
+	n := ResultsNewShooter{LastName: sh.LastName, FirstName: sh.FirstName, Category: category, Total: r.total}
 	if vis.Clubs {
 		n.Club = &sh.Club
 	}
@@ -164,7 +184,7 @@ func resultsNewShooter(r report.Row, category string, vis repository.Visibility)
 		n.Country = &sh.Country
 	}
 	if vis.RingCounts {
-		x := r.XCount
+		x := r.x
 		n.XCount = &x
 	}
 	return n

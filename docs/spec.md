@@ -57,8 +57,6 @@ The endpoints run behind the render guard (`handler.RenderGuard`, ADR 0016): at 
 
 Filled in from the embedded `Results reporting mal.xlsx` using `excelize`. One sheet per category; competition name and date in the header; known shooters as WAID + total result, extra rows inserted as needed; new shooters in the "New shooters" block with last name, first name, sex, country, club, result. The template is a replaceable embedded file.
 
-Withdrawn shooters stay in the `.xlsx` report with the totals of their accepted stages, unranked (rank 0) and listed after the active shooters of their category (the detailed CSV keeps them too, flagged `withdrawn`); the Results view, the Results PDF and the Scorecard exclude them. Handling of withdrawn shooters in every output is still open (#328). All renderers read one unredacted `Results` projection (`internal/report`: `Build`, then `Redact` on the public path).
-
 The `.xlsx` report and the detailed CSV are downloaded with buttons in the admin competition list, shown only for finished competitions; the endpoints themselves do not check the status.
 
 An internal detailed CSV lists ring counts per stage per entry for the club's own records; only accepted stages are counted (others appear with zero counts and `accepted` false) and the same holds for the `.xlsx` report. The CSV starts with a UTF-8 byte-order mark so spreadsheet applications show non-ASCII names correctly. Both downloads are named `<competition name>-<competition date>.<ext>` (for example `Test2-2026-10-20.xlsx`): characters other than letters, digits and `_` collapse to a single `-`, names are capped at 60 characters, an empty name becomes `results`, and non-ASCII letters are sent via an RFC 5987 `filename*`.
