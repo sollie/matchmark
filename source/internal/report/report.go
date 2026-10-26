@@ -23,22 +23,44 @@ const (
 	newShootersOffset = 12
 )
 
-func sortedRows(rows []Row) []Row {
-	out := append([]Row(nil), rows...)
+type Data struct {
+	Competition repository.Competition
+	Entries     []repository.ReportEntry
+}
+
+func total(e repository.ReportEntry) int {
+	sum := 0
+	for _, s := range e.Stages {
+		sum += s.Counts.Score()
+	}
+	return sum
+}
+
+func sortedEntries(entries []repository.ReportEntry) []repository.ReportEntry {
+	out := append([]repository.ReportEntry(nil), entries...)
 	sort.SliceStable(out, func(i, j int) bool {
 		a, b := out[i], out[j]
+		if a.Category != b.Category {
+			return categoryIndex(a.Category) < categoryIndex(b.Category)
+		}
 		if a.Shooter.LastName != b.Shooter.LastName {
 			return a.Shooter.LastName < b.Shooter.LastName
 		}
-		if a.Shooter.FirstName != b.Shooter.FirstName {
-			return a.Shooter.FirstName < b.Shooter.FirstName
-		}
-		return a.Lane < b.Lane
+		return a.Shooter.FirstName < b.Shooter.FirstName
 	})
 	return out
 }
 
-func Workbook(res Results) ([]byte, error) {
+func categoryIndex(category string) int {
+	for i, c := range categories {
+		if c == category {
+			return i
+		}
+	}
+	return len(categories)
+}
+
+func Workbook(d Data) ([]byte, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(template))
 	if err != nil {
 		return nil, err
@@ -48,20 +70,20 @@ func Workbook(res Results) ([]byte, error) {
 	if len(sheets) < len(categories) {
 		return nil, fmt.Errorf("template has %d sheets, need %d", len(sheets), len(categories))
 	}
-	byName := map[string]Category{}
-	for _, c := range res.Categories {
-		byName[c.Name] = c
-	}
+	entries := sortedEntries(d.Entries)
 	for i, category := range categories {
-		var known, fresh []Row
-		for _, r := range sortedRows(byName[category].Rows) {
-			if r.Shooter.WAID != "" {
-				known = append(known, r)
+		var known, fresh []repository.ReportEntry
+		for _, e := range entries {
+			if e.Category != category {
+				continue
+			}
+			if e.Shooter.WAID != "" {
+				known = append(known, e)
 			} else {
-				fresh = append(fresh, r)
+				fresh = append(fresh, e)
 			}
 		}
-		if err := fillSheet(f, sheets[i], res.Competition, known, fresh); err != nil {
+		if err := fillSheet(f, sheets[i], d.Competition, known, fresh); err != nil {
 			return nil, err
 		}
 	}
@@ -72,7 +94,7 @@ func Workbook(res Results) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func fillSheet(f *excelize.File, sheet string, comp repository.Competition, known, fresh []Row) error {
+func fillSheet(f *excelize.File, sheet string, comp repository.Competition, known, fresh []repository.ReportEntry) error {
 	if err := f.SetCellValue(sheet, "A1", comp.Date); err != nil {
 		return err
 	}
@@ -92,7 +114,7 @@ func fillSheet(f *excelize.File, sheet string, comp repository.Competition, know
 	}
 	for i, e := range known {
 		row := firstKnownRow + i
-		if err := setRow(f, sheet, row, 1, e.Shooter.WAID, e.Total); err != nil {
+		if err := setRow(f, sheet, row, 1, e.Shooter.WAID, total(e)); err != nil {
 			return err
 		}
 	}
@@ -110,7 +132,7 @@ func fillSheet(f *excelize.File, sheet string, comp repository.Competition, know
 		if e.Shooter.Sex == "F" {
 			sex = "female"
 		}
-		if err := setRow(f, sheet, firstNewRow+i, 1, e.Shooter.LastName, e.Shooter.FirstName, sex, e.Shooter.Country, e.Shooter.Club, "nn", e.Total); err != nil {
+		if err := setRow(f, sheet, firstNewRow+i, 1, e.Shooter.LastName, e.Shooter.FirstName, sex, e.Shooter.Country, e.Shooter.Club, "nn", total(e)); err != nil {
 			return err
 		}
 	}

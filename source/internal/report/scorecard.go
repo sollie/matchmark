@@ -36,8 +36,7 @@ var (
 
 type ScorecardData struct {
 	Competition repository.Competition
-	Category    string
-	Row         Row
+	Entry       repository.ReportEntry
 	Course      rulebook.Course
 	ClubName    string
 	Logo        []byte
@@ -125,7 +124,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	drawText(img, fonts.regular, colorMuted, textX, cardMargin+84, fitText(fonts.regular, d.Competition.Name+"  ·  "+d.Competition.Date, cardWidth-cardMargin-textX))
 	hline(img, cardMargin, cardWidth-cardMargin, headerBottom)
 
-	shooter := d.Row.Shooter
+	shooter := d.Entry.Shooter
 	name := shooter.FirstName + " " + shooter.LastName
 	waid := shooter.WAID
 	if waid == "" {
@@ -134,8 +133,8 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	half := (cardWidth - 2*cardMargin) / 2
 	infoLines := []struct{ label, value string }{
 		{"Shooter", name}, {"WAID", waid},
-		{"Category", d.Category}, {"Course", d.Course.Label},
-		{"Lane", strconv.Itoa(d.Row.Lane)}, {"Club", shooter.Club},
+		{"Category", d.Entry.Category}, {"Course", d.Course.Label},
+		{"Lane", strconv.Itoa(d.Entry.Lane)}, {"Club", shooter.Club},
 	}
 	for i, line := range infoLines {
 		x := cardMargin + (i%2)*half
@@ -147,8 +146,8 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	y := tableTop
 	fillRect(img, image.Rect(cardMargin, y, cardWidth-cardMargin, y+rowHeight), colorHeader)
 	drawRow(img, fonts.bold, colorInk, columns, y, headerCells(columns))
-	byNumber := map[int]Stage{}
-	for _, s := range d.Row.Stages {
+	byNumber := map[int]repository.ReportStage{}
+	for _, s := range d.Entry.Stages {
 		byNumber[s.Number] = s
 	}
 	var totals repository.RingCounts
@@ -158,13 +157,13 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 		hline(img, cardMargin, cardWidth-cardMargin, y)
 		cells := []string{strconv.Itoa(stage.StageNumber), stage.Distance, strconv.Itoa(stage.ExpectedShots)}
 		st, ok := byNumber[stage.StageNumber]
-		if ok && st.Accepted {
+		if ok && st.Status == repository.StatusAccepted {
 			for _, n := range ringCounts(st.Counts) {
 				cells = append(cells, strconv.Itoa(n))
 			}
-			cells = append(cells, strconv.Itoa(st.Score), st.ScorerLabel)
+			cells = append(cells, strconv.Itoa(st.Counts.Score()), ScorerLabel(st))
 			totals = addCounts(totals, st.Counts)
-			totalScore += st.Score
+			totalScore += st.Counts.Score()
 			totalShots += stage.ExpectedShots
 		} else {
 			for len(cells) < len(columns) {
