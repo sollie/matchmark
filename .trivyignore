@@ -1,0 +1,2 @@
+# x/crypto/openpgp is unmaintained and has no fix; this module never imports it
+GO-2026-5932
