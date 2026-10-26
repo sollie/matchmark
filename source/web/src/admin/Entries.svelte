@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { api } from "../lib/api/client";
-  import { failure } from "../lib/api/util";
+  import { entryCommands } from "../lib/entries";
   import { courseCategories } from "../lib/rulebook.svelte";
   import ShooterPicker from "./ShooterPicker.svelte";
   import Wa1500Import from "./Wa1500Import.svelte";
@@ -56,17 +55,13 @@
     return s ? `${s.first_name} ${s.last_name}` : `#${id}`;
   };
   const ordered = $derived([...entries].sort((a, b) => a.lane - b.lane || a.id - b.id));
-  const path = (e: EntryWithStages) => ({ competitionID: competitionId, entryID: e.id });
+  const commands = $derived(entryCommands(competitionId, reload));
 
-  async function run(call: Promise<{ error?: unknown; response: Response }>): Promise<boolean> {
+  async function run(command: Promise<string | null>): Promise<boolean> {
     error = "";
-    const result = await call;
-    if (!result.response.ok) {
-      error = failure(result);
-      return false;
-    }
-    await reload();
-    return true;
+    const failed = await command;
+    if (failed !== null) error = failed;
+    return failed === null;
   }
 
   function importSaved(s: Shooter) {
@@ -80,12 +75,7 @@
   async function add(e: SubmitEvent) {
     e.preventDefault();
     if (shooterId === null) return;
-    const ok = await run(
-      api.POST("/api/competitions/{competitionID}/entries", {
-        params: { path: { competitionID: competitionId } },
-        body: { shooter_id: shooterId, category, lane },
-      }),
-    );
+    const ok = await run(commands.add({ shooter_id: shooterId, category, lane }));
     if (ok) {
       laneInput = null;
       shooterId = null;
@@ -96,58 +86,28 @@
 
   async function saveEdit() {
     if (!editing) return;
-    const ok = await run(
-      api.PUT("/api/competitions/{competitionID}/entries/{entryID}", {
-        params: { path: { competitionID: competitionId, entryID: editing.id } },
-        body: { category: editing.category, lane: editing.lane },
-      }),
-    );
+    const ok = await run(commands.update(editing.id, { category: editing.category, lane: editing.lane }));
     if (ok) editing = null;
   }
 
   async function withdraw(entry: EntryWithStages) {
     if (!confirm(`Withdraw ${shooterName(entry.shooter_id)}? Results are kept.`)) return;
-    await run(api.POST("/api/competitions/{competitionID}/entries/{entryID}/withdraw", { params: { path: path(entry) } }));
+    await run(commands.withdraw(entry.id));
   }
 
   async function remove(entry: EntryWithStages) {
     if (!confirm(`Remove ${shooterName(entry.shooter_id)} and their results?`)) return;
-    await run(api.DELETE("/api/competitions/{competitionID}/entries/{entryID}", { params: { path: path(entry) } }));
+    await run(commands.remove(entry.id));
   }
 
-  async function unlock(entry: EntryWithStages, stage: number) {
-    await run(
-      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock", {
-        params: { path: { ...path(entry), stage } },
-      }),
-    );
-  }
-
-  async function accept(entry: EntryWithStages, stage: number) {
-    await run(
-      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept", {
-        params: { path: { ...path(entry), stage } },
-      }),
-    );
-  }
-
-  async function lock(entry: EntryWithStages, stage: number) {
-    await run(
-      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock", {
-        params: { path: { ...path(entry), stage } },
-      }),
-    );
-  }
+  const unlock = (entry: EntryWithStages, stage: number) => run(commands.unlock(entry.id, stage));
+  const accept = (entry: EntryWithStages, stage: number) => run(commands.accept(entry.id, stage));
+  const lock = (entry: EntryWithStages, stage: number) => run(commands.lock(entry.id, stage));
 
   async function saveCounts(andLock = false) {
     if (!scoring) return;
-    const { entry, stage } = scoring;
-    const ok = await run(
-      api.PUT("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}", {
-        params: { path: { ...path(scoring.entry), stage: scoring.stage } },
-        body: scoring.counts,
-      }),
-    );
+    const { entry, stage, counts } = scoring;
+    const ok = await run(commands.saveCounts(entry.id, stage, counts));
     if (!ok) return;
     scoring = null;
     if (andLock) await lock(entry, stage);
