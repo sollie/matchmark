@@ -9,12 +9,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/service"
 	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 type Handler struct {
 	svc          *service.Service
+	repo         *repository.Repository
 	auth         *service.Auth
 	audit        *service.Audit
 	wa1500       *service.WA1500Lookup
@@ -27,8 +29,8 @@ type Handler struct {
 	streams      [streamRoles]atomic.Int64
 }
 
-func NewRouter(svc *service.Service, opts ...Option) http.Handler {
-	h := &Handler{svc: svc, limits: defaultStreamLimits()}
+func NewRouter(svc *service.Service, repo *repository.Repository, opts ...Option) http.Handler {
+	h := &Handler{svc: svc, repo: repo, limits: defaultStreamLimits()}
 	for _, opt := range opts {
 		opt(h)
 	}
@@ -84,7 +86,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeError(w http.ResponseWriter, err error) {
 	status, msg := http.StatusInternalServerError, "internal error"
 	switch {
-	case errors.Is(err, service.ErrNotFound):
+	case errors.Is(err, service.ErrNotFound), errors.Is(err, repository.ErrNotFound):
 		status, msg = http.StatusNotFound, "not found"
 	case errors.Is(err, service.ErrGone):
 		status, msg = http.StatusGone, "gone"

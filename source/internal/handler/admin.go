@@ -101,7 +101,7 @@ func (h *Handler) getShooter(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	s, err := h.svc.GetShooter(r.Context(), id)
+	s, err := h.repo.GetShooter(r.Context(), id)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -142,7 +142,7 @@ func (h *Handler) deleteShooter(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listCompetitions(w http.ResponseWriter, r *http.Request) {
-	comps, err := h.svc.ListCompetitions(r.Context())
+	comps, err := h.repo.ListCompetitions(r.Context())
 	if err != nil {
 		writeError(w, err)
 		return
@@ -160,7 +160,7 @@ func (h *Handler) getCompetition(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	c, err := h.svc.GetCompetition(r.Context(), id)
+	c, err := h.repo.GetCompetition(r.Context(), id)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -187,7 +187,7 @@ func (h *Handler) updateCompetition(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	c, err := h.svc.GetCompetition(r.Context(), id)
+	c, err := h.repo.GetCompetition(r.Context(), id)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -318,7 +318,7 @@ func (h *Handler) adminStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.serveStream(w, r, roleAdmin, func(ctx context.Context) error { return h.svc.CheckAdminStream(ctx, id) }, func() *service.Subscription { return h.svc.Subscribe(id) }, func(ctx context.Context) (streamEvent, error) {
-		if _, err := h.svc.GetCompetition(ctx, id); err != nil {
+		if err := h.svc.CheckAdminStream(ctx, id); err != nil {
 			return streamEvent{}, err
 		}
 		return streamEvent{Name: "changed", Data: struct{}{}}, nil

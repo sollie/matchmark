@@ -53,11 +53,6 @@ func (s *Service) ListShooters(ctx context.Context, query string, limit int) ([]
 	return s.repo.ListShooters(ctx, query, limit)
 }
 
-func (s *Service) GetShooter(ctx context.Context, id int64) (repository.Shooter, error) {
-	sh, err := s.repo.GetShooter(ctx, id)
-	return sh, mapRepoErr(err)
-}
-
 func (s *Service) UpdateShooter(ctx context.Context, sh repository.Shooter) error {
 	if !validShooter(sh) {
 		return ErrInvalid
@@ -75,15 +70,6 @@ func (s *Service) DeleteShooter(ctx context.Context, id int64) error {
 	}
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "shooter.delete", Target: idTarget("shooter", id)}, Live: LiveAll})
 	return nil
-}
-
-func (s *Service) ListCompetitions(ctx context.Context) ([]repository.Competition, error) {
-	return s.repo.ListCompetitions(ctx)
-}
-
-func (s *Service) GetCompetition(ctx context.Context, id int64) (repository.Competition, error) {
-	c, err := s.repo.GetCompetition(ctx, id)
-	return c, mapRepoErr(err)
 }
 
 func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competition) error {
