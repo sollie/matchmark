@@ -117,12 +117,8 @@ The admin table of a competition's stage events (locks, acceptances, disputes, a
 **Control room**:
 The admin view of an active competition's current stage, with one row per manned lane (scorer, shooter, status, disputes, paired and a best-effort connected indicator) and the Start next stage, Accept all, Accept and Unlock actions. Connected means an open scorer stream and is never stored.
 
-**Results**:
-A competition's accepted scores, ranked per category by total then X count, before any rendering. Stages that are not accepted count as zero. It is complete and unredacted; the public Results view applies the spectator visibility flags on top. It is the single source for the Results report, the CSV, the Scorecard copy and the Results PDF, and does not depend on the competition's status.
-_Avoid_: Standings (that is the live spectator ranking)
-
 **Results report**:
-The workbook, one sheet per category, that a club emails to the country representative. It lists a total score per shooter, plus the new shooters. It also lists withdrawn shooters with the totals of their accepted stages; how withdrawn shooters should be handled in every output is still open (#328).
+The workbook, one sheet per category, that a club emails to the country representative. It lists a total score per shooter, plus the new shooters.
 _Avoid_: Export, results file
 
 **Scorecard**:
