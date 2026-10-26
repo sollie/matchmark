@@ -108,7 +108,7 @@ Static and ACME modes are mutually exclusive.
 
 ## WA1500 lookup
 
-Admins can look up shooters in the public WA1500 register (`https://wa1500.org`, fixed host, no configuration) with `GET /api/wa1500/search?q=` and import a hit with `POST /api/shooters/import`. The server needs outbound HTTPS to `wa1500.org`; without it the lookup answers 502 and shooters are entered by hand. See ADR 0014 and `docs/spec.md`.
+Admins can look up shooters in the public WA1500 register (`https://wa1500.org`, fixed host, no configuration) with `GET /api/wa1500/search?q=` and import a hit with `POST /api/shooters/import`. The server needs outbound HTTPS to `wa1500.org`; without it the lookup answers 503 and shooters are entered by hand. See ADR 0014 and `docs/spec.md`.
 
 ## Logging
 

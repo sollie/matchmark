@@ -85,7 +85,7 @@ describe("Wa1500Import", () => {
 
   it("falls back to manual entry when WA1500 is unavailable", async () => {
     const { user, calls, onsaved } = setup((c) =>
-      c.path === "/api/wa1500/search" ? { status: 502, body: { error: "wa1500 unavailable" } } : { status: 201, body: { id: 5 } },
+      c.path === "/api/wa1500/search" ? { status: 503, body: { error: "wa1500 unavailable" } } : { status: 201, body: { id: 5 } },
     );
     await search(user);
     expect((await screen.findByRole("alert")).textContent).toContain("wa1500 unavailable");

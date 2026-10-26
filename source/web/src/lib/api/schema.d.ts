@@ -2219,7 +2219,7 @@ export interface operations {
                 };
             };
             /** @description WA1500 is unreachable or returned an unusable response */
-            502: {
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
