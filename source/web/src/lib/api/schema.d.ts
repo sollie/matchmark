@@ -954,7 +954,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Courses of fire, weapon classes and ring values */
+        /** Courses of fire and ring values */
         get: operations["getRulebook"];
         put?: never;
         post?: never;
@@ -1064,9 +1064,6 @@ export interface components {
         };
         Rulebook: {
             courses: components["schemas"]["RulebookCourse"][];
-            weapon_classes: {
-                [key: string]: string[];
-            };
             rings: components["schemas"]["RulebookRing"][];
         };
         RulebookCourse: {

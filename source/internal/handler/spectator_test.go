@@ -216,10 +216,6 @@ func TestRulebookIsPublic(t *testing.T) {
 			t.Errorf("course %v categories = %v", course["key"], course["categories"])
 		}
 	}
-	classes := out["weapon_classes"].(map[string]any)
-	if len(classes["1500"].([]any)) != 4 || len(classes["60"].([]any)) != 3 || len(classes["48"].([]any)) != 6 {
-		t.Errorf("weapon_classes = %v", classes)
-	}
 	if rings := out["rings"].([]any); len(rings) != 7 {
 		t.Errorf("rings = %v", rings)
 	}

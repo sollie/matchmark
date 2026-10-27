@@ -17,30 +17,6 @@ type Course struct {
 	Stages     []Stage
 }
 
-var weaponClasses = map[string][]string{
-	"1500": {
-		"Revolver 1500",
-		"Pistol 1500",
-		"Revolver Optical Sight 1500",
-		"Pistol Optical Sight 1500",
-	},
-	"60": {
-		"Distinguished Revolver",
-		"Distinguished Pistol",
-		"Open Match",
-	},
-	"48": {
-		"Standard Revolver 4.25\"",
-		"Standard Revolver 2.75\"",
-		"Standard Revolver 2.75\" 5-Shot",
-		"Standard Semi-Automatic Pistol 5.5\" Production",
-		"Standard Semi-Automatic Pistol 5.5\"",
-		"Standard Semi-Automatic Pistol 3.7\"",
-	},
-}
-
-const fiveShotWeaponClass = "Standard Revolver 2.75\" 5-Shot"
-
 var course1500 = Course{
 	Label:      "150 shots (WA1500)",
 	Discipline: "1500",
@@ -97,8 +73,6 @@ var course48FiveShot = Course{
 
 var courseKeys = []string{"150", "60", "48", "40"}
 
-var disciplines = []string{"1500", "60", "48"}
-
 var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Rifle"}
 
 var courseCategories = map[string][]string{
@@ -119,10 +93,6 @@ var ringValues = []string{"X", "10", "9", "8", "7", "0", "M"}
 
 func CourseKeys() []string {
 	return append([]string(nil), courseKeys...)
-}
-
-func Disciplines() []string {
-	return append([]string(nil), disciplines...)
 }
 
 func Categories() []string {
@@ -150,40 +120,8 @@ func ValidateCategory(courseKey, category string) error {
 	return fmt.Errorf("category %q is not allowed for course %q", category, courseKey)
 }
 
-func WeaponClasses(discipline string) []string {
-	return append([]string(nil), weaponClasses[discipline]...)
-}
-
 func RingValues() []string {
 	return append([]string(nil), ringValues...)
-}
-
-func ValidateWeaponClass(discipline, weaponClass string) error {
-	classes, ok := weaponClasses[discipline]
-	if !ok {
-		return fmt.Errorf("unknown discipline %q", discipline)
-	}
-	for _, c := range classes {
-		if c == weaponClass {
-			return nil
-		}
-	}
-	return fmt.Errorf("weapon class %q is not valid for discipline %q", weaponClass, discipline)
-}
-
-func CourseOfFire(discipline, weaponClass string) (Course, error) {
-	switch discipline {
-	case "1500":
-		return course1500, nil
-	case "60":
-		return course60, nil
-	case "48":
-		if weaponClass == fiveShotWeaponClass {
-			return course48FiveShot, nil
-		}
-		return course48, nil
-	}
-	return Course{}, fmt.Errorf("unknown discipline %q", discipline)
 }
 
 func RingValue(ring string) (int, error) {
@@ -205,13 +143,13 @@ func RingValue(ring string) (int, error) {
 func CourseByKey(key string) (Course, error) {
 	switch key {
 	case "150":
-		return CourseOfFire("1500", "")
+		return course1500, nil
 	case "60":
-		return CourseOfFire("60", "")
+		return course60, nil
 	case "48":
-		return CourseOfFire("48", "")
+		return course48, nil
 	case "40":
-		return CourseOfFire("48", fiveShotWeaponClass)
+		return course48FiveShot, nil
 	}
 	return Course{}, fmt.Errorf("unknown course %q", key)
 }

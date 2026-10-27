@@ -25,9 +25,8 @@ type RulebookRing struct {
 }
 
 type RulebookView struct {
-	Courses       []RulebookCourse
-	WeaponClasses map[string][]string
-	Rings         []RulebookRing
+	Courses []RulebookCourse
+	Rings   []RulebookRing
 }
 
 func (s *Service) Rulebook() (RulebookView, error) {
@@ -46,10 +45,6 @@ func (s *Service) Rulebook() (RulebookView, error) {
 			course.Stages = append(course.Stages, RulebookStage(st))
 		}
 		view.Courses = append(view.Courses, course)
-	}
-	view.WeaponClasses = map[string][]string{}
-	for _, d := range rulebook.Disciplines() {
-		view.WeaponClasses[d] = rulebook.WeaponClasses(d)
 	}
 	for _, ring := range rulebook.RingValues() {
 		value, err := rulebook.RingValue(ring)
