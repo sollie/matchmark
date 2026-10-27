@@ -21,24 +21,51 @@ const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
   lane: 1,
   withdrawn: false,
   stages: [
-    { stage_number: 1, expected_shots: 30, status: "accepted", scorer_lane: 2, scorer_name: "Rick Roe", score: 287, shots_entered: 30 },
-    { stage_number: 2, expected_shots: 30, status: "open", scorer_lane: null, scorer_name: null, score: 0, shots_entered: 0 },
+    {
+      stage_number: 1,
+      expected_shots: 30,
+      status: "accepted",
+      scorer_lane: 2,
+      scorer_name: "Rick Roe",
+      score: 287,
+      shots_entered: 30,
+    },
+    {
+      stage_number: 2,
+      expected_shots: 30,
+      status: "open",
+      scorer_lane: null,
+      scorer_name: null,
+      score: 0,
+      shots_entered: 0,
+    },
   ],
   ...overrides,
 });
 
 const course = (key: string, categories: string[]) =>
-  ({ key, label: key, categories, stages: key === "150" ? [{ stage_number: 1, part: "Match 1" }] : [] }) as unknown as RulebookCourse;
+  ({
+    key,
+    label: key,
+    categories,
+    stages: key === "150" ? [{ stage_number: 1, part: "Match 1" }] : [],
+  }) as unknown as RulebookCourse;
 
 function setup(entries: EntryWithStages[] = [entry()], courseKey = "150") {
-  rulebook.courses = [course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]), course("40", ["Revolver"])];
+  rulebook.courses = [
+    course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]),
+    course("40", ["Revolver"]),
+  ];
   const calls = stubFetch();
   const reload = vi.fn(async () => {});
   const view = render(Entries, { matchId: 5, course: courseKey, entries, shooters, reload });
   return { calls, reload, view, user: userEvent.setup() };
 }
 
-const options = (name: string) => within(screen.getByRole("combobox", { name })).getAllByRole("option").map((o) => o.textContent);
+const options = (name: string) =>
+  within(screen.getByRole("combobox", { name }))
+    .getAllByRole("option")
+    .map((o) => o.textContent);
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -52,7 +79,9 @@ describe("Entries", () => {
 
   it("titles stage columns with the Part for grouped courses only", () => {
     setup([entry()], "150");
-    expect(screen.getByRole("columnheader", { name: "S1" }).getAttribute("title")).toBe("Stage 1 · Match 1");
+    expect(screen.getByRole("columnheader", { name: "S1" }).getAttribute("title")).toBe(
+      "Stage 1 · Match 1",
+    );
     expect(screen.getByRole("columnheader", { name: "S2" }).getAttribute("title")).toBe("Stage 2");
   });
 
@@ -67,7 +96,9 @@ describe("Entries", () => {
     await user.selectOptions(screen.getByRole("combobox", { name: "Entry category" }), "Pistol OS");
     await view.rerender({ course: "40" });
     expect(options("Entry category")).toEqual(["Revolver"]);
-    expect((screen.getByRole("combobox", { name: "Entry category" }) as HTMLSelectElement).value).toBe("Revolver");
+    expect(
+      (screen.getByRole("combobox", { name: "Entry category" }) as HTMLSelectElement).value,
+    ).toBe("Revolver");
   });
 
   it("labels each stage as Accepted or Open", () => {
@@ -87,7 +118,11 @@ describe("Entries", () => {
       score,
       shots_entered: shots,
     });
-    setup([entry({ stages: [stage(1, "accepted", 287, 30), stage(2, "open", 295, 30), stage(3, "open", 0, 0)] })]);
+    setup([
+      entry({
+        stages: [stage(1, "accepted", 287, 30), stage(2, "open", 295, 30), stage(3, "open", 0, 0)],
+      }),
+    ]);
     const row = screen.getByRole("row", { name: /Jane Doe/ });
     expect(within(row).getByText("Accepted")).toBeTruthy();
     expect(within(row).getByText("287")).toBeTruthy();
@@ -100,14 +135,18 @@ describe("Entries", () => {
   it("unlocks a locked stage and reloads", async () => {
     const { calls, reload, user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 stage 1: Unlock" }));
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/matches/5/entries/1/stages/1/unlock"]);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "POST /api/matches/5/entries/1/stages/1/unlock",
+    ]);
     expect(reload).toHaveBeenCalledOnce();
   });
 
   it("locks an open stage", async () => {
     const { calls, user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Lock" }));
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/matches/5/entries/1/stages/2/lock"]);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "POST /api/matches/5/entries/1/stages/2/lock",
+    ]);
   });
 
   it("overwrites counts and locks the stage when asked", async () => {
@@ -140,7 +179,9 @@ describe("Entries", () => {
     const { calls, user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Edit" }));
     await user.click(screen.getByRole("button", { name: "Save counts" }));
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["PUT /api/matches/5/entries/1/stages/2"]);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "PUT /api/matches/5/entries/1/stages/2",
+    ]);
   });
 
   it.each([
@@ -148,7 +189,10 @@ describe("Entries", () => {
     ["Remove", "DELETE", "/api/matches/5/entries/1"],
   ])("asks before %s and only sends when confirmed", async (label, method, path) => {
     const { calls, user } = setup();
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const confirm = vi
+      .spyOn(window, "confirm")
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
     await user.click(screen.getByRole("button", { name: label }));
     expect(calls).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: label }));
@@ -165,14 +209,26 @@ describe("Entries", () => {
 describe("Entries awaiting acceptance", () => {
   const awaiting = () =>
     entry({
-      stages: [{ stage_number: 1, expected_shots: 30, status: "awaiting_acceptance", scorer_lane: 2, scorer_name: "Rick Roe", score: 287, shots_entered: 30 }],
+      stages: [
+        {
+          stage_number: 1,
+          expected_shots: 30,
+          status: "awaiting_acceptance",
+          scorer_lane: 2,
+          scorer_name: "Rick Roe",
+          score: 287,
+          shots_entered: 30,
+        },
+      ],
     });
 
   it("accepts a stage that awaits acceptance", async () => {
     const { calls, reload, user } = setup([awaiting()]);
     expect(screen.getByText("Awaiting acceptance")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Lane 1 stage 1: Accept" }));
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/matches/5/entries/1/stages/1/accept"]);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "POST /api/matches/5/entries/1/stages/1/accept",
+    ]);
     expect(reload).toHaveBeenCalledOnce();
   });
 
@@ -182,22 +238,55 @@ describe("Entries awaiting acceptance", () => {
   });
 
   it("imports a shooter from WA1500 inside the picker and selects it for the entry", async () => {
-    const imported = { id: 11, last_name: "Anderson", first_name: "Mike", country: "SWE", club: "Alpha", waid: "W100" };
+    const imported = {
+      id: 11,
+      last_name: "Anderson",
+      first_name: "Mike",
+      country: "SWE",
+      club: "Alpha",
+      waid: "W100",
+    };
     const calls = stubFetch((c) => {
       if (c.path === "/api/shooters" && c.method === "GET") return { body: { shooters: [] } };
-      if (c.path === "/api/wa1500/search") return { body: { results: [{ waid: "W100", first_name: "Mike", last_name: "Anderson", country: "SWE", club: "Alpha" }] } };
-      if (c.path === "/api/shooters/import") return { status: 201, body: { id: 11, action: "created" } };
+      if (c.path === "/api/wa1500/search")
+        return {
+          body: {
+            results: [
+              {
+                waid: "W100",
+                first_name: "Mike",
+                last_name: "Anderson",
+                country: "SWE",
+                club: "Alpha",
+              },
+            ],
+          },
+        };
+      if (c.path === "/api/shooters/import")
+        return { status: 201, body: { id: 11, action: "created" } };
       if (c.path === "/api/shooters/11") return { body: imported };
       return { status: 201, body: {} };
     });
-    render(Entries, { matchId: 5, course: "150", entries: [], shooters, reload: vi.fn(async () => {}) });
+    render(Entries, {
+      matchId: 5,
+      course: "150",
+      entries: [],
+      shooters,
+      reload: vi.fn(async () => {}),
+    });
     const user = userEvent.setup();
     await user.type(screen.getByRole("combobox", { name: "Shooter" }), "ande");
     await user.click(await screen.findByRole("option", { name: "Search WA1500 / add new" }));
-    expect((screen.getByRole("textbox", { name: "Search WA1500" }) as HTMLInputElement).value).toBe("ande");
+    expect((screen.getByRole("textbox", { name: "Search WA1500" }) as HTMLInputElement).value).toBe(
+      "ande",
+    );
     await user.click(screen.getByRole("button", { name: "Search" }));
     await user.click(screen.getByRole("button", { name: "Import Mike Anderson" }));
-    await waitFor(() => expect((screen.getByRole("combobox", { name: "Shooter" }) as HTMLInputElement).value).toBe("Mike Anderson"));
+    await waitFor(() =>
+      expect((screen.getByRole("combobox", { name: "Shooter" }) as HTMLInputElement).value).toBe(
+        "Mike Anderson",
+      ),
+    );
     expect(screen.queryByRole("textbox", { name: "Search WA1500" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Add entry" }));
     const post = calls.find((c) => c.method === "POST" && c.path === "/api/matches/5/entries");

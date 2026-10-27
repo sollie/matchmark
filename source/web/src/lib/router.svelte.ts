@@ -24,7 +24,8 @@ window.addEventListener("popstate", () => {
 });
 
 document.addEventListener("click", (e) => {
-  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+    return;
   const a = (e.target as Element).closest("a");
   if (!a || a.target || a.hasAttribute("download")) return;
   const url = new URL(a.href, window.location.href);

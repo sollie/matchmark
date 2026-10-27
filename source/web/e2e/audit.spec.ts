@@ -9,7 +9,9 @@ test.describe("audit log", () => {
 
     await page.getByRole("link", { name: "Audit log" }).click();
     await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
-    await expect(row(page, "match.create").filter({ hasText: name }).first()).toContainText("e2e-admin");
+    await expect(row(page, "match.create").filter({ hasText: name }).first()).toContainText(
+      "e2e-admin",
+    );
 
     await page.getByLabel("User").fill("unknown-audit-user");
     await page.getByRole("button", { name: "Filter" }).click();

@@ -5,7 +5,13 @@ import MatchEdit from "./MatchEdit.svelte";
 import { stubFetch } from "../test/fetch";
 import { loadRulebook } from "../lib/rulebook.svelte";
 
-const course = (key: string, label: string) => ({ key, label, discipline: "1500", total_shots: 0, stages: [] });
+const course = (key: string, label: string) => ({
+  key,
+  label,
+  discipline: "1500",
+  total_shots: 0,
+  stages: [],
+});
 
 beforeAll(async () => {
   stubFetch(() => ({
@@ -17,7 +23,15 @@ beforeAll(async () => {
   await loadRulebook();
 });
 
-const match = { id: 5, competition_id: 1, name: "Spring", date: "2026-03-01", course: "150", status: "draft" as const, current_stage: 1 };
+const match = {
+  id: 5,
+  competition_id: 1,
+  name: "Spring",
+  date: "2026-03-01",
+  course: "150",
+  status: "draft" as const,
+  current_stage: 1,
+};
 
 function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0]) {
   const calls = stubFetch(reply);
@@ -31,7 +45,9 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("MatchEdit", () => {
   it("submits the edited name, date and course", async () => {
-    const { calls, saved, user } = setup(false, () => ({ body: { ...match, name: "Autumn", date: "2026-10-19", course: "60" } }));
+    const { calls, saved, user } = setup(false, () => ({
+      body: { ...match, name: "Autumn", date: "2026-10-19", course: "60" },
+    }));
     await user.clear(screen.getByLabelText("Name"));
     await user.type(screen.getByLabelText("Name"), "Autumn");
     await user.clear(screen.getByLabelText("Date"));

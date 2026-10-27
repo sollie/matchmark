@@ -1,7 +1,20 @@
-import { createMatch, expect, openMatch, row, section, seedEntry, setStatus, test } from "./helpers";
+import {
+  createMatch,
+  expect,
+  openMatch,
+  row,
+  section,
+  seedEntry,
+  setStatus,
+  test,
+} from "./helpers";
 
 test.describe("course shot counts", () => {
-  test("every stage of every course demands its expected shots", async ({ courses, adminPage: page, admin }) => {
+  test("every stage of every course demands its expected shots", async ({
+    courses,
+    adminPage: page,
+    admin,
+  }) => {
     test.setTimeout(240_000);
     expect(courses).toHaveLength(4);
     for (const course of courses) {
@@ -16,7 +29,9 @@ test.describe("course shot counts", () => {
         for (const [index, shots] of course.stageShots.entries()) {
           const stageNumber = index + 1;
           const stage = entryRow.locator("td.stage").nth(index);
-          await page.getByRole("button", { name: `Lane ${entry.lane} stage ${stageNumber}: Edit` }).click();
+          await page
+            .getByRole("button", { name: `Lane ${entry.lane} stage ${stageNumber}: Edit` })
+            .click();
           const counts = page.locator(".counts");
           await expect(counts).toContainText(`must sum to ${shots} shots`);
 

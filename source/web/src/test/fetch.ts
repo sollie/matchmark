@@ -1,7 +1,14 @@
-export type Call = { method: string; path: string; search: string; body: unknown; authorization: string | null };
+export type Call = {
+  method: string;
+  path: string;
+  search: string;
+  body: unknown;
+  authorization: string | null;
+};
 type Reply = { status?: number; body?: unknown; headers?: Record<string, string> } | undefined;
 
-let handler: (request: Request) => Promise<Response> = async () => new Response(null, { status: 500 });
+let handler: (request: Request) => Promise<Response> = async () =>
+  new Response(null, { status: 500 });
 
 export function installFetch() {
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) =>

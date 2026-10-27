@@ -57,7 +57,11 @@ describe("Scorecard", () => {
 
   it("asks to try again shortly when the render limits answer 429, and retries after Retry-After", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    summaryReply = { status: 429, body: { error: "too many requests" }, headers: { "Retry-After": "2" } };
+    summaryReply = {
+      status: 429,
+      body: { error: "too many requests" },
+      headers: { "Retry-After": "2" },
+    };
     navigate("/scorecard/7/3");
     render(Scorecard);
     expect(await screen.findByText(/try again shortly/i)).toBeTruthy();
@@ -77,7 +81,11 @@ describe("Scorecard", () => {
   });
 
   it("explains a rate-limited card image instead of a missing card", async () => {
-    imageReply = { status: 429, body: { error: "too many requests" }, headers: { "Retry-After": "5" } };
+    imageReply = {
+      status: 429,
+      body: { error: "too many requests" },
+      headers: { "Retry-After": "5" },
+    };
     navigate("/scorecard/7/3");
     render(Scorecard);
     await fireEvent.error(await screen.findByRole("img", { name: /Ola Nordmann/ }));

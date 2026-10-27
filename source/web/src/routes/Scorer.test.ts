@@ -17,7 +17,10 @@ type SessionOverrides = {
 
 const zeroCounts = { x: 0, 10: 0, 9: 0, 8: 0, 7: 0, 0: 0, miss: 0 };
 
-const session = (locked: boolean[], { disputed = [], counts = {}, ...overrides }: SessionOverrides = {}) => ({
+const session = (
+  locked: boolean[],
+  { disputed = [], counts = {}, ...overrides }: SessionOverrides = {},
+) => ({
   lane: 1,
   score_lane: 2,
   current_stage: locked.findIndex((l) => !l) + 1 || locked.length,
@@ -46,16 +49,20 @@ function fakeStream(): Server {
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const request = input instanceof Request ? input : new Request(input, init);
     if (new URL(request.url).pathname !== "/api/scorer/stream") return previous(input, init);
-    if (server.respondStatus) return Promise.resolve(new Response(null, { status: server.respondStatus }));
+    if (server.respondStatus)
+      return Promise.resolve(new Response(null, { status: server.respondStatus }));
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     const body = new ReadableStream<Uint8Array>({ start: (c) => (controller = c) });
     const enc = new TextEncoder();
     server.streams.push({
       headers: request.headers,
-      send: (event, data) => controller.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)),
+      send: (event, data) =>
+        controller.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)),
       end: () => controller.close(),
     });
-    return Promise.resolve(new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } }));
+    return Promise.resolve(
+      new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    );
   }) as typeof fetch;
   return server;
 }
@@ -140,7 +147,10 @@ describe("Scorer", () => {
     const user = userEvent.setup();
     await open(server);
     await user.click(screen.getByRole("button", { name: "Increase X" }));
-    server.streams[0].send("snapshot", session([true, true], { phase: "waiting", current_stage: 2 }));
+    server.streams[0].send(
+      "snapshot",
+      session([true, true], { phase: "waiting", current_stage: 2 }),
+    );
     await screen.findByText(/Stage 2 is locked/);
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     server.streams[0].send("snapshot", session([true, false]));
@@ -151,8 +161,18 @@ describe("Scorer", () => {
   it("shows the waiting screen with a banner and a button when the own stage awaits acceptance", async () => {
     const server = fakeStream();
     const user = userEvent.setup();
-    const acceptance = { ...zeroCounts, x: 10, 10: 2, stage_number: 1, total: 12, scorer_name: "Ann Lee" };
-    await open(server, session([true, false], { phase: "needs_acceptance", acceptance, current_stage: 1 }));
+    const acceptance = {
+      ...zeroCounts,
+      x: 10,
+      10: 2,
+      stage_number: 1,
+      total: 12,
+      scorer_name: "Ann Lee",
+    };
+    await open(
+      server,
+      session([true, false], { phase: "needs_acceptance", acceptance, current_stage: 1 }),
+    );
     expect(screen.getByText(/Your result for stage 1 awaits your acceptance/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
 
@@ -221,7 +241,10 @@ describe("Scorer", () => {
     const user = userEvent.setup();
     await open(server);
     await user.click(screen.getByRole("button", { name: "Increase X" }));
-    server.streams[0].send("snapshot", session([true, false], { score_lane: 3, shooter_name: "Ann Lee" }));
+    server.streams[0].send(
+      "snapshot",
+      session([true, false], { score_lane: 3, shooter_name: "Ann Lee" }),
+    );
     await screen.findByText("Scoring lane 3: Ann Lee");
     expect(screen.getByRole("status").textContent).toContain("Score lane changed to lane 3");
     expect(screen.getByLabelText("X count")).toHaveProperty("value", "0");
@@ -241,7 +264,15 @@ describe("Scorer", () => {
     const server = fakeStream();
     render(Scorer);
     await waitFor(() => expect(server.streams.length).toBe(1));
-    server.streams[0].send("snapshot", { lane: 2, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "not_started" });
+    server.streams[0].send("snapshot", {
+      lane: 2,
+      score_lane: 0,
+      current_stage: 0,
+      entry_id: 0,
+      shooter_name: "",
+      stages: [],
+      phase: "not_started",
+    });
     await screen.findByText("Waiting for the match to start");
     expect(screen.getByText(/paired to lane 2/)).toBeTruthy();
   });
@@ -250,7 +281,16 @@ describe("Scorer", () => {
     const server = fakeStream();
     render(Scorer);
     await waitFor(() => expect(server.streams.length).toBe(1));
-    server.streams[0].send("snapshot", { match_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" });
+    server.streams[0].send("snapshot", {
+      match_id: 7,
+      lane: 3,
+      score_lane: 0,
+      current_stage: 0,
+      entry_id: 0,
+      shooter_name: "",
+      stages: [],
+      phase: "finished",
+    });
     await waitFor(() => expect(window.location.pathname).toBe("/scorecard/7/3"));
     expect(localStorage.getItem("mm_device_token")).toBeNull();
   });
@@ -279,7 +319,18 @@ describe("Scorer", () => {
     server.respondStatus = 410;
     calls = stubFetch((c) =>
       c.path === "/api/scorer/session"
-        ? { body: { match_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" } }
+        ? {
+            body: {
+              match_id: 7,
+              lane: 3,
+              score_lane: 0,
+              current_stage: 0,
+              entry_id: 0,
+              shooter_name: "",
+              stages: [],
+              phase: "finished",
+            },
+          }
         : undefined,
     );
     render(Scorer);

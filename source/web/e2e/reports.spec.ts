@@ -1,6 +1,15 @@
 import { readFile } from "node:fs/promises";
 import type { APIRequestContext } from "@playwright/test";
-import { createMatch, expect, newApi, openMatch, seedEntry, setCounts, setStatus, test } from "./helpers";
+import {
+  createMatch,
+  expect,
+  newApi,
+  openMatch,
+  seedEntry,
+  setCounts,
+  setStatus,
+  test,
+} from "./helpers";
 
 async function seedReportMatch(api: APIRequestContext) {
   const match = await createMatch(api);
@@ -25,7 +34,10 @@ test.describe("reports and backup", () => {
     expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK");
   });
 
-  test("the detailed CSV downloads and contains the shooter", async ({ adminPage: page, admin }) => {
+  test("the detailed CSV downloads and contains the shooter", async ({
+    adminPage: page,
+    admin,
+  }) => {
     const { match, shooter } = await seedReportMatch(admin);
     await page.goto("/admin");
 
@@ -51,7 +63,10 @@ test.describe("reports and backup", () => {
     expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
   });
 
-  test("the competition downloads a zip of every finished match", async ({ adminPage: page, admin }) => {
+  test("the competition downloads a zip of every finished match", async ({
+    adminPage: page,
+    admin,
+  }) => {
     const { match } = await seedReportMatch(admin);
     await page.goto("/admin");
     const group = page.getByRole("region", { name: `Competition ${match.name}` });
@@ -75,7 +90,9 @@ test.describe("reports and backup", () => {
     const { match } = await seedReportMatch(admin);
     await openMatch(page, match.id);
     await expect(page.getByRole("heading", { name: match.name })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Results report|Detailed CSV|Results PDF/ })).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: /Results report|Detailed CSV|Results PDF/ }),
+    ).toHaveCount(0);
   });
 
   test("report and backup endpoints return 401 without a session", async ({ admin, baseURL }) => {
