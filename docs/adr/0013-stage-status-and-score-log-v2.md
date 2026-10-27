@@ -6,7 +6,7 @@ status: accepted
 
 A lock used to be final. With shooter acceptance (see `GLOSSARY.md`: Awaiting acceptance, Accepted, Dispute) the scorer's lock only proposes a result, so a stage needs a status rather than a boolean.
 
-`stages.status` is `open`, `awaiting_acceptance` or `accepted` (migration 016, which maps `locked = 1` to `accepted` and drops `locked`). `accepted_by`, `accepted_at` and `disputed_at` sit beside it. Transitions are conditional updates inside one transaction that also inserts a row into `stage_events`, so a lost race returns a conflict and the event history never disagrees with the stage:
+`stages.status` is `open`, `awaiting_acceptance` or `accepted` (migration 016 before the squash). `accepted_by`, `accepted_at` and `disputed_at` sit beside it. Transitions are conditional updates inside one transaction that also inserts a row into `stage_events`, so a lost race returns a conflict and the event history never disagrees with the stage:
 
 - device lock: `open` to `awaiting_acceptance`
 - admin lock as the signed-in user: `open` to `accepted`
@@ -20,7 +20,7 @@ Only accepted stages count. Standings, progress, the `.xlsx` report and the CSV 
 
 ## Lockstep
 
-The competition stores a current-stage pointer (`current_stage`, migration 017, 1 at activation). Only the admin advances it, and only when every manned, non-withdrawn lane has accepted the current stage (the gate). Devices act only on the current stage; admin corrections of earlier stages do not move the pointer. Accepting the last stage finishes the competition through the existing finish path, which revokes pairings; devices still receive a minimal `finished` session so they can show a Finished screen. Status changes are conditional updates (`from` status), so a concurrent double finish is a no-op. Entries are added and moved to another lane only in draft (an active competition still allows a category change); withdrawal is allowed only at the gate. A restore sets the pointer to the lowest stage with a non-accepted entry stage, or the last stage when everything is accepted.
+The competition stores a current-stage pointer (`current_stage`, 1 at activation). Only the admin advances it, and only when every manned, non-withdrawn lane has accepted the current stage (the gate). Devices act only on the current stage; admin corrections of earlier stages do not move the pointer. Accepting the last stage finishes the competition through the existing finish path, which revokes pairings; devices still receive a minimal `finished` session so they can show a Finished screen. Status changes are conditional updates (`from` status), so a concurrent double finish is a no-op. Entries are added and moved to another lane only in draft (an active competition still allows a category change); withdrawal is allowed only at the gate. A restore sets the pointer to the lowest stage with a non-accepted entry stage, or the last stage when everything is accepted.
 
 ## Control room
 

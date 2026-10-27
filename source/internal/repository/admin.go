@@ -94,7 +94,7 @@ func (r *Repository) DeleteShooter(ctx context.Context, id int64) error {
 
 func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, date, course, status, current_stage FROM competitions ORDER BY date DESC, id DESC`)
+		`SELECT id, name, date, course, status, current_stage FROM matches ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -111,13 +111,27 @@ func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error
 }
 
 func (r *Repository) UpdateCompetition(ctx context.Context, c Competition) error {
-	res, err := r.db.ExecContext(ctx,
-		`UPDATE competitions SET name = ?, date = ?, course = ? WHERE id = ?`, c.Name, c.Date, c.Course, c.ID)
-	return affected(res, err)
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
+		`UPDATE matches SET name = ?, date = ?, course = ? WHERE id = ?`, c.Name, c.Date, c.Course, c.ID)
+	if err := affected(res, err); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE competitions SET start_date = ?, end_date = ?
+		 WHERE id = (SELECT competition_id FROM matches WHERE id = ?)
+		 AND (SELECT COUNT(*) FROM matches WHERE competition_id = competitions.id) = 1`, c.Date, c.Date, c.ID); err != nil {
+		return mapErr(err)
+	}
+	return tx.Commit()
 }
 
 func (r *Repository) SetCompetitionStatus(ctx context.Context, id int64, from, to string) error {
-	res, err := r.db.ExecContext(ctx, `UPDATE competitions SET status = ? WHERE id = ? AND status = ?`, to, id, from)
+	res, err := r.db.ExecContext(ctx, `UPDATE matches SET status = ? WHERE id = ? AND status = ?`, to, id, from)
 	return conflictIfNone(res, err)
 }
 
@@ -128,53 +142,53 @@ func (r *Repository) AdvanceStage(ctx context.Context, id int64, from int) error
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE competitions SET current_stage = current_stage + 1 WHERE id = ? AND status = 'active' AND current_stage = ?`, id, from)
+		`UPDATE matches SET current_stage = current_stage + 1 WHERE id = ? AND status = 'active' AND current_stage = ?`, id, from)
 	if err := conflictIfNone(res, err); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx,
 		`UPDATE stages SET started = 1 WHERE stage_number = ? AND status = 'open'
-		 AND entry_id IN (SELECT id FROM entries WHERE competition_id = ?)`, from+1, id); err != nil {
+		 AND entry_id IN (SELECT id FROM entries WHERE match_id = ?)`, from+1, id); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
 func (r *Repository) DeleteCompetition(ctx context.Context, id int64) error {
-	res, err := r.db.ExecContext(ctx, `DELETE FROM competitions WHERE id = ?`, id)
+	res, err := r.db.ExecContext(ctx, `DELETE FROM matches WHERE id = ?`, id)
 	return affected(res, err)
 }
 
 func (r *Repository) CountEntries(ctx context.Context, competitionID int64) (int, error) {
 	var n int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM entries WHERE competition_id = ?`, competitionID).Scan(&n)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM entries WHERE match_id = ?`, competitionID).Scan(&n)
 	return n, err
 }
 
 func (r *Repository) GetEntry(ctx context.Context, competitionID, entryID int64) (Entry, error) {
 	var e Entry
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, competition_id, shooter_id, category, lane, withdrawn FROM entries WHERE id = ? AND competition_id = ?`,
+		`SELECT id, match_id, shooter_id, category, lane, withdrawn FROM entries WHERE id = ? AND match_id = ?`,
 		entryID, competitionID).Scan(&e.ID, &e.CompetitionID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn)
 	return e, mapErr(err)
 }
 
 func (r *Repository) UpdateEntry(ctx context.Context, competitionID, entryID int64, category string, lane int) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE entries SET category = ?, lane = ? WHERE id = ? AND competition_id = ?`,
+		`UPDATE entries SET category = ?, lane = ? WHERE id = ? AND match_id = ?`,
 		category, lane, entryID, competitionID)
 	return affected(res, err)
 }
 
 func (r *Repository) DeleteEntry(ctx context.Context, competitionID, entryID int64) error {
 	res, err := r.db.ExecContext(ctx,
-		`DELETE FROM entries WHERE id = ? AND competition_id = ?`, entryID, competitionID)
+		`DELETE FROM entries WHERE id = ? AND match_id = ?`, entryID, competitionID)
 	return affected(res, err)
 }
 
 func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]EntryWithStages, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, competition_id, shooter_id, category, lane, withdrawn FROM entries WHERE competition_id = ? ORDER BY lane, id`,
+		`SELECT id, match_id, shooter_id, category, lane, withdrawn FROM entries WHERE match_id = ? ORDER BY lane, id`,
 		competitionID)
 	if err != nil {
 		return nil, err
@@ -200,7 +214,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 	srows, err := r.db.QueryContext(ctx,
 		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.status, s.scorer_lane, s.scorer_name,
 		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, COALESCE(s.disputed_at, ''), s.started FROM stages s
-		 JOIN entries e ON e.id = s.entry_id WHERE e.competition_id = ? ORDER BY s.entry_id, s.stage_number`,
+		 JOIN entries e ON e.id = s.entry_id WHERE e.match_id = ? ORDER BY s.entry_id, s.stage_number`,
 		competitionID)
 	if err != nil {
 		return nil, err

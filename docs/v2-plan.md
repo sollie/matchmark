@@ -39,3 +39,14 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 24. Admin control room (#238) and dispute history (#239).
 - [x] 25. Mid-competition restore (#240) and the documentation sweep (#241).
 - [x] 26. Rename the Rifle category to Carbine (#338) and allow it on the 150-shot course (#339).
+
+## Competition contains Matches (ADR 0017)
+
+Delivered as one stack of PRs that merge together (#345). Until step 28 lands, the code and the rest of the docs still use "competition" for what is now a Match.
+
+- [x] 27. Docs: glossary, spec and ADR 0017 (#346).
+- [x] 28. Squash migrations into the `matches` and `competitions` schema (#347).
+- [ ] 29. Rename Competition to Match across backend, API, Score log v3 and SPA (#348).
+- [ ] 30. Competition container CRUD with date-range validation (#349).
+- [ ] 31. Part labels from `internal/rulebook` in the UI and reports (#350).
+- [ ] 32. Competition-level zip downloads (#351).

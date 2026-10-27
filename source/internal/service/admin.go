@@ -86,6 +86,9 @@ func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competitio
 	if CompetitionStatus(current.Status) != StatusDraft {
 		return ErrConflict
 	}
+	if err := s.checkMatchDate(ctx, current.ContainerID, c.Date, true); err != nil {
+		return err
+	}
 	if c.Course != current.Course {
 		n, err := s.repo.CountEntries(ctx, c.ID)
 		if err != nil {

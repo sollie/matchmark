@@ -8,12 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/sollie/matchmark/internal/names"
 
 	turso "turso.tech/database/tursogo"
 )
@@ -132,10 +129,6 @@ func migrate(conn *sql.DB) error {
 	return nil
 }
 
-var migrationHooks = map[int]func(*sql.Tx) error{
-	20: normalizeShooterNames,
-}
-
 func apply(conn *sql.DB, version int, body string) error {
 	tx, err := conn.Begin()
 	if err != nil {
@@ -145,77 +138,8 @@ func apply(conn *sql.DB, version int, body string) error {
 	if _, err := tx.Exec(body); err != nil {
 		return err
 	}
-	if hook := migrationHooks[version]; hook != nil {
-		if err := hook(tx); err != nil {
-			return err
-		}
-	}
 	if _, err := tx.Exec(`INSERT INTO schema_migrations (version) VALUES (?)`, version); err != nil {
 		return err
 	}
 	return tx.Commit()
-}
-
-type shooterName struct {
-	id          int64
-	first, last string
-}
-
-func normalizeShooterNames(tx *sql.Tx) error {
-	rows, err := tx.Query(`SELECT id, first_name, last_name FROM shooters ORDER BY id`)
-	if err != nil {
-		return err
-	}
-	var all []shooterName
-	for rows.Next() {
-		var s shooterName
-		if err := rows.Scan(&s.id, &s.first, &s.last); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		all = append(all, s)
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return err
-	}
-	if err := rows.Close(); err != nil {
-		return err
-	}
-
-	changed := map[int64]bool{}
-	groups := map[[2]string][]int64{}
-	var order [][2]string
-	for _, s := range all {
-		first, last := names.FirstName(s.first), names.LastName(s.last)
-		if first != s.first || last != s.last {
-			if _, err := tx.Exec(`UPDATE shooters SET first_name = ?, last_name = ? WHERE id = ?`, first, last, s.id); err != nil {
-				return err
-			}
-			changed[s.id] = true
-		}
-		key := [2]string{last, first}
-		if _, seen := groups[key]; !seen {
-			order = append(order, key)
-		}
-		groups[key] = append(groups[key], s.id)
-	}
-	for _, key := range order {
-		ids := groups[key]
-		if len(ids) < 2 || !anyChanged(ids, changed) {
-			continue
-		}
-		slog.Warn("shooter name collision after normalization; shooters were not merged",
-			"last_name", key[0], "first_name", key[1], "shooter_ids", ids)
-	}
-	return nil
-}
-
-func anyChanged(ids []int64, changed map[int64]bool) bool {
-	for _, id := range ids {
-		if changed[id] {
-			return true
-		}
-	}
-	return false
 }
