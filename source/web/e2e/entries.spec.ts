@@ -196,4 +196,11 @@ test.describe("admin ring counts", () => {
       await expect(entryRow.getByLabel("Move category").getByRole("option")).toHaveText(expected!);
     }
   });
+
+  test("a Carbine entry can be added on the 150-shot course", async ({ adminPage: page, admin }) => {
+    const competition = await createCompetition(admin, { course: "150" });
+    const entry = await seedEntry(admin, competition.id, 1, "Carbine");
+    await openCompetition(page, competition.id);
+    await expect(row(page, entry.shooter.last_name).locator("td.category")).toHaveText("Carbine");
+  });
 });

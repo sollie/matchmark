@@ -37,8 +37,12 @@ A shooter's participation in one competition, in one category, on one lane.
 _Avoid_: Registration
 
 **Category**:
-The class a shooter competes in: Revolver, Pistol, Revolver OS, Pistol OS or Rifle; the rulebook limits which ones a course allows. Each category is one sheet of the results report.
+The class a shooter competes in: Revolver, Pistol, Revolver OS, Pistol OS or Carbine; the rulebook limits which ones a course allows. Each category is one sheet of the results report.
 _Avoid_: Weapon class, class, division
+
+**Carbine**:
+The category for Carbine 1500, shot over the 150-shot course on reduced WA1500-29 targets at the same distances; ring values and scoring are unchanged. It is not the Rifle 1500 the rulebook reserves for a future match.
+_Avoid_: Rifle
 
 **Lane**:
 A numbered firing position on the range. At most one shooter occupies a lane.
