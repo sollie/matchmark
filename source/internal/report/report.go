@@ -24,8 +24,8 @@ const (
 )
 
 type Data struct {
-	Competition repository.Competition
-	Entries     []repository.ReportEntry
+	Match   repository.Match
+	Entries []repository.ReportEntry
 }
 
 func total(e repository.ReportEntry) int {
@@ -83,7 +83,7 @@ func Workbook(d Data) ([]byte, error) {
 				fresh = append(fresh, e)
 			}
 		}
-		if err := fillSheet(f, sheets[i], d.Competition, known, fresh); err != nil {
+		if err := fillSheet(f, sheets[i], d.Match, known, fresh); err != nil {
 			return nil, err
 		}
 	}
@@ -94,7 +94,7 @@ func Workbook(d Data) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func fillSheet(f *excelize.File, sheet string, comp repository.Competition, known, fresh []repository.ReportEntry) error {
+func fillSheet(f *excelize.File, sheet string, comp repository.Match, known, fresh []repository.ReportEntry) error {
 	if err := f.SetCellValue(sheet, "A1", comp.Date); err != nil {
 		return err
 	}

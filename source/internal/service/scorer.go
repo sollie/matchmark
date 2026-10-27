@@ -11,21 +11,21 @@ import (
 )
 
 type Device struct {
-	CompetitionID int64
-	Lane          int
-	Finished      bool
+	MatchID  int64
+	Lane     int
+	Finished bool
 }
 
 type ScorerSession struct {
-	CompetitionID int64
-	Lane          int
-	CurrentStage  int
-	ScoreLane     int
-	EntryID       int64
-	ShooterName   string
-	Stages        []repository.StageInfo
-	Phase         Phase
-	Acceptance    *Acceptance
+	MatchID      int64
+	Lane         int
+	CurrentStage int
+	ScoreLane    int
+	EntryID      int64
+	ShooterName  string
+	Stages       []repository.StageInfo
+	Phase        Phase
+	Acceptance   *Acceptance
 }
 
 type Phase string
@@ -76,15 +76,15 @@ func derivePhase(t ScoreTarget) (Phase, *Acceptance) {
 	return PhaseWaiting, nil
 }
 
-func (s *Service) CreatePairing(ctx context.Context, competitionID int64, lane int) (int64, string, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) CreatePairing(ctx context.Context, matchID int64, lane int) (int64, string, error) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return 0, "", mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) == StatusFinished {
+	if MatchStatus(comp.Status) == StatusFinished {
 		return 0, "", ErrConflict
 	}
-	if _, err := s.repo.MannedEntryByLane(ctx, competitionID, lane); err != nil {
+	if _, err := s.repo.MannedEntryByLane(ctx, matchID, lane); err != nil {
 		if mapRepoErr(err) == ErrNotFound {
 			return 0, "", ErrLaneNotManned
 		}
@@ -95,27 +95,27 @@ func (s *Service) CreatePairing(ctx context.Context, competitionID int64, lane i
 		return 0, "", err
 	}
 	token := base64.RawURLEncoding.EncodeToString(raw)
-	id, err := s.repo.CreatePairing(ctx, competitionID, lane, hashToken(token))
+	id, err := s.repo.CreatePairing(ctx, matchID, lane, hashToken(token))
 	if err != nil {
 		return 0, "", mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "device.pair", Target: idTarget("competition", competitionID), Details: "lane " + strconv.Itoa(lane)}, CompetitionID: competitionID, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "device.pair", Target: idTarget("match", matchID), Details: "lane " + strconv.Itoa(lane)}, MatchID: matchID, Live: LiveMatch})
 	return id, token, nil
 }
 
-func (s *Service) ListPairings(ctx context.Context, competitionID int64) ([]repository.Pairing, error) {
-	if _, err := s.repo.GetCompetition(ctx, competitionID); err != nil {
+func (s *Service) ListPairings(ctx context.Context, matchID int64) ([]repository.Pairing, error) {
+	if _, err := s.repo.GetMatch(ctx, matchID); err != nil {
 		return nil, mapRepoErr(err)
 	}
-	pairings, err := s.repo.ListPairings(ctx, competitionID)
+	pairings, err := s.repo.ListPairings(ctx, matchID)
 	return pairings, mapRepoErr(err)
 }
 
-func (s *Service) RevokePairing(ctx context.Context, competitionID, pairingID int64) error {
-	if err := s.repo.RevokePairing(ctx, competitionID, pairingID); err != nil {
+func (s *Service) RevokePairing(ctx context.Context, matchID, pairingID int64) error {
+	if err := s.repo.RevokePairing(ctx, matchID, pairingID); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "device.revoke", Target: idTarget("competition", competitionID), Details: "pairing " + strconv.FormatInt(pairingID, 10)}, CompetitionID: competitionID, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "device.revoke", Target: idTarget("match", matchID), Details: "pairing " + strconv.FormatInt(pairingID, 10)}, MatchID: matchID, Live: LiveMatch})
 	return nil
 }
 
@@ -125,13 +125,13 @@ func (s *Service) AuthenticateDevice(ctx context.Context, token string) (Device,
 		return Device{}, ErrUnauthenticated
 	}
 	if p.Revoked {
-		comp, err := s.repo.GetCompetition(ctx, p.CompetitionID)
-		if err != nil || CompetitionStatus(comp.Status) != StatusFinished {
+		comp, err := s.repo.GetMatch(ctx, p.MatchID)
+		if err != nil || MatchStatus(comp.Status) != StatusFinished {
 			return Device{}, ErrUnauthenticated
 		}
-		return Device{CompetitionID: p.CompetitionID, Lane: p.Lane, Finished: true}, nil
+		return Device{MatchID: p.MatchID, Lane: p.Lane, Finished: true}, nil
 	}
-	return Device{CompetitionID: p.CompetitionID, Lane: p.Lane}, nil
+	return Device{MatchID: p.MatchID, Lane: p.Lane}, nil
 }
 
 func shooterName(sh repository.Shooter) string {
@@ -140,21 +140,21 @@ func shooterName(sh repository.Shooter) string {
 
 func (s *Service) DeviceSession(ctx context.Context, d Device) (ScorerSession, error) {
 	if d.Finished {
-		return ScorerSession{CompetitionID: d.CompetitionID, Lane: d.Lane, Phase: PhaseFinished}, nil
+		return ScorerSession{MatchID: d.MatchID, Lane: d.Lane, Phase: PhaseFinished}, nil
 	}
-	comp, err := s.repo.GetCompetition(ctx, d.CompetitionID)
+	comp, err := s.repo.GetMatch(ctx, d.MatchID)
 	if err != nil {
 		return ScorerSession{}, mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) == StatusDraft {
-		return ScorerSession{CompetitionID: d.CompetitionID, Lane: d.Lane, Phase: PhaseNotStarted}, nil
+	if MatchStatus(comp.Status) == StatusDraft {
+		return ScorerSession{MatchID: d.MatchID, Lane: d.Lane, Phase: PhaseNotStarted}, nil
 	}
 	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return ScorerSession{}, err
 	}
 	phase, acceptance := derivePhase(t)
-	return ScorerSession{CompetitionID: d.CompetitionID, Lane: d.Lane, CurrentStage: t.CurrentStage, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Phase: phase, Acceptance: acceptance}, nil
+	return ScorerSession{MatchID: d.MatchID, Lane: d.Lane, CurrentStage: t.CurrentStage, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Phase: phase, Acceptance: acceptance}, nil
 }
 
 func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber int, c repository.RingCounts) error {
@@ -165,18 +165,18 @@ func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber
 	if stageNumber != t.CurrentStage {
 		return ErrNotCurrentStage
 	}
-	if err := s.writeRingCounts(ctx, d.CompetitionID, t.Entry.ID, stageNumber, c); err != nil {
+	if err := s.writeRingCounts(ctx, d.MatchID, t.Entry.ID, stageNumber, c); err != nil {
 		return err
 	}
 	s.changes.Record(ctx, Change{
 		Audit: AuditEvent{
 			Action:  "stage.set_counts",
-			Target:  stageTarget(d.CompetitionID, t.Entry.ID, stageNumber),
-			Details: "lane " + strconv.Itoa(d.Lane) + " competition " + strconv.FormatInt(d.CompetitionID, 10),
+			Target:  stageTarget(d.MatchID, t.Entry.ID, stageNumber),
+			Details: "lane " + strconv.Itoa(d.Lane) + " match " + strconv.FormatInt(d.MatchID, 10),
 		},
-		Actor:         &Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP},
-		CompetitionID: d.CompetitionID,
-		Live:          LiveCompetition,
+		Actor:   &Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP},
+		MatchID: d.MatchID,
+		Live:    LiveMatch,
 	})
 	return nil
 }

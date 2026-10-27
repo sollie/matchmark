@@ -1,15 +1,15 @@
-import { createCompetition, expect, row, test, uniqueName } from "./helpers";
+import { createMatch, expect, row, test, uniqueName } from "./helpers";
 
 test.describe("audit log", () => {
   test("an admin finds who did what, filtered by user and action, and pages through it", async ({
     adminPage: page,
     admin,
   }) => {
-    const { name } = await createCompetition(admin, { name: uniqueName("Audited") });
+    const { name } = await createMatch(admin, { name: uniqueName("Audited") });
 
     await page.getByRole("link", { name: "Audit log" }).click();
     await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
-    await expect(row(page, "competition.create").filter({ hasText: name }).first()).toContainText("e2e-admin");
+    await expect(row(page, "match.create").filter({ hasText: name }).first()).toContainText("e2e-admin");
 
     await page.getByLabel("User").fill("unknown-audit-user");
     await page.getByRole("button", { name: "Filter" }).click();
@@ -19,7 +19,7 @@ test.describe("audit log", () => {
     await page.getByLabel("Action").fill("login");
     await page.getByRole("button", { name: "Filter" }).click();
     await expect(row(page, "login").first()).toContainText("e2e-admin");
-    await expect(page.getByRole("row").filter({ hasText: "competition.create" })).toHaveCount(0);
+    await expect(page.getByRole("row").filter({ hasText: "match.create" })).toHaveCount(0);
 
     await page.getByLabel("Action").fill("");
     await page.getByLabel("User").fill("");
@@ -45,7 +45,7 @@ test.describe("audit log", () => {
     await page.getByLabel("New password", { exact: true }).fill(chosen);
     await page.getByLabel("Confirm new password").fill(chosen);
     await page.getByRole("button", { name: "Change password" }).click();
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Audit log" })).toHaveCount(0);
     await page.goto("/admin/audit");
     await expect(page.getByText("Only admins can read the audit log.")).toBeVisible();

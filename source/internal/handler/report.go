@@ -35,7 +35,7 @@ func contentDisposition(baseName, ext string) string {
 }
 
 func (h *Handler) download(w http.ResponseWriter, r *http.Request, ext, contentType string, build func(ctx context.Context, id int64) (service.Download, error)) {
-	id, err := pathInt(r, "competitionID")
+	id, err := pathInt(r, "matchID")
 	if err != nil {
 		writeError(w, err)
 		return

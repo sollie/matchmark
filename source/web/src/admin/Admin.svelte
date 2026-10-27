@@ -5,15 +5,15 @@
   import ChangePassword from "./ChangePassword.svelte";
   import Login from "./Login.svelte";
   import Shooters from "./Shooters.svelte";
-  import Competitions from "./Competitions.svelte";
-  import Competition from "./Competition.svelte";
+  import Matches from "./Matches.svelte";
+  import Match from "./Match.svelte";
   import Users from "./Users.svelte";
   import AuditLog from "./AuditLog.svelte";
   import ClubSettings from "./ClubSettings.svelte";
 
   onMount(refreshAdminSession);
 
-  const competitionRoute = $derived(matchRoute("/admin/competitions/:id", router.path));
+  const currentMatch = $derived(matchRoute("/admin/matches/:id", router.path));
 
   const activeSection = $derived(
     router.path.startsWith("/admin/shooters")
@@ -24,7 +24,7 @@
           ? "audit"
           : router.path.startsWith("/admin/club")
             ? "club"
-            : "competitions",
+            : "matches",
   );
 
   async function signOut() {
@@ -41,7 +41,7 @@
   <ChangePassword forced />
 {:else}
   <nav>
-    <a href="/admin" aria-current={activeSection === "competitions" ? "page" : undefined}>Competitions</a>
+    <a href="/admin" aria-current={activeSection === "matches" ? "page" : undefined}>Matches</a>
     <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}>Shooters</a>
     {#if admin.isAdmin}
       <a href="/admin/users" aria-current={activeSection === "users" ? "page" : undefined}>Users</a>
@@ -57,8 +57,8 @@
     <button onclick={signOut}>Sign out</button>
   </nav>
   <main>
-    {#if router.path === "/admin" || router.path === "/admin/competitions"}
-      <Competitions />
+    {#if router.path === "/admin" || router.path === "/admin/matches"}
+      <Matches />
     {:else if router.path === "/admin/shooters"}
       <Shooters />
     {:else if router.path === "/admin/users"}
@@ -84,9 +84,9 @@
       {/if}
     {:else if router.path === "/admin/password"}
       <ChangePassword />
-    {:else if competitionRoute}
-      {#key competitionRoute.id}
-        <Competition id={Number(competitionRoute.id)} />
+    {:else if currentMatch}
+      {#key currentMatch.id}
+        <Match id={Number(currentMatch.id)} />
       {/key}
     {:else}
       <h1>Page not found</h1>

@@ -283,7 +283,7 @@ func TestTemporaryPasswordRestrictsUserUntilChanged(t *testing.T) {
 	if got := post(t, c, env, "/api/admin/login", "temporary-password-12").StatusCode; got != http.StatusNoContent {
 		t.Fatalf("login: status %d", got)
 	}
-	for _, path := range []string{"/api/admin/session", "/api/shooters", "/api/competitions", "/api/admin/backup"} {
+	for _, path := range []string{"/api/admin/session", "/api/shooters", "/api/matches", "/api/admin/backup"} {
 		resp, err := c.Get(env.Server.URL + path)
 		if err != nil {
 			t.Fatal(err)

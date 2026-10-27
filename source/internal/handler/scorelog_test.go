@@ -20,7 +20,7 @@ func lastScoreLine(t *testing.T, env *apitest.Env) map[string]any {
 
 func TestScoreLogNamesUserForUserLocksAndLaneForDeviceLocks(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	stage := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[2])
+	stage := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[2])
 
 	token := f.pair(t, 1)
 	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(10, 2)); status != http.StatusOK {
@@ -50,7 +50,7 @@ func TestScoreLogNamesUserForUserLocksAndLaneForDeviceLocks(t *testing.T) {
 		t.Fatalf("user lock line: %v", line)
 	}
 
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == 2 {
@@ -65,11 +65,11 @@ func TestScoreLogNamesUserForUserLocksAndLaneForDeviceLocks(t *testing.T) {
 func TestResultsCSVNamesUserWhoLockedStage(t *testing.T) {
 	f := newFixture(t, "150")
 	entry := f.addEntry(t, "One", 1)
-	stage := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, entry)
-	f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "active"})
+	stage := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, entry)
+	f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "active"})
 	f.env.Do("PUT", stage, map[string]any{"x": 12})
 	f.env.Do("POST", stage+"/lock", nil)
-	_, _, body := f.env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", f.comp))
+	_, _, body := f.env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", f.comp))
 	want := ",true,," + apitest.AdminUsername + "\n"
 	if !strings.Contains(string(body), want) {
 		t.Fatalf("csv lacks %q: %s", want, body)

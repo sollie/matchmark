@@ -16,7 +16,7 @@ type ReportEntry struct {
 	Stages  []ReportStage
 }
 
-func (r *Repository) ReportEntries(ctx context.Context, competitionID int64) ([]ReportEntry, error) {
+func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]ReportEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT e.id, e.category, e.lane, e.withdrawn,
 		        sh.id, sh.last_name, sh.first_name, sh.sex, sh.country, sh.club, COALESCE(sh.waid, ''),
@@ -25,7 +25,7 @@ func (r *Repository) ReportEntries(ctx context.Context, competitionID int64) ([]
 		 JOIN shooters sh ON sh.id = e.shooter_id
 		 JOIN stages s ON s.entry_id = e.id
 		 WHERE e.match_id = ?
-		 ORDER BY sh.last_name, sh.first_name, e.id, s.stage_number`, competitionID)
+		 ORDER BY sh.last_name, sh.first_name, e.id, s.stage_number`, matchID)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (r *Repository) ReportEntries(ctx context.Context, competitionID int64) ([]
 			return nil, err
 		}
 		if n := len(entries); n == 0 || entries[n-1].ID != e.ID {
-			e.CompetitionID = competitionID
+			e.MatchID = matchID
 			e.ShooterID = sh.ID
 			e.Withdrawn = withdrawn == 1
 			entries = append(entries, ReportEntry{Entry: e, Shooter: sh})

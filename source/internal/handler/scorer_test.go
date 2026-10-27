@@ -17,13 +17,13 @@ func newScoringFixture(t *testing.T, lanes ...int) *scoringFixture {
 	for _, l := range lanes {
 		f.entries[l] = f.addEntry(t, fmt.Sprintf("SHOOTER%d", l), l)
 	}
-	f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "active"})
+	f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "active"})
 	return f
 }
 
 func (f *scoringFixture) pair(t *testing.T, lane int) string {
 	t.Helper()
-	status, out := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/pairings", f.comp), map[string]any{"lane": lane})
+	status, out := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/pairings", f.comp), map[string]any{"lane": lane})
 	if status != http.StatusCreated {
 		t.Fatalf("pair lane %d: %d %v", lane, status, out)
 	}
@@ -32,7 +32,7 @@ func (f *scoringFixture) pair(t *testing.T, lane int) string {
 
 func (f *scoringFixture) stageLocked(t *testing.T, lane, stage int) bool {
 	t.Helper()
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == lane {
@@ -101,7 +101,7 @@ func TestDevicePairedInDraftWaitsForStart(t *testing.T) {
 	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(5, 0)); status != http.StatusConflict {
 		t.Fatalf("draft scoring status %d", status)
 	}
-	f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "active"})
+	f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "active"})
 	status, out = f.env.DoToken(token, "GET", "/api/scorer/session", nil)
 	if status != http.StatusOK || out["phase"] == "not_started" || int(out["score_lane"].(float64)) != 3 {
 		t.Fatalf("active session: %d %v", status, out)
@@ -112,7 +112,7 @@ func TestSessionFollowsLaneChanges(t *testing.T) {
 	f := newScoringFixture(t, 1, 3, 5)
 	token := f.pair(t, 1)
 	f.acceptAll(t, 1, 1, 3, 5)
-	status, _ := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries/%d/withdraw", f.comp, f.entries[3]), nil)
+	status, _ := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", f.comp, f.entries[3]), nil)
 	if status != http.StatusOK {
 		t.Fatalf("withdraw status %d", status)
 	}
@@ -125,7 +125,7 @@ func TestSessionFollowsLaneChanges(t *testing.T) {
 
 func TestAdminLocksCompleteStage(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	p := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[2])
+	p := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[2])
 	if status, _ := f.env.Do("POST", p+"/lock", nil); status != http.StatusUnprocessableEntity {
 		t.Fatalf("lock incomplete: %d", status)
 	}
@@ -147,7 +147,7 @@ func TestLockRecordsScorerAndAdminUnlock(t *testing.T) {
 	f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0))
 	f.env.DoToken(token, "POST", "/api/scorer/stages/1/lock", nil)
 
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	var stage map[string]any
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
@@ -159,7 +159,7 @@ func TestLockRecordsScorerAndAdminUnlock(t *testing.T) {
 		t.Fatalf("lock record: %v", stage)
 	}
 
-	p := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[2])
+	p := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[2])
 	if status, _ := f.env.DoToken(token, "POST", "/api/scorer/stages/1/unlock", nil); status == http.StatusOK {
 		t.Fatal("device must not unlock")
 	}
@@ -182,7 +182,7 @@ func TestLockRecordsScorerAndAdminUnlock(t *testing.T) {
 
 func TestPairingLifecycle(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	base := fmt.Sprintf("/api/competitions/%d/pairings", f.comp)
+	base := fmt.Sprintf("/api/matches/%d/pairings", f.comp)
 
 	t.Run("empty lane cannot be paired", func(t *testing.T) {
 		if status, _ := f.env.Do("POST", base, map[string]any{"lane": 7}); status != http.StatusConflict {
@@ -220,12 +220,12 @@ func TestPairingLifecycle(t *testing.T) {
 
 	t.Run("finish leaves devices a finished screen only", func(t *testing.T) {
 		token := f.pair(t, 2)
-		f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "finished"})
+		f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "finished"})
 		status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil)
 		if status != http.StatusOK || out["phase"] != "finished" {
 			t.Fatalf("status %d %v", status, out)
 		}
-		if out["competition_id"] != float64(f.comp) || out["lane"] != float64(2) {
+		if out["match_id"] != float64(f.comp) || out["lane"] != float64(2) {
 			t.Fatalf("finished session must identify the scorecard: %v", out)
 		}
 		if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0)); status != http.StatusConflict {
@@ -241,7 +241,7 @@ func TestSingleLaneRequiresAdminScoring(t *testing.T) {
 	if status != http.StatusForbidden || out["error"] != "admin scoring required" {
 		t.Fatalf("got %d %v", status, out)
 	}
-	p := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[4])
+	p := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[4])
 	if status, _ := f.env.Do("PUT", p, counts(12, 0)); status != http.StatusOK {
 		t.Fatalf("admin scoring status %d", status)
 	}
@@ -250,7 +250,7 @@ func TestSingleLaneRequiresAdminScoring(t *testing.T) {
 func TestPairingRequiresAdmin(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	token := f.pair(t, 1)
-	if status, _ := f.env.DoToken(token, "POST", fmt.Sprintf("/api/competitions/%d/pairings", f.comp), map[string]any{"lane": 2}); status != http.StatusUnauthorized {
+	if status, _ := f.env.DoToken(token, "POST", fmt.Sprintf("/api/matches/%d/pairings", f.comp), map[string]any{"lane": 2}); status != http.StatusUnauthorized {
 		t.Fatalf("status %d", status)
 	}
 }
@@ -258,7 +258,7 @@ func TestPairingRequiresAdmin(t *testing.T) {
 func TestOutOfRangeHitsAreRejected(t *testing.T) {
 	f := newScoringFixture(t, 1, 3)
 	token := f.pair(t, 1)
-	adminPath := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[3])
+	adminPath := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[3])
 	const maxInt = 9223372036854775807
 
 	oversized := map[string]any{"x": 13, "10": -1}
@@ -282,7 +282,7 @@ func TestOutOfRangeHitsAreRejected(t *testing.T) {
 		})
 	}
 
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == 3 {

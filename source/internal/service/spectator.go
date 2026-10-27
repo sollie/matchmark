@@ -8,34 +8,34 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-func (s *Service) SetVisibility(ctx context.Context, competitionID int64, v repository.Visibility) error {
-	if err := s.repo.SetVisibility(ctx, competitionID, v); err != nil {
+func (s *Service) SetVisibility(ctx context.Context, matchID int64, v repository.Visibility) error {
+	if err := s.repo.SetVisibility(ctx, matchID, v); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.visibility", Target: idTarget("competition", competitionID)}, CompetitionID: competitionID, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.visibility", Target: idTarget("match", matchID)}, MatchID: matchID, Live: LiveMatch})
 	return nil
 }
 
-func (s *Service) publicCompetition(ctx context.Context, id int64) (repository.Competition, error) {
-	c, err := s.repo.GetCompetition(ctx, id)
+func (s *Service) publicMatch(ctx context.Context, id int64) (repository.Match, error) {
+	c, err := s.repo.GetMatch(ctx, id)
 	if err != nil {
-		return repository.Competition{}, mapRepoErr(err)
+		return repository.Match{}, mapRepoErr(err)
 	}
-	if CompetitionStatus(c.Status) == StatusDraft {
-		return repository.Competition{}, ErrNotFound
+	if MatchStatus(c.Status) == StatusDraft {
+		return repository.Match{}, ErrNotFound
 	}
 	return c, nil
 }
 
-func (s *Service) Standings(ctx context.Context, competitionID int64) ([]StandingView, error) {
-	comp, err := s.publicCompetition(ctx, competitionID)
+func (s *Service) Standings(ctx context.Context, matchID int64) ([]StandingView, error) {
+	comp, err := s.publicMatch(ctx, matchID)
 	if err != nil {
 		return nil, err
 	}
 	return s.standings(ctx, comp)
 }
 
-func (s *Service) standings(ctx context.Context, comp repository.Competition) ([]StandingView, error) {
+func (s *Service) standings(ctx context.Context, comp repository.Match) ([]StandingView, error) {
 	vis, err := s.repo.GetVisibility(ctx, comp.ID)
 	if err != nil {
 		return nil, mapRepoErr(err)
@@ -64,40 +64,40 @@ type snapSlot struct {
 	cached *cachedSnapshot
 }
 
-func (s *Service) snapSlot(competitionID int64) *snapSlot {
+func (s *Service) snapSlot(matchID int64) *snapSlot {
 	s.snapMu.Lock()
 	defer s.snapMu.Unlock()
-	slot, ok := s.snaps[competitionID]
+	slot, ok := s.snaps[matchID]
 	if !ok {
 		slot = &snapSlot{}
-		s.snaps[competitionID] = slot
+		s.snaps[matchID] = slot
 	}
 	return slot
 }
 
-func (s *Service) Subscribe(competitionID int64) *Subscription {
-	return s.bus.Subscribe(competitionID)
+func (s *Service) Subscribe(matchID int64) *Subscription {
+	return s.bus.Subscribe(matchID)
 }
 
-func (s *Service) CheckPublicStream(ctx context.Context, competitionID int64) error {
-	_, err := s.publicCompetition(ctx, competitionID)
+func (s *Service) CheckPublicStream(ctx context.Context, matchID int64) error {
+	_, err := s.publicMatch(ctx, matchID)
 	return err
 }
 
-func (s *Service) CheckAdminStream(ctx context.Context, competitionID int64) error {
-	_, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) CheckAdminStream(ctx context.Context, matchID int64) error {
+	_, err := s.repo.GetMatch(ctx, matchID)
 	return mapRepoErr(err)
 }
 
-func (s *Service) SpectatorSnapshot(ctx context.Context, competitionID int64) (SpectatorSnapshot, error) {
-	slot := s.snapSlot(competitionID)
+func (s *Service) SpectatorSnapshot(ctx context.Context, matchID int64) (SpectatorSnapshot, error) {
+	slot := s.snapSlot(matchID)
 	slot.mu.Lock()
 	defer slot.mu.Unlock()
-	version := s.bus.Version(competitionID)
+	version := s.bus.Version(matchID)
 	if c := slot.cached; c != nil && c.version == version {
 		return c.snapshot, nil
 	}
-	comp, err := s.publicCompetition(ctx, competitionID)
+	comp, err := s.publicMatch(ctx, matchID)
 	if err != nil {
 		slot.cached = nil
 		return SpectatorSnapshot{}, err

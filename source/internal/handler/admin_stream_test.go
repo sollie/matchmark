@@ -9,7 +9,7 @@ import (
 )
 
 func adminStreamPath(f *fixture) string {
-	return fmt.Sprintf("/api/competitions/%d/stream", f.comp)
+	return fmt.Sprintf("/api/matches/%d/stream", f.comp)
 }
 
 func awaitEvent(t *testing.T, s *apitest.Stream, name string) {

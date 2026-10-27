@@ -10,23 +10,23 @@ type LiveScope int
 
 const (
 	LiveNone LiveScope = iota
-	LiveCompetition
+	LiveMatch
 	LiveAll
 )
 
 type StageEvent struct {
-	CompetitionID int64
-	EntryID       int64
-	StageNumber   int
+	MatchID     int64
+	EntryID     int64
+	StageNumber int
 }
 
 type Change struct {
-	Audit         AuditEvent
-	Actor         *Actor
-	CompetitionID int64
-	Live          LiveScope
-	Reemit        *repository.LockedStageFilter
-	Stage         *StageEvent
+	Audit   AuditEvent
+	Actor   *Actor
+	MatchID int64
+	Live    LiveScope
+	Reemit  *repository.LockedStageFilter
+	Stage   *StageEvent
 }
 
 type ChangeRecorder struct {
@@ -51,11 +51,11 @@ func (r *ChangeRecorder) Record(ctx context.Context, c Change) {
 		r.scoreLog.Reemit(ctx, *c.Reemit)
 	}
 	if e := c.Stage; e != nil {
-		r.scoreLog.EmitStage(ctx, e.CompetitionID, e.EntryID, e.StageNumber)
+		r.scoreLog.EmitStage(ctx, e.MatchID, e.EntryID, e.StageNumber)
 	}
 	switch c.Live {
-	case LiveCompetition:
-		r.bus.Publish(c.CompetitionID)
+	case LiveMatch:
+		r.bus.Publish(c.MatchID)
 	case LiveAll:
 		r.bus.PublishAll()
 	}

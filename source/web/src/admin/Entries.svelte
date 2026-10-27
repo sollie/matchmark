@@ -10,19 +10,19 @@
   type RingCounts = components["schemas"]["RingCounts"];
 
   let {
-    competitionId,
+    matchId,
     course,
     entries,
     shooters,
     reload,
     status = "draft",
   }: {
-    competitionId: number;
+    matchId: number;
     course: string;
     entries: EntryWithStages[];
     shooters: Shooter[];
     reload: () => Promise<void>;
-    status?: components["schemas"]["CompetitionStatus"];
+    status?: components["schemas"]["MatchStatus"];
   } = $props();
 
   const ringKeys = ["x", "10", "9", "8", "7", "0", "miss"] as const;
@@ -55,7 +55,7 @@
     return s ? `${s.first_name} ${s.last_name}` : `#${id}`;
   };
   const ordered = $derived([...entries].sort((a, b) => a.lane - b.lane || a.id - b.id));
-  const commands = $derived(entryCommands(competitionId, reload));
+  const commands = $derived(entryCommands(matchId, reload));
 
   async function run(command: Promise<string | null>): Promise<boolean> {
     error = "";

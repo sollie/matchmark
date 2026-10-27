@@ -100,7 +100,7 @@ type countRequester struct{ n atomic.Int32 }
 
 func (c *countRequester) Request() { c.n.Add(1) }
 
-func TestFinishingCompetitionRequestsReplication(t *testing.T) {
+func TestFinishingMatchRequestsReplication(t *testing.T) {
 	conn, err := db.Open(":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -109,17 +109,17 @@ func TestFinishingCompetitionRequestsReplication(t *testing.T) {
 	rq := &countRequester{}
 	svc := service.New(repository.New(conn), service.WithReplicator(rq))
 	ctx := context.Background()
-	id, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Club match", Date: "2026-06-01", Course: "150"})
+	id, err := svc.CreateMatch(ctx, repository.Match{Name: "Club match", Date: "2026-06-01", Course: "150"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.SetCompetitionStatus(ctx, id, service.StatusActive); err != nil {
+	if err := svc.SetMatchStatus(ctx, id, service.StatusActive); err != nil {
 		t.Fatal(err)
 	}
 	if rq.n.Load() != 0 {
 		t.Fatalf("requests before finish = %d", rq.n.Load())
 	}
-	if err := svc.SetCompetitionStatus(ctx, id, service.StatusFinished); err != nil {
+	if err := svc.SetMatchStatus(ctx, id, service.StatusFinished); err != nil {
 		t.Fatal(err)
 	}
 	if rq.n.Load() != 1 {

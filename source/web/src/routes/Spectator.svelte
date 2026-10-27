@@ -5,11 +5,11 @@
   import { openStream, type StreamState } from "../lib/sse";
   import type { components } from "../lib/api/schema";
 
-  type Competition = components["schemas"]["Competition"];
+  type Match = components["schemas"]["Match"];
   type Standing = components["schemas"]["Standing"];
   type Snapshot = components["schemas"]["SpectatorSnapshot"];
 
-  let competitions = $state<Competition[]>([]);
+  let matches = $state<Match[]>([]);
   let selected = $state<number | null>(null);
   let standings = $state<Standing[]>([]);
   let snapshot = $state<Snapshot | null>(null);
@@ -20,7 +20,7 @@
   const showClubs = $derived(standings.some((s) => s.club !== undefined));
   const showCountries = $derived(standings.some((s) => s.country !== undefined));
   const showX = $derived(standings.some((s) => s.x_count !== undefined));
-  const current = $derived(competitions.find((c) => c.id === selected));
+  const current = $derived(matches.find((c) => c.id === selected));
   const finished = $derived(current?.status === "finished");
   const acceptance = $derived.by(() => {
     if (!snapshot) return null;
@@ -35,34 +35,34 @@
     ),
   );
 
-  async function loadCompetitions() {
-    const { data } = await api.GET("/api/spectator/competitions");
+  async function loadMatches() {
+    const { data } = await api.GET("/api/spectator/matches");
     if (!data) return;
-    competitions = data.competitions;
-    if (selected === null || !data.competitions.some((c) => c.id === selected)) {
-      selected = (data.competitions.find((c) => c.status === "active") ?? data.competitions[0])?.id ?? null;
+    matches = data.matches;
+    if (selected === null || !data.matches.some((c) => c.id === selected)) {
+      selected = (data.matches.find((c) => c.status === "active") ?? data.matches[0])?.id ?? null;
     }
   }
 
   $effect(() => {
-    void loadCompetitions();
+    void loadMatches();
   });
 
   $effect(() => {
     if (selected === null) return;
     const stream = openStream({
-      url: `/api/spectator/competitions/${selected}/stream`,
+      url: `/api/spectator/matches/${selected}/stream`,
       onEvent: (event, data) => {
         if (event !== "snapshot") return;
         snapshot = JSON.parse(data);
         standings = snapshot?.standings ?? [];
         updated = new Date();
         const status = snapshot?.status;
-        if (status) competitions = competitions.map((c) => (c.id === selected ? { ...c, status } : c));
+        if (status) matches = matches.map((c) => (c.id === selected ? { ...c, status } : c));
       },
       onState: (next) => {
         connection = next;
-        if (next === "live") void loadCompetitions();
+        if (next === "live") void loadMatches();
       },
     });
     return () => stream.close();
@@ -77,16 +77,16 @@
 
 <main class="spectator">
   <h1>Live standings</h1>
-  {#if competitions.length === 0}
+  {#if matches.length === 0}
     <div class="card empty">
-      <p>No competitions are live yet.</p>
-      <p class="muted">Reload this page once a competition has started.</p>
+      <p>No matches are live yet.</p>
+      <p class="muted">Reload this page once a match has started.</p>
     </div>
   {:else}
     <label class="picker">
-        Competition
+        Match
         <select bind:value={selected}>
-          {#each competitions as c (c.id)}
+          {#each matches as c (c.id)}
             <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
           {/each}
         </select>

@@ -3,24 +3,24 @@ package repository
 import "context"
 
 type Pairing struct {
-	ID            int64
-	CompetitionID int64
-	Lane          int
-	Revoked       bool
+	ID      int64
+	MatchID int64
+	Lane    int
+	Revoked bool
 }
 
-func (r *Repository) CreatePairing(ctx context.Context, competitionID int64, lane int, tokenHash string) (int64, error) {
+func (r *Repository) CreatePairing(ctx context.Context, matchID int64, lane int, tokenHash string) (int64, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx,
-		`UPDATE device_pairings SET revoked = 1 WHERE match_id = ? AND lane = ?`, competitionID, lane); err != nil {
+		`UPDATE device_pairings SET revoked = 1 WHERE match_id = ? AND lane = ?`, matchID, lane); err != nil {
 		return 0, mapErr(err)
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO device_pairings (token_hash, match_id, lane) VALUES (?, ?, ?)`, tokenHash, competitionID, lane)
+		`INSERT INTO device_pairings (token_hash, match_id, lane) VALUES (?, ?, ?)`, tokenHash, matchID, lane)
 	if err != nil {
 		return 0, mapErr(err)
 	}
@@ -31,9 +31,9 @@ func (r *Repository) CreatePairing(ctx context.Context, competitionID int64, lan
 	return id, tx.Commit()
 }
 
-func (r *Repository) ListPairings(ctx context.Context, competitionID int64) ([]Pairing, error) {
+func (r *Repository) ListPairings(ctx context.Context, matchID int64) ([]Pairing, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, match_id, lane, revoked FROM device_pairings WHERE match_id = ? ORDER BY lane, id`, competitionID)
+		`SELECT id, match_id, lane, revoked FROM device_pairings WHERE match_id = ? ORDER BY lane, id`, matchID)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (r *Repository) ListPairings(ctx context.Context, competitionID int64) ([]P
 	pairings := []Pairing{}
 	for rows.Next() {
 		var p Pairing
-		if err := rows.Scan(&p.ID, &p.CompetitionID, &p.Lane, &p.Revoked); err != nil {
+		if err := rows.Scan(&p.ID, &p.MatchID, &p.Lane, &p.Revoked); err != nil {
 			return nil, err
 		}
 		pairings = append(pairings, p)
@@ -53,27 +53,27 @@ func (r *Repository) PairingByTokenHash(ctx context.Context, tokenHash string) (
 	var p Pairing
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, match_id, lane, revoked FROM device_pairings WHERE token_hash = ?`, tokenHash).
-		Scan(&p.ID, &p.CompetitionID, &p.Lane, &p.Revoked)
+		Scan(&p.ID, &p.MatchID, &p.Lane, &p.Revoked)
 	return p, mapErr(err)
 }
 
-func (r *Repository) RevokePairing(ctx context.Context, competitionID, pairingID int64) error {
+func (r *Repository) RevokePairing(ctx context.Context, matchID, pairingID int64) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE device_pairings SET revoked = 1 WHERE id = ? AND match_id = ?`, pairingID, competitionID)
+		`UPDATE device_pairings SET revoked = 1 WHERE id = ? AND match_id = ?`, pairingID, matchID)
 	return affected(res, err)
 }
 
-func (r *Repository) RevokeCompetitionPairings(ctx context.Context, competitionID int64) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE device_pairings SET revoked = 1 WHERE match_id = ?`, competitionID)
+func (r *Repository) RevokeMatchPairings(ctx context.Context, matchID int64) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE device_pairings SET revoked = 1 WHERE match_id = ?`, matchID)
 	return mapErr(err)
 }
 
-func (r *Repository) MannedEntryByLane(ctx context.Context, competitionID int64, lane int) (Entry, error) {
+func (r *Repository) MannedEntryByLane(ctx context.Context, matchID int64, lane int) (Entry, error) {
 	var e Entry
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, match_id, shooter_id, category, lane, withdrawn FROM entries
-		 WHERE match_id = ? AND lane = ? AND withdrawn = 0`, competitionID, lane).
-		Scan(&e.ID, &e.CompetitionID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn)
+		 WHERE match_id = ? AND lane = ? AND withdrawn = 0`, matchID, lane).
+		Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn)
 	return e, mapErr(err)
 }
 

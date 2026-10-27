@@ -25,7 +25,7 @@ func TestStageTransitionMatrix(t *testing.T) {
 	}
 	device := func(d service.Device) func(f *scoreFixture, action service.StageAction) (repository.StageStatus, error) {
 		return func(f *scoreFixture, action service.StageAction) (repository.StageStatus, error) {
-			d.CompetitionID = f.compID
+			d.MatchID = f.compID
 			switch action {
 			case service.ActionLock:
 				return f.svc.DeviceLockStage(context.Background(), d, 1)
@@ -87,7 +87,7 @@ func TestStageTransitionMatrix(t *testing.T) {
 		if state == open {
 			return f
 		}
-		if _, err := f.svc.DeviceLockStage(context.Background(), service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+		if _, err := f.svc.DeviceLockStage(context.Background(), service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 			t.Fatal(err)
 		}
 		if state == accepted {

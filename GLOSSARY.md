@@ -120,14 +120,14 @@ The shooter's refusal of a locked stage. The stage reopens with its hits kept, a
 _Avoid_: Reject, appeal
 
 **Current stage**:
-The one stage every device scores at a given time. The admin starts the next stage once every manned, non-withdrawn lane has accepted the current one (the gate); accepting the last stage finishes the competition. Stored as `current_stage`.
+The one stage every device scores at a given time. The admin starts the next stage once every manned, non-withdrawn lane has accepted the current one (the gate); accepting the last stage finishes the match. Stored as `current_stage`.
 _Avoid_: Active stage, round
 
 **Dispute history**:
-The admin table of a competition's stage events (locks, acceptances, disputes, accept-all and unlocks, with actor and time), filterable by scorer, shooter and stage, with lock and dispute counts per scorer.
+The admin table of a match's stage events (locks, acceptances, disputes, accept-all and unlocks, with actor and time), filterable by scorer, shooter and stage, with lock and dispute counts per scorer.
 
 **Control room**:
-The admin view of an active competition's current stage, with one row per manned lane (scorer, shooter, status, disputes, paired and a best-effort connected indicator) and the Start next stage, Accept all, Accept and Unlock actions. Connected means an open scorer stream and is never stored.
+The admin view of an active match's current stage, with one row per manned lane (scorer, shooter, status, disputes, paired and a best-effort connected indicator) and the Start next stage, Accept all, Accept and Unlock actions. Connected means an open scorer stream and is never stored.
 
 **Results report**:
 The workbook, one sheet per category, that a club emails to the country representative. It lists a total score per shooter, plus the new shooters.
@@ -138,15 +138,15 @@ The record of one entry's hits per ring for each match, with the scorer's and sh
 _Avoid_: Score sheet
 
 **Scorecard copy**:
-The Scorecard of one entry rendered as an image on demand once its competition is finished, for the shooter to keep. It shows each stage's ring counts with that stage's scorer (the range admin for admin-scored stages) and counts only accepted stages. It is public, ignores spectator visibility flags, is addressed by competition and lane, is never stored and answers 404 for an unfinished competition, a withdrawn entry or an empty lane.
+The Scorecard of one entry rendered as an image on demand once its match is finished, for the shooter to keep. It shows each stage's ring counts with that stage's scorer (the range admin for admin-scored stages) and counts only accepted stages. It is public, ignores spectator visibility flags, is addressed by match and lane, is never stored and answers 404 for an unfinished match, a withdrawn entry or an empty lane.
 _Avoid_: Receipt, printout
 
 **Results view**:
-The printable, public page of a finished competition's standings, chosen from a picker of finished competitions and honouring spectator visibility flags. It is the source of the Results PDF and is separate from the live spectator screen.
+The printable, public page of a finished match's standings, chosen from a picker of finished matches and honouring spectator visibility flags. It is the source of the Results PDF and is separate from the live spectator screen.
 _Avoid_: Results page, leaderboard
 
 **Results PDF**:
-The Results view rendered as a PDF on demand and never stored. The public one honours visibility flags; the admin one, downloaded from the competition list, shows everything.
+The Results view rendered as a PDF on demand and never stored. The public one honours visibility flags; the admin one, downloaded from the match list, shows everything.
 _Avoid_: Results report (that is the `.xlsx`)
 
 **Club settings**:
@@ -154,7 +154,7 @@ The club's name and optional logo, edited by admins at `/admin/club`. The logo a
 _Avoid_: Branding, profile
 
 **Device**:
-A phone or tablet paired to one lane for a competition and used to score that lane's score lane.
+A phone or tablet paired to one lane for a match and used to score that lane's score lane.
 _Avoid_: Terminal, client
 
 **Replication**:
@@ -162,25 +162,25 @@ Copying the club's data to a separate host so it can be snapshotted and restored
 _Avoid_: Sync, backup
 
 **Score log**:
-The JSON `stage_status` lines the server writes to stdout whenever a stage changes status. Each line is self-contained, so a competition's scored results, including stages awaiting acceptance, can be rebuilt by taking the latest line per stage.
+The JSON `stage_status` lines the server writes to stdout whenever a stage changes status. Each line is self-contained, so a match's scored results, including stages awaiting acceptance, can be rebuilt by taking the latest line per stage.
 _Avoid_: Scoring log
 
 **Restore**:
-Rebuilding competitions, entries and scored stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
+Rebuilding matches, entries and scored stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
 _Avoid_: Backup, replication
 
 **Live update**:
-A change notice the server pushes for a competition to the spectator, admin and scorer screens, so they refresh without asking.
+A change notice the server pushes for a match to the spectator, admin and scorer screens, so they refresh without asking.
 _Avoid_: Poll, refresh, push notification
 
 **Change recorder**:
-The module that every state-changing operation reports to. Given one change (action, target, affected competition, and any stages beyond open whose Score log lines must be re-emitted), it writes the Audit log entry, re-emits the Score log lines, then publishes a Live update, in that fixed order. Failures in these steps are logged and never fail the request. Replication stays with the operation that needs it.
+The module that every state-changing operation reports to. Given one change (action, target, affected match, and any stages beyond open whose Score log lines must be re-emitted), it writes the Audit log entry, re-emits the Score log lines, then publishes a Live update, in that fixed order. Failures in these steps are logged and never fail the request. Replication stays with the operation that needs it.
 _Avoid_: Event bus, notifier, hook
 
 ## Accounts
 
 **User**:
-A person with a login who manages the club's competitions and data. A user is not a shooter and not a scorer.
+A person with a login who manages the club's matches and data. A user is not a shooter and not a scorer.
 _Avoid_: Account, operator, member
 
 **Admin**:

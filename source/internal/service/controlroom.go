@@ -29,23 +29,23 @@ type ControlRoom struct {
 	Lanes        []LaneStatus
 }
 
-func (s *Service) ControlRoom(ctx context.Context, competitionID int64) (ControlRoom, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) ControlRoom(ctx context.Context, matchID int64) (ControlRoom, error) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return ControlRoom{}, mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) == StatusDraft {
+	if MatchStatus(comp.Status) == StatusDraft {
 		return ControlRoom{}, ErrConflict
 	}
-	entries, err := s.repo.ListEntries(ctx, competitionID)
+	entries, err := s.repo.ListEntries(ctx, matchID)
 	if err != nil {
 		return ControlRoom{}, err
 	}
-	pairings, err := s.repo.ListPairings(ctx, competitionID)
+	pairings, err := s.repo.ListPairings(ctx, matchID)
 	if err != nil {
 		return ControlRoom{}, err
 	}
-	events, err := s.repo.ListStageEvents(ctx, competitionID)
+	events, err := s.repo.ListStageEvents(ctx, matchID)
 	if err != nil {
 		return ControlRoom{}, err
 	}
@@ -94,10 +94,10 @@ func (s *Service) ControlRoom(ctx context.Context, competitionID int64) (Control
 		room.Lanes = append(room.Lanes, LaneStatus{
 			Lane: e.Lane, EntryID: e.ID, ShooterName: names[e.Lane], ScorerName: scorer,
 			Status: st.Status, Disputed: st.DisputedAt != "", Disputes: disputes[e.ID],
-			Paired: paired[e.Lane], Connected: s.presence.connected(laneKey{competitionID, e.Lane}),
+			Paired: paired[e.Lane], Connected: s.presence.connected(laneKey{matchID, e.Lane}),
 		})
 	}
-	active := CompetitionStatus(comp.Status) == StatusActive
+	active := MatchStatus(comp.Status) == StatusActive
 	last, err := lastStage(comp.Course)
 	if err != nil {
 		return ControlRoom{}, err
@@ -107,15 +107,15 @@ func (s *Service) ControlRoom(ctx context.Context, competitionID int64) (Control
 	return room, nil
 }
 
-func (s *Service) AcceptAll(ctx context.Context, competitionID int64) (int, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) AcceptAll(ctx context.Context, matchID int64) (int, error) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return 0, mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) != StatusActive {
+	if MatchStatus(comp.Status) != StatusActive {
 		return 0, ErrConflict
 	}
-	entries, err := s.repo.ListEntries(ctx, competitionID)
+	entries, err := s.repo.ListEntries(ctx, matchID)
 	if err != nil {
 		return 0, err
 	}
@@ -135,11 +135,11 @@ func (s *Service) AcceptAll(ctx context.Context, competitionID int64) (int, erro
 		if st.Status != repository.StatusAwaitingAcceptance {
 			continue
 		}
-		stage, err := s.repo.GetStage(ctx, competitionID, e.ID, comp.CurrentStage)
+		stage, err := s.repo.GetStage(ctx, matchID, e.ID, comp.CurrentStage)
 		if err != nil {
 			return 0, mapRepoErr(err)
 		}
-		ev, err := s.userStageEvent(ctx, repository.EventAcceptedAll, username, competitionID, e.ID, stage)
+		ev, err := s.userStageEvent(ctx, repository.EventAcceptedAll, username, matchID, e.ID, stage)
 		if err != nil {
 			return 0, err
 		}
@@ -156,20 +156,20 @@ func (s *Service) AcceptAll(ctx context.Context, competitionID int64) (int, erro
 	}
 	for i, it := range items {
 		c := Change{
-			CompetitionID: competitionID,
-			Live:          LiveCompetition,
-			Stage:         &StageEvent{CompetitionID: competitionID, EntryID: it.Event.EntryID, StageNumber: comp.CurrentStage},
+			MatchID: matchID,
+			Live:    LiveMatch,
+			Stage:   &StageEvent{MatchID: matchID, EntryID: it.Event.EntryID, StageNumber: comp.CurrentStage},
 		}
 		if i == 0 {
 			c.Audit = AuditEvent{
-				Action:  "competition.accept_all",
-				Target:  idTarget("competition", competitionID),
+				Action:  "match.accept_all",
+				Target:  idTarget("match", matchID),
 				Details: "stage " + strconv.Itoa(comp.CurrentStage) + ", " + strconv.Itoa(len(items)) + " lanes",
 			}
 		}
 		s.changes.Record(ctx, c)
 	}
-	s.finishIfComplete(ctx, competitionID, nil)
+	s.finishIfComplete(ctx, matchID, nil)
 	return len(items), nil
 }
 
@@ -190,11 +190,11 @@ type StageHistory struct {
 	Scorers []ScorerDisputes
 }
 
-func (s *Service) StageHistory(ctx context.Context, competitionID int64, f StageHistoryFilter) (StageHistory, error) {
-	if _, err := s.repo.GetCompetition(ctx, competitionID); err != nil {
+func (s *Service) StageHistory(ctx context.Context, matchID int64, f StageHistoryFilter) (StageHistory, error) {
+	if _, err := s.repo.GetMatch(ctx, matchID); err != nil {
 		return StageHistory{}, mapRepoErr(err)
 	}
-	all, err := s.repo.ListStageEvents(ctx, competitionID)
+	all, err := s.repo.ListStageEvents(ctx, matchID)
 	if err != nil {
 		return StageHistory{}, err
 	}

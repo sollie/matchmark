@@ -128,7 +128,7 @@ export class ScorerSession {
     if (!session) return "";
     switch (session.phase) {
       case "not_started":
-        return "Status: waiting for the competition to start.";
+        return "Status: waiting for the match to start.";
       case "next_stage":
         return `Status: stage ${session.current_stage} started.`;
       case "needs_acceptance":
@@ -217,7 +217,7 @@ export class ScorerSession {
   apply(next: Session) {
     if (next.phase === "finished") {
       this.forget();
-      this.#deps.navigate(`/scorecard/${next.competition_id}/${next.lane}`);
+      this.#deps.navigate(`/scorecard/${next.match_id}/${next.lane}`);
       return;
     }
     const previous = this.session;

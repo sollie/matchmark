@@ -11,15 +11,15 @@ import (
 )
 
 func (h *Handler) spectatorRoutes(r chi.Router) {
-	r.Get("/spectator/competitions", serve(h.spectatorCompetitions))
-	r.Get("/spectator/competitions/{competitionID}/standings", serve(h.spectatorStandings))
-	r.Get("/spectator/competitions/{competitionID}/results", h.spectatorResults)
-	r.Get("/spectator/competitions/{competitionID}/stream", h.spectatorStream)
+	r.Get("/spectator/matches", serve(h.spectatorMatches))
+	r.Get("/spectator/matches/{matchID}/standings", serve(h.spectatorStandings))
+	r.Get("/spectator/matches/{matchID}/results", h.spectatorResults)
+	r.Get("/spectator/matches/{matchID}/stream", h.spectatorStream)
 }
 
 func (h *Handler) visibilityRoutes(r chi.Router) {
-	r.Get("/competitions/{competitionID}/visibility", serve(h.getVisibility))
-	r.Put("/competitions/{competitionID}/visibility", serve(h.setVisibility))
+	r.Get("/matches/{matchID}/visibility", serve(h.getVisibility))
+	r.Put("/matches/{matchID}/visibility", serve(h.setVisibility))
 }
 
 type visibilityBody struct {
@@ -36,7 +36,7 @@ func visibilityJSON(v repository.Visibility) visibilityBody {
 
 func (h *Handler) getVisibility(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -49,7 +49,7 @@ func (h *Handler) getVisibility(r *http.Request) (int, any, error) {
 
 func (h *Handler) setVisibility(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	var body visibilityBody
 	req.body(&body)
 	if req.err != nil {
@@ -62,17 +62,17 @@ func (h *Handler) setVisibility(r *http.Request) (int, any, error) {
 	return okJSON(visibilityJSON(v))
 }
 
-func (h *Handler) spectatorCompetitions(r *http.Request) (int, any, error) {
-	comps, err := h.repo.ListPublicCompetitions(r.Context())
+func (h *Handler) spectatorMatches(r *http.Request) (int, any, error) {
+	comps, err := h.repo.ListPublicMatches(r.Context())
 	if err != nil {
 		return fail(err)
 	}
-	return okJSON(map[string]any{"competitions": competitionsJSON(comps)})
+	return okJSON(map[string]any{"matches": matchesJSON(comps)})
 }
 
 func (h *Handler) spectatorStandings(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -84,7 +84,7 @@ func (h *Handler) spectatorStandings(r *http.Request) (int, any, error) {
 }
 
 func (h *Handler) spectatorStream(w http.ResponseWriter, r *http.Request) {
-	id, err := pathInt(r, "competitionID")
+	id, err := pathInt(r, "matchID")
 	if err != nil {
 		writeError(w, err)
 		return
@@ -96,7 +96,7 @@ func (h *Handler) spectatorStream(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) spectatorResults(w http.ResponseWriter, r *http.Request) {
-	id, err := pathInt(r, "competitionID")
+	id, err := pathInt(r, "matchID")
 	if err != nil {
 		writeError(w, err)
 		return

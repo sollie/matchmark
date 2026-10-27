@@ -27,6 +27,10 @@ type logLine struct {
 	EmittedAt     string `json:"emitted_at"`
 	Seq           int64  `json:"seq"`
 	Competition   struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	} `json:"competition"`
+	Match struct {
 		ID           int64  `json:"id"`
 		Name         string `json:"name"`
 		Date         string `json:"date"`
@@ -35,7 +39,7 @@ type logLine struct {
 			Discipline string `json:"discipline"`
 			TotalShots int    `json:"total_shots"`
 		} `json:"course_of_fire"`
-	} `json:"competition"`
+	} `json:"match"`
 	Entry struct {
 		ID       int64  `json:"id"`
 		Lane     int    `json:"lane"`
@@ -82,7 +86,7 @@ func TestStageLockedLines(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
@@ -90,7 +94,7 @@ func TestStageLockedLines(t *testing.T) {
 		t.Fatalf("lines = %d", len(lines))
 	}
 	l := lines[0]
-	if l.Msg != "stage_status" || l.Event != "stage_status" || l.Status != "awaiting_acceptance" || l.Level != "INFO" || l.SchemaVersion != 2 {
+	if l.Msg != "stage_status" || l.Event != "stage_status" || l.Status != "awaiting_acceptance" || l.Level != "INFO" || l.SchemaVersion != 3 {
 		t.Fatalf("header = %+v", l)
 	}
 	if !emittedAtPattern.MatchString(l.EmittedAt) {
@@ -99,9 +103,9 @@ func TestStageLockedLines(t *testing.T) {
 	if l.Seq < 1 {
 		t.Fatalf("seq = %d", l.Seq)
 	}
-	if l.Competition.ID != f.compID || l.Competition.Name != "Spring Match" || l.Competition.Date != "2026-10-19" ||
-		l.Competition.CourseOfFire.Key != "150" || l.Competition.CourseOfFire.Discipline != "1500" || l.Competition.CourseOfFire.TotalShots != 150 {
-		t.Fatalf("competition = %+v", l.Competition)
+	if l.Match.ID != f.compID || l.Match.Name != "Spring Match" || l.Match.Date != "2026-10-19" ||
+		l.Match.CourseOfFire.Key != "150" || l.Match.CourseOfFire.Discipline != "1500" || l.Match.CourseOfFire.TotalShots != 150 {
+		t.Fatalf("match = %+v", l.Match)
 	}
 	if l.Entry.ID != f.entry2 || l.Entry.Lane != 2 || l.Entry.Category != "Pistol" ||
 		l.Entry.Shooter.WAID != "W2" || l.Entry.Shooter.FirstName != "Bo" || l.Entry.Shooter.LastName != "BERG" || l.Entry.Shooter.Club != "Club B" {
@@ -139,7 +143,7 @@ func TestAdminLockLine(t *testing.T) {
 func TestNoLineOnFailedLock(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
-	dev := service.Device{CompetitionID: f.compID, Lane: 1}
+	dev := service.Device{MatchID: f.compID, Lane: 1}
 	if _, err := f.svc.DeviceLockStage(ctx, dev, 1); !errors.Is(err, service.ErrInvalid) {
 		t.Fatalf("err = %v", err)
 	}
@@ -173,7 +177,7 @@ func TestLockSucceedsWhenLogWriterFails(t *testing.T) {
 	t.Cleanup(func() { _ = conn.Close() })
 	f := buildFixture(t, repository.New(conn), &bytes.Buffer{}, newLogger(failingWriter{}))
 	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(context.Background(), service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(context.Background(), service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 	entries, err := f.repo.ListEntries(context.Background(), f.compID)
@@ -192,7 +196,7 @@ func TestReplayMatchesDatabase(t *testing.T) {
 		f.fillStage(t, f.entry2, n)
 	}
 	f.fillStage(t, f.entry1, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
@@ -204,7 +208,7 @@ func TestReplayMatchesDatabase(t *testing.T) {
 	if _, err := f.svc.StartNextStage(ctx, f.compID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 2); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 2); err != nil {
 		t.Fatal(err)
 	}
 	folded := replayScoreLog(t, f.buf.String())
@@ -264,7 +268,7 @@ func replayScoreLog(t *testing.T, raw string) map[stageKey]logLine {
 		if l.Event == "" {
 			continue
 		}
-		k := stageKey{l.Competition.ID, l.Entry.ID, l.Stage.Number}
+		k := stageKey{l.Match.ID, l.Entry.ID, l.Stage.Number}
 		if prev, ok := out[k]; ok && !newerOrEqual(l, prev) {
 			continue
 		}
@@ -292,7 +296,7 @@ func newLogger(w io.Writer) *slog.Logger {
 func buildFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buffer, logger *slog.Logger) *scoreFixture {
 	t.Helper()
 	f := buildDraftFixture(t, repo, buf, logger)
-	if err := f.svc.SetCompetitionStatus(context.Background(), f.compID, service.StatusActive); err != nil {
+	if err := f.svc.SetMatchStatus(context.Background(), f.compID, service.StatusActive); err != nil {
 		t.Fatal(err)
 	}
 	return f
@@ -321,15 +325,15 @@ func buildDraftFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buf
 	if err != nil {
 		t.Fatal(err)
 	}
-	compID, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Spring Match", Date: "2026-10-19", Course: "150"})
+	compID, err := svc.CreateMatch(ctx, repository.Match{Name: "Spring Match", Date: "2026-10-19", Course: "150"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e1, err := svc.AddEntry(ctx, repository.Entry{CompetitionID: compID, ShooterID: s1, Category: "Revolver", Lane: 1})
+	e1, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: s1, Category: "Revolver", Lane: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e2, err := svc.AddEntry(ctx, repository.Entry{CompetitionID: compID, ShooterID: s2, Category: "Pistol", Lane: 2})
+	e2, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: s2, Category: "Pistol", Lane: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,7 +380,7 @@ func TestUnlockLine(t *testing.T) {
 	}
 	l := lines[1]
 	if l.Event != "stage_status" || l.Status != "open" || l.LockedBy != nil || l.Level != "INFO" || l.Entry.Shooter.WAID != "W1" ||
-		l.Competition.Name != "Spring Match" || l.Stage.Number != 1 || !equalInts(l.RingCounts, []int{2, 4, 6, 0, 0, 0, 0}) {
+		l.Match.Name != "Spring Match" || l.Stage.Number != 1 || !equalInts(l.RingCounts, []int{2, 4, 6, 0, 0, 0, 0}) {
 		t.Fatalf("line = %+v", l)
 	}
 	if got := replayScoreLog(t, f.buf.String())[stageKey{f.compID, f.entry1, 1}]; got.Status != "open" {
@@ -398,7 +402,7 @@ func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
 	edit := repository.RingCounts{X: 1, Ten: 1, Nine: 10}
@@ -480,7 +484,7 @@ func TestEntryEditReemitsLockedStages(t *testing.T) {
 	}
 }
 
-func TestShooterEditReemitsAcrossCompetitions(t *testing.T) {
+func TestShooterEditReemitsAcrossMatches(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry2, 1)
@@ -510,7 +514,7 @@ func TestShooterEditReemitsAcrossCompetitions(t *testing.T) {
 	}
 }
 
-func TestCompetitionEditReemitsLockedStages(t *testing.T) {
+func TestMatchEditReemitsLockedStages(t *testing.T) {
 	conn, err := db.Open(":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -524,11 +528,11 @@ func TestCompetitionEditReemitsLockedStages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	compID, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Spring Match", Date: "2026-10-19", Course: "150"})
+	compID, err := svc.CreateMatch(ctx, repository.Match{Name: "Spring Match", Date: "2026-10-19", Course: "150"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e1, err := svc.AddEntry(ctx, repository.Entry{CompetitionID: compID, ShooterID: sh, Category: "Revolver", Lane: 1})
+	e1, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: sh, Category: "Revolver", Lane: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -539,15 +543,15 @@ func TestCompetitionEditReemitsLockedStages(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := strings.Count(buf.String(), "\n")
-	if err := svc.UpdateCompetition(ctx, repository.Competition{ID: compID, Name: "Autumn Match", Date: "2026-11-01", Course: "150"}); err != nil {
+	if err := svc.UpdateMatch(ctx, repository.Match{ID: compID, Name: "Autumn Match", Date: "2026-11-01", Course: "150"}); err != nil {
 		t.Fatal(err)
 	}
 	if got := strings.Count(buf.String(), "\n") - n; got != 1 {
 		t.Fatalf("new lines = %d", got)
 	}
 	l := replayScoreLog(t, buf.String())[stageKey{compID, e1, 1}]
-	if l.Competition.Name != "Autumn Match" || l.Competition.Date != "2026-11-01" {
-		t.Fatalf("competition = %+v", l.Competition)
+	if l.Match.Name != "Autumn Match" || l.Match.Date != "2026-11-01" {
+		t.Fatalf("match = %+v", l.Match)
 	}
 }
 
@@ -579,7 +583,7 @@ func TestUnlockLineKeepsPreUnlockProvenance(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{CompetitionID: f.compID, Lane: 1}, 1); err != nil {
+	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.svc.UnlockStage(ctx, f.compID, f.entry2, 1); err != nil {
@@ -600,14 +604,14 @@ func TestCourseChangeRejectedWhenLockedStagesExist(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := len(f.lines(t))
-	err := f.svc.UpdateCompetition(ctx, repository.Competition{ID: f.compID, Name: "Spring Match", Date: "2026-10-19", Course: "60"})
+	err := f.svc.UpdateMatch(ctx, repository.Match{ID: f.compID, Name: "Spring Match", Date: "2026-10-19", Course: "60"})
 	if !errors.Is(err, service.ErrConflict) {
 		t.Fatalf("err = %v", err)
 	}
 	if got := len(f.lines(t)); got != n {
 		t.Fatalf("lines = %d", got)
 	}
-	if l := f.lockedAt(t)[stageKey{f.compID, f.entry1, 1}]; l.Stage.ExpectedShots != 12 || l.Competition.CourseOfFire.Key != "150" {
+	if l := f.lockedAt(t)[stageKey{f.compID, f.entry1, 1}]; l.Stage.ExpectedShots != 12 || l.Match.CourseOfFire.Key != "150" {
 		t.Fatalf("line = %+v", l)
 	}
 }

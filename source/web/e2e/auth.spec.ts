@@ -8,7 +8,7 @@ test.describe("auth", () => {
 
     await page.getByLabel("Password").fill(adminPassword);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
   });
 
   test("an unknown username is rejected like a wrong password", async ({ page }) => {
@@ -48,13 +48,13 @@ test.describe("auth", () => {
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Competitions" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Matches" })).toHaveCount(0);
     expect((await page.request.get("/api/shooters")).status()).toBe(401);
   });
 
   test("unauthenticated admin API calls return 401", async ({ baseURL }) => {
     const api = await newApi(baseURL!);
-    for (const path of ["/api/admin/session", "/api/shooters", "/api/competitions", "/api/admin/backup"]) {
+    for (const path of ["/api/admin/session", "/api/shooters", "/api/matches", "/api/admin/backup"]) {
       const response = await api.get(path);
       expect(response.status(), path).toBe(401);
     }

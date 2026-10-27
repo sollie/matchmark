@@ -3,8 +3,8 @@ package service
 import "sync"
 
 type laneKey struct {
-	competitionID int64
-	lane          int
+	matchID int64
+	lane    int
 }
 
 type presence struct {
@@ -38,11 +38,11 @@ func (p *presence) connected(k laneKey) bool {
 }
 
 func (s *Service) DeviceConnected(d Device) (release func()) {
-	k := laneKey{d.CompetitionID, d.Lane}
+	k := laneKey{d.MatchID, d.Lane}
 	s.presence.connect(k)
-	s.bus.Publish(d.CompetitionID)
+	s.bus.Publish(d.MatchID)
 	return func() {
 		s.presence.disconnect(k)
-		s.bus.Publish(d.CompetitionID)
+		s.bus.Publish(d.MatchID)
 	}
 }

@@ -5,16 +5,16 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/report"
+	"github.com/sollie/matchmark/internal/repository"
 )
 
-func (s *Service) loadReport(ctx context.Context, competitionID int64) (report.Data, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) loadReport(ctx context.Context, matchID int64) (report.Data, error) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return report.Data{}, mapRepoErr(err)
 	}
-	entries, err := s.repo.ReportEntries(ctx, competitionID)
+	entries, err := s.repo.ReportEntries(ctx, matchID)
 	if err != nil {
 		return report.Data{}, err
 	}
@@ -25,7 +25,7 @@ func (s *Service) loadReport(ctx context.Context, competitionID int64) (report.D
 			}
 		}
 	}
-	return report.Data{Competition: comp, Entries: entries}, nil
+	return report.Data{Match: comp, Entries: entries}, nil
 }
 
 type Download struct {
@@ -61,8 +61,8 @@ func downloadBaseName(name, date string) string {
 	return base + "-" + date
 }
 
-func (s *Service) ResultsWorkbook(ctx context.Context, competitionID int64) (Download, error) {
-	data, err := s.loadReport(ctx, competitionID)
+func (s *Service) ResultsWorkbook(ctx context.Context, matchID int64) (Download, error) {
+	data, err := s.loadReport(ctx, matchID)
 	if err != nil {
 		return Download{}, err
 	}
@@ -70,12 +70,12 @@ func (s *Service) ResultsWorkbook(ctx context.Context, competitionID int64) (Dow
 	if err != nil {
 		return Download{}, err
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("competition", competitionID), Details: "xlsx"}})
-	return Download{BaseName: downloadBaseName(data.Competition.Name, data.Competition.Date), Data: out}, nil
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("match", matchID), Details: "xlsx"}})
+	return Download{BaseName: downloadBaseName(data.Match.Name, data.Match.Date), Data: out}, nil
 }
 
-func (s *Service) ResultsCSV(ctx context.Context, competitionID int64) (Download, error) {
-	data, err := s.loadReport(ctx, competitionID)
+func (s *Service) ResultsCSV(ctx context.Context, matchID int64) (Download, error) {
+	data, err := s.loadReport(ctx, matchID)
 	if err != nil {
 		return Download{}, err
 	}
@@ -83,6 +83,6 @@ func (s *Service) ResultsCSV(ctx context.Context, competitionID int64) (Download
 	if err != nil {
 		return Download{}, err
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("competition", competitionID), Details: "csv"}})
-	return Download{BaseName: downloadBaseName(data.Competition.Name, data.Competition.Date), Data: out}, nil
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("match", matchID), Details: "csv"}})
+	return Download{BaseName: downloadBaseName(data.Match.Name, data.Match.Date), Data: out}, nil
 }

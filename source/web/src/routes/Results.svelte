@@ -4,10 +4,10 @@
   import { matchRoute, navigate, router } from "../lib/router.svelte";
   import type { components } from "../lib/api/schema";
 
-  type Competition = components["schemas"]["Competition"];
+  type Match = components["schemas"]["Match"];
   type Results = components["schemas"]["Results"];
 
-  let competitions = $state<Competition[]>([]);
+  let matches = $state<Match[]>([]);
   let loaded = $state(false);
   let results = $state<Results | null>(null);
   let missing = $state(false);
@@ -21,8 +21,8 @@
 
   $effect(() => {
     void (async () => {
-      const { data } = await api.GET("/api/spectator/competitions");
-      competitions = (data?.competitions ?? []).filter((c) => c.status === "finished");
+      const { data } = await api.GET("/api/spectator/matches");
+      matches = (data?.matches ?? []).filter((c) => c.status === "finished");
       loaded = true;
     })();
   });
@@ -33,8 +33,8 @@
     if (id === null) return;
     const current = id;
     void (async () => {
-      const { data, response } = await api.GET("/api/spectator/competitions/{competitionID}/results", {
-        params: { path: { competitionID: Number(current) } },
+      const { data, response } = await api.GET("/api/spectator/matches/{matchID}/results", {
+        params: { path: { matchID: Number(current) } },
       });
       if (current !== id) return;
       if (data) results = data;
@@ -52,30 +52,30 @@
   <div class="no-print">
     <h1>Results</h1>
     <label class="picker">
-      Finished competition
+      Finished match
       <select value={id ?? ""} onchange={pick}>
-        <option value="" disabled>{loaded && competitions.length === 0 ? "No finished competitions" : "Select a competition"}</option>
-        {#each competitions as c (c.id)}
+        <option value="" disabled>{loaded && matches.length === 0 ? "No finished matches" : "Select a match"}</option>
+        {#each matches as c (c.id)}
           <option value={String(c.id)}>{c.name} ({c.date})</option>
         {/each}
       </select>
     </label>
     {#if results}
       <button type="button" onclick={() => window.print()}>Print</button>
-      <a class="button" href={`/api/competitions/${results.competition.id}/results?format=pdf`} download>Download PDF</a>
+      <a class="button" href={`/api/matches/${results.match.id}/results?format=pdf`} download>Download PDF</a>
     {/if}
   </div>
 
   {#if missing}
-    <div class="card empty"><p>Results are not available for this competition.</p></div>
+    <div class="card empty"><p>Results are not available for this match.</p></div>
   {:else if results}
     <article class="sheet">
       <header class="sheet-header">
         {#if club.hasLogo}<img class="club-logo" src={clubLogoUrl(club.version)} alt="" />{/if}
         <div>
           {#if club.name}<p class="club-name">{club.name}</p>{/if}
-          <h2>{results.competition.name}</h2>
-          <p class="meta">{results.competition.date} · {results.competition.course_label}</p>
+          <h2>{results.match.name}</h2>
+          <p class="meta">{results.match.date} · {results.match.course_label}</p>
         </div>
       </header>
 

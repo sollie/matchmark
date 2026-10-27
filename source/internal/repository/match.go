@@ -15,14 +15,14 @@ type Shooter struct {
 	WAID      string
 }
 
-type Competition struct {
-	ID           int64
-	ContainerID  int64
-	Name         string
-	Date         string
-	Course       string
-	Status       string
-	CurrentStage int
+type Match struct {
+	ID            int64
+	CompetitionID int64
+	Name          string
+	Date          string
+	Course        string
+	Status        string
+	CurrentStage  int
 }
 
 type DateRange struct {
@@ -32,12 +32,12 @@ type DateRange struct {
 }
 
 type Entry struct {
-	ID            int64
-	CompetitionID int64
-	ShooterID     int64
-	Category      string
-	Lane          int
-	Withdrawn     bool
+	ID        int64
+	MatchID   int64
+	ShooterID int64
+	Category  string
+	Lane      int
+	Withdrawn bool
 }
 
 type StageSeed struct {
@@ -59,13 +59,13 @@ func (r *Repository) CreateShooter(ctx context.Context, s Shooter) (int64, error
 	return res.LastInsertId()
 }
 
-func (r *Repository) CreateCompetition(ctx context.Context, c Competition) (int64, error) {
+func (r *Repository) CreateMatch(ctx context.Context, c Match) (int64, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	containerID, err := ensureContainer(ctx, tx, c.ContainerID, c.Name, c.Date)
+	containerID, err := ensureContainer(ctx, tx, c.CompetitionID, c.Name, c.Date)
 	if err != nil {
 		return 0, err
 	}
@@ -93,6 +93,12 @@ func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date strin
 	return res.LastInsertId()
 }
 
+func (r *Repository) CompetitionName(ctx context.Context, id int64) (string, error) {
+	var name string
+	err := r.db.QueryRowContext(ctx, `SELECT name FROM competitions WHERE id = ?`, id).Scan(&name)
+	return name, mapErr(err)
+}
+
 func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRange, error) {
 	var d DateRange
 	err := r.db.QueryRowContext(ctx,
@@ -101,11 +107,11 @@ func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRa
 	return d, mapErr(err)
 }
 
-func (r *Repository) GetCompetition(ctx context.Context, id int64) (Competition, error) {
-	var c Competition
+func (r *Repository) GetMatch(ctx context.Context, id int64) (Match, error) {
+	var c Match
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches WHERE id = ?`, id).
-		Scan(&c.ID, &c.ContainerID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage)
+		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage)
 	return c, mapErr(err)
 }
 
@@ -117,7 +123,7 @@ func (r *Repository) CreateEntry(ctx context.Context, e Entry, stages []StageSee
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
 		`INSERT INTO entries (match_id, shooter_id, category, lane) VALUES (?, ?, ?, ?)`,
-		e.CompetitionID, e.ShooterID, e.Category, e.Lane)
+		e.MatchID, e.ShooterID, e.Category, e.Lane)
 	if err != nil {
 		return 0, mapErr(err)
 	}
@@ -135,9 +141,9 @@ func (r *Repository) CreateEntry(ctx context.Context, e Entry, stages []StageSee
 	return id, tx.Commit()
 }
 
-func (r *Repository) WithdrawEntry(ctx context.Context, competitionID, entryID int64) error {
+func (r *Repository) WithdrawEntry(ctx context.Context, matchID, entryID int64) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE entries SET withdrawn = 1 WHERE id = ? AND match_id = ?`, entryID, competitionID)
+		`UPDATE entries SET withdrawn = 1 WHERE id = ? AND match_id = ?`, entryID, matchID)
 	if err != nil {
 		return mapErr(err)
 	}
