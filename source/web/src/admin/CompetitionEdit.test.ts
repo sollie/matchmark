@@ -11,7 +11,6 @@ beforeAll(async () => {
   stubFetch(() => ({
     body: {
       courses: [course("150", "150 shots (WA1500)"), course("60", "60 shots")],
-      weapon_classes: {},
       rings: [],
     },
   }));

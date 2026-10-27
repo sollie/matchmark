@@ -3,7 +3,6 @@ import { stubFetch } from "../test/fetch";
 
 const body = {
   courses: [{ key: "60", label: "60 shots", discipline: "60", total_shots: 60, stages: [] }],
-  weapon_classes: {},
   rings: [],
 };
 
