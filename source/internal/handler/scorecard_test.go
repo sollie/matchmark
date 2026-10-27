@@ -27,13 +27,13 @@ func newNamedScorecardFixture(t *testing.T, name string) *scorecardFixture {
 	t.Helper()
 	f := newFixture(t, "150")
 	if name != "" {
-		if status, out := f.env.Do("PUT", fmt.Sprintf("/api/competitions/%d", f.comp), map[string]any{"name": name, "date": "2026-05-01", "course": "150"}); status != http.StatusOK {
+		if status, out := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d", f.comp), map[string]any{"name": name, "date": "2026-05-01", "course": "150"}); status != http.StatusOK {
 			t.Fatalf("rename: %d %v", status, out)
 		}
 	}
 	entry := f.addEntry(t, "HANSEN", 3)
 	f.addEntry(t, "BERG", 5)
-	base := fmt.Sprintf("/api/competitions/%d", f.comp)
+	base := fmt.Sprintf("/api/matches/%d", f.comp)
 	f.env.Do("POST", base+"/status", map[string]any{"status": "active"})
 	stage := fmt.Sprintf("%s/entries/%d/stages/1", base, entry)
 	if status, out := f.env.Do("PUT", stage, counts112); status != http.StatusOK {
@@ -47,7 +47,7 @@ func newNamedScorecardFixture(t *testing.T, name string) *scorecardFixture {
 
 func (f *scorecardFixture) finish(t *testing.T) {
 	t.Helper()
-	if status, out := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "finished"}); status != http.StatusOK {
+	if status, out := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "finished"}); status != http.StatusOK {
 		t.Fatalf("finish: %d %v", status, out)
 	}
 }
@@ -121,7 +121,7 @@ func TestScorecardNotFoundForEmptyLaneOrWithdrawnEntry(t *testing.T) {
 		t.Fatalf("unscored entry: %d", status)
 	}
 	if status, _, _ := anonymousGet(t, f.env, "/api/scorer/scorecard/999/3"); status != http.StatusNotFound {
-		t.Fatalf("unknown competition: %d", status)
+		t.Fatalf("unknown match: %d", status)
 	}
 	if status, _, _ := anonymousGet(t, f.env, "/api/scorer/scorecard/x/3"); status != http.StatusNotFound {
 		t.Fatalf("bad id: %d", status)
@@ -132,7 +132,7 @@ func TestScorecardNotFoundForWithdrawnEntry(t *testing.T) {
 	f := newFixture(t, "150")
 	f.addEntry(t, "HANSEN", 3)
 	gone := f.addEntry(t, "BERG", 5)
-	base := fmt.Sprintf("/api/competitions/%d", f.comp)
+	base := fmt.Sprintf("/api/matches/%d", f.comp)
 	if status, out := f.env.Do("POST", fmt.Sprintf("%s/entries/%d/withdraw", base, gone), nil); status != http.StatusOK {
 		t.Fatalf("withdraw: %d %v", status, out)
 	}
@@ -160,7 +160,7 @@ func TestScorecardReflectsCurrentData(t *testing.T) {
 	f := newScorecardFixture(t)
 	f.finish(t)
 	_, _, before := anonymousGet(t, f.env, f.path(3, ""))
-	stage := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entry)
+	stage := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entry)
 	if status, out := f.env.Do("PUT", stage, map[string]any{"x": 1, "10": 4, "9": 3, "8": 1, "7": 1, "0": 1, "miss": 1}); status != http.StatusOK {
 		t.Fatalf("edit: %d %v", status, out)
 	}

@@ -6,8 +6,8 @@
 
   type Summary = components["schemas"]["ScorecardSummary"];
 
-  const params = $derived(matchRoute("/scorecard/:competition/:lane", router.path));
-  const base = $derived(params ? `/api/scorer/scorecard/${params.competition}/${params.lane}?format=png` : "");
+  const params = $derived(matchRoute("/scorecard/:match/:lane", router.path));
+  const base = $derived(params ? `/api/scorer/scorecard/${params.match}/${params.lane}?format=png` : "");
   const loaded = Date.now();
   const defaultRetrySeconds = 5;
   const maxRetrySeconds = 60;
@@ -42,8 +42,8 @@
     phase = "loading";
     let stale = false;
     void api
-      .GET("/api/scorer/scorecard/{competitionID}/{lane}/summary", {
-        params: { path: { competitionID: Number(current.competition), lane: Number(current.lane) } },
+      .GET("/api/scorer/scorecard/{matchID}/{lane}/summary", {
+        params: { path: { matchID: Number(current.match), lane: Number(current.lane) } },
       })
       .then(({ data, response }) => {
         if (stale) return;
@@ -103,7 +103,7 @@
   {:else if phase === "missing" || !params || !summary}
     <div class="card">
       <p>This scorecard is not available.</p>
-      <p class="muted">Scorecards appear once the competition is finished and the lane has an entry.</p>
+      <p class="muted">Scorecards appear once the match is finished and the lane has an entry.</p>
       <p><a href="/">Back to start</a></p>
     </div>
   {:else}

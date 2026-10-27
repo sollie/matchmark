@@ -18,20 +18,20 @@ type fixture struct {
 func newFixture(t *testing.T, course string, opts ...handler.Option) *fixture {
 	t.Helper()
 	env := apitest.NewAdmin(t, opts...)
-	comp := env.ID("POST", "/api/competitions", map[string]any{"name": "Club Match", "date": "2026-05-01", "course": course})
+	comp := env.ID("POST", "/api/matches", map[string]any{"name": "Club Match", "date": "2026-05-01", "course": course})
 	return &fixture{env: env, comp: comp}
 }
 
 func (f *fixture) addEntry(t *testing.T, name string, lane int) int {
 	t.Helper()
 	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": strings.ToUpper(name), "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
-	return f.env.ID("POST", fmt.Sprintf("/api/competitions/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Revolver", "lane": lane})
+	return f.env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Revolver", "lane": lane})
 }
 
 func TestAddEntryRejectsCategoryNotAllowedForCourse(t *testing.T) {
 	f := newFixture(t, "40")
 	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "ONE", "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
-	path := fmt.Sprintf("/api/competitions/%d/entries", f.comp)
+	path := fmt.Sprintf("/api/matches/%d/entries", f.comp)
 	if status, _ := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 1}); status != http.StatusUnprocessableEntity {
 		t.Fatalf("status %d", status)
 	}
@@ -44,7 +44,7 @@ func TestCarbineSharesTheLaneRotationOn150(t *testing.T) {
 	f := newFixture(t, "150")
 	f.addEntry(t, "One", 1)
 	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "TWO", "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
-	path := fmt.Sprintf("/api/competitions/%d/entries", f.comp)
+	path := fmt.Sprintf("/api/matches/%d/entries", f.comp)
 	if status, out := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Carbine", "lane": 2}); status != http.StatusCreated {
 		t.Fatalf("status %d %v", status, out)
 	}
@@ -53,13 +53,13 @@ func TestCarbineSharesTheLaneRotationOn150(t *testing.T) {
 	}
 	g := newFixture(t, "60")
 	s2 := g.env.ID("POST", "/api/shooters", map[string]any{"last_name": "THREE", "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
-	if status, _ := g.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries", g.comp), map[string]any{"shooter_id": s2, "category": "Carbine", "lane": 1}); status != http.StatusUnprocessableEntity {
+	if status, _ := g.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries", g.comp), map[string]any{"shooter_id": s2, "category": "Carbine", "lane": 1}); status != http.StatusUnprocessableEntity {
 		t.Fatalf("status %d", status)
 	}
 }
 
 func (f *fixture) scoreLane(lane int) (int, map[string]any) {
-	return f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/lanes/%d/score-lane", f.comp, lane), nil)
+	return f.env.Do("GET", fmt.Sprintf("/api/matches/%d/lanes/%d/score-lane", f.comp, lane), nil)
 }
 
 func TestScoreLane(t *testing.T) {
@@ -93,7 +93,7 @@ func TestScoreLane(t *testing.T) {
 	})
 
 	t.Run("withdrawn entry is skipped", func(t *testing.T) {
-		status, _ := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries/%d/withdraw", f.comp, e5), nil)
+		status, _ := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", f.comp, e5), nil)
 		if status != http.StatusOK {
 			t.Fatalf("withdraw status %d", status)
 		}
@@ -117,7 +117,7 @@ func TestLaneIsExclusive(t *testing.T) {
 	f := newFixture(t, "150")
 	f.addEntry(t, "One", 1)
 	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "TWO", "first_name": "B", "sex": "F", "country": "NOR", "club": "Club"})
-	status, _ := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 1})
+	status, _ := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 1})
 	if status != http.StatusConflict {
 		t.Fatalf("status %d", status)
 	}
@@ -126,7 +126,7 @@ func TestLaneIsExclusive(t *testing.T) {
 func TestRingCounts(t *testing.T) {
 	f := newFixture(t, "150")
 	entry := f.addEntry(t, "One", 1)
-	path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, entry)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, entry)
 
 	tests := []struct {
 		name string
@@ -148,7 +148,7 @@ func TestRingCounts(t *testing.T) {
 	}
 
 	t.Run("stage number outside course", func(t *testing.T) {
-		status, _ := f.env.Do("PUT", fmt.Sprintf("/api/competitions/%d/entries/%d/stages/11", f.comp, entry), map[string]any{"x": 12})
+		status, _ := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/entries/%d/stages/11", f.comp, entry), map[string]any{"x": 12})
 		if status != http.StatusNotFound {
 			t.Fatalf("status %d", status)
 		}
@@ -158,7 +158,7 @@ func TestRingCounts(t *testing.T) {
 func TestStageExpectedShotsFollowCourse(t *testing.T) {
 	f := newFixture(t, "40")
 	entry := f.addEntry(t, "Five", 1)
-	path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, entry)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, entry)
 	if status, out := f.env.Do("PUT", path, map[string]any{"x": 5}); status != http.StatusOK {
 		t.Fatalf("got %d %v", status, out)
 	}
@@ -167,19 +167,19 @@ func TestStageExpectedShotsFollowCourse(t *testing.T) {
 	}
 }
 
-func TestCreateCompetitionRejectsNonISODate(t *testing.T) {
+func TestCreateMatchRejectsNonISODate(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	for _, date := range []string{"19/10/2026", "2026-13-01", "2026-2-1", ""} {
-		status, _ := env.Do("POST", "/api/competitions", map[string]any{"name": "X", "date": date, "course": "150"})
+		status, _ := env.Do("POST", "/api/matches", map[string]any{"name": "X", "date": date, "course": "150"})
 		if status != http.StatusUnprocessableEntity {
 			t.Fatalf("date %q: status %d", date, status)
 		}
 	}
 }
 
-func TestCreateCompetitionRejectsUnknownCourse(t *testing.T) {
+func TestCreateMatchRejectsUnknownCourse(t *testing.T) {
 	env := apitest.NewAdmin(t)
-	status, _ := env.Do("POST", "/api/competitions", map[string]any{"name": "X", "date": "2026-05-01", "course": "99"})
+	status, _ := env.Do("POST", "/api/matches", map[string]any{"name": "X", "date": "2026-05-01", "course": "99"})
 	if status != http.StatusUnprocessableEntity {
 		t.Fatalf("status %d", status)
 	}

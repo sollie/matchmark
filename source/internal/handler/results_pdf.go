@@ -10,7 +10,7 @@ import (
 )
 
 func (h *Handler) resultsPDFRoutes(r chi.Router) {
-	r.With(h.render.Middleware(ResourceByPath)).Get("/competitions/{competitionID}/results", h.publicResultsPDF)
+	r.With(h.render.Middleware(ResourceByPath)).Get("/matches/{matchID}/results", h.publicResultsPDF)
 }
 
 func (h *Handler) publicResultsPDF(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +26,7 @@ func (h *Handler) resultsPDF(w http.ResponseWriter, r *http.Request, build func(
 		writeError(w, err)
 		return
 	}
-	id, err := pathInt(r, "competitionID")
+	id, err := pathInt(r, "matchID")
 	if err != nil {
 		writeError(w, err)
 		return

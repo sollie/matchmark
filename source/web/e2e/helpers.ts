@@ -22,7 +22,7 @@ interface Visibility {
   show_ring_counts: boolean;
 }
 
-type CompetitionStatus = "draft" | "active" | "finished";
+type MatchStatus = "draft" | "active" | "finished";
 
 export type Category = "Revolver" | "Pistol" | "Revolver OS" | "Pistol OS" | "Carbine";
 
@@ -128,32 +128,32 @@ export async function createShooter(api: APIRequestContext, seed: ShooterSeed = 
   return { id, ...shooter };
 }
 
-export async function createCompetition(
+export async function createMatch(
   api: APIRequestContext,
-  seed: { name?: string; date?: string; course?: string; status?: CompetitionStatus } = {},
+  seed: { name?: string; date?: string; course?: string; status?: MatchStatus } = {},
 ) {
   const { status, ...rest } = seed;
   const course = (await defaultCourse(api)).key;
-  const competition = { name: uniqueName("Competition"), date: todayIso(), course, ...rest };
+  const match = { name: uniqueName("Match"), date: todayIso(), course, ...rest };
   const { id } = await checked<{ id: number }>(
-    await api.post("/api/competitions", { data: competition }),
-    "create competition",
+    await api.post("/api/matches", { data: match }),
+    "create match",
   );
   if (status && status !== "draft") {
     await setStatus(api, id, "active");
     if (status === "finished") await setStatus(api, id, "finished");
   }
-  return { id, ...competition };
+  return { id, ...match };
 }
 
-export async function setStatus(api: APIRequestContext, competitionId: number, status: CompetitionStatus) {
+export async function setStatus(api: APIRequestContext, matchId: number, status: MatchStatus) {
   await checked(
-    await api.post(`/api/competitions/${competitionId}/status`, { data: { status } }),
+    await api.post(`/api/matches/${matchId}/status`, { data: { status } }),
     `set status ${status}`,
   );
 }
 
-export async function setVisibility(api: APIRequestContext, competitionId: number, visibility: Partial<Visibility>) {
+export async function setVisibility(api: APIRequestContext, matchId: number, visibility: Partial<Visibility>) {
   const full: Visibility = {
     show_names: true,
     show_clubs: true,
@@ -163,20 +163,20 @@ export async function setVisibility(api: APIRequestContext, competitionId: numbe
     ...visibility,
   };
   await checked(
-    await api.put(`/api/competitions/${competitionId}/visibility`, { data: full }),
+    await api.put(`/api/matches/${matchId}/visibility`, { data: full }),
     "set visibility",
   );
 }
 
 export async function addEntry(
   api: APIRequestContext,
-  competitionId: number,
+  matchId: number,
   shooterId: number,
   lane: number,
   category: Category = "Revolver",
 ) {
   const { id } = await checked<{ id: number }>(
-    await api.post(`/api/competitions/${competitionId}/entries`, {
+    await api.post(`/api/matches/${matchId}/entries`, {
       data: { shooter_id: shooterId, category, lane },
     }),
     "add entry",
@@ -184,28 +184,28 @@ export async function addEntry(
   return id;
 }
 
-export async function seedEntry(api: APIRequestContext, competitionId: number, lane: number, category: Category = "Revolver") {
+export async function seedEntry(api: APIRequestContext, matchId: number, lane: number, category: Category = "Revolver") {
   const shooter = await createShooter(api);
-  const entryId = await addEntry(api, competitionId, shooter.id, lane, category);
+  const entryId = await addEntry(api, matchId, shooter.id, lane, category);
   return { shooter, entryId, lane };
 }
 
 export async function setCounts(
   api: APIRequestContext,
-  competitionId: number,
+  matchId: number,
   entryId: number,
   stage: number,
   counts: Partial<RingCounts>,
   lock = false,
 ) {
-  const base = `/api/competitions/${competitionId}/entries/${entryId}/stages/${stage}`;
+  const base = `/api/matches/${matchId}/entries/${entryId}/stages/${stage}`;
   await checked(await api.put(base, { data: ringCounts(counts) }), "set ring counts");
   if (lock) await checked(await api.post(`${base}/lock`), "lock stage");
 }
 
-export async function createPairing(api: APIRequestContext, competitionId: number, lane: number) {
+export async function createPairing(api: APIRequestContext, matchId: number, lane: number) {
   return checked<{ id: number; lane: number; token: string }>(
-    await api.post(`/api/competitions/${competitionId}/pairings`, { data: { lane } }),
+    await api.post(`/api/matches/${matchId}/pairings`, { data: { lane } }),
     "create pairing",
   );
 }
@@ -255,8 +255,8 @@ export function section(page: Page, heading: string | RegExp): Locator {
     .filter({ has: page.getByRole("heading", { name: heading }) });
 }
 
-export async function openCompetition(page: Page, id: number) {
-  await page.goto(`/admin/competitions/${id}`);
+export async function openMatch(page: Page, id: number) {
+  await page.goto(`/admin/matches/${id}`);
   await expect(section(page, "Entries and progress")).toBeVisible();
 }
 
@@ -286,7 +286,7 @@ export const test = base.extend<Fixtures>({
   },
   adminPage: async ({ page }, use) => {
     await signInViaUi(page);
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
     await use(page);
   },
   openDevice: async ({ browser, baseURL }, use) => {

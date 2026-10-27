@@ -1,7 +1,7 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 import {
   addEntry,
-  createCompetition,
+  createMatch,
   createShooter,
   expect,
   newApi,
@@ -13,17 +13,17 @@ import {
   uniqueName,
 } from "./helpers";
 
-async function openCompetition(page: Page, name: string) {
+async function openMatch(page: Page, name: string) {
   await page.goto("/");
   const option = page.locator("select option").filter({ hasText: name });
   await expect(option).toHaveCount(1);
   const value = await option.getAttribute("value");
-  await page.getByLabel("Competition").selectOption(value!);
+  await page.getByLabel("Match").selectOption(value!);
 }
 
 async function seedScored(api: APIRequestContext, finish = false) {
-  const competition = await createCompetition(api, { name: uniqueName("Spectator") });
-  await setVisibility(api, competition.id, {});
+  const match = await createMatch(api, { name: uniqueName("Spectator") });
+  await setVisibility(api, match.id, {});
   const club = uniqueName("Club");
   const entries = [] as { lane: number; last_name: string; first_name: string; club: string; country: string }[];
   const plans = [
@@ -39,21 +39,21 @@ async function seedScored(api: APIRequestContext, finish = false) {
   }
   const entryIds = [] as number[];
   for (const [i, plan] of plans.entries()) {
-    entryIds.push(await addEntry(api, competition.id, shooters[i].id, plan.lane));
+    entryIds.push(await addEntry(api, match.id, shooters[i].id, plan.lane));
     entries.push({ lane: plan.lane, ...shooters[i] });
   }
-  await setStatus(api, competition.id, "active");
+  await setStatus(api, match.id, "active");
   for (const [i, plan] of plans.entries()) {
-    await setCounts(api, competition.id, entryIds[i], 1, plan.counts, plan.lock);
+    await setCounts(api, match.id, entryIds[i], 1, plan.counts, plan.lock);
   }
-  if (finish) await setStatus(api, competition.id, "finished");
-  return { competition, entries };
+  if (finish) await setStatus(api, match.id, "finished");
+  return { match, entries };
 }
 
 test.describe("spectator", () => {
   test("standings are ranked by total then X count with the stage status row", async ({ page, admin }) => {
-    const { competition, entries } = await seedScored(admin);
-    await openCompetition(page, competition.name);
+    const { match, entries } = await seedScored(admin);
+    await openMatch(page, match.name);
 
     const table = page.getByRole("table");
     const byLane = (lane: number) => row(page, entries[lane - 1].last_name);
@@ -76,20 +76,20 @@ test.describe("spectator", () => {
   });
 
   test("an accepted stage appears live without polling requests", async ({ page, admin }) => {
-    const { competition, entries } = await seedScored(admin);
+    const { match, entries } = await seedScored(admin);
     const polled: string[] = [];
     page.on("request", (request) => {
       const path = new URL(request.url()).pathname;
-      if (/\/spectator\/competitions\/\d+\/standings$/.test(path)) polled.push(path);
+      if (/\/spectator\/matches\/\d+\/standings$/.test(path)) polled.push(path);
     });
-    await openCompetition(page, competition.name);
+    await openMatch(page, match.name);
     const progress = page.getByRole("status");
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
 
     const entryId = (
-      await (await admin.get(`/api/competitions/${competition.id}/entries`)).json()
+      await (await admin.get(`/api/matches/${match.id}/entries`)).json()
     ).entries.find((e: { lane: number }) => e.lane === 3).id;
-    await setCounts(admin, competition.id, entryId, 1, { "9": 12 }, true);
+    await setCounts(admin, match.id, entryId, 1, { "9": 12 }, true);
 
     await expect(progress.getByText("3/4 accepted")).toBeVisible();
     await expect(row(page, entries[2].last_name)).toBeVisible();
@@ -97,12 +97,12 @@ test.describe("spectator", () => {
   });
 
   test("a hidden tab closes the stream and a visible one reconnects with a fresh snapshot", async ({ page, admin }) => {
-    const { competition, entries } = await seedScored(admin);
+    const { match, entries } = await seedScored(admin);
     let streams = 0;
     page.on("request", (request) => {
-      if (/\/spectator\/competitions\/\d+\/stream$/.test(new URL(request.url()).pathname)) streams++;
+      if (/\/spectator\/matches\/\d+\/stream$/.test(new URL(request.url()).pathname)) streams++;
     });
-    await openCompetition(page, competition.name);
+    await openMatch(page, match.name);
     const progress = page.getByRole("status");
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
     await expect.poll(() => streams).toBe(1);
@@ -115,9 +115,9 @@ test.describe("spectator", () => {
 
     await setHidden(true);
     const entryId = (
-      await (await admin.get(`/api/competitions/${competition.id}/entries`)).json()
+      await (await admin.get(`/api/matches/${match.id}/entries`)).json()
     ).entries.find((e: { lane: number }) => e.lane === 3).id;
-    await setCounts(admin, competition.id, entryId, 1, { "9": 12 }, true);
+    await setCounts(admin, match.id, entryId, 1, { "9": 12 }, true);
     await page.waitForTimeout(1000);
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
     expect(streams).toBe(1);
@@ -128,15 +128,15 @@ test.describe("spectator", () => {
     expect(streams).toBe(2);
   });
 
-  test("draft competitions are hidden and finished ones keep results", async ({ page, admin }) => {
-    const { competition: active, entries } = await seedScored(admin, true);
-    const draft = await createCompetition(admin, { name: uniqueName("Hidden draft") });
+  test("draft matches are hidden and finished ones keep results", async ({ page, admin }) => {
+    const { match: active, entries } = await seedScored(admin, true);
+    const draft = await createMatch(admin, { name: uniqueName("Hidden draft") });
 
     await page.goto("/");
     await expect(page.locator("select option").filter({ hasText: active.name })).toHaveCount(1);
     await expect(page.locator("select option").filter({ hasText: draft.name })).toHaveCount(0);
 
-    await openCompetition(page, active.name);
+    await openMatch(page, active.name);
     await expect(page.locator("select option").filter({ hasText: active.name })).toContainText("finished");
     await expect(page.getByRole("status").getByText("Finished", { exact: true })).toBeVisible();
     await expect(page.getByRole("status").getByText(/Stage \d+ of/)).toHaveCount(0);
@@ -145,8 +145,8 @@ test.describe("spectator", () => {
   });
 
   test("stage cells show state as color and label with a legend", async ({ page, admin }) => {
-    const { competition, entries } = await seedScored(admin);
-    await openCompetition(page, competition.name);
+    const { match, entries } = await seedScored(admin);
+    await openMatch(page, match.name);
 
     const accepted = row(page, entries[1].last_name);
     await expect(accepted.getByLabel("Stage 1: accepted, 120", { exact: true })).toHaveText("120");
@@ -162,7 +162,7 @@ test.describe("spectator", () => {
   });
 
   test("each visibility flag hides its fields and values", async ({ course, page, admin }) => {
-    const { competition, entries } = await seedScored(admin);
+    const { match, entries } = await seedScored(admin);
     const shooter = entries[1];
     const winnerCells = (shown: { names?: boolean; clubs?: boolean; countries?: boolean; stage?: boolean; x?: boolean }) =>
       [
@@ -180,60 +180,60 @@ test.describe("spectator", () => {
     const table = page.getByRole("table");
     const winner = table.locator("tbody tr").first();
 
-    await openCompetition(page, competition.name);
+    await openMatch(page, match.name);
     await expect(table.locator("tbody tr")).toHaveCount(4);
     await expect(winner.getByRole("cell")).toHaveText(
       winnerCells({ names: true, clubs: true, countries: true, stage: true, x: true }),
     );
 
-    await setVisibility(admin, competition.id, { show_clubs: false });
-    await openCompetition(page, competition.name);
+    await setVisibility(admin, match.id, { show_clubs: false });
+    await openMatch(page, match.name);
     await expect(table.getByRole("columnheader", { name: "Club", exact: true })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(
       winnerCells({ names: true, countries: true, stage: true, x: true }),
     );
     await expect(table).not.toContainText(shooter.club);
 
-    await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false });
-    await openCompetition(page, competition.name);
+    await setVisibility(admin, match.id, { show_clubs: false, show_countries: false });
+    await openMatch(page, match.name);
     await expect(table.getByRole("columnheader", { name: "Country" })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, stage: true, x: true }));
     await expect(table).not.toContainText(shooter.country);
 
-    await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false, show_stage_scores: false });
-    await openCompetition(page, competition.name);
+    await setVisibility(admin, match.id, { show_clubs: false, show_countries: false, show_stage_scores: false });
+    await openMatch(page, match.name);
     await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toBeVisible();
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, x: true }));
     await expect(winner.getByLabel("Stage 1: accepted", { exact: true })).toBeVisible();
 
-    await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false, show_stage_scores: false, show_ring_counts: false });
-    await openCompetition(page, competition.name);
+    await setVisibility(admin, match.id, { show_clubs: false, show_countries: false, show_stage_scores: false, show_ring_counts: false });
+    await openMatch(page, match.name);
     await expect(table.getByRole("columnheader", { name: "X", exact: true })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true }));
 
-    await setVisibility(admin, competition.id, { show_clubs: false, show_countries: false, show_names: false, show_stage_scores: false, show_ring_counts: false });
-    await openCompetition(page, competition.name);
+    await setVisibility(admin, match.id, { show_clubs: false, show_countries: false, show_names: false, show_stage_scores: false, show_ring_counts: false });
+    await openMatch(page, match.name);
     await expect(table.getByRole("columnheader", { name: "Name" })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({}));
     await expect(table).not.toContainText(shooter.last_name);
     await expect(table).not.toContainText(shooter.first_name);
   });
 
-  test("a competition without results shows the empty state", async ({ page, admin }) => {
-    const competition = await createCompetition(admin, { name: uniqueName("Empty"), status: "active" });
-    await openCompetition(page, competition.name);
+  test("a match without results shows the empty state", async ({ page, admin }) => {
+    const match = await createMatch(admin, { name: uniqueName("Empty"), status: "active" });
+    await openMatch(page, match.name);
     await expect(page.getByText("No results yet.")).toBeVisible();
     await expect(page.getByRole("table")).toHaveCount(0);
   });
 
-  test("the standings API returns 404 for a draft competition", async ({ admin, baseURL }) => {
-    const draft = await createCompetition(admin, { name: uniqueName("API draft") });
+  test("the standings API returns 404 for a draft match", async ({ admin, baseURL }) => {
+    const draft = await createMatch(admin, { name: uniqueName("API draft") });
     const anonymous = await newApi(baseURL!);
-    const response = await anonymous.get(`/api/spectator/competitions/${draft.id}/standings`);
+    const response = await anonymous.get(`/api/spectator/matches/${draft.id}/standings`);
     expect(response.status()).toBe(404);
 
     await setStatus(admin, draft.id, "active");
-    expect((await anonymous.get(`/api/spectator/competitions/${draft.id}/standings`)).status()).toBe(200);
+    expect((await anonymous.get(`/api/spectator/matches/${draft.id}/standings`)).status()).toBe(200);
     await anonymous.dispose();
   });
 });

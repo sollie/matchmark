@@ -20,8 +20,8 @@ This writes `source/web/src/lib/api/schema.d.ts` (committed) using `openapi-type
 import { api, deviceHeaders } from "./lib/api/client";
 
 await api.POST("/api/admin/login", { body: { username, password } });
-const { data } = await api.GET("/api/competitions/{competitionID}/entries", {
-  params: { path: { competitionID: 1 } },
+const { data } = await api.GET("/api/matches/{matchID}/entries", {
+  params: { path: { matchID: 1 } },
 });
 await api.PUT("/api/scorer/stages/{stage}", {
   params: { path: { stage: 1 } },

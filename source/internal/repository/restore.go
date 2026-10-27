@@ -27,18 +27,20 @@ type RestoreEntry struct {
 	Stages   []RestoreStage
 }
 
-type RestoreCompetition struct {
-	Competition Competition
-	Entries     []RestoreEntry
+type RestoreMatch struct {
+	CompetitionID   int64
+	CompetitionName string
+	Match           Match
+	Entries         []RestoreEntry
 }
 
 type RestoreCounts struct {
-	Competitions int
-	Entries      int
-	Stages       int
+	Matches int
+	Entries int
+	Stages  int
 }
 
-func (r *Repository) CountCompetitions(ctx context.Context) (int, error) {
+func (r *Repository) CountMatches(ctx context.Context) (int, error) {
 	var n int
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM matches`).Scan(&n)
 	return n, err
@@ -56,7 +58,7 @@ func (r *Repository) EntryExists(ctx context.Context, id int64) (bool, error) {
 	return n > 0, err
 }
 
-func (r *Repository) RestoreCompetitions(ctx context.Context, rcs []RestoreCompetition) (RestoreCounts, error) {
+func (r *Repository) RestoreMatches(ctx context.Context, rcs []RestoreMatch) (RestoreCounts, error) {
 	var counts RestoreCounts
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -64,7 +66,7 @@ func (r *Repository) RestoreCompetitions(ctx context.Context, rcs []RestoreCompe
 	}
 	defer func() { _ = tx.Rollback() }()
 	for _, rc := range rcs {
-		if err := restoreCompetition(ctx, tx, rc, &counts); err != nil {
+		if err := restoreMatch(ctx, tx, rc, &counts); err != nil {
 			return RestoreCounts{}, err
 		}
 	}
@@ -74,22 +76,22 @@ func (r *Repository) RestoreCompetitions(ctx context.Context, rcs []RestoreCompe
 	return counts, nil
 }
 
-func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, counts *RestoreCounts) error {
+func restoreMatch(ctx context.Context, tx *sql.Tx, rc RestoreMatch, counts *RestoreCounts) error {
 	var exists int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM matches WHERE id = ?`, rc.Competition.ID).Scan(&exists); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM matches WHERE id = ?`, rc.Match.ID).Scan(&exists); err != nil {
 		return err
 	}
 	if exists == 0 {
-		containerID, err := ensureContainer(ctx, tx, 0, rc.Competition.Name, rc.Competition.Date)
+		containerID, err := restoreCompetition(ctx, tx, rc)
 		if err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO matches (id, competition_id, name, date, course, status, current_stage) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			rc.Competition.ID, containerID, rc.Competition.Name, rc.Competition.Date, rc.Competition.Course, rc.Competition.Status, rc.Competition.CurrentStage); err != nil {
+			rc.Match.ID, containerID, rc.Match.Name, rc.Match.Date, rc.Match.Course, rc.Match.Status, rc.Match.CurrentStage); err != nil {
 			return mapErr(err)
 		}
-		counts.Competitions++
+		counts.Matches++
 	}
 	for _, e := range rc.Entries {
 		var exists int
@@ -103,7 +105,7 @@ func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, 
 			}
 			if _, err := tx.ExecContext(ctx,
 				`INSERT INTO entries (id, match_id, shooter_id, category, lane) VALUES (?, ?, ?, ?, ?)`,
-				e.ID, rc.Competition.ID, shooterID, e.Category, e.Lane); err != nil {
+				e.ID, rc.Match.ID, shooterID, e.Category, e.Lane); err != nil {
 				return mapErr(err)
 			}
 			counts.Entries++
@@ -133,6 +135,26 @@ func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, 
 		}
 	}
 	return nil
+}
+
+func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreMatch) (int64, error) {
+	if rc.CompetitionID == 0 {
+		return ensureContainer(ctx, tx, 0, rc.Match.Name, rc.Match.Date)
+	}
+	res, err := tx.ExecContext(ctx,
+		`INSERT OR IGNORE INTO competitions (id, name, start_date, end_date) VALUES (?, ?, ?, ?)`,
+		rc.CompetitionID, rc.CompetitionName, rc.Match.Date, rc.Match.Date)
+	if err != nil {
+		return 0, mapErr(err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE competitions SET start_date = MIN(start_date, ?), end_date = MAX(end_date, ?) WHERE id = ?`,
+			rc.Match.Date, rc.Match.Date, rc.CompetitionID); err != nil {
+			return 0, mapErr(err)
+		}
+	}
+	return rc.CompetitionID, nil
 }
 
 type execer interface {

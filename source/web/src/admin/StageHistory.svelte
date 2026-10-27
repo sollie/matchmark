@@ -5,7 +5,7 @@
 
   type History = components["schemas"]["StageHistory"];
 
-  let { competitionId, version }: { competitionId: number; version: number } = $props();
+  let { matchId, version }: { matchId: number; version: number } = $props();
 
   let history = $state<History | null>(null);
   let error = $state("");
@@ -27,9 +27,9 @@
   const union = <T,>(known: T[], more: T[]) => [...new Set([...known, ...more])].sort();
 
   async function load() {
-    const result = await api.GET("/api/competitions/{competitionID}/stage-events", {
+    const result = await api.GET("/api/matches/{matchID}/stage-events", {
       params: {
-        path: { competitionID: competitionId },
+        path: { matchID: matchId },
         query: { scorer: scorer || undefined, shooter: shooter || undefined, stage: stage ? Number(stage) : undefined },
       },
     });

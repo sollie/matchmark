@@ -1,20 +1,20 @@
-import { createCompetition, createPairing, deviceAction, deviceLock, expect, openCompetition, row, section, seedEntry, setStatus, test } from "./helpers";
+import { createMatch, createPairing, deviceAction, deviceLock, expect, openMatch, row, section, seedEntry, setStatus, test } from "./helpers";
 
 test.describe("dispute history", () => {
   test("lists stage events with device actors resolved, counts disputes per scorer and filters", async ({ adminPage: page, admin, course, baseURL }) => {
-    const competition = await createCompetition(admin);
-    const first = await seedEntry(admin, competition.id, 1);
-    const second = await seedEntry(admin, competition.id, 2);
-    await setStatus(admin, competition.id, "active");
+    const match = await createMatch(admin);
+    const first = await seedEntry(admin, match.id, 1);
+    const second = await seedEntry(admin, match.id, 2);
+    await setStatus(admin, match.id, "active");
     const name = (e: typeof first) => `${e.shooter.first_name} ${e.shooter.last_name}`;
-    const lane1 = (await createPairing(admin, competition.id, 1)).token;
-    const lane2 = (await createPairing(admin, competition.id, 2)).token;
+    const lane1 = (await createPairing(admin, match.id, 1)).token;
+    const lane2 = (await createPairing(admin, match.id, 2)).token;
 
     await deviceLock(baseURL!, lane1, 1, { "10": course.stageOneShots });
     await deviceAction(baseURL!, lane2, 1, "dispute");
     await deviceLock(baseURL!, lane1, 1, { "10": course.stageOneShots });
     await deviceLock(baseURL!, lane2, 1, { "10": course.stageOneShots });
-    await openCompetition(page, competition.id);
+    await openMatch(page, match.id);
 
     const history = section(page, "Dispute history");
     const events = history.locator("table.events");

@@ -269,7 +269,7 @@ func headerRows(d ResultsPDFData, grid int) []core.Row {
 		title = "Results"
 	}
 	info := d.Name + "  ·  " + d.Date + "  ·  " + d.CourseLabel
-	textCol := col.New(grid - logoCols).Add(
+	textCol := col.New(grid-logoCols).Add(
 		text.New(title, props.Text{Size: 16, Style: fontstyle.Bold, Top: 2, Left: 2}),
 		text.New(info, props.Text{Size: 10, Top: 10, Left: 2, Color: pdfMuted}),
 	)

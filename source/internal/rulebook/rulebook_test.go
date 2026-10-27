@@ -129,3 +129,38 @@ func TestCategoriesPerCourse(t *testing.T) {
 		t.Errorf("Pistol rejected for 48: %v", err)
 	}
 }
+
+func TestStageParts(t *testing.T) {
+	course, err := rulebook.CourseByKey("150")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantParts := []string{"Match 1", "Match 1", "Match 2", "Match 3", "Match 4", "Match 4", "Match 5", "Match 5", "Match 5", "Match 5"}
+	shots := map[string]int{}
+	for i, stage := range course.Stages {
+		if stage.Part != wantParts[i] {
+			t.Errorf("stage %d Part = %q, want %q", stage.StageNumber, stage.Part, wantParts[i])
+		}
+		shots[stage.Part] += stage.ExpectedShots
+	}
+	if shots["Match 5"] != 60 {
+		t.Errorf("Match 5 shots = %d, want 60", shots["Match 5"])
+	}
+	if got := course.Stages[3].Label(); got != "Stage 4 · Match 3" {
+		t.Errorf("Label() = %q", got)
+	}
+	for _, key := range []string{"60", "48", "40"} {
+		c, err := rulebook.CourseByKey(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, stage := range c.Stages {
+			if stage.Part != "" {
+				t.Errorf("course %s stage %d has Part %q", key, stage.StageNumber, stage.Part)
+			}
+		}
+		if got := c.Stages[0].Label(); got != "Stage 1" {
+			t.Errorf("course %s Label() = %q", key, got)
+		}
+	}
+}

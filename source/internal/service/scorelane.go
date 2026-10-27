@@ -37,8 +37,8 @@ func (s *Service) ScoreTarget(ctx context.Context, d Device) (ScoreTarget, error
 	return s.resolveScoreTarget(ctx, d, true)
 }
 
-func (s *Service) ScoreLane(ctx context.Context, competitionID int64, ownLane int) (int, error) {
-	t, err := s.resolveScoreTarget(ctx, Device{CompetitionID: competitionID, Lane: ownLane}, false)
+func (s *Service) ScoreLane(ctx context.Context, matchID int64, ownLane int) (int, error) {
+	t, err := s.resolveScoreTarget(ctx, Device{MatchID: matchID, Lane: ownLane}, false)
 	if err != nil {
 		return 0, err
 	}
@@ -46,14 +46,14 @@ func (s *Service) ScoreLane(ctx context.Context, competitionID int64, ownLane in
 }
 
 func (s *Service) resolveScoreTarget(ctx context.Context, d Device, requireActive bool) (ScoreTarget, error) {
-	comp, err := s.repo.GetCompetition(ctx, d.CompetitionID)
+	comp, err := s.repo.GetMatch(ctx, d.MatchID)
 	if err != nil {
 		return ScoreTarget{}, mapRepoErr(err)
 	}
-	if requireActive && CompetitionStatus(comp.Status) != StatusActive {
+	if requireActive && MatchStatus(comp.Status) != StatusActive {
 		return ScoreTarget{}, ErrConflict
 	}
-	entries, err := s.repo.ListEntries(ctx, d.CompetitionID)
+	entries, err := s.repo.ListEntries(ctx, d.MatchID)
 	if err != nil {
 		return ScoreTarget{}, err
 	}

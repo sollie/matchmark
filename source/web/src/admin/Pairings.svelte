@@ -9,11 +9,11 @@
   type EntryWithStages = components["schemas"]["EntryWithStages"];
 
   let {
-    competitionId,
+    matchId,
     entries,
     finished,
     draft = false,
-  }: { competitionId: number; entries: EntryWithStages[]; finished: boolean; draft?: boolean } = $props();
+  }: { matchId: number; entries: EntryWithStages[]; finished: boolean; draft?: boolean } = $props();
 
   let pairings = $state<Pairing[]>([]);
   let lane = $state<number | null>(null);
@@ -23,8 +23,8 @@
   const lanes = $derived([...new Set(entries.filter((e) => !e.withdrawn).map((e) => e.lane))].sort((a, b) => a - b));
 
   async function load() {
-    const result = await api.GET("/api/competitions/{competitionID}/pairings", {
-      params: { path: { competitionID: competitionId } },
+    const result = await api.GET("/api/matches/{matchID}/pairings", {
+      params: { path: { matchID: matchId } },
     });
     if (result.data) pairings = result.data.pairings;
     else error = failure(result);
@@ -36,8 +36,8 @@
     e.preventDefault();
     if (lane === null) return;
     error = "";
-    const result = await api.POST("/api/competitions/{competitionID}/pairings", {
-      params: { path: { competitionID: competitionId } },
+    const result = await api.POST("/api/matches/{matchID}/pairings", {
+      params: { path: { matchID: matchId } },
       body: { lane },
     });
     if (result.data) {
@@ -49,8 +49,8 @@
 
   async function revoke(p: Pairing) {
     error = "";
-    const result = await api.DELETE("/api/competitions/{competitionID}/pairings/{pairingID}", {
-      params: { path: { competitionID: competitionId, pairingID: p.id } },
+    const result = await api.DELETE("/api/matches/{matchID}/pairings/{pairingID}", {
+      params: { path: { matchID: matchId, pairingID: p.id } },
     });
     if (result.response.ok) await load();
     else error = failure(result);
@@ -60,7 +60,7 @@
 <section class="card">
   <h2>Scorer pairing</h2>
   {#if finished}
-    <p class="muted">Competition finished. Pairings are revoked.</p>
+    <p class="muted">Match finished. Pairings are revoked.</p>
   {:else}
     <form class="row" onsubmit={pair}>
       <label>
@@ -73,7 +73,7 @@
       <button type="submit" class="primary">Create pairing link</button>
     </form>
     {#if draft}
-      <p class="muted">You can pair devices before the start. They show a waiting screen until the competition is started. Re-check pairings if you change lanes.</p>
+      <p class="muted">You can pair devices before the start. They show a waiting screen until the match is started. Re-check pairings if you change lanes.</p>
     {/if}
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}

@@ -27,16 +27,16 @@ const (
 )
 
 type StageEvent struct {
-	ID            int64
-	CompetitionID int64
-	EntryID       int64
-	StageNumber   int
-	Event         StageEventKind
-	ActorType     string
-	ActorName     string
-	ScorerName    string
-	ShooterName   string
-	CreatedAt     string
+	ID          int64
+	MatchID     int64
+	EntryID     int64
+	StageNumber int
+	Event       StageEventKind
+	ActorType   string
+	ActorName   string
+	ScorerName  string
+	ShooterName string
+	CreatedAt   string
 }
 
 type RingCounts struct {
@@ -71,7 +71,7 @@ type Stage struct {
 	DisputedAt    string
 }
 
-func (r *Repository) GetStage(ctx context.Context, competitionID, entryID int64, number int) (Stage, error) {
+func (r *Repository) GetStage(ctx context.Context, matchID, entryID int64, number int) (Stage, error) {
 	var s Stage
 	err := r.db.QueryRowContext(ctx,
 		`SELECT s.id, s.entry_id, s.stage_number, s.expected_shots, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.status,
@@ -79,7 +79,7 @@ func (r *Repository) GetStage(ctx context.Context, competitionID, entryID int64,
 		        COALESCE(s.accepted_by, ''), COALESCE(s.accepted_at, ''), COALESCE(s.disputed_at, '')
 		 FROM stages s JOIN entries e ON e.id = s.entry_id
 		 WHERE e.match_id = ? AND e.id = ? AND s.stage_number = ?`,
-		competitionID, entryID, number).
+		matchID, entryID, number).
 		Scan(&s.ID, &s.EntryID, &s.Number, &s.ExpectedShots,
 			&s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &s.Status,
 			&s.ScorerLane, &s.ScorerName, &s.LockedAt, &s.AcceptedBy, &s.AcceptedAt, &s.DisputedAt)
@@ -135,7 +135,7 @@ func insertStageEvent(ctx context.Context, tx *sql.Tx, ev StageEvent) error {
 	_, err := tx.ExecContext(ctx,
 		`INSERT INTO stage_events (match_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		ev.CompetitionID, ev.EntryID, ev.StageNumber, ev.Event, ev.ActorType, ev.ActorName, ev.ScorerName, ev.ShooterName, lockTimestamp())
+		ev.MatchID, ev.EntryID, ev.StageNumber, ev.Event, ev.ActorType, ev.ActorName, ev.ScorerName, ev.ShooterName, lockTimestamp())
 	return mapErr(err)
 }
 
@@ -176,10 +176,10 @@ func conflictIfNone(res sql.Result, err error) error {
 	return nil
 }
 
-func (r *Repository) ListStageEvents(ctx context.Context, competitionID int64) ([]StageEvent, error) {
+func (r *Repository) ListStageEvents(ctx context.Context, matchID int64) ([]StageEvent, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, match_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at
-		 FROM stage_events WHERE match_id = ? ORDER BY id`, competitionID)
+		 FROM stage_events WHERE match_id = ? ORDER BY id`, matchID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (r *Repository) ListStageEvents(ctx context.Context, competitionID int64) (
 	var events []StageEvent
 	for rows.Next() {
 		var e StageEvent
-		if err := rows.Scan(&e.ID, &e.CompetitionID, &e.EntryID, &e.StageNumber, &e.Event, &e.ActorType, &e.ActorName, &e.ScorerName, &e.ShooterName, &e.CreatedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.MatchID, &e.EntryID, &e.StageNumber, &e.Event, &e.ActorType, &e.ActorName, &e.ScorerName, &e.ShooterName, &e.CreatedAt); err != nil {
 			return nil, err
 		}
 		events = append(events, e)
@@ -196,15 +196,15 @@ func (r *Repository) ListStageEvents(ctx context.Context, competitionID int64) (
 }
 
 type LockedStageRef struct {
-	CompetitionID int64
-	EntryID       int64
-	Number        int
+	MatchID int64
+	EntryID int64
+	Number  int
 }
 
 type LockedStageFilter struct {
-	CompetitionID int64
-	EntryID       int64
-	ShooterID     int64
+	MatchID   int64
+	EntryID   int64
+	ShooterID int64
 }
 
 func (r *Repository) ListLockedStages(ctx context.Context, f LockedStageFilter) ([]LockedStageRef, error) {
@@ -216,7 +216,7 @@ func (r *Repository) ListLockedStages(ctx context.Context, f LockedStageFilter) 
 		   AND (? = 0 OR s.entry_id = ?)
 		   AND (? = 0 OR e.shooter_id = ?)
 		 ORDER BY e.match_id, s.entry_id, s.stage_number`,
-		f.CompetitionID, f.CompetitionID, f.EntryID, f.EntryID, f.ShooterID, f.ShooterID)
+		f.MatchID, f.MatchID, f.EntryID, f.EntryID, f.ShooterID, f.ShooterID)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func (r *Repository) ListLockedStages(ctx context.Context, f LockedStageFilter) 
 	var refs []LockedStageRef
 	for rows.Next() {
 		var ref LockedStageRef
-		if err := rows.Scan(&ref.CompetitionID, &ref.EntryID, &ref.Number); err != nil {
+		if err := rows.Scan(&ref.MatchID, &ref.EntryID, &ref.Number); err != nil {
 			return nil, err
 		}
 		refs = append(refs, ref)

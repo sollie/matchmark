@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { adminUsername, type Category, createCompetition, createShooter, expect, openCompetition, row, section, seedEntry, setCounts, setStatus, test } from "./helpers";
+import { adminUsername, type Category, createMatch, createShooter, expect, openMatch, row, section, seedEntry, setCounts, setStatus, test } from "./helpers";
 
 function addForm(page: Page) {
   return page.getByRole("form", { name: "Add entry" });
@@ -7,10 +7,10 @@ function addForm(page: Page) {
 
 test.describe("entries", () => {
   test("adding an entry uses the chosen category and the default lane", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    await seedEntry(admin, competition.id, 1);
+    const match = await createMatch(admin);
+    await seedEntry(admin, match.id, 1);
     const shooter = await createShooter(admin);
-    await openCompetition(page, competition.id);
+    await openMatch(page, match.id);
 
     const form = addForm(page);
     await expect(page.getByLabel("Entry lane")).toHaveValue("2");
@@ -26,10 +26,10 @@ test.describe("entries", () => {
   });
 
   test("a taken lane is rejected and an entered shooter is not offered again", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    const taken = await seedEntry(admin, competition.id, 1);
+    const match = await createMatch(admin);
+    const taken = await seedEntry(admin, match.id, 1);
     const other = await createShooter(admin);
-    await openCompetition(page, competition.id);
+    await openMatch(page, match.id);
 
     const form = addForm(page);
     const picker = form.getByRole("combobox", { name: "Shooter" });
@@ -47,9 +47,9 @@ test.describe("entries", () => {
   });
 
   test("an entry can be moved, withdrawn and removed", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    const entry = await seedEntry(admin, competition.id, 1);
-    await openCompetition(page, competition.id);
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await openMatch(page, match.id);
     page.on("dialog", (dialog) => dialog.accept());
 
     const entryRow = row(page, entry.shooter.last_name);
@@ -71,10 +71,10 @@ test.describe("entries", () => {
 
 test.describe("entries layout", () => {
   test("every stage is reachable without horizontal scrolling", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    const entry = await seedEntry(admin, competition.id, 1);
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
     await page.setViewportSize({ width: 1024, height: 768 });
-    await openCompetition(page, competition.id);
+    await openMatch(page, match.id);
 
     const stages = row(page, entry.shooter.last_name).locator("td.stage");
     await expect(stages).toHaveCount(course.stages);
@@ -86,10 +86,10 @@ test.describe("entries layout", () => {
 
 test.describe("admin ring counts", () => {
   test("a live shot total flags a wrong total and the save is rejected", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    const entry = await seedEntry(admin, competition.id, 1);
-    await setStatus(admin, competition.id, "active");
-    await openCompetition(page, competition.id);
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await openMatch(page, match.id);
 
     await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Edit` }).click();
     const counts = page.locator(".counts");
@@ -111,10 +111,10 @@ test.describe("admin ring counts", () => {
   });
 
   test("save and lock records the stage as locked by the signed-in user and unlock reopens it", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    const entry = await seedEntry(admin, competition.id, 1);
-    await setStatus(admin, competition.id, "active");
-    await openCompetition(page, competition.id);
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await openMatch(page, match.id);
 
     const entryRow = row(page, entry.shooter.last_name);
     const stage = entryRow.locator("td.stage").first();
@@ -141,11 +141,11 @@ test.describe("admin ring counts", () => {
   });
 
   test("an admin overwrite replaces the counts of a stage that already has them", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    const entry = await seedEntry(admin, competition.id, 1);
-    await setStatus(admin, competition.id, "active");
-    await setCounts(admin, competition.id, entry.entryId, 1, { "10": course.stageOneShots }, true);
-    await openCompetition(page, competition.id);
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await setCounts(admin, match.id, entry.entryId, 1, { "10": course.stageOneShots }, true);
+    await openMatch(page, match.id);
 
     const stage = row(page, entry.shooter.last_name).locator("td.stage").first();
     await expect(stage.locator(".score strong")).toHaveText("120");
@@ -160,13 +160,13 @@ test.describe("admin ring counts", () => {
   });
 
   test("a shooter imported from WA1500 in the picker is selected for the entry", async ({ course, adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
+    const match = await createMatch(admin);
     const lastName = `IMPORTED${Date.now()}`;
     const waid = `W${Date.now()}`;
     await page.route("**/api/wa1500/search*", (route) =>
       route.fulfill({ json: { results: [{ waid, first_name: "Ida", last_name: lastName, country: "SWE", club: "Remote Club" }] } }),
     );
-    await openCompetition(page, competition.id);
+    await openMatch(page, match.id);
 
     const form = addForm(page);
     await form.getByRole("combobox", { name: "Shooter" }).fill(lastName);
@@ -186,9 +186,9 @@ test.describe("admin ring counts", () => {
     for (const key of ["40", "150"]) {
       const expected = courses.find((c) => c.key === key)?.categories;
       expect(expected).toBeDefined();
-      const competition = await createCompetition(admin, { course: key });
-      const entry = await seedEntry(admin, competition.id, 1, expected![0] as Category);
-      await openCompetition(page, competition.id);
+      const match = await createMatch(admin, { course: key });
+      const entry = await seedEntry(admin, match.id, 1, expected![0] as Category);
+      await openMatch(page, match.id);
 
       await expect(addForm(page).getByLabel("Entry category").getByRole("option")).toHaveText(expected!);
       const entryRow = row(page, entry.shooter.last_name);
@@ -198,9 +198,9 @@ test.describe("admin ring counts", () => {
   });
 
   test("a Carbine entry can be added on the 150-shot course", async ({ adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { course: "150" });
-    const entry = await seedEntry(admin, competition.id, 1, "Carbine");
-    await openCompetition(page, competition.id);
+    const match = await createMatch(admin, { course: "150" });
+    const entry = await seedEntry(admin, match.id, 1, "Carbine");
+    await openMatch(page, match.id);
     await expect(row(page, entry.shooter.last_name).locator("td.category")).toHaveText("Carbine");
   });
 });

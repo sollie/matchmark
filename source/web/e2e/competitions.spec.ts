@@ -1,281 +1,73 @@
-import type { Page } from "@playwright/test";
-import {
-  createCompetition,
-  createPairing,
-  createShooter,
-  expect,
-  openCompetition,
-  row,
-  section,
-  seedEntry,
-  setStatus,
-  test,
-  todayIso,
-  uniqueName,
-} from "./helpers";
+import { expect, test, uniqueName } from "./helpers";
 
 test.describe("competitions", () => {
-  function stageHeaders(page: Page) {
-    return section(page, "Entries and progress").getByRole("columnheader", { name: /^S\d+$/ });
-  }
+  test("create a competition, group matches under it and enforce its date range", async ({ adminPage: page }) => {
+    const competition = uniqueName("Nationals");
+    const match = uniqueName("Day two");
 
-  test("every course shows its label and one column per stage", async ({ adminPage: page, admin, courses }) => {
-    expect(courses).toHaveLength(4);
-    for (const course of courses) {
-      await test.step(`${course.key}-shot course`, async () => {
-        const name = uniqueName(`Course ${course.key}`);
+    await page.getByRole("button", { name: "New competition" }).click();
+    const form = page.getByRole("form", { name: "New competition" });
+    await form.getByLabel("Competition name").fill(competition);
+    await form.getByLabel("Start date").fill("2026-10-19");
+    await form.getByLabel("End date").fill("2026-10-20");
+    await form.getByRole("button", { name: "Save" }).click();
+    const group = page.getByRole("region", { name: `Competition ${competition}` });
+    await expect(group).toContainText("2026-10-19 – 2026-10-20");
 
-        await page.goto("/admin");
-        await page.getByLabel("Name").fill(name);
-        await page.getByLabel("Course of fire").selectOption({ label: course.label });
-        await page.getByRole("button", { name: "Create competition" }).click();
+    await page.getByLabel("Name", { exact: true }).fill(match);
+    await page.getByLabel("Date", { exact: true }).fill("2026-10-21");
+    await page.getByRole("combobox", { name: /^Competition/ }).selectOption({ label: `${competition} (2026-10-19 – 2026-10-20)` });
+    await page.getByRole("button", { name: "Create match" }).click();
+    await expect(page.getByRole("alert")).toBeVisible();
 
-        await expect(page.getByRole("heading", { name })).toBeVisible();
-        await expect(page.getByText(course.label, { exact: false }).first()).toBeVisible();
-        await expect(page.getByText("draft", { exact: true })).toBeVisible();
-
-        const id = Number(page.url().split("/").pop());
-        await seedEntry(admin, id, 1);
-        await openCompetition(page, id);
-        await expect(stageHeaders(page)).toHaveCount(course.stages);
-        await expect(stageHeaders(page).first()).toHaveText("S1");
-        await expect(stageHeaders(page).last()).toHaveText(`S${course.stages}`);
-
-        await page.goto("/admin");
-        await expect(row(page, name)).toContainText(course.label);
-      });
-    }
-  });
-
-  test("the date is prefilled in ISO 8601 and an invalid date is blocked", async ({ adminPage: page }) => {
-    const name = uniqueName("Bad date");
-
-    await expect(page.getByLabel("Date")).toHaveValue(todayIso());
-    await page.getByLabel("Name").fill(name);
-    await page.getByLabel("Date").fill("19/10/2026");
-    await page.getByRole("button", { name: "Create competition" }).click();
-
-    await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByLabel("Date")).toHaveJSProperty("validity.valid", false);
-    await expect(row(page, name)).toHaveCount(0);
-
-    await page.getByLabel("Date").fill("2026-10-19");
-    await page.getByRole("button", { name: "Create competition" }).click();
-    await expect(page.getByRole("heading", { name })).toBeVisible();
-    await expect(page.getByText("2026-10-19")).toBeVisible();
-  });
-
-  test("the list shows each competition with its status", async ({ courses, adminPage: page, admin }) => {
-    const [first, second, third] = courses;
-    const draft = await createCompetition(admin, {
-      name: uniqueName("Listed draft"),
-      date: "2026-03-01",
-      course: first.key,
-    });
-    const active = await createCompetition(admin, {
-      name: uniqueName("Listed active"),
-      date: "2026-03-02",
-      course: second.key,
-      status: "active",
-    });
-    const finished = await createCompetition(admin, {
-      name: uniqueName("Listed finished"),
-      date: "2026-03-03",
-      course: third.key,
-      status: "finished",
-    });
+    await page.getByLabel("Date", { exact: true }).fill("2026-10-20");
+    await page.getByRole("button", { name: "Create match" }).click();
+    await expect(page.getByRole("heading", { name: match })).toBeVisible();
 
     await page.goto("/admin");
-    const table = page.getByRole("table");
-    const expectations = [
-      { c: draft, status: "draft", course: first.label },
-      { c: active, status: "active", course: second.label },
-      { c: finished, status: "finished", course: third.label },
-    ];
-    for (const { c, status, course } of expectations) {
-      const r = row(page, c.name);
-      await expect(r).toHaveCount(1);
-      await expect(r.getByRole("link", { name: c.name, exact: true })).toBeVisible();
-      await expect(r).toContainText(c.date);
-      await expect(r).toContainText(course);
-      await expect(r.getByText(status, { exact: true })).toBeVisible();
-      const downloads = r.getByRole("link", { name: /^(Results report \(\.xlsx\)|Detailed CSV|Results PDF) for / });
-      await expect(downloads).toHaveCount(status === "finished" ? 3 : 0);
-    }
-    await expect(table).toBeVisible();
+    await expect(group.getByRole("row").filter({ hasText: match })).toHaveCount(1);
+    await expect(group.getByRole("button", { name: /^Delete competition/ })).toHaveCount(0);
 
-    await row(page, active.name).getByRole("link", { name: active.name, exact: true }).click();
-    await expect(page.getByRole("heading", { name: active.name })).toBeVisible();
+    await group.getByRole("button", { name: `Edit competition ${competition}` }).click();
+    const edit = page.getByRole("form", { name: "Edit competition" });
+    await edit.getByLabel("End date").fill("2026-10-19");
+    await edit.getByRole("button", { name: "Save" }).click();
+    await expect(edit.getByRole("alert")).toBeVisible();
+    await edit.getByLabel("End date").fill("2026-10-22");
+    await edit.getByRole("button", { name: "Save" }).click();
+    await expect(group).toContainText("2026-10-19 – 2026-10-22");
   });
 
-  test("start and finish ask for confirmation and declining changes nothing", async ({ adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    await openCompetition(page, competition.id);
-    await expect(page.getByRole("heading", { name: competition.name })).toBeVisible();
+  test("an empty competition can be deleted", async ({ adminPage: page }) => {
+    const competition = uniqueName("Empty");
 
-    const messages: string[] = [];
-    page.on("dialog", (dialog) => {
-      messages.push(dialog.message());
-      void (accept ? dialog.accept() : dialog.dismiss());
-    });
-
-    let accept = false;
-    await page.getByRole("button", { name: "Start competition" }).click();
-    await expect(page.getByText("draft", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Start competition" })).toBeVisible();
-
-    accept = true;
-    await page.getByRole("button", { name: "Start competition" }).click();
-    await expect(page.getByText("active", { exact: true })).toBeVisible();
-
-    accept = false;
-    await page.getByRole("button", { name: "Finish competition" }).click();
-    await expect(page.getByText("active", { exact: true })).toBeVisible();
-
-    accept = true;
-    await page.getByRole("button", { name: "Finish competition" }).click();
-    await expect(page.getByText("finished", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Start competition|Finish competition/ })).toHaveCount(0);
-
-    expect(messages).toEqual([
-      expect.stringContaining("Start this competition?"),
-      expect.stringContaining("Start this competition?"),
-      expect.stringContaining("Finish this competition?"),
-      expect.stringContaining("Finish this competition?"),
-    ]);
-  });
-
-  test("a finished competition shows revoked pairings and refuses new entries", async ({ adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    await seedEntry(admin, competition.id, 1);
-    await seedEntry(admin, competition.id, 2);
-    await setStatus(admin, competition.id, "active");
-    await createPairing(admin, competition.id, 1);
-    const extra = await createShooter(admin);
-
-    await openCompetition(page, competition.id);
-    const pairings = section(page, "Scorer pairing");
-    await expect(pairings.getByRole("row", { name: /paired/ })).toHaveCount(1);
+    await page.getByRole("button", { name: "New competition" }).click();
+    const form = page.getByRole("form", { name: "New competition" });
+    await form.getByLabel("Competition name").fill(competition);
+    await form.getByRole("button", { name: "Save" }).click();
+    const group = page.getByRole("region", { name: `Competition ${competition}` });
+    await expect(group).toBeVisible();
 
     page.once("dialog", (dialog) => dialog.accept());
-    await page.getByRole("button", { name: "Finish competition" }).click();
-    await expect(page.getByText("finished", { exact: true })).toBeVisible();
-
-    await expect(pairings.getByText("Competition finished. Pairings are revoked.")).toBeVisible();
-    await page.reload();
-    await expect(pairings.getByRole("row", { name: /revoked/ })).toHaveCount(1);
-    await expect(pairings.getByRole("button", { name: "Revoke" })).toHaveCount(0);
-
-    await expect(page.getByRole("form", { name: "Add entry" })).toHaveCount(0);
-    const refused = await admin.post(`/api/competitions/${competition.id}/entries`, { data: { shooter_id: extra.id, category: "Revolver", lane: 3 } });
-    expect(refused.status()).toBe(409);
-    await expect(row(page, extra.last_name)).toHaveCount(0);
+    await group.getByRole("button", { name: `Delete competition ${competition}` }).click();
+    await expect(group).toHaveCount(0);
   });
 
-  test("a draft competition can be edited", async ({ courses, adminPage: page, admin }) => {
-    const [original, target] = courses;
-    const competition = await createCompetition(admin, { date: "2026-03-01", course: original.key });
-    const name = uniqueName("Renamed");
-    await openCompetition(page, competition.id);
+  test("a new competition is created together with the match", async ({ adminPage: page }) => {
+    const competition = uniqueName("Combined");
+    const match = uniqueName("Opening");
 
-    await page.getByRole("button", { name: "Edit competition" }).click();
-    const form = page.getByRole("form", { name: "Edit competition" });
-    await form.getByLabel("Name").fill(name);
-    await form.getByLabel("Date").fill("2026-10-19");
-    await form.getByLabel("Course of fire").selectOption({ label: target.label });
-    await form.getByRole("button", { name: "Save" }).click();
-
-    await expect(page.getByRole("heading", { name })).toBeVisible();
-    await expect(page.getByText("2026-10-19")).toBeVisible();
-    await expect(page.getByText(target.label, { exact: false }).first()).toBeVisible();
-
-    await seedEntry(admin, competition.id, 1);
-    await openCompetition(page, competition.id);
-    await expect(stageHeaders(page)).toHaveCount(target.stages);
+    await page.getByLabel("Name", { exact: true }).fill(match);
+    await page.getByLabel("Date", { exact: true }).fill("2026-11-02");
+    await page.getByRole("combobox", { name: /^Competition/ }).selectOption({ label: "New competition…" });
+    await page.getByLabel("Competition name").fill(competition);
+    await page.getByLabel("Start date").fill("2026-11-01");
+    await page.getByLabel("End date").fill("2026-11-03");
+    await page.getByRole("button", { name: "Create match" }).click();
+    await expect(page.getByRole("heading", { name: match })).toBeVisible();
 
     await page.goto("/admin");
-    const listed = row(page, name);
-    await expect(listed).toContainText("2026-10-19");
-    await expect(listed).toContainText(target.label);
-  });
-
-  test("an invalid date is blocked when editing", async ({ adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    await openCompetition(page, competition.id);
-
-    await page.getByRole("button", { name: "Edit competition" }).click();
-    const form = page.getByRole("form", { name: "Edit competition" });
-    await form.getByLabel("Date").fill("19/10/2026");
-    await form.getByRole("button", { name: "Save" }).click();
-    await expect(form.getByLabel("Date")).toHaveJSProperty("validity.valid", false);
-    await expect(page.getByRole("heading", { name: competition.name })).toBeVisible();
-  });
-
-  test("the course is locked once an entry exists", async ({ courses, adminPage: page, admin }) => {
-    const [locked] = courses;
-    const competition = await createCompetition(admin, { course: locked.key });
-    await seedEntry(admin, competition.id, 1);
-    const name = uniqueName("Entered");
-    await openCompetition(page, competition.id);
-
-    await page.getByRole("button", { name: "Edit competition" }).click();
-    const form = page.getByRole("form", { name: "Edit competition" });
-    await expect(form.getByLabel("Course of fire")).toBeDisabled();
-    await expect(form.getByText("The course cannot change once the competition has entries.")).toBeVisible();
-    await form.getByLabel("Name").fill(name);
-    await form.getByRole("button", { name: "Save" }).click();
-    await expect(page.getByRole("heading", { name })).toBeVisible();
-    await expect(page.getByText(locked.label, { exact: false }).first()).toBeVisible();
-  });
-
-  test("an active or finished competition has no edit action", async ({ adminPage: page, admin }) => {
-    const active = await createCompetition(admin, { status: "active" });
-    await openCompetition(page, active.id);
-    await expect(page.getByRole("button", { name: "Delete competition" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Edit competition" })).toHaveCount(0);
-
-    const finished = await createCompetition(admin, { status: "finished" });
-    await openCompetition(page, finished.id);
-    await expect(page.getByRole("button", { name: "Delete competition" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Edit competition" })).toHaveCount(0);
-  });
-
-  test("deleting a competition requires confirmation", async ({ adminPage: page, admin }) => {
-    const competition = await createCompetition(admin);
-    await openCompetition(page, competition.id);
-
-    page.once("dialog", (dialog) => dialog.dismiss());
-    await page.getByRole("button", { name: "Delete competition" }).click();
-    await expect(page.getByRole("heading", { name: competition.name })).toBeVisible();
-
-    page.once("dialog", (dialog) => {
-      expect(dialog.message()).toContain(competition.name);
-      void dialog.accept();
-    });
-    await page.getByRole("button", { name: "Delete competition" }).click();
-    await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
-    await expect(row(page, competition.name)).toHaveCount(0);
-  });
-
-  test("visibility flags persist after saving and reloading", async ({ adminPage: page, admin }) => {
-    const competition = await createCompetition(admin, { status: "active" });
-    await openCompetition(page, competition.id);
-
-    const visibility = section(page, "Spectator visibility");
-    await expect(visibility.getByLabel("Clubs")).toBeChecked();
-    await expect(visibility.getByLabel("X count")).not.toBeChecked();
-    await visibility.getByLabel("Clubs").uncheck();
-    await visibility.getByLabel("X count").check();
-    await visibility.getByRole("button", { name: "Save" }).click();
-    await expect(visibility.getByRole("status")).toHaveText("Saved");
-
-    await page.reload();
-    const reloaded = section(page, "Spectator visibility");
-    await expect(reloaded.getByLabel("Names")).toBeChecked();
-    await expect(reloaded.getByLabel("Clubs")).not.toBeChecked();
-    await expect(reloaded.getByLabel("Countries")).toBeChecked();
-    await expect(reloaded.getByLabel("Stage scores")).toBeChecked();
-    await expect(reloaded.getByLabel("X count")).toBeChecked();
+    const group = page.getByRole("region", { name: `Competition ${competition}` });
+    await expect(group.getByRole("row").filter({ hasText: match })).toHaveCount(1);
   });
 });

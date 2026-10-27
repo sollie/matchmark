@@ -30,7 +30,7 @@ type controlLane struct {
 
 func (f *scoringFixture) controlRoom(t *testing.T) controlRoom {
 	t.Helper()
-	status, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/control-room", f.comp), nil)
+	status, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/control-room", f.comp), nil)
 	if status != http.StatusOK {
 		t.Fatalf("control room: %d %v", status, out)
 	}
@@ -185,7 +185,7 @@ func TestControlRoomGatesStartNextAndAcceptAll(t *testing.T) {
 func TestAcceptAllIsRejectedWhileALaneIsOpen(t *testing.T) {
 	f := newScoringFixture(t, 1, 2, 3)
 	f.deviceLock(t, 1, 1)
-	status, _ := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/accept-all", f.comp), nil)
+	status, _ := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/accept-all", f.comp), nil)
 	if status != http.StatusConflict {
 		t.Fatalf("accept all with open lanes: %d", status)
 	}
@@ -200,7 +200,7 @@ func TestAcceptAllAcceptsEveryAwaitingStageInOneAction(t *testing.T) {
 	f.lockOnDevice(t, f.pair(t, 2))
 	f.lockOnDevice(t, f.pair(t, 3))
 
-	status, out := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/accept-all", f.comp), nil)
+	status, out := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/accept-all", f.comp), nil)
 	if status != http.StatusOK || out["accepted"] != float64(3) {
 		t.Fatalf("accept all: %d %v", status, out)
 	}
@@ -223,10 +223,10 @@ func TestAcceptAllAcceptsEveryAwaitingStageInOneAction(t *testing.T) {
 	}
 }
 
-func TestAcceptAllOnTheLastStageFinishesTheCompetition(t *testing.T) {
+func TestAcceptAllOnTheLastStageFinishesTheMatch(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	tokens := map[int]string{1: f.pair(t, 1), 2: f.pair(t, 2)}
-	_, list := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, list := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	stages := len(list["entries"].([]any)[0].(map[string]any)["stages"].([]any))
 	for stage := 1; stage <= stages; stage++ {
 		if stage > 1 {
@@ -236,11 +236,11 @@ func TestAcceptAllOnTheLastStageFinishesTheCompetition(t *testing.T) {
 		}
 		f.scoreAndLock(t, tokens[1], 2, stage)
 		f.scoreAndLock(t, tokens[2], 1, stage)
-		if status, out := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/accept-all", f.comp), nil); status != http.StatusOK {
+		if status, out := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/accept-all", f.comp), nil); status != http.StatusOK {
 			t.Fatalf("accept all stage %d: %d %v", stage, status, out)
 		}
 	}
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d", f.comp), nil)
 	if out["status"] != "finished" {
 		t.Fatalf("status %v", out["status"])
 	}
@@ -263,17 +263,17 @@ func TestAdminLocksAndUnlocksALaneWithoutADevice(t *testing.T) {
 	}
 }
 
-func TestControlRoomAndAcceptAllRequireAdminAndAnActiveCompetition(t *testing.T) {
+func TestControlRoomAndAcceptAllRequireAdminAndAnActiveMatch(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	token := f.pair(t, 1)
-	if status, _ := f.env.DoToken(token, "GET", fmt.Sprintf("/api/competitions/%d/control-room", f.comp), nil); status == http.StatusOK {
+	if status, _ := f.env.DoToken(token, "GET", fmt.Sprintf("/api/matches/%d/control-room", f.comp), nil); status == http.StatusOK {
 		t.Fatal("a device must not read the control room")
 	}
 	draft := newFixture(t, "150")
-	if status, _ := draft.env.Do("GET", fmt.Sprintf("/api/competitions/%d/control-room", draft.comp), nil); status != http.StatusConflict {
+	if status, _ := draft.env.Do("GET", fmt.Sprintf("/api/matches/%d/control-room", draft.comp), nil); status != http.StatusConflict {
 		t.Fatalf("draft control room: %d", status)
 	}
-	if status, _ := draft.env.Do("POST", fmt.Sprintf("/api/competitions/%d/accept-all", draft.comp), nil); status != http.StatusConflict {
+	if status, _ := draft.env.Do("POST", fmt.Sprintf("/api/matches/%d/accept-all", draft.comp), nil); status != http.StatusConflict {
 		t.Fatalf("draft accept all: %d", status)
 	}
 }
@@ -296,7 +296,7 @@ type scorerCount struct {
 
 func (f *scoringFixture) history(t *testing.T, query string) ([]historyEvent, []scorerCount) {
 	t.Helper()
-	status, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/stage-events%s", f.comp, query), nil)
+	status, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/stage-events%s", f.comp, query), nil)
 	if status != http.StatusOK {
 		t.Fatalf("stage events: %d %v", status, out)
 	}
@@ -373,14 +373,14 @@ func TestStageEventHistoryFiltersByScorerShooterAndStage(t *testing.T) {
 	if events, _ := f.history(t, "?stage=2"); len(events) != 0 {
 		t.Fatalf("stage filter %+v", events)
 	}
-	if status, _ := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/stage-events?stage=x", f.comp), nil); status != http.StatusUnprocessableEntity {
+	if status, _ := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/stage-events?stage=x", f.comp), nil); status != http.StatusUnprocessableEntity {
 		t.Fatalf("bad stage: %d", status)
 	}
 }
 
 func TestStageEventHistoryRequiresAdmin(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	if status, _ := f.env.DoToken(f.pair(t, 1), "GET", fmt.Sprintf("/api/competitions/%d/stage-events", f.comp), nil); status == http.StatusOK {
+	if status, _ := f.env.DoToken(f.pair(t, 1), "GET", fmt.Sprintf("/api/matches/%d/stage-events", f.comp), nil); status == http.StatusOK {
 		t.Fatal("a device must not read the history")
 	}
 }

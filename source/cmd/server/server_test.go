@@ -95,7 +95,7 @@ func TestSPAHandler(t *testing.T) {
 		body         string
 	}{
 		{"GET", "/", 200, "app"},
-		{"GET", "/competitions/3", 200, "app"},
+		{"GET", "/matches/3", 200, "app"},
 		{"GET", "/assets/app.js", 200, "js"},
 		{"GET", "/assets/missing.js", 404, ""},
 		{"GET", "/api/anything", 200, "api"},

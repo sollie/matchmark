@@ -11,7 +11,7 @@ import (
 
 func (f *scoringFixture) stageStatus(t *testing.T, lane, stage int) string {
 	t.Helper()
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == lane {
@@ -23,7 +23,7 @@ func (f *scoringFixture) stageStatus(t *testing.T, lane, stage int) string {
 }
 
 func (f *scoringFixture) adminStage(lane, stage int, action string) string {
-	return fmt.Sprintf("/api/competitions/%d/entries/%d/stages/%d%s", f.comp, f.entries[lane], stage, action)
+	return fmt.Sprintf("/api/matches/%d/entries/%d/stages/%d%s", f.comp, f.entries[lane], stage, action)
 }
 
 func (f *scoringFixture) deviceLock(t *testing.T, scorerLane, stage int) {
@@ -105,7 +105,7 @@ func TestAdminLockAcceptsDirectlyAndUnlockReopensKeepingHits(t *testing.T) {
 	if got := f.stageStatus(t, 2, 1); got != "open" {
 		t.Fatalf("status %q", got)
 	}
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == 2 {
@@ -139,7 +139,7 @@ func TestStatusChangesWriteStageStatusLinesAndAuditActions(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
 	line := lastScoreLine(t, f.env)
-	if line["event"] != "stage_status" || line["msg"] != "stage_status" || line["schema_version"] != float64(2) ||
+	if line["event"] != "stage_status" || line["msg"] != "stage_status" || line["schema_version"] != float64(3) ||
 		line["status"] != "awaiting_acceptance" || line["locked_by"] != float64(1) {
 		t.Fatalf("lock line: %v", line)
 	}
@@ -193,12 +193,12 @@ func TestStageEventsRecordEveryStatusChange(t *testing.T) {
 func TestReportAndCSVCountOnlyAcceptedStages(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
-	_, _, body := f.env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", f.comp))
+	_, _, body := f.env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", f.comp))
 	if strings.Contains(string(body), ",120,") {
 		t.Fatalf("awaiting stage in csv: %s", body)
 	}
 	f.env.Do("POST", f.adminStage(2, 1, "/accept"), nil)
-	_, _, body = f.env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", f.comp))
+	_, _, body = f.env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", f.comp))
 	if !strings.Contains(string(body), ",120,") {
 		t.Fatalf("accepted stage missing from csv: %s", body)
 	}

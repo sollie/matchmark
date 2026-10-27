@@ -7,8 +7,8 @@ import (
 )
 
 func (h *Handler) scorecardRoutes(r chi.Router) {
-	r.With(h.render.Middleware(ResourceByPath)).Get("/scorer/scorecard/{competitionID}/{lane}", h.getScorecard)
-	r.With(h.render.Middleware(ResourceByPath)).Get("/scorer/scorecard/{competitionID}/{lane}/summary", h.getScorecardSummary)
+	r.With(h.render.Middleware(ResourceByPath)).Get("/scorer/scorecard/{matchID}/{lane}", h.getScorecard)
+	r.With(h.render.Middleware(ResourceByPath)).Get("/scorer/scorecard/{matchID}/{lane}/summary", h.getScorecardSummary)
 }
 
 func (h *Handler) getScorecard(w http.ResponseWriter, r *http.Request) {
@@ -16,7 +16,7 @@ func (h *Handler) getScorecard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	compID, err := pathInt(r, "competitionID")
+	compID, err := pathInt(r, "matchID")
 	if err != nil {
 		writeError(w, err)
 		return
@@ -35,7 +35,7 @@ func (h *Handler) getScorecard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getScorecardSummary(w http.ResponseWriter, r *http.Request) {
-	compID, err := pathInt(r, "competitionID")
+	compID, err := pathInt(r, "matchID")
 	if err != nil {
 		writeError(w, err)
 		return

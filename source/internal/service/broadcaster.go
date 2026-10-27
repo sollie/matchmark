@@ -46,11 +46,11 @@ func (b *Broadcaster) topicLocked(id int64) *topic {
 	return t
 }
 
-func (b *Broadcaster) Subscribe(competitionID int64) *Subscription {
+func (b *Broadcaster) Subscribe(matchID int64) *Subscription {
 	ch := make(chan struct{}, 1)
-	sub := &Subscription{C: ch, ch: ch, b: b, id: competitionID}
+	sub := &Subscription{C: ch, ch: ch, b: b, id: matchID}
 	b.mu.Lock()
-	b.topicLocked(competitionID).subs[sub] = struct{}{}
+	b.topicLocked(matchID).subs[sub] = struct{}{}
 	b.mu.Unlock()
 	return sub
 }
@@ -88,19 +88,19 @@ func (b *Broadcaster) releaseLocked(id int64, t *topic) {
 	}
 }
 
-func (b *Broadcaster) Version(competitionID int64) uint64 {
+func (b *Broadcaster) Version(matchID int64) uint64 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if t, ok := b.topics[competitionID]; ok {
+	if t, ok := b.topics[matchID]; ok {
 		return b.global + t.version
 	}
-	return b.global + b.retained[competitionID]
+	return b.global + b.retained[matchID]
 }
 
-func (b *Broadcaster) Publish(competitionID int64) {
+func (b *Broadcaster) Publish(matchID int64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.publishLocked(competitionID)
+	b.publishLocked(matchID)
 }
 
 func (b *Broadcaster) PublishAll() {
