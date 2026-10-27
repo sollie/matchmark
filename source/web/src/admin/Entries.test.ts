@@ -27,7 +27,8 @@ const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
   ...overrides,
 });
 
-const course = (key: string, categories: string[]) => ({ key, label: key, categories }) as RulebookCourse;
+const course = (key: string, categories: string[]) =>
+  ({ key, label: key, categories, stages: key === "150" ? [{ stage_number: 1, part: "Match 1" }] : [] }) as unknown as RulebookCourse;
 
 function setup(entries: EntryWithStages[] = [entry()], courseKey = "150") {
   rulebook.courses = [course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]), course("40", ["Revolver"])];
@@ -47,6 +48,12 @@ describe("Entries", () => {
     expect(options("Entry category")).toEqual(["Revolver"]);
     await user.click(screen.getByRole("button", { name: "Move" }));
     expect(options("Move category")).toEqual(["Revolver"]);
+  });
+
+  it("titles stage columns with the Part for grouped courses only", () => {
+    setup([entry()], "150");
+    expect(screen.getByRole("columnheader", { name: "S1" }).getAttribute("title")).toBe("Stage 1 · Match 1");
+    expect(screen.getByRole("columnheader", { name: "S2" }).getAttribute("title")).toBe("Stage 2");
   });
 
   it("keeps the current category of a legacy entry selectable when editing", async () => {

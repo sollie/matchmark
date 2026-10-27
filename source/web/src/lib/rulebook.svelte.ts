@@ -23,3 +23,8 @@ export function courseLabel(key: string): string {
 export function courseCategories(key: string): string[] {
   return rulebook.courses.find((c) => c.key === key)?.categories ?? [];
 }
+
+export function stageLabel(key: string, stageNumber: number): string {
+  const part = rulebook.courses.find((c) => c.key === key)?.stages?.find((s) => s.stage_number === stageNumber)?.part;
+  return part ? `Stage ${stageNumber} · ${part}` : `Stage ${stageNumber}`;
+}

@@ -1117,6 +1117,8 @@ export interface components {
             expected_shots: number;
             time_seconds: number;
             position: string;
+            /** @description Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups. */
+            part?: string;
         };
         RulebookRing: {
             ring: string;

@@ -8,6 +8,7 @@ type Stage struct {
 	ExpectedShots int
 	TimeSeconds   int
 	Position      string
+	Part          string
 }
 
 type Course struct {
@@ -22,17 +23,24 @@ var course1500 = Course{
 	Discipline: "1500",
 	TotalShots: 150,
 	Stages: []Stage{
-		{1, "7 yd", 12, 20, "Standing without support"},
-		{2, "15 yd", 12, 20, "Standing without support"},
-		{3, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade"},
-		{4, "50 yd", 24, 165, "6 sitting + 6 prone + 6 L-barricade + 6 R-barricade"},
-		{5, "25 yd", 12, 35, "Standing without support"},
-		{6, "25 yd", 12, 35, "Standing without support"},
-		{7, "7 yd", 12, 20, "Standing without support"},
-		{8, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade"},
-		{9, "50 yd", 24, 165, "6 sitting + 6 prone + 6 L-barricade + 6 R-barricade"},
-		{10, "25 yd", 6, 12, "Standing without support"},
+		{1, "7 yd", 12, 20, "Standing without support", "Match 1"},
+		{2, "15 yd", 12, 20, "Standing without support", "Match 1"},
+		{3, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade", "Match 2"},
+		{4, "50 yd", 24, 165, "6 sitting + 6 prone + 6 L-barricade + 6 R-barricade", "Match 3"},
+		{5, "25 yd", 12, 35, "Standing without support", "Match 4"},
+		{6, "25 yd", 12, 35, "Standing without support", "Match 4"},
+		{7, "7 yd", 12, 20, "Standing without support", "Match 5"},
+		{8, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade", "Match 5"},
+		{9, "50 yd", 24, 165, "6 sitting + 6 prone + 6 L-barricade + 6 R-barricade", "Match 5"},
+		{10, "25 yd", 6, 12, "Standing without support", "Match 5"},
 	},
+}
+
+func (s Stage) Label() string {
+	if s.Part == "" {
+		return fmt.Sprintf("Stage %d", s.StageNumber)
+	}
+	return fmt.Sprintf("Stage %d · %s", s.StageNumber, s.Part)
 }
 
 var course60 = Course{
@@ -40,10 +48,10 @@ var course60 = Course{
 	Discipline: "60",
 	TotalShots: 60,
 	Stages: []Stage{
-		{1, "7 yd", 12, 20, "Standing without support"},
-		{2, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade"},
-		{3, "50 yd", 24, 165, "6 sitting + 6 prone + 6 L-barricade + 6 R-barricade"},
-		{4, "25 yd", 6, 12, "Standing without support"},
+		{1, "7 yd", 12, 20, "Standing without support", ""},
+		{2, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade", ""},
+		{3, "50 yd", 24, 165, "6 sitting + 6 prone + 6 L-barricade + 6 R-barricade", ""},
+		{4, "25 yd", 6, 12, "Standing without support", ""},
 	},
 }
 
@@ -52,10 +60,10 @@ var course48 = Course{
 	Discipline: "48",
 	TotalShots: 48,
 	Stages: []Stage{
-		{1, "3 yd", 6, 8, "Standing single-handed"},
-		{2, "7 yd", 12, 20, "Standing without support"},
-		{3, "15 yd", 12, 20, "Standing without support"},
-		{4, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade"},
+		{1, "3 yd", 6, 8, "Standing single-handed", ""},
+		{2, "7 yd", 12, 20, "Standing without support", ""},
+		{3, "15 yd", 12, 20, "Standing without support", ""},
+		{4, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade", ""},
 	},
 }
 
@@ -64,10 +72,10 @@ var course48FiveShot = Course{
 	Discipline: "48",
 	TotalShots: 40,
 	Stages: []Stage{
-		{1, "3 yd", 5, 8, "Standing single-handed"},
-		{2, "7 yd", 10, 20, "Standing without support"},
-		{3, "15 yd", 10, 20, "Standing without support"},
-		{4, "25 yd", 15, 90, "5 kneeling + 5 L-barricade + 5 R-barricade"},
+		{1, "3 yd", 5, 8, "Standing single-handed", ""},
+		{2, "7 yd", 10, 20, "Standing without support", ""},
+		{3, "15 yd", 10, 20, "Standing without support", ""},
+		{4, "25 yd", 15, 90, "5 kneeling + 5 L-barricade + 5 R-barricade", ""},
 	},
 }
 
