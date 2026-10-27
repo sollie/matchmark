@@ -120,7 +120,7 @@ func TestResultsWorkbook(t *testing.T) {
 		if cell(t, f, "Pistol", "F14") != "" {
 			t.Fatal("placeholder not cleared")
 		}
-		if cell(t, f, "Rifle", "A3") != "" {
+		if cell(t, f, "Carbine", "A3") != "" {
 			t.Fatal("rifle should be empty")
 		}
 	})

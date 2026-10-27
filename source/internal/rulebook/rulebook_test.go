@@ -189,8 +189,8 @@ func TestCategoriesPerCourse(t *testing.T) {
 		if !slices.Equal(got, want) {
 			t.Errorf("CategoriesForCourse(%q) = %v, want %v", key, got, want)
 		}
-		if err := rulebook.ValidateCategory(key, "Rifle"); err == nil {
-			t.Errorf("ValidateCategory(%q, Rifle) accepted", key)
+		if err := rulebook.ValidateCategory(key, "Carbine"); err == nil {
+			t.Errorf("ValidateCategory(%q, Carbine) accepted", key)
 		}
 	}
 	if _, err := rulebook.CategoriesForCourse("99"); err == nil {

@@ -24,7 +24,7 @@ interface Visibility {
 
 type CompetitionStatus = "draft" | "active" | "finished";
 
-export type Category = "Revolver" | "Pistol" | "Revolver OS" | "Pistol OS" | "Rifle";
+export type Category = "Revolver" | "Pistol" | "Revolver OS" | "Pistol OS" | "Carbine";
 
 export interface Course {
   key: string;
