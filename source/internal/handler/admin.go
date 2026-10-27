@@ -17,6 +17,11 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/shooters/{shooterID}", serve(h.getShooter))
 	r.Put("/shooters/{shooterID}", serve(h.updateShooter))
 	r.Delete("/shooters/{shooterID}", serve(h.deleteShooter))
+	r.Get("/competitions", serve(h.listCompetitions))
+	r.Post("/competitions", serve(h.createCompetition))
+	r.Get("/competitions/{competitionID}", serve(h.getCompetition))
+	r.Put("/competitions/{competitionID}", serve(h.updateCompetition))
+	r.Delete("/competitions/{competitionID}", serve(h.deleteCompetition))
 	r.Post("/matches", serve(h.createMatch))
 	r.Get("/matches", serve(h.listMatches))
 	r.Get("/matches/{matchID}", serve(h.getMatch))
@@ -47,9 +52,11 @@ func (h *Handler) adminRoutes(r chi.Router) {
 }
 
 type matchBody struct {
-	Name   string `json:"name"`
-	Date   string `json:"date"`
-	Course string `json:"course"`
+	Name          string           `json:"name"`
+	Date          string           `json:"date"`
+	Course        string           `json:"course"`
+	CompetitionID int64            `json:"competition_id"`
+	Competition   *competitionBody `json:"competition"`
 }
 
 func matchesJSON(comps []repository.Match) []map[string]any {
@@ -81,7 +88,7 @@ func shooterJSON(s repository.Shooter) map[string]any {
 }
 
 func matchJSON(c repository.Match) map[string]any {
-	return map[string]any{"id": c.ID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_stage": c.CurrentStage}
+	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_stage": c.CurrentStage}
 }
 
 func entryJSON(e repository.Entry) map[string]any {

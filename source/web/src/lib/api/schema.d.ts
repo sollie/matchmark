@@ -327,6 +327,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/competitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listCompetitions"];
+        put?: never;
+        post: operations["createCompetition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/competitions/{competitionID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        get: operations["getCompetition"];
+        /** @description Rejected with 422 when the new range would leave a match of the competition outside it */
+        put: operations["updateCompetition"];
+        post?: never;
+        /** @description A competition with matches cannot be deleted */
+        delete: operations["deleteCompetition"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matches": {
         parameters: {
             query?: never;
@@ -1183,7 +1219,27 @@ export interface components {
             club: string;
             waid: string;
         };
+        CompetitionInput: {
+            name: string;
+            /** @description ISO 8601 calendar date, YYYY-MM-DD */
+            start_date: string;
+            /** @description ISO 8601 calendar date, YYYY-MM-DD, not before start_date */
+            end_date: string;
+        };
+        Competition: {
+            /** Format: int64 */
+            id: number;
+            /** @description Number of matches in the competition */
+            match_count: number;
+        } & components["schemas"]["CompetitionInput"];
         MatchInput: {
+            /**
+             * Format: int64
+             * @description Existing competition to put the match in. Used on create only. Omit both this and competition to create a one-day competition from the match
+             */
+            competition_id?: number;
+            /** @description New competition to create together with the match. Used on create only; not combinable with competition_id */
+            competition?: components["schemas"]["CompetitionInput"];
             name: string;
             /** @description ISO 8601 calendar date, YYYY-MM-DD */
             date: string;
@@ -1193,6 +1249,8 @@ export interface components {
         Match: {
             /** Format: int64 */
             id: number;
+            /** Format: int64 */
+            competition_id: number;
             status: components["schemas"]["MatchStatus"];
             /** @description Stage the match is on. Stage 1 at activation; moved only by starting the next stage */
             current_stage: number;
@@ -1504,6 +1562,7 @@ export interface components {
     };
     parameters: {
         MatchID: number;
+        CompetitionID: number;
         UserID: number;
         ShooterID: number;
         EntryID: number;
@@ -2285,6 +2344,117 @@ export interface operations {
             header?: never;
             path: {
                 shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Deleted"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listCompetitions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All competitions, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        competitions: components["schemas"]["Competition"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createCompetition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompetitionInput"];
+            };
+        };
+        responses: {
+            201: components["responses"]["Created"];
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    getCompetition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The competition */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Competition"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateCompetition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompetitionInput"];
+            };
+        };
+        responses: {
+            /** @description The updated competition */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Competition"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    deleteCompetition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
             };
             cookie?: never;
         };

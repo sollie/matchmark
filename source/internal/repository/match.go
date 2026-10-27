@@ -81,6 +81,33 @@ func (r *Repository) CreateMatch(ctx context.Context, c Match) (int64, error) {
 	return id, tx.Commit()
 }
 
+func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Competition, c Match) (int64, int64, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO competitions (name, start_date, end_date) VALUES (?, ?, ?)`, comp.Name, comp.StartDate, comp.EndDate)
+	if err != nil {
+		return 0, 0, mapErr(err)
+	}
+	compID, err := res.LastInsertId()
+	if err != nil {
+		return 0, 0, err
+	}
+	res, err = tx.ExecContext(ctx,
+		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`, compID, c.Name, c.Date, c.Course)
+	if err != nil {
+		return 0, 0, mapErr(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, 0, err
+	}
+	return compID, id, tx.Commit()
+}
+
 func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string) (int64, error) {
 	if id != 0 {
 		return id, nil

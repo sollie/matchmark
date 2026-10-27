@@ -35,7 +35,7 @@ func (s *Service) checkMatchDate(ctx context.Context, containerID int64, date st
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if editing && r.Matches == 1 {
+	if editing && r.Matches == 1 && r.Start == r.End {
 		return nil
 	}
 	if date < r.Start || date > r.End {
@@ -45,10 +45,7 @@ func (s *Service) checkMatchDate(ctx context.Context, containerID int64, date st
 }
 
 func (s *Service) CreateMatch(ctx context.Context, c repository.Match) (int64, error) {
-	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || !validDate(c.Date) {
-		return 0, ErrInvalid
-	}
-	if _, err := rulebook.CourseByKey(c.Course); err != nil {
+	if !validMatch(c) {
 		return 0, ErrInvalid
 	}
 	if err := s.checkMatchDate(ctx, c.CompetitionID, c.Date, false); err != nil {
@@ -60,6 +57,80 @@ func (s *Service) CreateMatch(ctx context.Context, c repository.Match) (int64, e
 	}
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.create", Target: idTarget("match", id), Details: c.Name}})
 	return id, nil
+}
+
+func validMatch(c repository.Match) bool {
+	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || !validDate(c.Date) {
+		return false
+	}
+	_, err := rulebook.CourseByKey(c.Course)
+	return err == nil
+}
+
+func validCompetition(c repository.Competition) bool {
+	return strings.TrimSpace(c.Name) != "" && len(c.Name) <= 128 &&
+		validDate(c.StartDate) && validDate(c.EndDate) && c.EndDate >= c.StartDate
+}
+
+func (s *Service) CreateMatchInNewCompetition(ctx context.Context, comp repository.Competition, c repository.Match) (int64, error) {
+	if !validCompetition(comp) || !validMatch(c) || c.Date < comp.StartDate || c.Date > comp.EndDate {
+		return 0, ErrInvalid
+	}
+	compID, id, err := s.repo.CreateMatchInNewCompetition(ctx, comp, c)
+	if err != nil {
+		return 0, mapRepoErr(err)
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.create", Target: idTarget("competition", compID), Details: comp.Name}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.create", Target: idTarget("match", id), Details: c.Name}})
+	return id, nil
+}
+
+func (s *Service) CreateCompetition(ctx context.Context, c repository.Competition) (int64, error) {
+	if !validCompetition(c) {
+		return 0, ErrInvalid
+	}
+	id, err := s.repo.CreateCompetition(ctx, c)
+	if err != nil {
+		return 0, mapRepoErr(err)
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.create", Target: idTarget("competition", id), Details: c.Name}, Live: LiveAll})
+	return id, nil
+}
+
+func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competition) error {
+	if !validCompetition(c) {
+		return ErrInvalid
+	}
+	if _, err := s.repo.GetCompetition(ctx, c.ID); err != nil {
+		return mapRepoErr(err)
+	}
+	first, last, err := s.repo.MatchDateBounds(ctx, c.ID)
+	if err != nil {
+		return mapRepoErr(err)
+	}
+	if first != "" && (first < c.StartDate || last > c.EndDate) {
+		return ErrInvalid
+	}
+	if err := s.repo.UpdateCompetition(ctx, c); err != nil {
+		return mapRepoErr(err)
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.update", Target: idTarget("competition", c.ID), Details: c.Name}, Live: LiveAll})
+	return nil
+}
+
+func (s *Service) DeleteCompetition(ctx context.Context, id int64) error {
+	c, err := s.repo.GetCompetition(ctx, id)
+	if err != nil {
+		return mapRepoErr(err)
+	}
+	if c.MatchCount > 0 {
+		return ErrConflict
+	}
+	if err := s.repo.DeleteCompetition(ctx, id); err != nil {
+		return mapRepoErr(err)
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.delete", Target: idTarget("competition", id)}, Live: LiveAll})
+	return nil
 }
 
 func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, error) {

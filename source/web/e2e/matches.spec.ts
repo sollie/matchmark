@@ -86,7 +86,7 @@ test.describe("matches", () => {
     });
 
     await page.goto("/admin");
-    const table = page.getByRole("table");
+    const table = page.getByRole("table").first();
     const expectations = [
       { c: draft, status: "draft", course: first.label },
       { c: active, status: "active", course: second.label },
