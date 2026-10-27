@@ -24,7 +24,7 @@ func (r *Repository) ReportEntries(ctx context.Context, competitionID int64) ([]
 		 FROM entries e
 		 JOIN shooters sh ON sh.id = e.shooter_id
 		 JOIN stages s ON s.entry_id = e.id
-		 WHERE e.competition_id = ?
+		 WHERE e.match_id = ?
 		 ORDER BY sh.last_name, sh.first_name, e.id, s.stage_number`, competitionID)
 	if err != nil {
 		return nil, err
