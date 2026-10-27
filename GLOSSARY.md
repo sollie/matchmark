@@ -9,11 +9,19 @@ An organisation that runs competitions and owns its own users, shooters and resu
 _Avoid_: Tenant, organisation
 
 **Competition**:
-A single match event run by a club on a given day. Its name, date and course can be edited while it is a draft; the course is fixed once it has entries.
-_Avoid_: Match, event
+An announced event of one or more days run by a club, holding one or more Matches. It has a name and a start and end date and no status of its own.
+_Avoid_: Tournament, event
+
+**Match**:
+One course shot by the shooters of a Competition, on one date inside the Competition's range. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name, date and course can be edited while it is a draft; the course is fixed once it has entries. A shooter has at most one entry per Match.
+_Avoid_: Competition (for a single course), event
+
+**Part**:
+One of the rulebook's "Match 1" to "Match 5" groups of stages within the 150 course. Stages are numbered internally; the Part is a label shown in the UI and on reports.
+_Avoid_: Match (for a group of stages)
 
 **Shooter**:
-A person registered with the club who can enter competitions. A shooter with a WAID is a known shooter; one without is a new shooter. Admins find a shooter by searching the local registry on WAID or name.
+A person registered with the club who can enter Matches. A shooter with a WAID is a known shooter; one without is a new shooter. Admins find a shooter by searching the local registry on WAID or name.
 _Avoid_: Competitor, participant
 
 **WAID**:
@@ -29,11 +37,11 @@ Copying a shooter found in the WA1500 register into the club's own shooters, wit
 _Avoid_: Sync
 
 **New shooter**:
-A shooter without a WAID, typically fresh from the PPC course and needing a match to get the course accepted.
+A shooter without a WAID, typically fresh from the PPC course and needing a Match to get the course accepted.
 _Avoid_: Guest, beginner
 
 **Entry**:
-A shooter's participation in one competition, in one category, on one lane.
+A shooter's participation in one Match, in one category, on one lane.
 _Avoid_: Registration
 
 **Category**:
@@ -49,7 +57,7 @@ A numbered firing position on the range. At most one shooter occupies a lane.
 _Avoid_: Position, bay
 
 **Manned lane**:
-A lane with a shooter in it for the current competition.
+A lane with a shooter in it for the current Match.
 _Avoid_: Occupied lane, active lane
 
 **Empty lane**:
@@ -65,11 +73,11 @@ The next manned lane after the scorer's own lane, wrapping around, whose shooter
 _Avoid_: Target lane, neighbour lane
 
 **Discipline**:
-A family of matches shot to the same rulebook course: 1500, 60 or 48. A discipline can have more than one course.
+A family of Matches shot to the same rulebook course: 1500, 60 or 48. A discipline can have more than one course.
 _Avoid_: Match type
 
 **Course**:
-The complete set of stages a competition is shot over, with a fixed total number of shots. A competition has exactly one course. The 5-shot revolver variant of the 48 discipline is its own course. Courses are keyed `150`, `60`, `48` and `40`, carry their UI label, and are served by `GET /api/rulebook`.
+The complete set of stages a Match is shot over, with a fixed total number of shots. A Match has exactly one course. The 5-shot revolver variant of the 48 discipline is its own course. Courses are keyed `150`, `60`, `48` and `40`, carry their UI label, and are served by `GET /api/rulebook`.
 _Avoid_: Course of fire (as a noun for the whole set), program
 
 **Stage**:

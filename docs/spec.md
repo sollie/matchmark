@@ -45,6 +45,14 @@ The endpoints run behind the render guard (`handler.RenderGuard`, ADR 0016): at 
 - The admin entries list shows each stage's score and shots entered, for open as well as awaiting-acceptance and accepted stages. An open stage with all expected shots entered is shown as "Scored, not locked".
 - Course data and shot counts live in one `rulebook` package and match rulebook Issue 2026-01-01 §7. The 150 course is 10 stages grouped as Match 1 (7 yd, 15 yd), Match 2 (25 yd), Match 3 (50 yd), Match 4 (2 × 25 yd), Match 5 (7 yd, 25 yd, 50 yd, 25 yd × 6).
 
+## Competition and Match (ADR 0017, target model)
+
+- Competition: name, start date, end date (one day by default); no stored status. It holds one or more Matches and every Match belongs to exactly one Competition. A Match's date must fall inside the Competition's range, and a range change that would leave a Match outside it is rejected.
+- Match: what the sections below call a "competition" until the rename lands (#348): one course, one date, status draft/active/finished, visibility flags, entries, lanes, stages and results. A shooter has at most one entry per Match.
+- Rulebook mapping: Competition is the rulebook's announced competition (statement 1326, `docs/references/rulebook2026-amendments.md` A1); Match is the rulebook's match. The 150 course's "Match 1" to "Match 5" are called Parts and are labels from `internal/rulebook`.
+- The limit of one Revolver 1500, one Pistol 1500 and one Optical Sight match per shooter per competition (statement 1326, re-entry matches) is not enforced, because the club runs no re-entry matches.
+- Admin downloads per Competition are zips of the per-Match reports, rendered on demand and never stored (ADR 0016): xlsx, CSV and PDF zips, and a download-all zip with a folder per Match. Unfinished Matches are skipped and listed in `SKIPPED.txt`.
+
 ## Competition model
 
 - Competition: name, date, course of fire (150 default; 60 and 48/40 selectable; no partial courses), status draft/active/finished, spectator visibility flags. A draft competition can be edited from its page (name, date and course); the course is locked once it has entries, and an active or finished competition cannot be edited.
