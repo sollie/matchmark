@@ -20,7 +20,13 @@
     oncancel?: () => void;
   } = $props();
 
-  const blank = (): ShooterInput => ({ last_name: "", first_name: "", country: "", club: "", waid: "" });
+  const blank = (): ShooterInput => ({
+    last_name: "",
+    first_name: "",
+    country: "",
+    club: "",
+    waid: "",
+  });
 
   let text = $state(query);
   let hits = $state<Hit[]>([]);
@@ -64,12 +70,17 @@
   }
 
   async function finish(id: number) {
-    const result = await api.GET("/api/shooters/{shooterID}", { params: { path: { shooterID: id } } });
+    const result = await api.GET("/api/shooters/{shooterID}", {
+      params: { path: { shooterID: id } },
+    });
     if (result.data) onsaved(result.data);
     else error = failure(result);
   }
 
-  async function runImport(hit: Hit, extra: { update_shooter_id?: number; create_new?: boolean } = {}) {
+  async function runImport(
+    hit: Hit,
+    extra: { update_shooter_id?: number; create_new?: boolean } = {},
+  ) {
     error = "";
     busy = true;
     const result = await api.POST("/api/shooters/import", { body: { ...hit, ...extra } });
@@ -91,7 +102,11 @@
     e.preventDefault();
     error = "";
     busy = true;
-    const body = { ...form, first_name: normalizeFirstName(form.first_name), last_name: normalizeLastName(form.last_name) };
+    const body = {
+      ...form,
+      first_name: normalizeFirstName(form.first_name),
+      last_name: normalizeLastName(form.last_name),
+    };
     const result = await api.POST("/api/shooters", { body });
     busy = false;
     if (!result.data) {
@@ -104,7 +119,15 @@
 
 <div class="wa1500-import card">
   <form class="row" onsubmit={search}>
-    <label>Search WA1500 <input type="text" bind:this={input} bind:value={text} maxlength="100" placeholder="Name, club or WAID" /></label>
+    <label
+      >Search WA1500 <input
+        type="text"
+        bind:this={input}
+        bind:value={text}
+        maxlength="100"
+        placeholder="Name, club or WAID"
+      /></label
+    >
     <button type="submit" class="primary" disabled={searching || !text.trim()}>Search</button>
     {#if oncancel}<button type="button" class="secondary" onclick={oncancel}>Close</button>{/if}
   </form>
@@ -147,20 +170,31 @@
     <div class="dialog card" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
       <h3 id="conflict-title">Name already exists</h3>
       <p>
-        {hitName(current.hit)} matches existing shooters. Update one of them with the WA1500 data, or create a new
-        shooter.
+        {hitName(current.hit)} matches existing shooters. Update one of them with the WA1500 data, or
+        create a new shooter.
       </p>
       <ul>
         {#each current.candidates as c (c.id)}
           <li>
-            <button type="button" class="secondary" disabled={busy} onclick={() => runImport(current.hit, { update_shooter_id: c.id })}>
-              Update {c.first_name} {c.last_name} · {c.waid || "no WAID"} · {c.club} · {c.country}
+            <button
+              type="button"
+              class="secondary"
+              disabled={busy}
+              onclick={() => runImport(current.hit, { update_shooter_id: c.id })}
+            >
+              Update {c.first_name}
+              {c.last_name} · {c.waid || "no WAID"} · {c.club} · {c.country}
             </button>
           </li>
         {/each}
       </ul>
       <div class="row">
-        <button type="button" class="primary" disabled={busy} onclick={() => runImport(current.hit, { create_new: true })}>
+        <button
+          type="button"
+          class="primary"
+          disabled={busy}
+          onclick={() => runImport(current.hit, { create_new: true })}
+        >
           Create new shooter
         </button>
         <button type="button" class="secondary" onclick={() => (pending = null)}>Cancel</button>
@@ -170,6 +204,13 @@
 </div>
 
 <style>
-  .hits { list-style: none; margin: 0; padding: 0; }
-  .dialog { border: 1px solid var(--border, #ccc); background: var(--surface, #fff); }
+  .hits {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .dialog {
+    border: 1px solid var(--border, #ccc);
+    background: var(--surface, #fff);
+  }
 </style>

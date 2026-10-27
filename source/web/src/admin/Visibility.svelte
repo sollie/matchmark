@@ -48,7 +48,8 @@
   {#if visibility}
     <div class="row">
       {#each labels as [key, label] (key)}
-        <label class="check"><input type="checkbox" bind:checked={visibility[key]} /> {label}</label>
+        <label class="check"><input type="checkbox" bind:checked={visibility[key]} /> {label}</label
+        >
       {/each}
       <button class="primary" onclick={save}>Save</button>
     </div>

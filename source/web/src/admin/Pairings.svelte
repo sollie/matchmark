@@ -20,7 +20,9 @@
   let issued = $state<{ lane: number; url: string; svg: string } | null>(null);
   let error = $state("");
 
-  const lanes = $derived([...new Set(entries.filter((e) => !e.withdrawn).map((e) => e.lane))].sort((a, b) => a - b));
+  const lanes = $derived(
+    [...new Set(entries.filter((e) => !e.withdrawn).map((e) => e.lane))].sort((a, b) => a - b),
+  );
 
   async function load() {
     const result = await api.GET("/api/matches/{matchID}/pairings", {
@@ -73,7 +75,10 @@
       <button type="submit" class="primary">Create pairing link</button>
     </form>
     {#if draft}
-      <p class="muted">You can pair devices before the start. They show a waiting screen until the match is started. Re-check pairings if you change lanes.</p>
+      <p class="muted">
+        You can pair devices before the start. They show a waiting screen until the match is
+        started. Re-check pairings if you change lanes.
+      </p>
     {/if}
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -85,7 +90,9 @@
         <li>Open the camera on the scorer's device and scan the code, or copy the link below.</li>
         <li>The link is shown once and pairs the device with lane {issued.lane}.</li>
       </ol>
-      <div class="qr" role="img" aria-label={`QR code pairing lane ${issued.lane}`}>{@html issued.svg}</div>
+      <div class="qr" role="img" aria-label={`QR code pairing lane ${issued.lane}`}>
+        {@html issued.svg}
+      </div>
       <label>
         Pairing link
         <input readonly value={issued.url} onfocus={(e) => e.currentTarget.select()} />
@@ -95,19 +102,26 @@
   {/if}
 
   <div class="scroll">
-  <table>
-    <thead><tr><th>Lane</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      {#each pairings as p (p.id)}
-        <tr>
-          <td>{p.lane}</td>
-          <td><span class="badge {p.revoked ? "neutral" : "success"}">{p.revoked ? "revoked" : "paired"}</span></td>
-          <td>{#if !p.revoked}<button class="danger" onclick={() => revoke(p)}>Revoke</button>{/if}</td>
-        </tr>
-      {:else}
-        <tr><td colspan="3" class="muted">No devices paired.</td></tr>
-      {/each}
-    </tbody>
-  </table>
+    <table>
+      <thead><tr><th>Lane</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {#each pairings as p (p.id)}
+          <tr>
+            <td>{p.lane}</td>
+            <td
+              ><span class="badge {p.revoked ? 'neutral' : 'success'}"
+                >{p.revoked ? "revoked" : "paired"}</span
+              ></td
+            >
+            <td
+              >{#if !p.revoked}<button class="danger" onclick={() => revoke(p)}>Revoke</button
+                >{/if}</td
+            >
+          </tr>
+        {:else}
+          <tr><td colspan="3" class="muted">No devices paired.</td></tr>
+        {/each}
+      </tbody>
+    </table>
   </div>
 </section>

@@ -7,7 +7,9 @@
   type Summary = components["schemas"]["ScorecardSummary"];
 
   const params = $derived(matchRoute("/scorecard/:match/:lane", router.path));
-  const base = $derived(params ? `/api/scorer/scorecard/${params.match}/${params.lane}?format=png` : "");
+  const base = $derived(
+    params ? `/api/scorer/scorecard/${params.match}/${params.lane}?format=png` : "",
+  );
   const loaded = Date.now();
   const defaultRetrySeconds = 5;
   const maxRetrySeconds = 60;
@@ -92,7 +94,10 @@
   {:else if phase === "busy"}
     <div class="card">
       <p>The scorecard is busy, please try again shortly.</p>
-      <p class="muted">Trying again in {retrySeconds} {retrySeconds === 1 ? "second" : "seconds"}.</p>
+      <p class="muted">
+        Trying again in {retrySeconds}
+        {retrySeconds === 1 ? "second" : "seconds"}.
+      </p>
       <p><button class="button" onclick={() => attempt++}>Try again</button></p>
     </div>
   {:else if phase === "broken"}
@@ -130,6 +135,17 @@
 </main>
 
 <style>
-  .card-image { display: block; width: 100%; max-width: 60rem; height: auto; background: #fff; border: 1px solid var(--border, #ccc); }
-  .download { display: inline-block; font-size: var(--text-lg); padding: var(--space-3) var(--space-5); }
+  .card-image {
+    display: block;
+    width: 100%;
+    max-width: 60rem;
+    height: auto;
+    background: #fff;
+    border: 1px solid var(--border, #ccc);
+  }
+  .download {
+    display: inline-block;
+    font-size: var(--text-lg);
+    padding: var(--space-3) var(--space-5);
+  }
 </style>

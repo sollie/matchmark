@@ -77,8 +77,20 @@
     <StageHistory matchId={id} version={page.version} />
   {/if}
 
-  <Entries matchId={id} course={match.course} status={match.status} entries={page.entries} shooters={page.shooters} reload={page.loadEntries} />
-  <Pairings matchId={id} entries={page.entries} finished={match.status === "finished"} draft={match.status === "draft"} />
+  <Entries
+    matchId={id}
+    course={match.course}
+    status={match.status}
+    entries={page.entries}
+    shooters={page.shooters}
+    reload={page.loadEntries}
+  />
+  <Pairings
+    matchId={id}
+    entries={page.entries}
+    finished={match.status === "finished"}
+    draft={match.status === "draft"}
+  />
   <Visibility matchId={id} />
 {:else if page.error}
   <p class="error">{page.error}</p>

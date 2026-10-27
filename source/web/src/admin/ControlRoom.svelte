@@ -6,7 +6,11 @@
   type ControlRoom = components["schemas"]["ControlRoom"];
   type Lane = components["schemas"]["ControlRoomLane"];
 
-  let { matchId, version, changed }: { matchId: number; version: number; changed: () => Promise<void> } = $props();
+  let {
+    matchId,
+    version,
+    changed,
+  }: { matchId: number; version: number; changed: () => Promise<void> } = $props();
 
   let room = $state<ControlRoom | null>(null);
   let error = $state("");
@@ -32,7 +36,11 @@
     await changed();
   }
 
-  const stagePath = (lane: Lane, stage: number) => ({ matchID: matchId, entryID: lane.entry_id, stage });
+  const stagePath = (lane: Lane, stage: number) => ({
+    matchID: matchId,
+    entryID: lane.entry_id,
+    stage,
+  });
 
   const startNext = () =>
     run(api.POST("/api/matches/{matchID}/next-stage", { params: { path: { matchID: matchId } } }));
@@ -52,9 +60,21 @@
     );
 
   const statusLabel = (lane: Lane) =>
-    lane.status === "accepted" ? "Accepted" : lane.status === "awaiting_acceptance" ? "Awaiting acceptance" : lane.disputed ? "Disputed" : "Open";
+    lane.status === "accepted"
+      ? "Accepted"
+      : lane.status === "awaiting_acceptance"
+        ? "Awaiting acceptance"
+        : lane.disputed
+          ? "Disputed"
+          : "Open";
   const statusTone = (lane: Lane) =>
-    lane.status === "accepted" ? "success" : lane.status === "awaiting_acceptance" ? "info" : lane.disputed ? "danger" : "warning";
+    lane.status === "accepted"
+      ? "success"
+      : lane.status === "awaiting_acceptance"
+        ? "info"
+        : lane.disputed
+          ? "danger"
+          : "warning";
 </script>
 
 <section class="card">
@@ -62,14 +82,21 @@
   {#if room}
     <p>Current stage: <strong>{room.current_stage}</strong></p>
     <div class="row">
-      <button class="primary" disabled={!room.can_start_next} onclick={startNext}>Start next stage</button>
-      <button class="primary" disabled={!room.can_accept_all} onclick={acceptAll}>Accept all</button>
+      <button class="primary" disabled={!room.can_start_next} onclick={startNext}
+        >Start next stage</button
+      >
+      <button class="primary" disabled={!room.can_accept_all} onclick={acceptAll}>Accept all</button
+      >
     </div>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <div class="scroll">
       <table class="lanes">
         <thead>
-          <tr><th>Lane</th><th>Shooter</th><th>Scorer</th><th>Status</th><th>Disputes</th><th>Device</th><th>Actions</th></tr>
+          <tr
+            ><th>Lane</th><th>Shooter</th><th>Scorer</th><th>Status</th><th>Disputes</th><th
+              >Device</th
+            ><th>Actions</th></tr
+          >
         </thead>
         <tbody>
           {#each room.lanes as lane (lane.entry_id)}
@@ -80,15 +107,27 @@
               <td><span class="badge {statusTone(lane)}">{statusLabel(lane)}</span></td>
               <td>{lane.disputes}</td>
               <td>
-                <span class="badge {lane.paired ? 'success' : 'neutral'}">{lane.paired ? "Paired" : "Not paired"}</span>
-                <span class="badge {lane.connected ? 'success' : 'neutral'}">{lane.connected ? "Connected" : "Not connected"}</span>
+                <span class="badge {lane.paired ? 'success' : 'neutral'}"
+                  >{lane.paired ? "Paired" : "Not paired"}</span
+                >
+                <span class="badge {lane.connected ? 'success' : 'neutral'}"
+                  >{lane.connected ? "Connected" : "Not connected"}</span
+                >
               </td>
               <td class="actions">
                 {#if lane.status === "awaiting_acceptance"}
-                  <button class="secondary" aria-label={`Control room lane ${lane.lane}: Accept`} onclick={() => accept(lane, room!.current_stage)}>Accept</button>
+                  <button
+                    class="secondary"
+                    aria-label={`Control room lane ${lane.lane}: Accept`}
+                    onclick={() => accept(lane, room!.current_stage)}>Accept</button
+                  >
                 {/if}
                 {#if lane.status !== "open"}
-                  <button class="secondary" aria-label={`Control room lane ${lane.lane}: Unlock`} onclick={() => unlock(lane, room!.current_stage)}>Unlock</button>
+                  <button
+                    class="secondary"
+                    aria-label={`Control room lane ${lane.lane}: Unlock`}
+                    onclick={() => unlock(lane, room!.current_stage)}>Unlock</button
+                  >
                 {/if}
               </td>
             </tr>
@@ -96,7 +135,10 @@
         </tbody>
       </table>
     </div>
-    <p class="muted">Connected is best-effort: it shows an open connection from the lane's device, not whether the phone works. It is not stored.</p>
+    <p class="muted">
+      Connected is best-effort: it shows an open connection from the lane's device, not whether the
+      phone works. It is not stored.
+    </p>
   {:else if error}
     <p class="error" role="alert">{error}</p>
   {:else}
@@ -105,6 +147,12 @@
 </section>
 
 <style>
-  .lanes .actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-  .lanes button { min-height: var(--touch); }
+  .lanes .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+  .lanes button {
+    min-height: var(--touch);
+  }
 </style>

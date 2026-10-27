@@ -30,17 +30,44 @@
     error = "";
     const body = { name, start_date: startDate, end_date: endDate };
     const result = competition
-      ? await api.PUT("/api/competitions/{competitionID}", { params: { path: { competitionID: competition.id } }, body })
+      ? await api.PUT("/api/competitions/{competitionID}", {
+          params: { path: { competitionID: competition.id } },
+          body,
+        })
       : await api.POST("/api/competitions", { body });
     if (result.error) error = failure(result);
     else saved();
   }
 </script>
 
-<form class="row card" onsubmit={save} aria-label={competition ? "Edit competition" : "New competition"}>
+<form
+  class="row card"
+  onsubmit={save}
+  aria-label={competition ? "Edit competition" : "New competition"}
+>
   <label>Competition name <input bind:value={name} maxlength="128" required /></label>
-  <label>Start date <input type="text" bind:value={startDate} placeholder="YYYY-MM-DD" pattern={datePattern} inputmode="numeric" size="10" required /></label>
-  <label>End date <input type="text" bind:value={endDate} placeholder="YYYY-MM-DD" pattern={datePattern} inputmode="numeric" size="10" required /></label>
+  <label
+    >Start date <input
+      type="text"
+      bind:value={startDate}
+      placeholder="YYYY-MM-DD"
+      pattern={datePattern}
+      inputmode="numeric"
+      size="10"
+      required
+    /></label
+  >
+  <label
+    >End date <input
+      type="text"
+      bind:value={endDate}
+      placeholder="YYYY-MM-DD"
+      pattern={datePattern}
+      inputmode="numeric"
+      size="10"
+      required
+    /></label
+  >
   <button type="submit" class="primary">Save</button>
   <button type="button" onclick={cancel}>Cancel</button>
   {#if error}<p class="error" role="alert">{error}</p>{/if}

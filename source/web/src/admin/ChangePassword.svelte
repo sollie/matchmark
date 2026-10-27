@@ -57,11 +57,25 @@
       </label>
       <label>
         New password
-        <input type="password" bind:value={next} autocomplete="new-password" minlength="16" maxlength="128" required />
+        <input
+          type="password"
+          bind:value={next}
+          autocomplete="new-password"
+          minlength="16"
+          maxlength="128"
+          required
+        />
       </label>
       <label>
         Confirm new password
-        <input type="password" bind:value={confirm} autocomplete="new-password" minlength="16" maxlength="128" required />
+        <input
+          type="password"
+          bind:value={confirm}
+          autocomplete="new-password"
+          minlength="16"
+          maxlength="128"
+          required
+        />
       </label>
       <p class="muted">16 to 128 characters. Your other sessions are signed out.</p>
       <button class="primary" type="submit" disabled={busy}>Change password</button>
