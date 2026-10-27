@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/service"
 )
 
 func (h *Handler) createShooter(r *http.Request) (int, any, error) {
@@ -27,7 +28,17 @@ func (h *Handler) createMatch(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	id, err := h.svc.CreateMatch(r.Context(), repository.Match{Name: body.Name, Date: body.Date, Course: body.Course})
+	m := repository.Match{CompetitionID: body.CompetitionID, Name: body.Name, Date: body.Date, Course: body.Course}
+	var id int64
+	var err error
+	switch {
+	case body.Competition != nil && body.CompetitionID != 0:
+		err = service.ErrInvalid
+	case body.Competition != nil:
+		id, err = h.svc.CreateMatchInNewCompetition(r.Context(), body.Competition.competition(0), m)
+	default:
+		id, err = h.svc.CreateMatch(r.Context(), m)
+	}
 	if err != nil {
 		return fail(err)
 	}

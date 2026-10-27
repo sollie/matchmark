@@ -94,7 +94,7 @@ func (r *Repository) DeleteShooter(ctx context.Context, id int64) error {
 
 func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, date, course, status, current_stage FROM matches ORDER BY date DESC, id DESC`)
+		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	comps := []Match{}
 	for rows.Next() {
 		var c Match
-		if err := rows.Scan(&c.ID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage); err != nil {
+		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage); err != nil {
 			return nil, err
 		}
 		comps = append(comps, c)
@@ -124,6 +124,7 @@ func (r *Repository) UpdateMatch(ctx context.Context, c Match) error {
 	if _, err := tx.ExecContext(ctx,
 		`UPDATE competitions SET start_date = ?, end_date = ?
 		 WHERE id = (SELECT competition_id FROM matches WHERE id = ?)
+		 AND start_date = end_date
 		 AND (SELECT COUNT(*) FROM matches WHERE competition_id = competitions.id) = 1`, c.Date, c.Date, c.ID); err != nil {
 		return mapErr(err)
 	}

@@ -47,6 +47,6 @@ Delivered as one stack of PRs that merge together (#345). Until step 28 lands, t
 - [x] 27. Docs: glossary, spec and ADR 0017 (#346).
 - [x] 28. Squash migrations into the `matches` and `competitions` schema (#347).
 - [x] 29. Rename Competition to Match across backend, API, Score log v3 and SPA (#348).
-- [ ] 30. Competition container CRUD with date-range validation (#349).
+- [x] 30. Competition container CRUD with date-range validation (#349).
 - [ ] 31. Part labels from `internal/rulebook` in the UI and reports (#350).
 - [ ] 32. Competition-level zip downloads (#351).
