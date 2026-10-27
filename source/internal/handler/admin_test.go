@@ -268,8 +268,15 @@ func TestEntryUpdate(t *testing.T) {
 		}
 	})
 	t.Run("category not allowed for the course", func(t *testing.T) {
-		if status, _ := f.env.Do("PUT", path, map[string]any{"category": "Rifle", "lane": 5}); status != http.StatusUnprocessableEntity {
+		g := newFixture(t, "60")
+		gp := fmt.Sprintf("/api/competitions/%d/entries/%d", g.comp, g.addEntry(t, "One", 1))
+		if status, _ := g.env.Do("PUT", gp, map[string]any{"category": "Carbine", "lane": 1}); status != http.StatusUnprocessableEntity {
 			t.Fatalf("status %d", status)
+		}
+	})
+	t.Run("carbine allowed on 150", func(t *testing.T) {
+		if status, out := f.env.Do("PUT", path, map[string]any{"category": "Carbine", "lane": 5}); status != http.StatusOK || out["category"] != "Carbine" {
+			t.Fatalf("got %d %v", status, out)
 		}
 	})
 	t.Run("unknown entry", func(t *testing.T) {
