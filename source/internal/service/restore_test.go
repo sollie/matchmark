@@ -130,7 +130,6 @@ func normalizedReport(t *testing.T, repo *repository.Repository, compID int64) [
 	for i := range entries {
 		entries[i].Shooter.ID = 0
 		entries[i].ShooterID = 0
-		entries[i].Shooter.Sex = ""
 		entries[i].Shooter.Country = ""
 	}
 	return entries
@@ -255,7 +254,7 @@ func TestRestoreRefusesDatabaseWithOnlyShooters(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	repo := repository.New(conn)
-	if _, err := repo.CreateShooter(ctx, repository.Shooter{FirstName: "Bo", LastName: "Ek", Sex: "M"}); err != nil {
+	if _, err := repo.CreateShooter(ctx, repository.Shooter{FirstName: "Bo", LastName: "Ek"}); err != nil {
 		t.Fatal(err)
 	}
 	_, err = service.New(repo).RestoreScoreLog(ctx, mergePlan("Club Match", [7]int{1, 2, 3, 4, 0, 0, 0}, 1), false)

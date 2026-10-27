@@ -22,7 +22,7 @@ func TestBackupRequiresAdmin(t *testing.T) {
 
 func TestBackupDownloadsUsableDatabase(t *testing.T) {
 	env := apitest.NewAdmin(t)
-	env.ID("POST", "/api/shooters", map[string]any{"last_name": "BERG", "first_name": "Ola", "sex": "M", "country": "NOR", "club": "Oslo PPC"})
+	env.ID("POST", "/api/shooters", map[string]any{"last_name": "BERG", "first_name": "Ola", "country": "NOR", "club": "Oslo PPC"})
 
 	status, header, body := env.Raw("GET", "/api/admin/backup")
 	if status != http.StatusOK {

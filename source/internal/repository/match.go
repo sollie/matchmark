@@ -9,7 +9,6 @@ type Shooter struct {
 	ID        int64
 	LastName  string
 	FirstName string
-	Sex       string
 	Country   string
 	Club      string
 	WAID      string
@@ -51,8 +50,8 @@ func (r *Repository) CreateShooter(ctx context.Context, s Shooter) (int64, error
 		waid = s.WAID
 	}
 	res, err := r.db.ExecContext(ctx,
-		`INSERT INTO shooters (last_name, first_name, sex, country, club, waid) VALUES (?, ?, ?, ?, ?, ?)`,
-		s.LastName, s.FirstName, s.Sex, s.Country, s.Club, waid)
+		`INSERT INTO shooters (last_name, first_name, country, club, waid) VALUES (?, ?, ?, ?, ?)`,
+		s.LastName, s.FirstName, s.Country, s.Club, waid)
 	if err != nil {
 		return 0, mapErr(err)
 	}
