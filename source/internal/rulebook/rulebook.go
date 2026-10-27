@@ -73,10 +73,10 @@ var course48FiveShot = Course{
 
 var courseKeys = []string{"150", "60", "48", "40"}
 
-var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Rifle"}
+var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Carbine"}
 
 var courseCategories = map[string][]string{
-	"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
+	"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Carbine"},
 	"60":  {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
 	"48":  {"Revolver", "Pistol"},
 	"40":  {"Revolver"},

@@ -209,7 +209,7 @@ func TestRulebookIsPublic(t *testing.T) {
 			t.Errorf("course %s stage shots = %v, want %v", keys[i], sum, shots[i])
 		}
 	}
-	wantCats := map[string]int{"150": 4, "60": 4, "48": 2, "40": 1}
+	wantCats := map[string]int{"150": 5, "60": 4, "48": 2, "40": 1}
 	for _, c := range courses {
 		course := c.(map[string]any)
 		if got := len(course["categories"].([]any)); got != wantCats[course["key"].(string)] {
