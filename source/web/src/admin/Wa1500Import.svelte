@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
@@ -35,8 +36,19 @@
 
   const hitName = (h: Hit) => `${h.first_name} ${h.last_name}`;
 
-  async function search(e: SubmitEvent) {
+  let input: HTMLInputElement | undefined;
+
+  onMount(() => {
+    input?.focus();
+    if (text.trim()) runSearch();
+  });
+
+  function search(e: SubmitEvent) {
     e.preventDefault();
+    runSearch();
+  }
+
+  async function runSearch() {
     const q = text.trim();
     if (!q) return;
     error = "";
@@ -99,7 +111,7 @@
 
 <div class="wa1500-import card">
   <form class="row" onsubmit={search}>
-    <label>Search WA1500 <input type="text" bind:value={text} maxlength="100" placeholder="Name, club or WAID" /></label>
+    <label>Search WA1500 <input type="text" bind:this={input} bind:value={text} maxlength="100" placeholder="Name, club or WAID" /></label>
     <button type="submit" class="primary" disabled={searching || !text.trim()}>Search</button>
     {#if oncancel}<button type="button" class="secondary" onclick={oncancel}>Close</button>{/if}
   </form>

@@ -33,6 +33,26 @@ describe("Wa1500Import", () => {
     expect(calls[0].search).toContain("q=anderson");
   });
 
+  it("focuses the search box and does not search while empty", async () => {
+    const { calls } = setup(() => undefined);
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Search WA1500" }));
+    expect(calls).toHaveLength(0);
+  });
+
+  it("searches on mount when opened with a query", async () => {
+    const calls = stubFetch((c) => (c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : undefined));
+    render(Wa1500Import, { query: "anderson", onsaved: vi.fn() });
+    expect(await screen.findByRole("button", { name: "Import Mike Anderson" })).toBeTruthy();
+    expect(calls[0].search).toContain("q=anderson");
+  });
+
+  it("searches when Enter is pressed in the box", async () => {
+    const { user, calls } = setup((c) => (c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : undefined));
+    await user.type(screen.getByRole("textbox", { name: "Search WA1500" }), "anderson{Enter}");
+    expect(await screen.findByRole("button", { name: "Import Mike Anderson" })).toBeTruthy();
+    expect(calls).toHaveLength(1);
+  });
+
   it("requires a sex before importing and reports the saved shooter", async () => {
     const { user, calls, onsaved } = setup((c) =>
       c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : { status: 201, body: { id: 5, action: "created" } },
