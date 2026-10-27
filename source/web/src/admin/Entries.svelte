@@ -47,7 +47,7 @@
   });
   const entered = $derived(entries.map((e) => e.shooter_id));
   const lane = $derived(laneInput ?? nextLane);
-  const categories = $derived(courseCategories(course));
+  const categories = $derived([...courseCategories(course)].sort((a, b) => a.localeCompare(b)));
   const category = $derived(chosenCategory !== null && categories.includes(chosenCategory) ? chosenCategory : (categories[0] ?? ""));
   const stageNumbers = $derived(entries[0]?.stages.map((s) => s.stage_number) ?? []);
   const shooterName = (id: number) => {
