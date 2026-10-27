@@ -73,30 +73,33 @@
 <h1>Club settings</h1>
 
 {#if loaded}
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if message}<p role="status">{message}</p>{/if}
 
-{#if error}<p class="error" role="alert">{error}</p>{/if}
-{#if message}<p role="status">{message}</p>{/if}
+  <section aria-labelledby="club-name-heading">
+    <h2 id="club-name-heading">Club name</h2>
+    <form onsubmit={saveName}>
+      <label>Name <input bind:value={name} maxlength="100" /></label>
+      <button type="submit">Save name</button>
+    </form>
+  </section>
 
-<section aria-labelledby="club-name-heading">
-  <h2 id="club-name-heading">Club name</h2>
-  <form onsubmit={saveName}>
-    <label>Name <input bind:value={name} maxlength="100" /></label>
-    <button type="submit">Save name</button>
-  </form>
-</section>
-
-<section aria-labelledby="club-logo-heading">
-  <h2 id="club-logo-heading">Club logo</h2>
-  {#if club.hasLogo}
-    <p><img class="club-logo-preview" src={clubLogoUrl(club.version)} alt="Current club logo" /></p>
-    <button type="button" onclick={removeLogo}>Remove logo</button>
-  {:else}
-    <p class="muted">No logo uploaded.</p>
-  {/if}
-  <form onsubmit={uploadLogo}>
-    <label>Logo file <input type="file" accept="image/png,image/jpeg" bind:this={fileInput} /></label>
-    <button type="submit">Upload logo</button>
-  </form>
-  <p class="muted">PNG or JPEG, at most 512 KB and 2048 by 2048 pixels.</p>
-</section>
+  <section aria-labelledby="club-logo-heading">
+    <h2 id="club-logo-heading">Club logo</h2>
+    {#if club.hasLogo}
+      <p>
+        <img class="club-logo-preview" src={clubLogoUrl(club.version)} alt="Current club logo" />
+      </p>
+      <button type="button" onclick={removeLogo}>Remove logo</button>
+    {:else}
+      <p class="muted">No logo uploaded.</p>
+    {/if}
+    <form onsubmit={uploadLogo}>
+      <label
+        >Logo file <input type="file" accept="image/png,image/jpeg" bind:this={fileInput} /></label
+      >
+      <button type="submit">Upload logo</button>
+    </form>
+    <p class="muted">PNG or JPEG, at most 512 KB and 2048 by 2048 pixels.</p>
+  </section>
 {/if}

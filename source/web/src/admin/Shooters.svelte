@@ -10,7 +10,13 @@
   type Shooter = components["schemas"]["Shooter"];
   type ShooterInput = components["schemas"]["ShooterInput"];
 
-  const blank = (): ShooterInput => ({ last_name: "", first_name: "", country: "NOR", club: "", waid: "" });
+  const blank = (): ShooterInput => ({
+    last_name: "",
+    first_name: "",
+    country: "NOR",
+    club: "",
+    waid: "",
+  });
 
   let shooters = $state<Shooter[]>([]);
   let form = $state<ShooterInput>(blank());
@@ -23,7 +29,9 @@
 
   async function load() {
     const q = query.trim();
-    const result = await api.GET("/api/shooters", { params: { query: q ? { q, limit: 100 } : {} } });
+    const result = await api.GET("/api/shooters", {
+      params: { query: q ? { q, limit: 100 } : {} },
+    });
     if (result.data) shooters = result.data.shooters;
     else error = failure(result);
   }
@@ -51,11 +59,18 @@
   async function save(e: SubmitEvent) {
     e.preventDefault();
     error = "";
-    const body = { ...form, first_name: normalizeFirstName(form.first_name), last_name: normalizeLastName(form.last_name) };
+    const body = {
+      ...form,
+      first_name: normalizeFirstName(form.first_name),
+      last_name: normalizeLastName(form.last_name),
+    };
     const result =
       editing === null
         ? await api.POST("/api/shooters", { body })
-        : await api.PUT("/api/shooters/{shooterID}", { params: { path: { shooterID: editing } }, body });
+        : await api.PUT("/api/shooters/{shooterID}", {
+            params: { path: { shooterID: editing } },
+            body,
+          });
     if (!result.response.ok) {
       error = failure(result);
       return;
@@ -78,7 +93,9 @@
   async function remove(s: Shooter) {
     if (!confirm(`Delete ${s.first_name} ${s.last_name}?`)) return;
     error = "";
-    const result = await api.DELETE("/api/shooters/{shooterID}", { params: { path: { shooterID: s.id } } });
+    const result = await api.DELETE("/api/shooters/{shooterID}", {
+      params: { path: { shooterID: s.id } },
+    });
     if (!result.response.ok) error = failure(result);
     else await load();
   }
@@ -89,8 +106,21 @@
 {#if notice}<p role="status">{notice}</p>{/if}
 
 <div class="row">
-  <label>Search shooters <input type="search" bind:value={query} oninput={onsearch} onkeydown={onenter} placeholder="Name or WAID" /></label>
-  <button type="button" class="secondary" aria-expanded={importing} onclick={() => (importing = !importing)}>
+  <label
+    >Search shooters <input
+      type="search"
+      bind:value={query}
+      oninput={onsearch}
+      onkeydown={onenter}
+      placeholder="Name or WAID"
+    /></label
+  >
+  <button
+    type="button"
+    class="secondary"
+    aria-expanded={importing}
+    onclick={() => (importing = !importing)}
+  >
     Import from WA1500
   </button>
 </div>
@@ -105,29 +135,34 @@
   <label>Club <input bind:value={form.club} maxlength="128" required /></label>
   <label>WAID (blank for new shooter) <input bind:value={form.waid} maxlength="32" /></label>
   <button type="submit" class="primary">{editing === null ? "Add shooter" : "Save"}</button>
-  {#if editing !== null}<button type="button" class="secondary" onclick={cancel}>Cancel</button>{/if}
+  {#if editing !== null}<button type="button" class="secondary" onclick={cancel}>Cancel</button
+    >{/if}
 </form>
 
 <div class="card scroll">
-<table>
-  <thead>
-    <tr><th>Name</th><th>Country</th><th>Club</th><th>WAID</th><th></th></tr>
-  </thead>
-  <tbody>
-    {#each shooters as s (s.id)}
-      <tr>
-        <td>{s.first_name} {s.last_name}</td>
-        <td>{s.country}</td>
-        <td>{s.club}</td>
-        <td>{s.waid || "—"}</td>
-        <td class="row-actions">
-          <button class="secondary" onclick={() => edit(s)}>Edit</button>
-          <button class="danger" onclick={() => remove(s)}>Delete</button>
-        </td>
-      </tr>
-    {:else}
-      <tr><td colspan="6" class="muted">{query.trim() ? "No matching shooters." : "No shooters yet."}</td></tr>
-    {/each}
-  </tbody>
-</table>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Country</th><th>Club</th><th>WAID</th><th></th></tr>
+    </thead>
+    <tbody>
+      {#each shooters as s (s.id)}
+        <tr>
+          <td>{s.first_name} {s.last_name}</td>
+          <td>{s.country}</td>
+          <td>{s.club}</td>
+          <td>{s.waid || "—"}</td>
+          <td class="row-actions">
+            <button class="secondary" onclick={() => edit(s)}>Edit</button>
+            <button class="danger" onclick={() => remove(s)}>Delete</button>
+          </td>
+        </tr>
+      {:else}
+        <tr
+          ><td colspan="6" class="muted"
+            >{query.trim() ? "No matching shooters." : "No shooters yet."}</td
+          ></tr
+        >
+      {/each}
+    </tbody>
+  </table>
 </div>
