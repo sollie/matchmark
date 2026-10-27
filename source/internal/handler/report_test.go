@@ -172,17 +172,17 @@ func TestResultsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,stage,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name"
+	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,stage,part,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name"
 	if strings.Join(rows[0], ",") != wantHeader {
 		t.Fatalf("header %v", rows[0])
 	}
 	if len(rows) != 21 {
 		t.Fatalf("rows %d, want 1 header + 2 entries x 10 stages", len(rows))
 	}
-	if got := strings.Join(rows[1], ","); got != "Revolver,1,BERG,Ola,W100,false,1,3,4,3,1,1,0,0,112,true,,"+apitest.AdminUsername {
+	if got := strings.Join(rows[1], ","); got != "Revolver,1,BERG,Ola,W100,false,1,Match 1,3,4,3,1,1,0,0,112,true,,"+apitest.AdminUsername {
 		t.Fatalf("first row %q", got)
 	}
-	if got := strings.Join(rows[11], ","); got != "Pistol,2,NYHUS,Kari,,false,1,0,0,0,0,0,0,0,0,false,," {
+	if got := strings.Join(rows[11], ","); got != "Pistol,2,NYHUS,Kari,,false,1,Match 1,0,0,0,0,0,0,0,0,false,," {
 		t.Fatalf("pistol row %q", got)
 	}
 }

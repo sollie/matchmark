@@ -12,6 +12,7 @@ type rulebookStageBody struct {
 	ExpectedShots int    `json:"expected_shots"`
 	TimeSeconds   int    `json:"time_seconds"`
 	Position      string `json:"position"`
+	Part          string `json:"part,omitempty"`
 }
 
 type rulebookCourseBody struct {

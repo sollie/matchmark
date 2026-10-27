@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -203,7 +204,12 @@ func TestRulebookIsPublic(t *testing.T) {
 		}
 		sum := 0.0
 		for _, st := range course["stages"].([]any) {
-			sum += st.(map[string]any)["expected_shots"].(float64)
+			stage := st.(map[string]any)
+			sum += stage["expected_shots"].(float64)
+			part, hasPart := stage["part"].(string)
+			if hasPart != (keys[i] == "150") || (hasPart && !strings.HasPrefix(part, "Match ")) {
+				t.Errorf("course %s stage %v part = %v", keys[i], stage["stage_number"], stage["part"])
+			}
 		}
 		if sum != shots[i] {
 			t.Errorf("course %s stage shots = %v, want %v", keys[i], sum, shots[i])

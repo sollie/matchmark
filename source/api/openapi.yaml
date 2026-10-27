@@ -2254,6 +2254,9 @@ components:
           type: integer
         position:
           type: string
+        part:
+          type: string
+          description: Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups.
     RulebookRing:
       type: object
       required: [ring, value]

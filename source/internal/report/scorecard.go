@@ -92,7 +92,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	columns := []cardColumn{{"Stage", 90, true}, {"Distance", 130, true}, {"Shots", 90, false}}
+	columns := []cardColumn{{"Stage", 170, true}, {"Distance", 110, true}, {"Shots", 90, false}}
 	for _, ring := range rulebook.RingValues() {
 		columns = append(columns, cardColumn{ring, 70, false})
 	}
@@ -155,7 +155,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	for _, stage := range d.Course.Stages {
 		y += rowHeight
 		hline(img, cardMargin, cardWidth-cardMargin, y)
-		cells := []string{strconv.Itoa(stage.StageNumber), stage.Distance, strconv.Itoa(stage.ExpectedShots)}
+		cells := []string{stageCell(stage), stage.Distance, strconv.Itoa(stage.ExpectedShots)}
 		st, ok := byNumber[stage.StageNumber]
 		if ok && st.Status == repository.StatusAccepted {
 			for _, n := range ringCounts(st.Counts) {
@@ -282,4 +282,11 @@ func hline(img *image.RGBA, x0, x1, y int) {
 
 func fillRect(img *image.RGBA, r image.Rectangle, c color.Color) {
 	draw.Draw(img, r, image.NewUniform(c), image.Point{}, draw.Src)
+}
+
+func stageCell(s rulebook.Stage) string {
+	if s.Part == "" {
+		return strconv.Itoa(s.StageNumber)
+	}
+	return strconv.Itoa(s.StageNumber) + " · " + s.Part
 }
