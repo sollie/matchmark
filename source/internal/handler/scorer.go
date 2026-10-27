@@ -59,6 +59,9 @@ func scorerSessionJSON(sess service.ScorerSession) map[string]any {
 		stage["expected_shots"] = s.ExpectedShots
 		stage["status"] = s.Status
 		stage["disputed"] = s.DisputedAt != ""
+		if part := sess.Parts[s.Number]; part != "" {
+			stage["part"] = part
+		}
 		stages = append(stages, stage)
 	}
 	out := map[string]any{
@@ -70,6 +73,9 @@ func scorerSessionJSON(sess service.ScorerSession) map[string]any {
 		acceptance["stage_number"] = a.StageNumber
 		acceptance["total"] = a.Total
 		acceptance["scorer_name"] = a.ScorerName
+		if part := sess.Parts[a.StageNumber]; part != "" {
+			acceptance["part"] = part
+		}
 		out["acceptance"] = acceptance
 	}
 	return out

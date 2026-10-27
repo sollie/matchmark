@@ -1,6 +1,7 @@
 import { api, deviceHeaders } from "./api/client";
 import { errorMessage } from "./api/util";
 import { openStream, type StreamHandle, type StreamOptions, type StreamState } from "./sse";
+import { formatStageLabel } from "./rulebook.svelte";
 import { navigate } from "./router.svelte";
 import { forgetDeviceToken, loadDeviceToken } from "./pairing";
 import type { components } from "./api/schema";
@@ -122,6 +123,11 @@ export class ScorerSession {
       null,
   );
   acceptance = $derived(this.session?.acceptance ?? null);
+
+  stageLabel(stageNumber: number): string {
+    const part = this.session?.stages.find((s) => s.stage_number === stageNumber)?.part;
+    return formatStageLabel(stageNumber, part);
+  }
   maxRing = $derived.by(() => {
     const acceptance = this.acceptance;
     return acceptance ? Math.max(1, ...rings.map((r) => acceptance[r.key])) : 1;

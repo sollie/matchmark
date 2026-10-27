@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 type Device struct {
@@ -24,6 +25,7 @@ type ScorerSession struct {
 	EntryID      int64
 	ShooterName  string
 	Stages       []repository.StageInfo
+	Parts        map[int]string
 	Phase        Phase
 	Acceptance   *Acceptance
 }
@@ -154,7 +156,21 @@ func (s *Service) DeviceSession(ctx context.Context, d Device) (ScorerSession, e
 		return ScorerSession{}, err
 	}
 	phase, acceptance := derivePhase(t)
-	return ScorerSession{MatchID: d.MatchID, Lane: d.Lane, CurrentStage: t.CurrentStage, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Phase: phase, Acceptance: acceptance}, nil
+	return ScorerSession{MatchID: d.MatchID, Lane: d.Lane, CurrentStage: t.CurrentStage, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Parts: stageParts(comp.Course), Phase: phase, Acceptance: acceptance}, nil
+}
+
+func stageParts(courseKey string) map[int]string {
+	course, err := rulebook.CourseByKey(courseKey)
+	if err != nil {
+		return nil
+	}
+	parts := map[int]string{}
+	for _, st := range course.Stages {
+		if st.Part != "" {
+			parts[st.StageNumber] = st.Part
+		}
+	}
+	return parts
 }
 
 func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber int, c repository.RingCounts) error {

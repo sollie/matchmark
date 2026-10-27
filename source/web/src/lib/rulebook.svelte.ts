@@ -28,5 +28,9 @@ export function stageLabel(key: string, stageNumber: number): string {
   const part = rulebook.courses
     .find((c) => c.key === key)
     ?.stages?.find((s) => s.stage_number === stageNumber)?.part;
+  return formatStageLabel(stageNumber, part);
+}
+
+export function formatStageLabel(stageNumber: number, part?: string): string {
   return part ? `Stage ${stageNumber} · ${part}` : `Stage ${stageNumber}`;
 }
