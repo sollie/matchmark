@@ -1860,7 +1860,7 @@ paths:
     get:
       operationId: getRulebook
       tags: [spectator]
-      summary: Courses of fire, weapon classes and ring values
+      summary: Courses of fire and ring values
       responses:
         '200':
           description: The rulebook
@@ -2103,18 +2103,12 @@ components:
           type: string
     Rulebook:
       type: object
-      required: [courses, weapon_classes, rings]
+      required: [courses, rings]
       properties:
         courses:
           type: array
           items:
             $ref: '#/components/schemas/RulebookCourse'
-        weapon_classes:
-          type: object
-          additionalProperties:
-            type: array
-            items:
-              type: string
         rings:
           type: array
           items:

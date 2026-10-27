@@ -40,11 +40,6 @@ func TestRulebookView(t *testing.T) {
 			t.Errorf("course %s stage shots = %d, want %d", c.Key, sum, c.TotalShots)
 		}
 	}
-	for discipline, n := range map[string]int{"1500": 4, "60": 3, "48": 6} {
-		if got := len(view.WeaponClasses[discipline]); got != n {
-			t.Errorf("weapon classes for %s = %d, want %d", discipline, got, n)
-		}
-	}
 	if len(view.Rings) != 7 || view.Rings[0].Ring != "X" || view.Rings[0].Value != 10 {
 		t.Errorf("rings = %+v", view.Rings)
 	}

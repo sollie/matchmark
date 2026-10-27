@@ -29,9 +29,8 @@ type rulebookRingBody struct {
 }
 
 type rulebookBody struct {
-	Courses       []rulebookCourseBody `json:"courses"`
-	WeaponClasses map[string][]string  `json:"weapon_classes"`
-	Rings         []rulebookRingBody   `json:"rings"`
+	Courses []rulebookCourseBody `json:"courses"`
+	Rings   []rulebookRingBody   `json:"rings"`
 }
 
 type versionBody struct {
@@ -53,9 +52,8 @@ func (h *Handler) getRulebook(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	body := rulebookBody{
-		Courses:       make([]rulebookCourseBody, 0, len(view.Courses)),
-		WeaponClasses: view.WeaponClasses,
-		Rings:         make([]rulebookRingBody, 0, len(view.Rings)),
+		Courses: make([]rulebookCourseBody, 0, len(view.Courses)),
+		Rings:   make([]rulebookRingBody, 0, len(view.Rings)),
 	}
 	for _, c := range view.Courses {
 		course := rulebookCourseBody{Key: c.Key, Label: c.Label, Discipline: c.Discipline, TotalShots: c.TotalShots, Categories: c.Categories, Stages: make([]rulebookStageBody, 0, len(c.Stages))}
