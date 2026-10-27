@@ -12,7 +12,9 @@
     e.preventDefault();
     busy = true;
     error = "";
-    const { error: err, response } = await api.POST("/api/admin/login", { body: { username, password } });
+    const { error: err, response } = await api.POST("/api/admin/login", {
+      body: { username, password },
+    });
     busy = false;
     if (response.ok) {
       password = "";

@@ -42,16 +42,22 @@
 {:else}
   <nav>
     <a href="/admin" aria-current={activeSection === "matches" ? "page" : undefined}>Matches</a>
-    <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}>Shooters</a>
+    <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}
+      >Shooters</a
+    >
     {#if admin.isAdmin}
       <a href="/admin/users" aria-current={activeSection === "users" ? "page" : undefined}>Users</a>
       <a href="/admin/club" aria-current={activeSection === "club" ? "page" : undefined}>Club</a>
-      <a href="/admin/audit" aria-current={activeSection === "audit" ? "page" : undefined}>Audit log</a>
+      <a href="/admin/audit" aria-current={activeSection === "audit" ? "page" : undefined}
+        >Audit log</a
+      >
     {/if}
     {#if admin.isAdmin && admin.canDownloadBackup}
       <a href="/api/admin/backup" download>Backup</a>
     {/if}
-    <a href="/admin/password" aria-current={router.path === "/admin/password" ? "page" : undefined}>Change password</a>
+    <a href="/admin/password" aria-current={router.path === "/admin/password" ? "page" : undefined}
+      >Change password</a
+    >
     <a href="/">Spectator view</a>
     <span class="spacer"></span>
     <button onclick={signOut}>Sign out</button>

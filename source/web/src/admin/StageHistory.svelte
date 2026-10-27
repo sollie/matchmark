@@ -30,7 +30,11 @@
     const result = await api.GET("/api/matches/{matchID}/stage-events", {
       params: {
         path: { matchID: matchId },
-        query: { scorer: scorer || undefined, shooter: shooter || undefined, stage: stage ? Number(stage) : undefined },
+        query: {
+          scorer: scorer || undefined,
+          shooter: shooter || undefined,
+          stage: stage ? Number(stage) : undefined,
+        },
       },
     });
     if (!result.data) {
@@ -39,9 +43,18 @@
     }
     error = "";
     history = result.data;
-    scorerOptions = union(scorerOptions, result.data.events.map((e) => e.scorer_name).filter(Boolean));
-    shooterOptions = union(shooterOptions, result.data.events.map((e) => e.shooter_name));
-    stageOptions = union(stageOptions, result.data.events.map((e) => e.stage));
+    scorerOptions = union(
+      scorerOptions,
+      result.data.events.map((e) => e.scorer_name).filter(Boolean),
+    );
+    shooterOptions = union(
+      shooterOptions,
+      result.data.events.map((e) => e.shooter_name),
+    );
+    stageOptions = union(
+      stageOptions,
+      result.data.events.map((e) => e.stage),
+    );
   }
 
   $effect(() => {
@@ -99,7 +112,11 @@
     <h3>Stage events</h3>
     <div class="scroll">
       <table class="events">
-        <thead><tr><th>Time</th><th>Stage</th><th>Event</th><th>Shooter</th><th>Scorer</th><th>By</th></tr></thead>
+        <thead
+          ><tr
+            ><th>Time</th><th>Stage</th><th>Event</th><th>Shooter</th><th>Scorer</th><th>By</th></tr
+          ></thead
+        >
         <tbody>
           {#each history.events as e (e.id)}
             <tr>

@@ -64,7 +64,7 @@ Specification and decisions:
 - Svelte 5 + Vite SPA, built to `web/dist` and embedded in the Go binary. No SSR, no service worker, no offline queue.
 - The API client is generated from `source/api/openapi.yaml`. After changing the spec, run `npm run generate` in `source/api` and commit the result; `npm run check` there must leave no diff.
 - After every change, run `npm run verify` in `source/web` (check, build, test, audit).
-- Format `.ts`/`.css` with `npm run format` in `source/web` (Prettier, print width 100; Svelte files are not covered); `npm run format:check` must pass.
+- Format `.ts`, `.css` and `.svelte` files with `npm run format` in `source/web` (Prettier with prettier-plugin-svelte, print width 100); `npm run format:check` must pass.
 - For changes to user flows also run `npm run e2e` (Playwright, see ADR 0008). While iterating, narrow it: `npx playwright test e2e/<file>.spec.ts --project=chromium`; run the full suite before finishing.
 - Fix all high/critical findings reported by `npm audit` before considering the task done.
 
