@@ -27,7 +27,7 @@ func CSV(d Data) ([]byte, error) {
 		return nil, err
 	}
 	parts := map[int]string{}
-	if course, err := rulebook.CourseByKey(d.Competition.Course); err == nil {
+	if course, err := rulebook.CourseByKey(d.Match.Course); err == nil {
 		for _, st := range course.Stages {
 			parts[st.StageNumber] = st.Part
 		}
