@@ -32,10 +32,10 @@ func TestChangeRecorderOrdersAuditScoreLogThenLive(t *testing.T) {
 	defer sub.Close()
 	rec := service.NewChangeRecorder(service.NewAudit(repo, logger), service.NewScoreLog(repo, logger), bus)
 	rec.Record(context.Background(), service.Change{
-		Audit:         service.AuditEvent{Action: "entry.update", Target: "entry:1"},
-		CompetitionID: f.compID,
-		Live:          service.LiveCompetition,
-		Reemit:        &repository.LockedStageFilter{CompetitionID: f.compID},
+		Audit:   service.AuditEvent{Action: "entry.update", Target: "entry:1"},
+		MatchID: f.compID,
+		Live:    service.LiveMatch,
+		Reemit:  &repository.LockedStageFilter{MatchID: f.compID},
 	})
 
 	audit := strings.Index(out.String(), `"msg":"audit"`)
@@ -60,10 +60,10 @@ func TestChangeRecorderSwallowsScoreLogFailure(t *testing.T) {
 	defer sub.Close()
 	rec := service.NewChangeRecorder(service.NewAudit(repo, logger), service.NewScoreLog(repo, logger), bus)
 	rec.Record(context.Background(), service.Change{
-		Audit:         service.AuditEvent{Action: "stage.lock", Target: "stage:99/99/1"},
-		CompetitionID: 99,
-		Live:          service.LiveCompetition,
-		Stage:         &service.StageEvent{CompetitionID: 99, EntryID: 99, StageNumber: 1},
+		Audit:   service.AuditEvent{Action: "stage.lock", Target: "stage:99/99/1"},
+		MatchID: 99,
+		Live:    service.LiveMatch,
+		Stage:   &service.StageEvent{MatchID: 99, EntryID: 99, StageNumber: 1},
 	})
 	if !strings.Contains(out.String(), "score log context failed") {
 		t.Fatalf("expected logged failure, got %s", out.String())

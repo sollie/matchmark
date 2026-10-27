@@ -38,7 +38,7 @@ func TestBroadcasterCoalescesBurstIntoOnePing(t *testing.T) {
 	expectQuiet(t, sub, 3*testWindow)
 }
 
-func TestBroadcasterPingsOnlySubscribersOfThatCompetition(t *testing.T) {
+func TestBroadcasterPingsOnlySubscribersOfThatMatch(t *testing.T) {
 	b := service.NewBroadcaster(testWindow)
 	one := b.Subscribe(1)
 	two := b.Subscribe(2)
@@ -49,7 +49,7 @@ func TestBroadcasterPingsOnlySubscribersOfThatCompetition(t *testing.T) {
 	expectQuiet(t, two, 3*testWindow)
 }
 
-func TestBroadcasterPublishAllReachesEveryCompetition(t *testing.T) {
+func TestBroadcasterPublishAllReachesEveryMatch(t *testing.T) {
 	b := service.NewBroadcaster(testWindow)
 	one := b.Subscribe(1)
 	two := b.Subscribe(2)
@@ -90,16 +90,16 @@ func TestBroadcasterVersionAdvancesPerPublish(t *testing.T) {
 	}
 }
 
-func TestBroadcasterVersionOfOtherCompetitionsIsStableAfterRelease(t *testing.T) {
+func TestBroadcasterVersionOfOtherMatchesIsStableAfterRelease(t *testing.T) {
 	b := service.NewBroadcaster(5 * time.Millisecond)
 	other := b.Version(2)
 	b.Publish(1)
 	time.Sleep(50 * time.Millisecond)
 	if got := b.Version(2); got != other {
-		t.Fatalf("version of unrelated competition changed: %d -> %d", other, got)
+		t.Fatalf("version of unrelated match changed: %d -> %d", other, got)
 	}
 	if b.Version(1) == b.Version(3) {
-		t.Fatal("published competition version must differ after its topic is released")
+		t.Fatal("published match version must differ after its topic is released")
 	}
 }
 
@@ -112,7 +112,7 @@ func TestBroadcasterRetainedVersionsStayBounded(t *testing.T) {
 	}
 	time.Sleep(100 * time.Millisecond)
 	if b.Version(1) == first {
-		t.Fatal("version of competition 1 went back to an earlier value")
+		t.Fatal("version of match 1 went back to an earlier value")
 	}
 	if n := b.RetainedVersions(); n > 1024 {
 		t.Fatalf("retained %d versions", n)

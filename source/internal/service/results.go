@@ -8,7 +8,7 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-type ResultsCompetition struct {
+type ResultsMatch struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
 	Date        string `json:"date"`
@@ -49,7 +49,7 @@ type ResultsNewShooter struct {
 }
 
 type ResultsView struct {
-	Competition ResultsCompetition  `json:"competition"`
+	Match       ResultsMatch        `json:"match"`
 	Stages      []int               `json:"stages"`
 	Categories  []ResultsCategory   `json:"categories"`
 	NewShooters []ResultsNewShooter `json:"new_shooters"`
@@ -57,23 +57,23 @@ type ResultsView struct {
 
 var showAll = repository.Visibility{Names: true, Clubs: true, Countries: true, StageScores: true, RingCounts: true}
 
-func (s *Service) PublicResults(ctx context.Context, competitionID int64) (ResultsView, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) PublicResults(ctx context.Context, matchID int64) (ResultsView, error) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return ResultsView{}, mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) != StatusFinished {
+	if MatchStatus(comp.Status) != StatusFinished {
 		return ResultsView{}, ErrNotFound
 	}
-	vis, err := s.repo.GetVisibility(ctx, competitionID)
+	vis, err := s.repo.GetVisibility(ctx, matchID)
 	if err != nil {
 		return ResultsView{}, mapRepoErr(err)
 	}
 	return s.results(ctx, comp, vis)
 }
 
-func (s *Service) AdminResults(ctx context.Context, competitionID int64) (ResultsView, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) AdminResults(ctx context.Context, matchID int64) (ResultsView, error) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return ResultsView{}, mapRepoErr(err)
 	}
@@ -87,7 +87,7 @@ type rankedEntry struct {
 	view  []ResultsStage
 }
 
-func (s *Service) results(ctx context.Context, comp repository.Competition, vis repository.Visibility) (ResultsView, error) {
+func (s *Service) results(ctx context.Context, comp repository.Match, vis repository.Visibility) (ResultsView, error) {
 	course, err := rulebook.CourseByKey(comp.Course)
 	if err != nil {
 		return ResultsView{}, err
@@ -97,7 +97,7 @@ func (s *Service) results(ctx context.Context, comp repository.Competition, vis 
 		return ResultsView{}, err
 	}
 	out := ResultsView{
-		Competition: ResultsCompetition{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: course.Label},
+		Match:       ResultsMatch{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: course.Label},
 		Stages:      make([]int, len(course.Stages)),
 		Categories:  []ResultsCategory{},
 		NewShooters: []ResultsNewShooter{},

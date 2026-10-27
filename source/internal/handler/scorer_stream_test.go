@@ -61,7 +61,7 @@ func TestScorerStreamPushesAdminLockAndUnlock(t *testing.T) {
 	if first.Lane != 1 || first.ScoreLane != 2 || first.Stages[0].Status != "open" {
 		t.Fatalf("first %+v", first)
 	}
-	base := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", f.comp, f.entries[2])
+	base := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[2])
 	if status, out := f.env.Do("PUT", base, counts(12, 0)); status != http.StatusOK {
 		t.Fatalf("set: %d %v", status, out)
 	}
@@ -85,7 +85,7 @@ func TestScorerStreamPushesScoreLaneChange(t *testing.T) {
 		t.Fatalf("score lane %d", got)
 	}
 	f.acceptAll(t, 1, 1, 2, 3)
-	if status, out := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries/%d/withdraw", f.comp, f.entries[2]), nil); status != http.StatusNoContent && status != http.StatusOK {
+	if status, out := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", f.comp, f.entries[2]), nil); status != http.StatusNoContent && status != http.StatusOK {
 		t.Fatalf("delete: %d %v", status, out)
 	}
 	for nextSession(t, s).ScoreLane != 3 {
@@ -97,9 +97,9 @@ func TestScorerStreamSendsRevokedWhenPairingRevoked(t *testing.T) {
 	token := f.pair(t, 1)
 	s := openScorerStream(f, token)
 	nextSession(t, s)
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/pairings", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/pairings", f.comp), nil)
 	id := int(out["pairings"].([]any)[0].(map[string]any)["id"].(float64))
-	if status, _ := f.env.Do("DELETE", fmt.Sprintf("/api/competitions/%d/pairings/%d", f.comp, id), nil); status != http.StatusNoContent {
+	if status, _ := f.env.Do("DELETE", fmt.Sprintf("/api/matches/%d/pairings/%d", f.comp, id), nil); status != http.StatusNoContent {
 		t.Fatalf("revoke status %d", status)
 	}
 	awaitEvent(t, s, "revoked")
@@ -108,12 +108,12 @@ func TestScorerStreamSendsRevokedWhenPairingRevoked(t *testing.T) {
 	}
 }
 
-func TestScorerStreamSendsFinishedSnapshotWhenCompetitionFinishes(t *testing.T) {
+func TestScorerStreamSendsFinishedSnapshotWhenMatchFinishes(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	token := f.pair(t, 1)
 	s := openScorerStream(f, token)
 	nextSession(t, s)
-	f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "finished"})
+	f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "finished"})
 	for {
 		ev, ok := s.Next(eventWait)
 		if !ok {
@@ -132,14 +132,14 @@ func TestDeviceWritesFollowCurrentScoreLane(t *testing.T) {
 	f := newScoringFixture(t, 1, 2, 3)
 	token := f.pair(t, 1)
 	f.acceptAll(t, 1, 1, 2, 3)
-	if status, _ := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries/%d/withdraw", f.comp, f.entries[2]), nil); status != http.StatusNoContent && status != http.StatusOK {
+	if status, _ := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", f.comp, f.entries[2]), nil); status != http.StatusNoContent && status != http.StatusOK {
 		t.Fatalf("delete status %d", status)
 	}
 	f.startNext(f.comp)
 	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/stages/2", f.fullStage(t, 3, 2)); status != http.StatusOK {
 		t.Fatalf("set: %d %v", status, out)
 	}
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == 3 && m["stages"].([]any)[1].(map[string]any)["shots_entered"] != f.fullStage(t, 3, 2)["x"] {

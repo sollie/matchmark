@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func publicGet(t *testing.T, f *fixture, path string) (int, map[string]any) {
 
 func (f *fixture) score(t *testing.T, entry, stage int, counts map[string]any) {
 	t.Helper()
-	path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/%d", f.comp, entry, stage)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/%d", f.comp, entry, stage)
 	if status, out := f.env.Do("PUT", path, counts); status != http.StatusOK {
 		t.Fatalf("score: %d %v", status, out)
 	}
@@ -30,7 +31,7 @@ func (f *fixture) score(t *testing.T, entry, stage int, counts map[string]any) {
 func (f *fixture) scoreAccepted(t *testing.T, entry, stage int, counts map[string]any) {
 	t.Helper()
 	f.score(t, entry, stage, counts)
-	path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/%d/lock", f.comp, entry, stage)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/%d/lock", f.comp, entry, stage)
 	if status, out := f.env.Do("POST", path, nil); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
@@ -38,7 +39,7 @@ func (f *fixture) scoreAccepted(t *testing.T, entry, stage int, counts map[strin
 
 func (f *fixture) activate(t *testing.T) {
 	t.Helper()
-	if status, out := f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]string{"status": "active"}); status != http.StatusOK {
+	if status, out := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]string{"status": "active"}); status != http.StatusOK {
 		t.Fatalf("activate: %d %v", status, out)
 	}
 }
@@ -54,7 +55,7 @@ func spectatorFixture(t *testing.T) *fixture {
 }
 
 func standingsPath(f *fixture) string {
-	return fmt.Sprintf("/api/spectator/competitions/%d/standings", f.comp)
+	return fmt.Sprintf("/api/spectator/matches/%d/standings", f.comp)
 }
 
 func TestSpectatorStandings(t *testing.T) {
@@ -77,7 +78,7 @@ func TestSpectatorStandings(t *testing.T) {
 	}
 }
 
-func TestSpectatorDraftCompetitionIsHidden(t *testing.T) {
+func TestSpectatorDraftMatchIsHidden(t *testing.T) {
 	f := newFixture(t, "150")
 	if status, _ := publicGet(t, f, standingsPath(f)); status != http.StatusNotFound {
 		t.Fatalf("status %d", status)
@@ -86,7 +87,7 @@ func TestSpectatorDraftCompetitionIsHidden(t *testing.T) {
 
 func TestSpectatorVisibilityFlags(t *testing.T) {
 	f := spectatorFixture(t)
-	visPath := fmt.Sprintf("/api/competitions/%d/visibility", f.comp)
+	visPath := fmt.Sprintf("/api/matches/%d/visibility", f.comp)
 
 	t.Run("defaults are readable by admin", func(t *testing.T) {
 		status, out := f.env.Do("GET", visPath, nil)
@@ -160,14 +161,14 @@ func TestSpectatorVisibilityFlags(t *testing.T) {
 	})
 }
 
-func TestSpectatorCompetitionList(t *testing.T) {
+func TestSpectatorMatchList(t *testing.T) {
 	f := spectatorFixture(t)
-	f.env.ID("POST", "/api/competitions", map[string]any{"name": "Draft", "date": "2026-06-01", "course": "60"})
-	status, out := publicGet(t, f, "/api/spectator/competitions")
+	f.env.ID("POST", "/api/matches", map[string]any{"name": "Draft", "date": "2026-06-01", "course": "60"})
+	status, out := publicGet(t, f, "/api/spectator/matches")
 	if status != http.StatusOK {
 		t.Fatalf("status %d", status)
 	}
-	list := out["competitions"].([]any)
+	list := out["matches"].([]any)
 	if len(list) != 1 || list[0].(map[string]any)["name"] != "Club Match" {
 		t.Fatalf("list %v", list)
 	}
@@ -203,7 +204,12 @@ func TestRulebookIsPublic(t *testing.T) {
 		}
 		sum := 0.0
 		for _, st := range course["stages"].([]any) {
-			sum += st.(map[string]any)["expected_shots"].(float64)
+			stage := st.(map[string]any)
+			sum += stage["expected_shots"].(float64)
+			part, hasPart := stage["part"].(string)
+			if hasPart != (keys[i] == "150") || (hasPart && !strings.HasPrefix(part, "Match ")) {
+				t.Errorf("course %s stage %v part = %v", keys[i], stage["stage_number"], stage["part"])
+			}
 		}
 		if sum != shots[i] {
 			t.Errorf("course %s stage shots = %v, want %v", keys[i], sum, shots[i])

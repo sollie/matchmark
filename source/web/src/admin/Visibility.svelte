@@ -6,7 +6,7 @@
 
   type Visibility = components["schemas"]["Visibility"];
 
-  let { competitionId }: { competitionId: number } = $props();
+  let { matchId }: { matchId: number } = $props();
 
   const labels: [keyof Visibility, string][] = [
     ["show_names", "Names"],
@@ -21,8 +21,8 @@
   let error = $state("");
 
   onMount(async () => {
-    const result = await api.GET("/api/competitions/{competitionID}/visibility", {
-      params: { path: { competitionID: competitionId } },
+    const result = await api.GET("/api/matches/{matchID}/visibility", {
+      params: { path: { matchID: matchId } },
     });
     if (result.data) visibility = result.data;
     else error = failure(result);
@@ -32,8 +32,8 @@
     if (!visibility) return;
     message = "";
     error = "";
-    const result = await api.PUT("/api/competitions/{competitionID}/visibility", {
-      params: { path: { competitionID: competitionId } },
+    const result = await api.PUT("/api/matches/{matchID}/visibility", {
+      params: { path: { matchID: matchId } },
       body: visibility,
     });
     if (result.data) {

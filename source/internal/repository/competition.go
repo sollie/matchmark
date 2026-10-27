@@ -1,152 +1,89 @@
 package repository
 
-import (
-	"context"
-	"database/sql"
-)
-
-type Shooter struct {
-	ID        int64
-	LastName  string
-	FirstName string
-	Sex       string
-	Country   string
-	Club      string
-	WAID      string
-}
+import "context"
 
 type Competition struct {
-	ID           int64
-	ContainerID  int64
-	Name         string
-	Date         string
-	Course       string
-	Status       string
-	CurrentStage int
-}
-
-type DateRange struct {
-	Start   string
-	End     string
-	Matches int
-}
-
-type Entry struct {
-	ID            int64
-	CompetitionID int64
-	ShooterID     int64
-	Category      string
-	Lane          int
-	Withdrawn     bool
-}
-
-type StageSeed struct {
-	Number        int
-	ExpectedShots int
-}
-
-func (r *Repository) CreateShooter(ctx context.Context, s Shooter) (int64, error) {
-	var waid any
-	if s.WAID != "" {
-		waid = s.WAID
-	}
-	res, err := r.db.ExecContext(ctx,
-		`INSERT INTO shooters (last_name, first_name, sex, country, club, waid) VALUES (?, ?, ?, ?, ?, ?)`,
-		s.LastName, s.FirstName, s.Sex, s.Country, s.Club, waid)
-	if err != nil {
-		return 0, mapErr(err)
-	}
-	return res.LastInsertId()
+	ID         int64
+	Name       string
+	StartDate  string
+	EndDate    string
+	MatchCount int
 }
 
 func (r *Repository) CreateCompetition(ctx context.Context, c Competition) (int64, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	containerID, err := ensureContainer(ctx, tx, c.ContainerID, c.Name, c.Date)
-	if err != nil {
-		return 0, err
-	}
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`, containerID, c.Name, c.Date, c.Course)
-	if err != nil {
-		return 0, mapErr(err)
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, tx.Commit()
-}
-
-func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string) (int64, error) {
-	if id != 0 {
-		return id, nil
-	}
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO competitions (name, start_date, end_date) VALUES (?, ?, ?)`, name, date, date)
+	res, err := r.db.ExecContext(ctx,
+		`INSERT INTO competitions (name, start_date, end_date) VALUES (?, ?, ?)`, c.Name, c.StartDate, c.EndDate)
 	if err != nil {
 		return 0, mapErr(err)
 	}
 	return res.LastInsertId()
-}
-
-func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRange, error) {
-	var d DateRange
-	err := r.db.QueryRowContext(ctx,
-		`SELECT start_date, end_date, (SELECT COUNT(*) FROM matches WHERE competition_id = competitions.id)
-		 FROM competitions WHERE id = ?`, id).Scan(&d.Start, &d.End, &d.Matches)
-	return d, mapErr(err)
 }
 
 func (r *Repository) GetCompetition(ctx context.Context, id int64) (Competition, error) {
 	var c Competition
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches WHERE id = ?`, id).
-		Scan(&c.ID, &c.ContainerID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage)
+		`SELECT id, name, start_date, end_date, (SELECT COUNT(*) FROM matches WHERE competition_id = competitions.id)
+		 FROM competitions WHERE id = ?`, id).Scan(&c.ID, &c.Name, &c.StartDate, &c.EndDate, &c.MatchCount)
 	return c, mapErr(err)
 }
 
-func (r *Repository) CreateEntry(ctx context.Context, e Entry, stages []StageSeed) (int64, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
+func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, name, start_date, end_date, (SELECT COUNT(*) FROM matches WHERE competition_id = competitions.id)
+		 FROM competitions ORDER BY start_date DESC, id DESC`)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	defer func() { _ = tx.Rollback() }()
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO entries (match_id, shooter_id, category, lane) VALUES (?, ?, ?, ?)`,
-		e.CompetitionID, e.ShooterID, e.Category, e.Lane)
-	if err != nil {
-		return 0, mapErr(err)
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	for _, s := range stages {
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO stages (entry_id, stage_number, expected_shots) VALUES (?, ?, ?)`,
-			id, s.Number, s.ExpectedShots); err != nil {
-			return 0, mapErr(err)
+	defer func() { _ = rows.Close() }()
+	out := []Competition{}
+	for rows.Next() {
+		var c Competition
+		if err := rows.Scan(&c.ID, &c.Name, &c.StartDate, &c.EndDate, &c.MatchCount); err != nil {
+			return nil, err
 		}
+		out = append(out, c)
 	}
-	return id, tx.Commit()
+	return out, rows.Err()
 }
 
-func (r *Repository) WithdrawEntry(ctx context.Context, competitionID, entryID int64) error {
+func (r *Repository) UpdateCompetition(ctx context.Context, c Competition) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE entries SET withdrawn = 1 WHERE id = ? AND match_id = ?`, entryID, competitionID)
+		`UPDATE competitions SET name = ?, start_date = ?, end_date = ? WHERE id = ?`, c.Name, c.StartDate, c.EndDate, c.ID)
+	return affected(res, err)
+}
+
+func (r *Repository) DeleteCompetition(ctx context.Context, id int64) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM competitions WHERE id = ?`, id)
+	return affected(res, err)
+}
+
+func (r *Repository) MatchDateBounds(ctx context.Context, competitionID int64) (first, last string, err error) {
+	var lo, hi *string
+	err = r.db.QueryRowContext(ctx,
+		`SELECT MIN(date), MAX(date) FROM matches WHERE competition_id = ?`, competitionID).Scan(&lo, &hi)
+	if lo != nil {
+		first = *lo
+	}
+	if hi != nil {
+		last = *hi
+	}
+	return first, last, mapErr(err)
+}
+
+func (r *Repository) ListCompetitionMatches(ctx context.Context, competitionID int64) ([]Match, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches WHERE competition_id = ? ORDER BY date, id`, competitionID)
 	if err != nil {
-		return mapErr(err)
+		return nil, err
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return err
+	defer func() { _ = rows.Close() }()
+	out := []Match{}
+	for rows.Next() {
+		var m Match
+		if err := rows.Scan(&m.ID, &m.CompetitionID, &m.Name, &m.Date, &m.Course, &m.Status, &m.CurrentStage); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
 	}
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return out, rows.Err()
 }

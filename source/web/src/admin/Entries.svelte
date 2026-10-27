@@ -1,6 +1,6 @@
 <script lang="ts">
   import { entryCommands } from "../lib/entries";
-  import { courseCategories } from "../lib/rulebook.svelte";
+  import { courseCategories, stageLabel } from "../lib/rulebook.svelte";
   import ShooterPicker from "./ShooterPicker.svelte";
   import Wa1500Import from "./Wa1500Import.svelte";
   import type { components } from "../lib/api/schema";
@@ -10,19 +10,19 @@
   type RingCounts = components["schemas"]["RingCounts"];
 
   let {
-    competitionId,
+    matchId,
     course,
     entries,
     shooters,
     reload,
     status = "draft",
   }: {
-    competitionId: number;
+    matchId: number;
     course: string;
     entries: EntryWithStages[];
     shooters: Shooter[];
     reload: () => Promise<void>;
-    status?: components["schemas"]["CompetitionStatus"];
+    status?: components["schemas"]["MatchStatus"];
   } = $props();
 
   const ringKeys = ["x", "10", "9", "8", "7", "0", "miss"] as const;
@@ -55,7 +55,7 @@
     return s ? `${s.first_name} ${s.last_name}` : `#${id}`;
   };
   const ordered = $derived([...entries].sort((a, b) => a.lane - b.lane || a.id - b.id));
-  const commands = $derived(entryCommands(competitionId, reload));
+  const commands = $derived(entryCommands(matchId, reload));
 
   async function run(command: Promise<string | null>): Promise<boolean> {
     error = "";
@@ -152,7 +152,7 @@
     <thead>
       <tr>
         <th>Lane</th><th>Shooter</th><th>Category</th>
-        {#each stageNumbers as n (n)}<th>S{n}</th>{/each}
+        {#each stageNumbers as n (n)}<th title={stageLabel(course, n)}>S{n}</th>{/each}
         <th>Actions</th>
       </tr>
     </thead>
@@ -176,7 +176,7 @@
             <td class="category">{entry.category}</td>
           {/if}
           {#each entry.stages as st (st.stage_number)}
-            <td class="stage" class:state-locked={st.status === "accepted"} class:state-scored={st.status === "open" && st.shots_entered >= st.expected_shots} class:state-open={st.status === "open" && st.shots_entered < st.expected_shots} data-label={`Stage ${st.stage_number}`}>
+            <td class="stage" class:state-locked={st.status === "accepted"} class:state-scored={st.status === "open" && st.shots_entered >= st.expected_shots} class:state-open={st.status === "open" && st.shots_entered < st.expected_shots} data-label={stageLabel(course, st.stage_number)}>
               <div class="stage-cell">
                 <div class="stage-status">
                   {#if st.status === "accepted"}

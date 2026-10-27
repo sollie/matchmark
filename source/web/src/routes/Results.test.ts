@@ -4,7 +4,7 @@ import Results from "./Results.svelte";
 import { stubFetch } from "../test/fetch";
 import { navigate } from "../lib/router.svelte";
 
-const competitions = [
+const matches = [
   { id: 7, name: "Spring Match", date: "2026-05-01", course: "150", status: "finished", current_stage: 10 },
   { id: 8, name: "Live Match", date: "2026-06-01", course: "150", status: "active", current_stage: 2 },
 ];
@@ -19,9 +19,9 @@ afterEach(() => {
 });
 
 describe("Results", () => {
-  it("offers only finished competitions", async () => {
+  it("offers only finished matches", async () => {
     navigate("/results");
-    stubFetch(() => ({ body: { competitions } }));
+    stubFetch(() => ({ body: { matches } }));
     render(Results);
     expect(await screen.findByRole("option", { name: "Spring Match (2026-05-01)" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Live Match/ })).toBeNull();
@@ -33,7 +33,7 @@ describe("Results", () => {
       call.path.endsWith("/results")
         ? {
             body: {
-              competition: { id: 7, name: "Spring Match", date: "2026-05-01", course: "150", course_label: "150 Course" },
+              match: { id: 7, name: "Spring Match", date: "2026-05-01", course: "150", course_label: "150 Course" },
               stages: [1, 2],
               categories: [
                 {
@@ -44,7 +44,7 @@ describe("Results", () => {
               new_shooters: [],
             },
           }
-        : { body: { competitions } },
+        : { body: { matches } },
     );
     render(Results);
     expect(await screen.findByRole("heading", { name: "Spring Match" })).toBeTruthy();
@@ -52,13 +52,13 @@ describe("Results", () => {
     expect(screen.getByRole("cell", { name: "230" })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "S1" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "X" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Download PDF" }).getAttribute("href")).toBe("/api/competitions/7/results?format=pdf");
+    expect(screen.getByRole("link", { name: "Download PDF" }).getAttribute("href")).toBe("/api/matches/7/results?format=pdf");
   });
 
   it("says so when the results are not available", async () => {
     navigate("/results/8");
-    stubFetch((call) => (call.path.endsWith("/results") ? { status: 404, body: { error: "not found" } } : { body: { competitions } }));
+    stubFetch((call) => (call.path.endsWith("/results") ? { status: 404, body: { error: "not found" } } : { body: { matches } }));
     render(Results);
-    expect(await screen.findByText("Results are not available for this competition.")).toBeTruthy();
+    expect(await screen.findByText("Results are not available for this match.")).toBeTruthy();
   });
 });

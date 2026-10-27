@@ -58,15 +58,15 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	extra := env.ID("POST", "/api/shooters", map[string]any{"last_name": "EXTRA", "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
 	env.Do("PUT", fmt.Sprintf("/api/shooters/%d", extra), map[string]any{"last_name": "EXTRA2", "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"})
 	env.Do("DELETE", fmt.Sprintf("/api/shooters/%d", extra), nil)
-	env.Do("PUT", fmt.Sprintf("/api/competitions/%d", comp), map[string]any{"name": "Renamed", "date": "2026-05-02", "course": "150"})
-	env.Do("PUT", fmt.Sprintf("/api/competitions/%d/visibility", comp), map[string]any{"names": true})
-	env.Do("PUT", fmt.Sprintf("/api/competitions/%d/entries/%d", comp, e1), map[string]any{"category": "Pistol", "lane": 1})
-	env.Do("POST", fmt.Sprintf("/api/competitions/%d/entries/%d/withdraw", comp, e4), nil)
-	env.Do("DELETE", fmt.Sprintf("/api/competitions/%d/entries/%d", comp, e5), nil)
-	doomed := env.ID("POST", "/api/competitions", map[string]any{"name": "Doomed", "date": "2026-05-01", "course": "150"})
-	env.Do("DELETE", fmt.Sprintf("/api/competitions/%d", doomed), nil)
-	env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", comp), map[string]any{"status": "active"})
-	stage := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", comp, e3)
+	env.Do("PUT", fmt.Sprintf("/api/matches/%d", comp), map[string]any{"name": "Renamed", "date": "2026-05-02", "course": "150"})
+	env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", comp), map[string]any{"names": true})
+	env.Do("PUT", fmt.Sprintf("/api/matches/%d/entries/%d", comp, e1), map[string]any{"category": "Pistol", "lane": 1})
+	env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", comp, e4), nil)
+	env.Do("DELETE", fmt.Sprintf("/api/matches/%d/entries/%d", comp, e5), nil)
+	doomed := env.ID("POST", "/api/matches", map[string]any{"name": "Doomed", "date": "2026-05-01", "course": "150"})
+	env.Do("DELETE", fmt.Sprintf("/api/matches/%d", doomed), nil)
+	env.Do("POST", fmt.Sprintf("/api/matches/%d/status", comp), map[string]any{"status": "active"})
+	stage := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", comp, e3)
 	env.Do("PUT", stage, counts(10, 2))
 	token := f.pair(t, 1)
 	if status, out := env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(10, 2)); status != http.StatusOK {
@@ -77,11 +77,11 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	}
 	env.Do("POST", stage+"/unlock", nil)
 	env.Do("POST", stage+"/lock", nil)
-	_, pairings := env.Do("GET", fmt.Sprintf("/api/competitions/%d/pairings", comp), nil)
+	_, pairings := env.Do("GET", fmt.Sprintf("/api/matches/%d/pairings", comp), nil)
 	pairingID := int(pairings["pairings"].([]any)[0].(map[string]any)["id"].(float64))
-	env.Do("DELETE", fmt.Sprintf("/api/competitions/%d/pairings/%d", comp, pairingID), nil)
-	env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.xlsx", comp))
-	env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
+	env.Do("DELETE", fmt.Sprintf("/api/matches/%d/pairings/%d", comp, pairingID), nil)
+	env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.xlsx", comp))
+	env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", comp))
 	env.Raw("GET", "/api/admin/backup")
 
 	anna, _ := createUser(env, "anna", "user", tempPassword)
@@ -105,10 +105,10 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 
 	want := map[string]string{
 		"shooter.create": apitest.AdminUsername, "shooter.update": apitest.AdminUsername, "shooter.delete": apitest.AdminUsername,
-		"competition.create": apitest.AdminUsername, "competition.update": apitest.AdminUsername,
-		"competition.delete": apitest.AdminUsername, "competition.status": apitest.AdminUsername,
-		"competition.visibility": apitest.AdminUsername,
-		"entry.add":              apitest.AdminUsername, "entry.update": apitest.AdminUsername,
+		"match.create": apitest.AdminUsername, "match.update": apitest.AdminUsername,
+		"match.delete": apitest.AdminUsername, "match.status": apitest.AdminUsername,
+		"match.visibility": apitest.AdminUsername,
+		"entry.add":        apitest.AdminUsername, "entry.update": apitest.AdminUsername,
 		"entry.withdraw": apitest.AdminUsername, "entry.delete": apitest.AdminUsername,
 		"stage.set_counts": "", "stage.lock": "", "stage.unlock": apitest.AdminUsername,
 		"device.pair": apitest.AdminUsername, "device.revoke": apitest.AdminUsername,
@@ -143,7 +143,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	for _, r := range rows {
 		if r["action"] == "stage.lock" && r["username"] == "device" {
 			deviceLocks++
-			if r["user_id"] != nil || r["details"] != fmt.Sprintf("lane 1 competition %d", comp) {
+			if r["user_id"] != nil || r["details"] != fmt.Sprintf("lane 1 match %d", comp) {
 				t.Errorf("device lock row: %v", r)
 			}
 		}
@@ -164,7 +164,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 		t.Errorf("device counts = %d", deviceCounts)
 	}
 	for _, l := range lines {
-		if l["action"] == "stage.lock" && l["username"] == "device" && l["details"] != fmt.Sprintf("lane 1 competition %d", comp) {
+		if l["action"] == "stage.lock" && l["username"] == "device" && l["details"] != fmt.Sprintf("lane 1 match %d", comp) {
 			t.Errorf("device lock line: %v", l)
 		}
 	}
@@ -232,7 +232,7 @@ func TestAuditLogIsAdminOnlyAndReadOnly(t *testing.T) {
 func TestAuditLogPagesAndFilters(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	for i := 0; i < 5; i++ {
-		env.ID("POST", "/api/competitions", map[string]any{"name": fmt.Sprintf("C%d", i), "date": "2026-05-01", "course": "150"})
+		env.ID("POST", "/api/matches", map[string]any{"name": fmt.Sprintf("C%d", i), "date": "2026-05-01", "course": "150"})
 	}
 	first := auditRows(t, env, "?page_size=2&page=1")
 	second := auditRows(t, env, "?page_size=2&page=2")
@@ -243,7 +243,7 @@ func TestAuditLogPagesAndFilters(t *testing.T) {
 		t.Fatal("pages overlap")
 	}
 
-	byAction := auditEntries(t, env, "?action=competition.create&page_size=200")
+	byAction := auditEntries(t, env, "?action=match.create&page_size=200")
 	if len(byAction) != 5 {
 		t.Fatalf("action filter: %d", len(byAction))
 	}

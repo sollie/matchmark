@@ -12,8 +12,9 @@ import (
 	"github.com/sollie/matchmark/internal/repository"
 )
 
-const restoreLine = `{"msg":"stage_status","schema_version":2,"event":"stage_status","status":"accepted","accepted_by":"bob","accepted_at":"2026-10-19T10:00:00Z","emitted_at":"2026-10-19T10:00:01.000Z","seq":1,` +
-	`"competition":{"id":7,"name":"Club Match","date":"2026-10-19","course_of_fire":{"key":"150"}},` +
+const restoreLine = `{"msg":"stage_status","schema_version":3,"event":"stage_status","status":"accepted","accepted_by":"bob","accepted_at":"2026-10-19T10:00:00Z","emitted_at":"2026-10-19T10:00:01.000Z","seq":1,` +
+	`"competition":{"id":3,"name":"Nationals"},` +
+	`"match":{"id":7,"name":"Club Match","date":"2026-10-19","course_of_fire":{"key":"150"}},` +
 	`"entry":{"id":1,"lane":2,"category":"Pistol","shooter":{"first_name":"Ann","last_name":"Lee"}},` +
 	`"stage":{"number":1,"expected_shots":10},"ring_counts":[1,2,3,4,0,0,0],"locked_by":"bob","scorer_name":"bob"}`
 
@@ -43,7 +44,7 @@ func TestRestoreCommandReadsFile(t *testing.T) {
 }
 
 func TestRestoreCommandRejectsUnknownSchemaVersion(t *testing.T) {
-	bad := strings.Replace(restoreLine, `"schema_version":2`, `"schema_version":9`, 1)
+	bad := strings.Replace(restoreLine, `"schema_version":3`, `"schema_version":9`, 1)
 	if err := runRestore(nil, os.Getenv, strings.NewReader(bad), &bytes.Buffer{}); err == nil {
 		t.Fatal("expected error")
 	}
@@ -61,7 +62,7 @@ func TestRestoreCommandApplyRefusesNonEmptyUnlessMerge(t *testing.T) {
 		return out.String()
 	}
 	first := run()
-	for _, want := range []string{"restored 1 competition(s), 1 entries, 1 scored stage(s)", "re-pair the devices"} {
+	for _, want := range []string{"restored 1 match(s), 1 entries, 1 scored stage(s)", "re-pair the devices"} {
 		if !strings.Contains(first, want) {
 			t.Fatalf("first output missing %q: %s", want, first)
 		}
@@ -75,7 +76,7 @@ func TestRestoreCommandApplyRefusesNonEmptyUnlessMerge(t *testing.T) {
 	if err := runRestore([]string{"--apply", "--merge"}, getenv, strings.NewReader(restoreLine+"\n"), &merged); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(merged.String(), "restored 0 competition(s), 0 entries, 0 scored stage(s)") {
+	if !strings.Contains(merged.String(), "restored 0 match(s), 0 entries, 0 scored stage(s)") {
 		t.Fatalf("merged output = %s", merged.String())
 	}
 	conn, err := db.Open(dbPath)
@@ -105,7 +106,7 @@ func TestRestoreCommandMergeReportsConflicts(t *testing.T) {
 	if err := runRestore([]string{"--merge", "--apply"}, getenv, strings.NewReader(changed+"\n"), &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "1 conflict(s) left unchanged") || !strings.Contains(out.String(), "competition 7 entry 1 stage 1") {
+	if !strings.Contains(out.String(), "1 conflict(s) left unchanged") || !strings.Contains(out.String(), "match 7 entry 1 stage 1") {
 		t.Fatalf("output = %s", out.String())
 	}
 }
@@ -143,7 +144,7 @@ func TestRestoreCommandAcceptsFlagsAfterPath(t *testing.T) {
 	if err := runRestore([]string{path, "--apply"}, func(k string) string { return env[k] }, strings.NewReader(""), &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "restored 1 competition(s)") {
+	if !strings.Contains(out.String(), "restored 1 match(s)") {
 		t.Fatalf("output = %s", out.String())
 	}
 }

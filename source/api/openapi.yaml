@@ -12,6 +12,7 @@ tags:
   - name: club
   - name: shooters
   - name: competitions
+  - name: matches
   - name: entries
   - name: pairings
   - name: scorer
@@ -729,7 +730,7 @@ paths:
         - adminCookie: []
       responses:
         '200':
-          description: All competitions
+          description: All competitions, newest first
           content:
             application/json:
               schema:
@@ -784,6 +785,7 @@ paths:
       tags: [competitions]
       security:
         - adminCookie: []
+      description: Rejected with 422 when the new range would leave a match of the competition outside it
       requestBody:
         required: true
         content:
@@ -801,13 +803,110 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
     delete:
       operationId: deleteCompetition
       tags: [competitions]
+      security:
+        - adminCookie: []
+      description: A competition with matches cannot be deleted
+      responses:
+        '200':
+          $ref: '#/components/responses/Deleted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/matches:
+    get:
+      operationId: listMatches
+      tags: [matches]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: All matches
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [matches]
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Match'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createMatch
+      tags: [matches]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/matches/{matchID}:
+    parameters:
+      - $ref: '#/components/parameters/MatchID'
+    get:
+      operationId: getMatch
+      tags: [matches]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Match'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updateMatch
+      tags: [matches]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchInput'
+      responses:
+        '200':
+          description: The updated match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Match'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: deleteMatch
+      tags: [matches]
       security:
         - adminCookie: []
       responses:
@@ -819,13 +918,13 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/status:
+  /api/matches/{matchID}/status:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     post:
-      operationId: setCompetitionStatus
-      tags: [competitions]
-      summary: Advance the competition status (draft, active, finished)
+      operationId: setMatchStatus
+      tags: [matches]
+      summary: Advance the match status (draft, active, finished)
       security:
         - adminCookie: []
       requestBody:
@@ -837,7 +936,7 @@ paths:
               required: [status]
               properties:
                 status:
-                  $ref: '#/components/schemas/CompetitionStatus'
+                  $ref: '#/components/schemas/MatchStatus'
       responses:
         '200':
           description: The new status
@@ -848,7 +947,7 @@ paths:
                 required: [status]
                 properties:
                   status:
-                    $ref: '#/components/schemas/CompetitionStatus'
+                    $ref: '#/components/schemas/MatchStatus'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -857,12 +956,12 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/competitions/{competitionID}/next-stage:
+  /api/matches/{matchID}/next-stage:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     post:
       operationId: startNextStage
-      tags: [competitions]
+      tags: [matches]
       summary: Start the next stage once every manned, non-withdrawn lane has accepted the current one
       security:
         - adminCookie: []
@@ -883,15 +982,15 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/control-room:
+  /api/matches/{matchID}/control-room:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: getControlRoom
-      tags: [competitions]
+      tags: [matches]
       summary: The current stage with one row per manned lane
       description: |
-        Answers 409 while the competition is a draft. connected is best-effort: it is true while the lane's device holds an open scorer stream and is never stored.
+        Answers 409 while the match is a draft. connected is best-effort: it is true while the lane's device holds an open scorer stream and is never stored.
       security:
         - adminCookie: []
       responses:
@@ -907,12 +1006,12 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/stage-events:
+  /api/matches/{matchID}/stage-events:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: listStageEvents
-      tags: [competitions]
+      tags: [matches]
       summary: Stage event history with lock and dispute counts per scorer
       description: |
         Events are oldest first and cover locks, acceptances, disputes, accept-all and unlocks. Device actors carry the shooter and scorer resolved from the pairing. The per-scorer counts cover the filtered events.
@@ -947,14 +1046,14 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/competitions/{competitionID}/accept-all:
+  /api/matches/{matchID}/accept-all:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     post:
       operationId: acceptAll
-      tags: [competitions]
+      tags: [matches]
       summary: Accept every stage of the current stage that awaits acceptance
-      description: Answers 409 while any manned lane is still open for the current stage, or when the competition is not active. Accepting the last stage finishes the competition.
+      description: Answers 409 while any manned lane is still open for the current stage, or when the match is not active. Accepting the last stage finishes the match.
       security:
         - adminCookie: []
       responses:
@@ -974,12 +1073,12 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/visibility:
+  /api/matches/{matchID}/visibility:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: getVisibility
-      tags: [competitions]
+      tags: [matches]
       security:
         - adminCookie: []
       responses:
@@ -995,7 +1094,7 @@ paths:
           $ref: '#/components/responses/NotFound'
     put:
       operationId: setVisibility
-      tags: [competitions]
+      tags: [matches]
       security:
         - adminCookie: []
       requestBody:
@@ -1017,9 +1116,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/competitions/{competitionID}/entries:
+  /api/matches/{matchID}/entries:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: listEntries
       tags: [entries]
@@ -1074,13 +1173,13 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/competitions/{competitionID}/entries/{entryID}:
+  /api/matches/{matchID}/entries/{entryID}:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
     put:
       operationId: updateEntry
-      description: A draft competition allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409
+      description: A draft match allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409
       tags: [entries]
       security:
         - adminCookie: []
@@ -1126,9 +1225,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/entries/{entryID}/withdraw:
+  /api/matches/{matchID}/entries/{entryID}/withdraw:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
     post:
       operationId: withdrawEntry
@@ -1152,9 +1251,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}:
+  /api/matches/{matchID}/entries/{entryID}/stages/{stage}:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
       - $ref: '#/components/parameters/Stage'
     put:
@@ -1182,9 +1281,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock:
+  /api/matches/{matchID}/entries/{entryID}/stages/{stage}/lock:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
       - $ref: '#/components/parameters/Stage'
     post:
@@ -1208,9 +1307,9 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept:
+  /api/matches/{matchID}/entries/{entryID}/stages/{stage}/accept:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
       - $ref: '#/components/parameters/Stage'
     post:
@@ -1232,9 +1331,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock:
+  /api/matches/{matchID}/entries/{entryID}/stages/{stage}/unlock:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
       - $ref: '#/components/parameters/Stage'
     post:
@@ -1256,9 +1355,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/lanes/{lane}/score-lane:
+  /api/matches/{matchID}/lanes/{lane}/score-lane:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
       - name: lane
         in: path
         required: true
@@ -1290,9 +1389,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/competitions/{competitionID}/pairings:
+  /api/matches/{matchID}/pairings:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: listPairings
       tags: [pairings]
@@ -1356,9 +1455,9 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/competitions/{competitionID}/pairings/{pairingID}:
+  /api/matches/{matchID}/pairings/{pairingID}:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
       - name: pairingID
         in: path
         required: true
@@ -1377,16 +1476,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/competitions/{competitionID}/stream:
+  /api/matches/{matchID}/stream:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: streamAdminUpdates
-      tags: [competitions]
+      tags: [matches]
       summary: Change notifications as server-sent events
       description: >
         Sends a `changed` event on connect and after every change to the
-        competition, coalesced over about 250 ms. The event carries an empty
+        match, coalesced over about 250 ms. The event carries an empty
         JSON object; the client refetches the entries. A `: heartbeat` comment
         is sent every 25 seconds and the server closes the stream after 30
         minutes, so the client reconnects with backoff.
@@ -1413,9 +1512,65 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/competitions/{competitionID}/results.xlsx:
+  /api/competitions/{competitionID}/results.zip:
     parameters:
       - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadCompetitionResults
+      tags: [reports]
+      summary: A zip of the reports of every finished match of the competition, rendered on demand and never stored
+      description: |
+        With `format` xlsx, csv or pdf the zip holds one file per finished match, named by match name, date and course. With `all` it holds one folder per match with all three formats. Unfinished matches are skipped and listed in `SKIPPED.txt`. Behind the render guard and audited as a `report.download`.
+      security:
+        - adminCookie: []
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [xlsx, csv, pdf, all]
+      responses:
+        '200':
+          description: The zip archive
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Missing or unknown format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Server busy
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/matches/{matchID}/results.xlsx:
+    parameters:
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: downloadResultsWorkbook
       tags: [reports]
@@ -1433,9 +1588,9 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/competitions/{competitionID}/results.csv:
+  /api/matches/{matchID}/results.csv:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: downloadResultsCsv
       tags: [reports]
@@ -1452,13 +1607,13 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/competitions/{competitionID}/results:
+  /api/matches/{matchID}/results:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: downloadPublicResultsPdf
       tags: [reports]
-      summary: The Results PDF of a finished competition, rendered on demand and honouring the visibility flags; public and never stored
+      summary: The Results PDF of a finished match, rendered on demand and honouring the visibility flags; public and never stored
       parameters:
         - name: format
           in: query
@@ -1480,7 +1635,7 @@ paths:
                 type: string
                 format: binary
         '404':
-          description: The competition is unknown or not finished
+          description: The match is unknown or not finished
           content:
             application/json:
               schema:
@@ -1507,9 +1662,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/admin/competitions/{competitionID}/results:
+  /api/admin/matches/{matchID}/results:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: downloadAdminResultsPdf
       tags: [reports]
@@ -1542,13 +1697,13 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/scorer/scorecard/{competitionID}/{lane}:
+  /api/scorer/scorecard/{matchID}/{lane}:
     get:
       operationId: getScorecard
       tags: [scorer]
-      summary: The Scorecard copy of the entry on a lane, rendered on demand once the competition is finished; public, ignores spectator visibility flags and is never stored
+      summary: The Scorecard copy of the entry on a lane, rendered on demand once the match is finished; public, ignores spectator visibility flags and is never stored
       parameters:
-        - $ref: '#/components/parameters/CompetitionID'
+        - $ref: '#/components/parameters/MatchID'
         - name: lane
           in: path
           required: true
@@ -1582,7 +1737,7 @@ paths:
                 type: string
                 format: binary
         '404':
-          description: The competition is unknown or not finished, or the lane is empty or its entry withdrawn
+          description: The match is unknown or not finished, or the lane is empty or its entry withdrawn
           content:
             application/json:
               schema:
@@ -1609,13 +1764,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/scorer/scorecard/{competitionID}/{lane}/summary:
+  /api/scorer/scorecard/{matchID}/{lane}/summary:
     get:
       operationId: getScorecardSummary
       tags: [scorer]
       summary: The shooter and the scorer of each accepted stage on a Scorecard copy, as text; public, ignores spectator visibility flags and has the same availability as the Scorecard copy
       parameters:
-        - $ref: '#/components/parameters/CompetitionID'
+        - $ref: '#/components/parameters/MatchID'
         - name: lane
           in: path
           required: true
@@ -1630,7 +1785,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ScorecardSummary'
         '404':
-          description: The competition is unknown or not finished, or the lane is empty or its entry withdrawn
+          description: The match is unknown or not finished, or the lane is empty or its entry withdrawn
           content:
             application/json:
               schema:
@@ -1684,12 +1839,12 @@ paths:
       summary: The paired device's session as server-sent events
       description: >
         Sends a `snapshot` event with the ScorerSession on connect and again
-        after every change in the competition, coalesced over about 250 ms.
+        after every change in the match, coalesced over about 250 ms.
         When the pairing is revoked, a terminal `revoked` event with an empty
-        JSON object is sent and the stream ends. When the competition
+        JSON object is sent and the stream ends. When the match
         finishes, a final `snapshot` with phase `finished` is sent and the
         stream ends. In both cases the client must forget its token and not
-        reconnect; connecting with the token of a finished competition answers
+        reconnect; connecting with the token of a finished match answers
         410. A `: heartbeat`
         comment is sent every 25 seconds and the server closes the stream
         after 30 minutes. The device token is sent in the Authorization header,
@@ -1717,7 +1872,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
         '410':
-          description: The competition is finished; the device must forget its token
+          description: The match is finished; the device must forget its token
           content:
             application/json:
               schema:
@@ -1868,31 +2023,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Rulebook'
-  /api/spectator/competitions:
+  /api/spectator/matches:
     get:
-      operationId: listSpectatorCompetitions
+      operationId: listSpectatorMatches
       tags: [spectator]
-      summary: Competitions that are not drafts
+      summary: Matches that are not drafts
       responses:
         '200':
-          description: Public competitions
+          description: Public matches
           content:
             application/json:
               schema:
                 type: object
-                required: [competitions]
+                required: [matches]
                 properties:
-                  competitions:
+                  matches:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Competition'
-  /api/spectator/competitions/{competitionID}/standings:
+                      $ref: '#/components/schemas/Match'
+  /api/spectator/matches/{matchID}/standings:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: getSpectatorStandings
       tags: [spectator]
-      summary: Standings filtered by the competition's visibility flags
+      summary: Standings filtered by the match's visibility flags
       responses:
         '200':
           description: Ranked standings
@@ -1908,18 +2063,18 @@ paths:
                       $ref: '#/components/schemas/Standing'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/spectator/competitions/{competitionID}/results:
+  /api/spectator/matches/{matchID}/results:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: getSpectatorResults
       tags: [spectator]
-      summary: Printable results of a finished competition, filtered by the visibility flags
+      summary: Printable results of a finished match, filtered by the visibility flags
       description: >
         Ranked per category by total then X count; entries tie only when both
         are equal and withdrawn entries are left out. Hidden names also hide
         WAID and the new shooters list; hidden stage scores omit `score`;
-        hidden ring counts omit `x_count`. Answers 404 unless the competition
+        hidden ring counts omit `x_count`. Answers 404 unless the match
         is finished.
       responses:
         '200':
@@ -1935,9 +2090,9 @@ paths:
                 $ref: '#/components/schemas/Results'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/spectator/competitions/{competitionID}/stream:
+  /api/spectator/matches/{matchID}/stream:
     parameters:
-      - $ref: '#/components/parameters/CompetitionID'
+      - $ref: '#/components/parameters/MatchID'
     get:
       operationId: streamSpectatorUpdates
       tags: [spectator]
@@ -1981,6 +2136,13 @@ components:
       type: http
       scheme: bearer
   parameters:
+    MatchID:
+      name: matchID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     CompetitionID:
       name: competitionID
       in: path
@@ -2063,7 +2225,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     AdminScoringRequired:
-      description: Single-lane competitions require admin scoring
+      description: Single-lane matches require admin scoring
       content:
         application/json:
           schema:
@@ -2148,6 +2310,9 @@ components:
           type: integer
         position:
           type: string
+        part:
+          type: string
+          description: Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups.
     RulebookRing:
       type: object
       required: [ring, value]
@@ -2283,7 +2448,7 @@ components:
           type: string
           minLength: 16
           maxLength: 128
-    CompetitionStatus:
+    MatchStatus:
       type: string
       enum: [draft, active, finished]
     Shooter:
@@ -2349,8 +2514,40 @@ components:
           type: string
     CompetitionInput:
       type: object
+      required: [name, start_date, end_date]
+      properties:
+        name:
+          type: string
+        start_date:
+          type: string
+          description: ISO 8601 calendar date, YYYY-MM-DD
+        end_date:
+          type: string
+          description: ISO 8601 calendar date, YYYY-MM-DD, not before start_date
+    Competition:
+      allOf:
+        - type: object
+          required: [id, match_count]
+          properties:
+            id:
+              type: integer
+              format: int64
+            match_count:
+              type: integer
+              description: Number of matches in the competition
+        - $ref: '#/components/schemas/CompetitionInput'
+    MatchInput:
+      type: object
       required: [name, date, course]
       properties:
+        competition_id:
+          type: integer
+          format: int64
+          description: Existing competition to put the match in. Used on create only. Omit both this and competition to create a one-day competition from the match
+        competition:
+          allOf:
+            - $ref: '#/components/schemas/CompetitionInput'
+          description: New competition to create together with the match. Used on create only; not combinable with competition_id
         name:
           type: string
         date:
@@ -2359,20 +2556,23 @@ components:
         course:
           type: string
           description: Course of fire key from the rulebook
-    Competition:
+    Match:
       allOf:
         - type: object
-          required: [id, status, current_stage]
+          required: [id, competition_id, status, current_stage]
           properties:
             id:
               type: integer
               format: int64
+            competition_id:
+              type: integer
+              format: int64
             status:
-              $ref: '#/components/schemas/CompetitionStatus'
+              $ref: '#/components/schemas/MatchStatus'
             current_stage:
               type: integer
-              description: Stage the competition is on. Stage 1 at activation; moved only by starting the next stage
-        - $ref: '#/components/schemas/CompetitionInput'
+              description: Stage the match is on. Stage 1 at activation; moved only by starting the next stage
+        - $ref: '#/components/schemas/MatchInput'
     Visibility:
       type: object
       required: [show_names, show_clubs, show_countries, show_stage_scores, show_ring_counts]
@@ -2389,12 +2589,12 @@ components:
           type: boolean
     Entry:
       type: object
-      required: [id, competition_id, shooter_id, category, lane, withdrawn]
+      required: [id, match_id, shooter_id, category, lane, withdrawn]
       properties:
         id:
           type: integer
           format: int64
-        competition_id:
+        match_id:
           type: integer
           format: int64
         shooter_id:
@@ -2495,9 +2695,9 @@ components:
                 type: string
     ScorerSession:
       type: object
-      required: [competition_id, lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
+      required: [match_id, lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
       properties:
-        competition_id:
+        match_id:
           type: integer
           format: int64
         lane:
@@ -2506,7 +2706,7 @@ components:
           type: integer
         current_stage:
           type: integer
-          description: The competition's current stage; devices can score only this stage. Zero in the finished phase
+          description: The match's current stage; devices can score only this stage. Zero in the finished phase
         entry_id:
           type: integer
           format: int64
@@ -2533,7 +2733,7 @@ components:
         phase:
           type: string
           enum: [not_started, scoring, waiting, needs_acceptance, next_stage, finished]
-          description: Derived by the server from the current stage. not_started while the competition is a draft (the device is paired but shows only its lane; the other fields are empty); scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
+          description: Derived by the server from the current stage. not_started while the match is a draft (the device is paired but shows only its lane; the other fields are empty); scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the match is finished (the other fields are then empty and the pairing is revoked)
         acceptance:
           description: Present while phase is needs_acceptance
           allOf:
@@ -2583,7 +2783,7 @@ components:
           description: The stage is open again after a dispute
         disputes:
           type: integer
-          description: Disputes across all stages of the competition
+          description: Disputes across all stages of the match
         paired:
           type: boolean
         connected:
@@ -2694,9 +2894,9 @@ components:
             $ref: '#/components/schemas/StageScore'
     Results:
       type: object
-      required: [competition, stages, categories, new_shooters]
+      required: [match, stages, categories, new_shooters]
       properties:
-        competition:
+        match:
           type: object
           required: [id, name, date, course, course_label]
           properties:
@@ -2796,13 +2996,13 @@ components:
         status:
           type: string
           enum: [draft, active, finished]
-          description: The competition's status, so a viewer notices when it finishes without reloading the list
+          description: The match's status, so a viewer notices when it finishes without reloading the list
         current_stage:
           type: integer
-          description: The competition's current stage number
+          description: The match's current stage number
         total_stages:
           type: integer
-          description: Number of stages in the competition's course of fire
+          description: Number of stages in the match's course of fire
         standings:
           type: array
           items:

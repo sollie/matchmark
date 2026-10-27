@@ -62,7 +62,7 @@ func scorerSessionJSON(sess service.ScorerSession) map[string]any {
 		stages = append(stages, stage)
 	}
 	out := map[string]any{
-		"competition_id": sess.CompetitionID, "lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
+		"match_id": sess.MatchID, "lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
 		"shooter_name": sess.ShooterName, "stages": stages, "phase": sess.Phase, "current_stage": sess.CurrentStage,
 	}
 	if a := sess.Acceptance; a != nil {
@@ -92,7 +92,7 @@ func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	}, func() *service.Subscription {
-		return h.svc.Subscribe(deviceFrom(r).CompetitionID)
+		return h.svc.Subscribe(deviceFrom(r).MatchID)
 	}, func(ctx context.Context) (streamEvent, error) {
 		sess, err := h.svc.DeviceSnapshot(ctx, token)
 		if errors.Is(err, service.ErrUnauthenticated) {
@@ -150,7 +150,7 @@ func (h *Handler) scorerTransition(r *http.Request, act func(context.Context, se
 
 func (h *Handler) createPairing(r *http.Request) (int, any, error) {
 	req := in(r)
-	compID := req.path("competitionID")
+	compID := req.path("matchID")
 	var body struct {
 		Lane int `json:"lane"`
 	}
@@ -167,7 +167,7 @@ func (h *Handler) createPairing(r *http.Request) (int, any, error) {
 
 func (h *Handler) listPairings(r *http.Request) (int, any, error) {
 	req := in(r)
-	compID := req.path("competitionID")
+	compID := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -188,7 +188,7 @@ func pairingJSON(p repository.Pairing) map[string]any {
 
 func (h *Handler) revokePairing(r *http.Request) (int, any, error) {
 	req := in(r)
-	compID, id := req.path("competitionID"), req.path("pairingID")
+	compID, id := req.path("matchID"), req.path("pairingID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -212,7 +212,7 @@ func (h *Handler) unlockStage(r *http.Request) (int, any, error) {
 
 func (h *Handler) adminTransition(r *http.Request, act func(context.Context, int64, int64, int) (repository.StageStatus, error)) (int, any, error) {
 	req := in(r)
-	compID, entryID, stage := req.path("competitionID"), req.path("entryID"), req.path("stage")
+	compID, entryID, stage := req.path("matchID"), req.path("entryID"), req.path("stage")
 	if req.err != nil {
 		return fail(req.err)
 	}

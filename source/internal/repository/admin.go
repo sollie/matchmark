@@ -92,17 +92,17 @@ func (r *Repository) DeleteShooter(ctx context.Context, id int64) error {
 	return affected(res, err)
 }
 
-func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error) {
+func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, date, course, status, current_stage FROM matches ORDER BY date DESC, id DESC`)
+		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	comps := []Competition{}
+	comps := []Match{}
 	for rows.Next() {
-		var c Competition
-		if err := rows.Scan(&c.ID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage); err != nil {
+		var c Match
+		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage); err != nil {
 			return nil, err
 		}
 		comps = append(comps, c)
@@ -110,7 +110,7 @@ func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error
 	return comps, rows.Err()
 }
 
-func (r *Repository) UpdateCompetition(ctx context.Context, c Competition) error {
+func (r *Repository) UpdateMatch(ctx context.Context, c Match) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -124,13 +124,14 @@ func (r *Repository) UpdateCompetition(ctx context.Context, c Competition) error
 	if _, err := tx.ExecContext(ctx,
 		`UPDATE competitions SET start_date = ?, end_date = ?
 		 WHERE id = (SELECT competition_id FROM matches WHERE id = ?)
+		 AND start_date = end_date
 		 AND (SELECT COUNT(*) FROM matches WHERE competition_id = competitions.id) = 1`, c.Date, c.Date, c.ID); err != nil {
 		return mapErr(err)
 	}
 	return tx.Commit()
 }
 
-func (r *Repository) SetCompetitionStatus(ctx context.Context, id int64, from, to string) error {
+func (r *Repository) SetMatchStatus(ctx context.Context, id int64, from, to string) error {
 	res, err := r.db.ExecContext(ctx, `UPDATE matches SET status = ? WHERE id = ? AND status = ?`, to, id, from)
 	return conflictIfNone(res, err)
 }
@@ -154,42 +155,42 @@ func (r *Repository) AdvanceStage(ctx context.Context, id int64, from int) error
 	return tx.Commit()
 }
 
-func (r *Repository) DeleteCompetition(ctx context.Context, id int64) error {
+func (r *Repository) DeleteMatch(ctx context.Context, id int64) error {
 	res, err := r.db.ExecContext(ctx, `DELETE FROM matches WHERE id = ?`, id)
 	return affected(res, err)
 }
 
-func (r *Repository) CountEntries(ctx context.Context, competitionID int64) (int, error) {
+func (r *Repository) CountEntries(ctx context.Context, matchID int64) (int, error) {
 	var n int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM entries WHERE match_id = ?`, competitionID).Scan(&n)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM entries WHERE match_id = ?`, matchID).Scan(&n)
 	return n, err
 }
 
-func (r *Repository) GetEntry(ctx context.Context, competitionID, entryID int64) (Entry, error) {
+func (r *Repository) GetEntry(ctx context.Context, matchID, entryID int64) (Entry, error) {
 	var e Entry
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, match_id, shooter_id, category, lane, withdrawn FROM entries WHERE id = ? AND match_id = ?`,
-		entryID, competitionID).Scan(&e.ID, &e.CompetitionID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn)
+		entryID, matchID).Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn)
 	return e, mapErr(err)
 }
 
-func (r *Repository) UpdateEntry(ctx context.Context, competitionID, entryID int64, category string, lane int) error {
+func (r *Repository) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE entries SET category = ?, lane = ? WHERE id = ? AND match_id = ?`,
-		category, lane, entryID, competitionID)
+		category, lane, entryID, matchID)
 	return affected(res, err)
 }
 
-func (r *Repository) DeleteEntry(ctx context.Context, competitionID, entryID int64) error {
+func (r *Repository) DeleteEntry(ctx context.Context, matchID, entryID int64) error {
 	res, err := r.db.ExecContext(ctx,
-		`DELETE FROM entries WHERE id = ? AND match_id = ?`, entryID, competitionID)
+		`DELETE FROM entries WHERE id = ? AND match_id = ?`, entryID, matchID)
 	return affected(res, err)
 }
 
-func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]EntryWithStages, error) {
+func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWithStages, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, match_id, shooter_id, category, lane, withdrawn FROM entries WHERE match_id = ? ORDER BY lane, id`,
-		competitionID)
+		matchID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +198,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 	index := map[int64]int{}
 	for rows.Next() {
 		var e EntryWithStages
-		if err := rows.Scan(&e.ID, &e.CompetitionID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn); err != nil {
+		if err := rows.Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -215,7 +216,7 @@ func (r *Repository) ListEntries(ctx context.Context, competitionID int64) ([]En
 		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.status, s.scorer_lane, s.scorer_name,
 		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, COALESCE(s.disputed_at, ''), s.started FROM stages s
 		 JOIN entries e ON e.id = s.entry_id WHERE e.match_id = ? ORDER BY s.entry_id, s.stage_number`,
-		competitionID)
+		matchID)
 	if err != nil {
 		return nil, err
 	}

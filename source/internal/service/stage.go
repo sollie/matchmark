@@ -22,8 +22,8 @@ func ValidateRingCounts(c repository.RingCounts, expectedShots int) error {
 	return nil
 }
 
-func (s *Service) validatedStage(ctx context.Context, competitionID, entryID int64, stageNumber int, c repository.RingCounts, requireUnlocked bool) (repository.Stage, error) {
-	stage, err := s.repo.GetStage(ctx, competitionID, entryID, stageNumber)
+func (s *Service) validatedStage(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts, requireUnlocked bool) (repository.Stage, error) {
+	stage, err := s.repo.GetStage(ctx, matchID, entryID, stageNumber)
 	if err != nil {
 		return repository.Stage{}, mapRepoErr(err)
 	}
@@ -36,16 +36,16 @@ func (s *Service) validatedStage(ctx context.Context, competitionID, entryID int
 	return stage, nil
 }
 
-func (s *Service) SetRingCounts(ctx context.Context, competitionID, entryID int64, stageNumber int, c repository.RingCounts) error {
-	if err := s.writeRingCounts(ctx, competitionID, entryID, stageNumber, c); err != nil {
+func (s *Service) SetRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts) error {
+	if err := s.writeRingCounts(ctx, matchID, entryID, stageNumber, c); err != nil {
 		return err
 	}
-	s.changes.Record(ctx, Change{CompetitionID: competitionID, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{MatchID: matchID, Live: LiveMatch})
 	return nil
 }
 
-func (s *Service) writeRingCounts(ctx context.Context, competitionID, entryID int64, stageNumber int, c repository.RingCounts) error {
-	stage, err := s.validatedStage(ctx, competitionID, entryID, stageNumber, c, true)
+func (s *Service) writeRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts) error {
+	stage, err := s.validatedStage(ctx, matchID, entryID, stageNumber, c, true)
 	if err != nil {
 		return err
 	}
@@ -58,13 +58,13 @@ func (s *Service) writeRingCounts(ctx context.Context, competitionID, entryID in
 	return nil
 }
 
-func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID int64, stageNumber int, c repository.RingCounts) error {
-	stage, err := s.validatedStage(ctx, competitionID, entryID, stageNumber, c, false)
+func (s *Service) AdminSetRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts) error {
+	stage, err := s.validatedStage(ctx, matchID, entryID, stageNumber, c, false)
 	if err != nil {
 		return err
 	}
 	username := ActorFrom(ctx).Username
-	ev, err := s.userStageEvent(ctx, repository.EventAccepted, username, competitionID, entryID, stage)
+	ev, err := s.userStageEvent(ctx, repository.EventAccepted, username, matchID, entryID, stage)
 	if err != nil {
 		return err
 	}
@@ -72,16 +72,16 @@ func (s *Service) AdminSetRingCounts(ctx context.Context, competitionID, entryID
 		return mapStageWriteErr(err)
 	}
 	change := Change{
-		Audit:         AuditEvent{Action: "stage.set_counts", Target: stageTarget(competitionID, entryID, stageNumber)},
-		CompetitionID: competitionID,
-		Live:          LiveCompetition,
+		Audit:   AuditEvent{Action: "stage.set_counts", Target: stageTarget(matchID, entryID, stageNumber)},
+		MatchID: matchID,
+		Live:    LiveMatch,
 	}
 	if stage.Status != repository.StatusOpen {
-		change.Stage = &StageEvent{CompetitionID: competitionID, EntryID: entryID, StageNumber: stageNumber}
+		change.Stage = &StageEvent{MatchID: matchID, EntryID: entryID, StageNumber: stageNumber}
 	}
 	s.changes.Record(ctx, change)
 	if stage.Status != repository.StatusOpen {
-		s.finishIfComplete(ctx, competitionID, nil)
+		s.finishIfComplete(ctx, matchID, nil)
 	}
 	return nil
 }
@@ -93,8 +93,8 @@ func mapStageWriteErr(err error) error {
 	return mapRepoErr(err)
 }
 
-func (s *Service) userStageEvent(ctx context.Context, kind repository.StageEventKind, username string, competitionID, entryID int64, stage repository.Stage) (repository.StageEvent, error) {
-	entry, err := s.repo.GetEntry(ctx, competitionID, entryID)
+func (s *Service) userStageEvent(ctx context.Context, kind repository.StageEventKind, username string, matchID, entryID int64, stage repository.Stage) (repository.StageEvent, error) {
+	entry, err := s.repo.GetEntry(ctx, matchID, entryID)
 	if err != nil {
 		return repository.StageEvent{}, mapRepoErr(err)
 	}
@@ -103,7 +103,7 @@ func (s *Service) userStageEvent(ctx context.Context, kind repository.StageEvent
 		return repository.StageEvent{}, mapRepoErr(err)
 	}
 	return repository.StageEvent{
-		CompetitionID: competitionID, EntryID: entryID, StageNumber: stage.Number, Event: kind,
+		MatchID: matchID, EntryID: entryID, StageNumber: stage.Number, Event: kind,
 		ActorType: "user", ActorName: username, ScorerName: deviceScorerName(stage), ShooterName: shooterName(shooter),
 	}, nil
 }

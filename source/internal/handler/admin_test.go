@@ -105,12 +105,12 @@ func TestShooterRegistry(t *testing.T) {
 	})
 }
 
-func TestCompetitionLifecycle(t *testing.T) {
+func TestMatchLifecycle(t *testing.T) {
 	env := apitest.NewAdmin(t)
-	id := env.ID("POST", "/api/competitions", map[string]any{"name": "Spring", "date": "2026-05-01", "course": "150"})
-	path := fmt.Sprintf("/api/competitions/%d", id)
+	id := env.ID("POST", "/api/matches", map[string]any{"name": "Spring", "date": "2026-05-01", "course": "150"})
+	path := fmt.Sprintf("/api/matches/%d", id)
 
-	t.Run("new competition is draft", func(t *testing.T) {
+	t.Run("new match is draft", func(t *testing.T) {
 		status, out := env.Do("GET", path, nil)
 		if status != http.StatusOK || out["status"] != "draft" || out["course"] != "150" {
 			t.Fatalf("got %d %v", status, out)
@@ -123,8 +123,8 @@ func TestCompetitionLifecycle(t *testing.T) {
 		}
 	})
 	t.Run("list", func(t *testing.T) {
-		status, out := env.Do("GET", "/api/competitions", nil)
-		if status != http.StatusOK || len(out["competitions"].([]any)) != 1 {
+		status, out := env.Do("GET", "/api/matches", nil)
+		if status != http.StatusOK || len(out["matches"].([]any)) != 1 {
 			t.Fatalf("got %d %v", status, out)
 		}
 	})
@@ -170,7 +170,7 @@ func TestCompetitionLifecycle(t *testing.T) {
 func TestCourseChangeRejectedWithEntries(t *testing.T) {
 	f := newFixture(t, "150")
 	f.addEntry(t, "One", 1)
-	status, _ := f.env.Do("PUT", fmt.Sprintf("/api/competitions/%d", f.comp), map[string]any{"name": "Club Match", "date": "2026-05-01", "course": "60"})
+	status, _ := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d", f.comp), map[string]any{"name": "Club Match", "date": "2026-05-01", "course": "60"})
 	if status != http.StatusConflict {
 		t.Fatalf("status %d", status)
 	}
@@ -190,7 +190,7 @@ func TestEntriesListWithStages(t *testing.T) {
 		t.Run(tt.course, func(t *testing.T) {
 			f := newFixture(t, tt.course)
 			f.addEntry(t, "One", 2)
-			status, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+			status, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 			if status != http.StatusOK {
 				t.Fatalf("status %d", status)
 			}
@@ -219,8 +219,8 @@ func TestEntriesListWithStages(t *testing.T) {
 func TestEntriesListStageScores(t *testing.T) {
 	f := newFixture(t, "150")
 	entry := f.addEntry(t, "One", 1)
-	base := fmt.Sprintf("/api/competitions/%d/entries/%d/stages", f.comp, entry)
-	f.env.Do("POST", fmt.Sprintf("/api/competitions/%d/status", f.comp), map[string]any{"status": "active"})
+	base := fmt.Sprintf("/api/matches/%d/entries/%d/stages", f.comp, entry)
+	f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "active"})
 	if status, out := f.env.Do("PUT", base+"/1", map[string]any{"x": 10, "9": 1, "8": 1}); status != http.StatusOK {
 		t.Fatalf("set counts: %d %v", status, out)
 	}
@@ -231,7 +231,7 @@ func TestEntriesListStageScores(t *testing.T) {
 		t.Fatalf("lock: %d %v", status, out)
 	}
 
-	_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	stages := out["entries"].([]any)[0].(map[string]any)["stages"].([]any)
 	want := []struct {
 		score, shots int
@@ -249,7 +249,7 @@ func TestEntryUpdate(t *testing.T) {
 	f := newFixture(t, "150")
 	e1 := f.addEntry(t, "One", 1)
 	f.addEntry(t, "TWO", 2)
-	path := fmt.Sprintf("/api/competitions/%d/entries/%d", f.comp, e1)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d", f.comp, e1)
 
 	t.Run("change category and lane", func(t *testing.T) {
 		status, out := f.env.Do("PUT", path, map[string]any{"category": "Pistol OS", "lane": 5})
@@ -269,7 +269,7 @@ func TestEntryUpdate(t *testing.T) {
 	})
 	t.Run("category not allowed for the course", func(t *testing.T) {
 		g := newFixture(t, "60")
-		gp := fmt.Sprintf("/api/competitions/%d/entries/%d", g.comp, g.addEntry(t, "One", 1))
+		gp := fmt.Sprintf("/api/matches/%d/entries/%d", g.comp, g.addEntry(t, "One", 1))
 		if status, _ := g.env.Do("PUT", gp, map[string]any{"category": "Carbine", "lane": 1}); status != http.StatusUnprocessableEntity {
 			t.Fatalf("status %d", status)
 		}
@@ -280,14 +280,14 @@ func TestEntryUpdate(t *testing.T) {
 		}
 	})
 	t.Run("unknown entry", func(t *testing.T) {
-		p := fmt.Sprintf("/api/competitions/%d/entries/999", f.comp)
+		p := fmt.Sprintf("/api/matches/%d/entries/999", f.comp)
 		if status, _ := f.env.Do("PUT", p, map[string]any{"category": "Pistol OS", "lane": 7}); status != http.StatusNotFound {
 			t.Fatalf("status %d", status)
 		}
 	})
 	t.Run("withdrawn flag is listed", func(t *testing.T) {
 		f.env.Do("POST", path+"/withdraw", nil)
-		_, out := f.env.Do("GET", fmt.Sprintf("/api/competitions/%d/entries", f.comp), nil)
+		_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 		withdrawn := 0
 		for _, e := range out["entries"].([]any) {
 			if e.(map[string]any)["withdrawn"] == true {
@@ -304,7 +304,7 @@ func TestEntryDeleteOnlyInDraft(t *testing.T) {
 	f := newFixture(t, "150")
 	e1 := f.addEntry(t, "One", 1)
 	e2 := f.addEntry(t, "TWO", 2)
-	base := fmt.Sprintf("/api/competitions/%d", f.comp)
+	base := fmt.Sprintf("/api/matches/%d", f.comp)
 
 	if status, _ := f.env.Do("DELETE", fmt.Sprintf("%s/entries/%d", base, e1), nil); status != http.StatusOK {
 		t.Fatalf("status %d", status)
@@ -318,7 +318,7 @@ func TestEntryDeleteOnlyInDraft(t *testing.T) {
 func TestEntriesFrozenWhenFinished(t *testing.T) {
 	f := newFixture(t, "150")
 	e1 := f.addEntry(t, "One", 1)
-	base := fmt.Sprintf("/api/competitions/%d", f.comp)
+	base := fmt.Sprintf("/api/matches/%d", f.comp)
 	f.env.Do("POST", base+"/status", map[string]any{"status": "active"})
 	f.env.Do("POST", base+"/status", map[string]any{"status": "finished"})
 	status, _ := f.env.Do("PUT", fmt.Sprintf("%s/entries/%d", base, e1), map[string]any{"category": "Pistol", "lane": 4})
@@ -329,7 +329,7 @@ func TestEntriesFrozenWhenFinished(t *testing.T) {
 
 func TestAdminRoutesRequireLogin(t *testing.T) {
 	env := apitest.New(t)
-	for _, path := range []string{"/api/shooters", "/api/competitions"} {
+	for _, path := range []string{"/api/shooters", "/api/matches"} {
 		if status, _ := env.Do("GET", path, nil); status != http.StatusUnauthorized {
 			t.Fatalf("%s: status %d", path, status)
 		}

@@ -11,7 +11,7 @@ const snapshot = (overrides: Record<string, unknown> = {}, stageOverrides: Recor
     lane: 1,
     score_lane: 2,
     current_stage: 1,
-    competition_id: 9,
+    match_id: 9,
     entry_id: 4,
     shooter_name: "Rick Roe",
     phase: "scoring",

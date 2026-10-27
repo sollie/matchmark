@@ -64,9 +64,9 @@ func deviceStageActor(d Device) stageActor { return stageActor{device: &d} }
 func adminStageActor() stageActor { return stageActor{} }
 
 type stageRef struct {
-	competitionID int64
-	entryID       int64
-	number        int
+	matchID int64
+	entryID int64
+	number  int
 }
 
 type stageLocation struct {
@@ -102,10 +102,10 @@ func (s *Service) transitionStage(ctx context.Context, actor stageActor, action 
 	}
 	s.recordStageTransition(ctx, actor, rule, loc.ref)
 	if actor.device != nil && rule.finishDevice {
-		s.finishIfComplete(ctx, loc.ref.competitionID, deviceChangeActor(ctx))
+		s.finishIfComplete(ctx, loc.ref.matchID, deviceChangeActor(ctx))
 	}
 	if actor.device == nil && rule.finishAdmin {
-		s.finishIfComplete(ctx, loc.ref.competitionID, nil)
+		s.finishIfComplete(ctx, loc.ref.matchID, nil)
 	}
 	if actor.device != nil {
 		return rule.deviceResult, nil
@@ -125,7 +125,7 @@ func checkStageLegal(rule stageRule, stage repository.Stage) error {
 
 func (s *Service) locateStage(ctx context.Context, actor stageActor, action StageAction, ref stageRef) (stageLocation, error) {
 	if actor.device == nil {
-		stage, err := s.repo.GetStage(ctx, ref.competitionID, ref.entryID, ref.number)
+		stage, err := s.repo.GetStage(ctx, ref.matchID, ref.entryID, ref.number)
 		if err != nil {
 			return stageLocation{}, mapRepoErr(err)
 		}
@@ -140,40 +140,40 @@ func (s *Service) locateStage(ctx context.Context, actor stageActor, action Stag
 		if ref.number != t.CurrentStage {
 			return stageLocation{}, ErrNotCurrentStage
 		}
-		stage, err := s.repo.GetStage(ctx, d.CompetitionID, t.Entry.ID, ref.number)
+		stage, err := s.repo.GetStage(ctx, d.MatchID, t.Entry.ID, ref.number)
 		if err != nil {
 			return stageLocation{}, mapRepoErr(err)
 		}
 		return stageLocation{
-			ref: stageRef{d.CompetitionID, t.Entry.ID, ref.number}, stage: stage,
+			ref: stageRef{d.MatchID, t.Entry.ID, ref.number}, stage: stage,
 			scorerName: t.ScorerName, shooterName: t.ShooterName, named: true,
 		}, nil
 	}
-	comp, err := s.repo.GetCompetition(ctx, d.CompetitionID)
+	comp, err := s.repo.GetMatch(ctx, d.MatchID)
 	if err != nil {
 		return stageLocation{}, mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) != StatusActive {
+	if MatchStatus(comp.Status) != StatusActive {
 		return stageLocation{}, ErrConflict
 	}
 	if ref.number != comp.CurrentStage {
 		return stageLocation{}, ErrNotCurrentStage
 	}
-	entry, err := s.repo.MannedEntryByLane(ctx, d.CompetitionID, d.Lane)
+	entry, err := s.repo.MannedEntryByLane(ctx, d.MatchID, d.Lane)
 	if err != nil {
 		return stageLocation{}, mapRepoErr(err)
 	}
-	stage, err := s.repo.GetStage(ctx, d.CompetitionID, entry.ID, ref.number)
+	stage, err := s.repo.GetStage(ctx, d.MatchID, entry.ID, ref.number)
 	if err != nil {
 		return stageLocation{}, mapRepoErr(err)
 	}
-	return stageLocation{ref: stageRef{d.CompetitionID, entry.ID, ref.number}, stage: stage, shooterID: entry.ShooterID}, nil
+	return stageLocation{ref: stageRef{d.MatchID, entry.ID, ref.number}, stage: stage, shooterID: entry.ShooterID}, nil
 }
 
 func (s *Service) stageTransitionEvent(ctx context.Context, actor stageActor, action StageAction, loc stageLocation) (repository.StageEvent, error) {
 	kind := stageRules[action].event
 	if actor.device == nil {
-		ev, err := s.userStageEvent(ctx, kind, ActorFrom(ctx).Username, loc.ref.competitionID, loc.ref.entryID, loc.stage)
+		ev, err := s.userStageEvent(ctx, kind, ActorFrom(ctx).Username, loc.ref.matchID, loc.ref.entryID, loc.stage)
 		if err != nil {
 			return repository.StageEvent{}, err
 		}
@@ -183,7 +183,7 @@ func (s *Service) stageTransitionEvent(ctx context.Context, actor stageActor, ac
 		return ev, nil
 	}
 	ev := repository.StageEvent{
-		CompetitionID: loc.ref.competitionID, EntryID: loc.ref.entryID, StageNumber: loc.ref.number, Event: kind,
+		MatchID: loc.ref.matchID, EntryID: loc.ref.entryID, StageNumber: loc.ref.number, Event: kind,
 		ActorType: "device", ActorName: DeviceActor,
 	}
 	if loc.named {
@@ -230,38 +230,38 @@ func deviceChangeActor(ctx context.Context) *Actor {
 
 func (s *Service) recordStageTransition(ctx context.Context, actor stageActor, rule stageRule, ref stageRef) {
 	change := Change{
-		Audit:         AuditEvent{Action: rule.audit, Target: stageTarget(ref.competitionID, ref.entryID, ref.number)},
-		CompetitionID: ref.competitionID,
-		Live:          LiveCompetition,
-		Stage:         &StageEvent{CompetitionID: ref.competitionID, EntryID: ref.entryID, StageNumber: ref.number},
+		Audit:   AuditEvent{Action: rule.audit, Target: stageTarget(ref.matchID, ref.entryID, ref.number)},
+		MatchID: ref.matchID,
+		Live:    LiveMatch,
+		Stage:   &StageEvent{MatchID: ref.matchID, EntryID: ref.entryID, StageNumber: ref.number},
 	}
 	if actor.device != nil {
-		change.Audit.Details = "lane " + strconv.Itoa(actor.device.Lane) + " competition " + strconv.FormatInt(ref.competitionID, 10)
+		change.Audit.Details = "lane " + strconv.Itoa(actor.device.Lane) + " match " + strconv.FormatInt(ref.matchID, 10)
 		change.Actor = deviceChangeActor(ctx)
 	}
 	s.changes.Record(ctx, change)
 }
 
 func (s *Service) DeviceLockStage(ctx context.Context, d Device, stageNumber int) (repository.StageStatus, error) {
-	return s.transitionStage(ctx, deviceStageActor(d), ActionLock, stageRef{competitionID: d.CompetitionID, number: stageNumber})
+	return s.transitionStage(ctx, deviceStageActor(d), ActionLock, stageRef{matchID: d.MatchID, number: stageNumber})
 }
 
 func (s *Service) DeviceAcceptStage(ctx context.Context, d Device, stageNumber int) (repository.StageStatus, error) {
-	return s.transitionStage(ctx, deviceStageActor(d), ActionAccept, stageRef{competitionID: d.CompetitionID, number: stageNumber})
+	return s.transitionStage(ctx, deviceStageActor(d), ActionAccept, stageRef{matchID: d.MatchID, number: stageNumber})
 }
 
 func (s *Service) DeviceDisputeStage(ctx context.Context, d Device, stageNumber int) (repository.StageStatus, error) {
-	return s.transitionStage(ctx, deviceStageActor(d), ActionDispute, stageRef{competitionID: d.CompetitionID, number: stageNumber})
+	return s.transitionStage(ctx, deviceStageActor(d), ActionDispute, stageRef{matchID: d.MatchID, number: stageNumber})
 }
 
-func (s *Service) AdminLockStage(ctx context.Context, competitionID, entryID int64, stageNumber int) (repository.StageStatus, error) {
-	return s.transitionStage(ctx, adminStageActor(), ActionLock, stageRef{competitionID, entryID, stageNumber})
+func (s *Service) AdminLockStage(ctx context.Context, matchID, entryID int64, stageNumber int) (repository.StageStatus, error) {
+	return s.transitionStage(ctx, adminStageActor(), ActionLock, stageRef{matchID, entryID, stageNumber})
 }
 
-func (s *Service) AdminAcceptStage(ctx context.Context, competitionID, entryID int64, stageNumber int) (repository.StageStatus, error) {
-	return s.transitionStage(ctx, adminStageActor(), ActionAccept, stageRef{competitionID, entryID, stageNumber})
+func (s *Service) AdminAcceptStage(ctx context.Context, matchID, entryID int64, stageNumber int) (repository.StageStatus, error) {
+	return s.transitionStage(ctx, adminStageActor(), ActionAccept, stageRef{matchID, entryID, stageNumber})
 }
 
-func (s *Service) UnlockStage(ctx context.Context, competitionID, entryID int64, stageNumber int) (repository.StageStatus, error) {
-	return s.transitionStage(ctx, adminStageActor(), ActionUnlock, stageRef{competitionID, entryID, stageNumber})
+func (s *Service) UnlockStage(ctx context.Context, matchID, entryID int64, stageNumber int) (repository.StageStatus, error) {
+	return s.transitionStage(ctx, adminStageActor(), ActionUnlock, stageRef{matchID, entryID, stageNumber})
 }

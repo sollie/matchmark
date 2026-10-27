@@ -8,6 +8,7 @@ type RulebookStage struct {
 	ExpectedShots int
 	TimeSeconds   int
 	Position      string
+	Part          string
 }
 
 type RulebookCourse struct {

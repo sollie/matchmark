@@ -7,33 +7,37 @@ import (
 	"github.com/sollie/matchmark/internal/report"
 )
 
-func (s *Service) PublicResultsPDF(ctx context.Context, competitionID int64) (Download, error) {
-	view, err := s.PublicResults(ctx, competitionID)
+func (s *Service) PublicResultsPDF(ctx context.Context, matchID int64) (Download, error) {
+	view, err := s.PublicResults(ctx, matchID)
 	if err != nil {
 		return Download{}, err
 	}
 	return s.renderResultsPDF(ctx, view)
 }
 
-func (s *Service) AdminResultsPDF(ctx context.Context, competitionID int64) (Download, error) {
-	view, err := s.AdminResults(ctx, competitionID)
+func (s *Service) adminResultsPDF(ctx context.Context, matchID int64) (Download, error) {
+	view, err := s.AdminResults(ctx, matchID)
 	if err != nil {
 		return Download{}, err
 	}
-	file, err := s.renderResultsPDF(ctx, view)
+	return s.renderResultsPDF(ctx, view)
+}
+
+func (s *Service) AdminResultsPDF(ctx context.Context, matchID int64) (Download, error) {
+	file, err := s.adminResultsPDF(ctx, matchID)
 	if err != nil {
 		return Download{}, err
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("competition", competitionID), Details: "pdf"}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("match", matchID), Details: "pdf"}})
 	return file, nil
 }
 
 func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Download, error) {
 	data := report.ResultsPDFData{
 		Generated:   time.Now(),
-		Name:        view.Competition.Name,
-		Date:        view.Competition.Date,
-		CourseLabel: view.Competition.CourseLabel,
+		Name:        view.Match.Name,
+		Date:        view.Match.Date,
+		CourseLabel: view.Match.CourseLabel,
 		Stages:      view.Stages,
 	}
 	var logo ClubLogo
@@ -66,5 +70,5 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 	if err != nil {
 		return Download{}, err
 	}
-	return Download{BaseName: downloadBaseName(view.Competition.Name, view.Competition.Date) + "-results", Data: pdf}, nil
+	return Download{BaseName: downloadBaseName(view.Match.Name, view.Match.Date) + "-results", Data: pdf}, nil
 }

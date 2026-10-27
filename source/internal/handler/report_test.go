@@ -21,7 +21,7 @@ type reportShooter struct {
 
 func seedReport(t *testing.T, env *apitest.Env, name string, shooters []reportShooter) int {
 	t.Helper()
-	comp := env.ID("POST", "/api/competitions", map[string]any{"name": name, "date": "2026-05-01", "course": "150"})
+	comp := env.ID("POST", "/api/matches", map[string]any{"name": name, "date": "2026-05-01", "course": "150"})
 	entryIDs := make([]int, len(shooters))
 	for i, s := range shooters {
 		body := map[string]any{"last_name": s.last, "first_name": s.first, "sex": s.sex, "country": "NOR", "club": "Oslo PPC"}
@@ -29,11 +29,11 @@ func seedReport(t *testing.T, env *apitest.Env, name string, shooters []reportSh
 			body["waid"] = s.waid
 		}
 		sid := env.ID("POST", "/api/shooters", body)
-		entryIDs[i] = env.ID("POST", fmt.Sprintf("/api/competitions/%d/entries", comp), map[string]any{"shooter_id": sid, "category": s.category, "lane": s.lane})
+		entryIDs[i] = env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", comp), map[string]any{"shooter_id": sid, "category": s.category, "lane": s.lane})
 	}
 	for i, s := range shooters {
 		if s.counts != nil {
-			path := fmt.Sprintf("/api/competitions/%d/entries/%d/stages/1", comp, entryIDs[i])
+			path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", comp, entryIDs[i])
 			if status, out := env.Do("PUT", path, s.counts); status != http.StatusOK {
 				t.Fatalf("set counts: %d %v", status, out)
 			}
@@ -49,7 +49,7 @@ var counts112 = map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 1, "0": 0, 
 
 func openReport(t *testing.T, env *apitest.Env, comp int) *excelize.File {
 	t.Helper()
-	status, header, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.xlsx", comp))
+	status, header, body := env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.xlsx", comp))
 	if status != http.StatusOK {
 		t.Fatalf("status %d", status)
 	}
@@ -161,7 +161,7 @@ func TestResultsCSV(t *testing.T) {
 		{"BERG", "Ola", "M", "W100", "Revolver", 1, counts112},
 		{"NYHUS", "Kari", "F", "", "Pistol", 2, nil},
 	})
-	status, header, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
+	status, header, body := env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", comp))
 	if status != http.StatusOK || !strings.HasPrefix(header.Get("Content-Type"), "text/csv") {
 		t.Fatalf("status %d type %q", status, header.Get("Content-Type"))
 	}
@@ -172,17 +172,17 @@ func TestResultsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,stage,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name"
+	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,stage,part,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name"
 	if strings.Join(rows[0], ",") != wantHeader {
 		t.Fatalf("header %v", rows[0])
 	}
 	if len(rows) != 21 {
 		t.Fatalf("rows %d, want 1 header + 2 entries x 10 stages", len(rows))
 	}
-	if got := strings.Join(rows[1], ","); got != "Revolver,1,BERG,Ola,W100,false,1,3,4,3,1,1,0,0,112,true,,"+apitest.AdminUsername {
+	if got := strings.Join(rows[1], ","); got != "Revolver,1,BERG,Ola,W100,false,1,Match 1,3,4,3,1,1,0,0,112,true,,"+apitest.AdminUsername {
 		t.Fatalf("first row %q", got)
 	}
-	if got := strings.Join(rows[11], ","); got != "Pistol,2,NYHUS,Kari,,false,1,0,0,0,0,0,0,0,0,false,," {
+	if got := strings.Join(rows[11], ","); got != "Pistol,2,NYHUS,Kari,,false,1,Match 1,0,0,0,0,0,0,0,0,false,," {
 		t.Fatalf("pistol row %q", got)
 	}
 }
@@ -193,7 +193,7 @@ func TestResultsCSVNeutralisesFormulas(t *testing.T) {
 		{"=HYPERLINK(\"X\")", "+1", "M", "", "Revolver", 1, nil},
 		{"-2", "@sum", "F", "", "Revolver", 2, nil},
 	})
-	_, _, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
+	_, _, body := env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", comp))
 	rows, err := csv.NewReader(bytes.NewReader(bytes.TrimPrefix(body, []byte("\xef\xbb\xbf")))).ReadAll()
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +216,7 @@ func TestResultsKeepNonASCIINames(t *testing.T) {
 		{"HANSEN", "Pål", "M", "W100", "Revolver", 1, nil},
 		{"ÅSEN", "Östen", "M", "", "Revolver", 2, nil},
 	})
-	_, _, body := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.csv", comp))
+	_, _, body := env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", comp))
 	if !bytes.HasPrefix(body, []byte("\xef\xbb\xbf")) || !bytes.Contains(body, []byte("HANSEN,Pål,W100")) || !bytes.Contains(body, []byte("ÅSEN,Östen,")) {
 		t.Fatalf("names garbled in csv")
 	}
@@ -254,7 +254,7 @@ func TestResultsDownloadFilename(t *testing.T) {
 			t.Run(tt.name+"/"+ext, func(t *testing.T) {
 				env := apitest.NewAdmin(t)
 				comp := seedReport(t, env, tt.name, nil)
-				_, header, _ := env.Raw("GET", fmt.Sprintf("/api/competitions/%d/results.%s", comp, ext))
+				_, header, _ := env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.%s", comp, ext))
 				want := strings.ReplaceAll(tt.want, "%s", ext)
 				if got := header.Get("Content-Disposition"); got != want {
 					t.Fatalf("got %q, want %q", got, want)
@@ -264,10 +264,10 @@ func TestResultsDownloadFilename(t *testing.T) {
 	}
 }
 
-func TestResultsUnknownCompetition(t *testing.T) {
+func TestResultsUnknownMatch(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	for _, p := range []string{"results.xlsx", "results.csv"} {
-		if status, _, _ := env.Raw("GET", "/api/competitions/999/"+p); status != http.StatusNotFound {
+		if status, _, _ := env.Raw("GET", "/api/matches/999/"+p); status != http.StatusNotFound {
 			t.Fatalf("%s status %d", p, status)
 		}
 	}

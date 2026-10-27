@@ -12,17 +12,17 @@ import (
 
 var ErrNotBetweenStages = errors.New("entries can only change between stages")
 
-type CompetitionStatus string
+type MatchStatus string
 
 const (
-	StatusDraft    CompetitionStatus = "draft"
-	StatusActive   CompetitionStatus = "active"
-	StatusFinished CompetitionStatus = "finished"
+	StatusDraft    MatchStatus = "draft"
+	StatusActive   MatchStatus = "active"
+	StatusFinished MatchStatus = "finished"
 )
 
-var statusTransitions = map[CompetitionStatus]CompetitionStatus{StatusDraft: StatusActive, StatusActive: StatusFinished}
+var statusTransitions = map[MatchStatus]MatchStatus{StatusDraft: StatusActive, StatusActive: StatusFinished}
 
-func (st CompetitionStatus) Valid() bool {
+func (st MatchStatus) Valid() bool {
 	switch st {
 	case StatusDraft, StatusActive, StatusFinished:
 		return true
@@ -72,21 +72,21 @@ func (s *Service) DeleteShooter(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competition) error {
+func (s *Service) UpdateMatch(ctx context.Context, c repository.Match) error {
 	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || !validDate(c.Date) {
 		return ErrInvalid
 	}
 	if _, err := rulebook.CourseByKey(c.Course); err != nil {
 		return ErrInvalid
 	}
-	current, err := s.repo.GetCompetition(ctx, c.ID)
+	current, err := s.repo.GetMatch(ctx, c.ID)
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if CompetitionStatus(current.Status) != StatusDraft {
+	if MatchStatus(current.Status) != StatusDraft {
 		return ErrConflict
 	}
-	if err := s.checkMatchDate(ctx, current.ContainerID, c.Date, true); err != nil {
+	if err := s.checkMatchDate(ctx, current.CompetitionID, c.Date, true); err != nil {
 		return err
 	}
 	if c.Course != current.Course {
@@ -98,52 +98,52 @@ func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competitio
 			return ErrConflict
 		}
 	}
-	if err := s.repo.UpdateCompetition(ctx, c); err != nil {
+	if err := s.repo.UpdateMatch(ctx, c); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.update", Target: idTarget("competition", c.ID), Details: c.Name}, CompetitionID: c.ID, Live: LiveCompetition, Reemit: &repository.LockedStageFilter{CompetitionID: c.ID}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: c.Name}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedStageFilter{MatchID: c.ID}})
 	return nil
 }
 
-func (s *Service) SetCompetitionStatus(ctx context.Context, id int64, status CompetitionStatus) error {
+func (s *Service) SetMatchStatus(ctx context.Context, id int64, status MatchStatus) error {
 	if !status.Valid() {
 		return ErrInvalid
 	}
-	current, err := s.repo.GetCompetition(ctx, id)
+	current, err := s.repo.GetMatch(ctx, id)
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if statusTransitions[CompetitionStatus(current.Status)] != status {
+	if statusTransitions[MatchStatus(current.Status)] != status {
 		return ErrConflict
 	}
-	return s.changeStatus(ctx, id, CompetitionStatus(current.Status), status, nil)
+	return s.changeStatus(ctx, id, MatchStatus(current.Status), status, nil)
 }
 
-func (s *Service) changeStatus(ctx context.Context, id int64, from, status CompetitionStatus, actor *Actor) error {
-	if err := s.repo.SetCompetitionStatus(ctx, id, string(from), string(status)); err != nil {
+func (s *Service) changeStatus(ctx context.Context, id int64, from, status MatchStatus, actor *Actor) error {
+	if err := s.repo.SetMatchStatus(ctx, id, string(from), string(status)); err != nil {
 		return mapRepoErr(err)
 	}
-	record := Change{Audit: AuditEvent{Action: "competition.status", Target: idTarget("competition", id), Details: string(status)}, Actor: actor, CompetitionID: id, Live: LiveCompetition}
+	record := Change{Audit: AuditEvent{Action: "match.status", Target: idTarget("match", id), Details: string(status)}, Actor: actor, MatchID: id, Live: LiveMatch}
 	if status != StatusFinished {
 		s.changes.Record(ctx, record)
 		return nil
 	}
 	s.changes.Record(ctx, Change{Audit: record.Audit, Actor: actor})
-	if err := s.repo.RevokeCompetitionPairings(ctx, id); err != nil {
+	if err := s.repo.RevokeMatchPairings(ctx, id); err != nil {
 		return mapRepoErr(err)
 	}
 	if s.replicator != nil {
 		s.replicator.Request()
 	}
-	s.changes.Record(ctx, Change{CompetitionID: id, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{MatchID: id, Live: LiveMatch})
 	return nil
 }
 
-func (s *Service) DeleteCompetition(ctx context.Context, id int64) error {
-	if err := s.repo.DeleteCompetition(ctx, id); err != nil {
+func (s *Service) DeleteMatch(ctx context.Context, id int64) error {
+	if err := s.repo.DeleteMatch(ctx, id); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.delete", Target: idTarget("competition", id)}, CompetitionID: id, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.delete", Target: idTarget("match", id)}, MatchID: id, Live: LiveMatch})
 	return nil
 }
 
@@ -158,11 +158,11 @@ type EntryScoring struct {
 	Stages []StageScoring
 }
 
-func (s *Service) ListEntries(ctx context.Context, competitionID int64) ([]EntryScoring, error) {
-	if _, err := s.repo.GetCompetition(ctx, competitionID); err != nil {
+func (s *Service) ListEntries(ctx context.Context, matchID int64) ([]EntryScoring, error) {
+	if _, err := s.repo.GetMatch(ctx, matchID); err != nil {
 		return nil, mapRepoErr(err)
 	}
-	entries, err := s.repo.ListEntries(ctx, competitionID)
+	entries, err := s.repo.ListEntries(ctx, matchID)
 	if err != nil {
 		return nil, mapRepoErr(err)
 	}
@@ -182,29 +182,29 @@ func (s *Service) ListEntries(ctx context.Context, competitionID int64) ([]Entry
 	return out, nil
 }
 
-func (s *Service) requireDraft(ctx context.Context, competitionID int64) (repository.Competition, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) requireDraft(ctx context.Context, matchID int64) (repository.Match, error) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return comp, mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) != StatusDraft {
+	if MatchStatus(comp.Status) != StatusDraft {
 		return comp, ErrConflict
 	}
 	return comp, nil
 }
 
-func (s *Service) requireWithdrawalAllowed(ctx context.Context, competitionID int64) error {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) requireWithdrawalAllowed(ctx context.Context, matchID int64) error {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	switch CompetitionStatus(comp.Status) {
+	switch MatchStatus(comp.Status) {
 	case StatusDraft:
 		return nil
 	case StatusFinished:
 		return ErrConflict
 	}
-	entries, err := s.repo.ListEntries(ctx, competitionID)
+	entries, err := s.repo.ListEntries(ctx, matchID)
 	if err != nil {
 		return err
 	}
@@ -232,12 +232,12 @@ func stageAccepted(entries []repository.EntryWithStages, stageNumber int) bool {
 	return true
 }
 
-func (s *Service) StartNextStage(ctx context.Context, competitionID int64) (int, error) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) StartNextStage(ctx context.Context, matchID int64) (int, error) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return 0, mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) != StatusActive {
+	if MatchStatus(comp.Status) != StatusActive {
 		return 0, ErrConflict
 	}
 	last, err := lastStage(comp.Course)
@@ -247,21 +247,21 @@ func (s *Service) StartNextStage(ctx context.Context, competitionID int64) (int,
 	if comp.CurrentStage >= last {
 		return 0, ErrConflict
 	}
-	entries, err := s.repo.ListEntries(ctx, competitionID)
+	entries, err := s.repo.ListEntries(ctx, matchID)
 	if err != nil {
 		return 0, err
 	}
 	if !stageAccepted(entries, comp.CurrentStage) {
 		return 0, ErrStageGateNotMet
 	}
-	if err := s.repo.AdvanceStage(ctx, competitionID, comp.CurrentStage); err != nil {
+	if err := s.repo.AdvanceStage(ctx, matchID, comp.CurrentStage); err != nil {
 		return 0, mapRepoErr(err)
 	}
 	next := comp.CurrentStage + 1
 	s.changes.Record(ctx, Change{
-		Audit:         AuditEvent{Action: "competition.next_stage", Target: idTarget("competition", competitionID), Details: "stage " + strconv.Itoa(next)},
-		CompetitionID: competitionID,
-		Live:          LiveCompetition,
+		Audit:   AuditEvent{Action: "match.next_stage", Target: idTarget("match", matchID), Details: "stage " + strconv.Itoa(next)},
+		MatchID: matchID,
+		Live:    LiveMatch,
 	})
 	return next, nil
 }
@@ -278,38 +278,38 @@ func lastStage(course string) (int, error) {
 	return last, nil
 }
 
-func (s *Service) finishIfComplete(ctx context.Context, competitionID int64, actor *Actor) {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
-	if err != nil || CompetitionStatus(comp.Status) != StatusActive {
+func (s *Service) finishIfComplete(ctx context.Context, matchID int64, actor *Actor) {
+	comp, err := s.repo.GetMatch(ctx, matchID)
+	if err != nil || MatchStatus(comp.Status) != StatusActive {
 		return
 	}
 	last, err := lastStage(comp.Course)
 	if err != nil || comp.CurrentStage != last {
 		return
 	}
-	entries, err := s.repo.ListEntries(ctx, competitionID)
+	entries, err := s.repo.ListEntries(ctx, matchID)
 	if err != nil || !stageAccepted(entries, last) {
 		return
 	}
-	_ = s.changeStatus(ctx, competitionID, StatusActive, StatusFinished, actor)
+	_ = s.changeStatus(ctx, matchID, StatusActive, StatusFinished, actor)
 }
 
-func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64, category string, lane int) (repository.Entry, error) {
+func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int) (repository.Entry, error) {
 	if lane < 1 {
 		return repository.Entry{}, ErrInvalid
 	}
-	current, err := s.repo.GetEntry(ctx, competitionID, entryID)
+	current, err := s.repo.GetEntry(ctx, matchID, entryID)
 	if err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
 	if category != current.Category && rulebook.ValidateCategory(comp.Course, category) != nil {
 		return repository.Entry{}, ErrInvalid
 	}
-	switch CompetitionStatus(comp.Status) {
+	switch MatchStatus(comp.Status) {
 	case StatusDraft:
 	case StatusActive:
 		if lane != current.Lane {
@@ -318,25 +318,25 @@ func (s *Service) UpdateEntry(ctx context.Context, competitionID, entryID int64,
 	default:
 		return repository.Entry{}, ErrConflict
 	}
-	if err := s.repo.UpdateEntry(ctx, competitionID, entryID, category, lane); err != nil {
+	if err := s.repo.UpdateEntry(ctx, matchID, entryID, category, lane); err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(competitionID, entryID)}, CompetitionID: competitionID, Live: LiveCompetition, Reemit: &repository.LockedStageFilter{CompetitionID: competitionID, EntryID: entryID}})
-	e, err := s.repo.GetEntry(ctx, competitionID, entryID)
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch, Reemit: &repository.LockedStageFilter{MatchID: matchID, EntryID: entryID}})
+	e, err := s.repo.GetEntry(ctx, matchID, entryID)
 	return e, mapRepoErr(err)
 }
 
-func (s *Service) DeleteEntry(ctx context.Context, competitionID, entryID int64) error {
-	comp, err := s.repo.GetCompetition(ctx, competitionID)
+func (s *Service) DeleteEntry(ctx context.Context, matchID, entryID int64) error {
+	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if CompetitionStatus(comp.Status) != StatusDraft {
+	if MatchStatus(comp.Status) != StatusDraft {
 		return ErrConflict
 	}
-	if err := s.repo.DeleteEntry(ctx, competitionID, entryID); err != nil {
+	if err := s.repo.DeleteEntry(ctx, matchID, entryID); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.delete", Target: entryTarget(competitionID, entryID)}, CompetitionID: competitionID, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.delete", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch})
 	return nil
 }

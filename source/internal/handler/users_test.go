@@ -83,7 +83,7 @@ func TestUserManagementRequiresLogin(t *testing.T) {
 	}
 }
 
-func TestRegularUserIsRefusedUserManagementButRunsCompetitions(t *testing.T) {
+func TestRegularUserIsRefusedUserManagementButRunsMatches(t *testing.T) {
 	admin := apitest.NewAdmin(t)
 	createUser(admin, "anna", "user", tempPassword)
 
@@ -113,7 +113,7 @@ func TestRegularUserIsRefusedUserManagementButRunsCompetitions(t *testing.T) {
 		t.Fatalf("backup: %d", got)
 	}
 
-	for _, path := range []string{"/api/admin/session", "/api/shooters", "/api/competitions"} {
+	for _, path := range []string{"/api/admin/session", "/api/shooters", "/api/matches"} {
 		if got := get(path); got != http.StatusOK {
 			t.Fatalf("%s: %d", path, got)
 		}
