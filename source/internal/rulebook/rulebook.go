@@ -102,7 +102,7 @@ var disciplines = []string{"1500", "60", "48"}
 var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Carbine"}
 
 var courseCategories = map[string][]string{
-	"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
+	"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Carbine"},
 	"60":  {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
 	"48":  {"Revolver", "Pistol"},
 	"40":  {"Revolver"},

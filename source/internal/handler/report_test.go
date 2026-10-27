@@ -79,6 +79,7 @@ func TestResultsWorkbook(t *testing.T) {
 		{"DAHL", "Eva", "F", "W200", "Revolver", 2, nil},
 		{"NYHUS", "Kari", "F", "", "Revolver", 3, counts112},
 		{"MOE", "Per", "M", "W300", "Pistol", 4, counts112},
+		{"LIE", "Tor", "M", "W400", "Carbine", 5, counts112},
 	})
 	f := openReport(t, env, comp)
 
@@ -120,8 +121,8 @@ func TestResultsWorkbook(t *testing.T) {
 		if cell(t, f, "Pistol", "F14") != "" {
 			t.Fatal("placeholder not cleared")
 		}
-		if cell(t, f, "Carbine", "A3") != "" {
-			t.Fatal("rifle should be empty")
+		if cell(t, f, "Carbine", "A3") != "W400" || cell(t, f, "Carbine", "B3") != "112" {
+			t.Fatal("carbine row")
 		}
 	})
 }

@@ -176,7 +176,7 @@ func TestCourseLabelsAndKeys(t *testing.T) {
 
 func TestCategoriesPerCourse(t *testing.T) {
 	cases := map[string][]string{
-		"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
+		"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Carbine"},
 		"60":  {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
 		"48":  {"Revolver", "Pistol"},
 		"40":  {"Revolver"},
@@ -189,8 +189,8 @@ func TestCategoriesPerCourse(t *testing.T) {
 		if !slices.Equal(got, want) {
 			t.Errorf("CategoriesForCourse(%q) = %v, want %v", key, got, want)
 		}
-		if err := rulebook.ValidateCategory(key, "Carbine"); err == nil {
-			t.Errorf("ValidateCategory(%q, Carbine) accepted", key)
+		if err := rulebook.ValidateCategory(key, "Carbine"); (err == nil) != (key == "150") {
+			t.Errorf("ValidateCategory(%q, Carbine) = %v", key, err)
 		}
 	}
 	if _, err := rulebook.CategoriesForCourse("99"); err == nil {
