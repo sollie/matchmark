@@ -2495,7 +2495,7 @@ components:
             $ref: '#/components/schemas/Shooter'
     ShooterInput:
       type: object
-      required: [last_name, first_name, sex, country, club, waid]
+      required: [last_name, first_name, country, club, waid]
       properties:
         last_name:
           type: string
@@ -2503,9 +2503,6 @@ components:
         first_name:
           type: string
           description: Must already be normalized (each word capitalised, also after a hyphen or apostrophe, single spaces, trimmed); otherwise the call answers 422.
-        sex:
-          type: string
-          enum: [M, F]
         country:
           type: string
         club:

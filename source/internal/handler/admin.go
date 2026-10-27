@@ -71,20 +71,19 @@ func matchesJSON(comps []repository.Match) []map[string]any {
 type shooterBody struct {
 	LastName  string `json:"last_name"`
 	FirstName string `json:"first_name"`
-	Sex       string `json:"sex"`
 	Country   string `json:"country"`
 	Club      string `json:"club"`
 	WAID      string `json:"waid"`
 }
 
 func (b shooterBody) shooter(id int64) repository.Shooter {
-	return repository.Shooter{ID: id, LastName: b.LastName, FirstName: b.FirstName, Sex: b.Sex, Country: b.Country, Club: b.Club, WAID: b.WAID}
+	return repository.Shooter{ID: id, LastName: b.LastName, FirstName: b.FirstName, Country: b.Country, Club: b.Club, WAID: b.WAID}
 }
 
 func shooterJSON(s repository.Shooter) map[string]any {
 	return map[string]any{
 		"id": s.ID, "last_name": s.LastName, "first_name": s.FirstName,
-		"sex": s.Sex, "country": s.Country, "club": s.Club, "waid": s.WAID,
+		"country": s.Country, "club": s.Club, "waid": s.WAID,
 	}
 }
 

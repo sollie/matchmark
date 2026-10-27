@@ -33,7 +33,7 @@ func (st MatchStatus) Valid() bool {
 func validShooter(sh repository.Shooter) bool {
 	return strings.TrimSpace(sh.LastName) != "" && strings.TrimSpace(sh.FirstName) != "" &&
 		validShooterNames(sh.FirstName, sh.LastName) &&
-		(sh.Sex == "M" || sh.Sex == "F") && sh.Country != "" && sh.Club != "" &&
+		sh.Country != "" && sh.Club != "" &&
 		len(sh.LastName) <= 128 && len(sh.FirstName) <= 128 && len(sh.WAID) <= 32 && len(sh.Club) <= 128
 }
 

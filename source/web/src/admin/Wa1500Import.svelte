@@ -9,7 +9,6 @@
   type Shooter = components["schemas"]["Shooter"];
   type ShooterInput = components["schemas"]["ShooterInput"];
   type Hit = components["schemas"]["Wa1500Shooter"];
-  type Sex = ShooterInput["sex"];
 
   let {
     query = "",
@@ -21,17 +20,16 @@
     oncancel?: () => void;
   } = $props();
 
-  const blank = (): ShooterInput => ({ last_name: "", first_name: "", sex: "M", country: "", club: "", waid: "" });
+  const blank = (): ShooterInput => ({ last_name: "", first_name: "", country: "", club: "", waid: "" });
 
   let text = $state(query);
   let hits = $state<Hit[]>([]);
   let searched = $state(false);
   let searching = $state(false);
-  let sexes = $state<Record<string, Sex | "">>({});
   let error = $state("");
   let manual = $state(false);
   let form = $state<ShooterInput>(blank());
-  let pending = $state<{ hit: Hit; sex: Sex; candidates: Shooter[] } | null>(null);
+  let pending = $state<{ hit: Hit; candidates: Shooter[] } | null>(null);
   let busy = $state(false);
 
   const hitName = (h: Hit) => `${h.first_name} ${h.last_name}`;
@@ -71,13 +69,13 @@
     else error = failure(result);
   }
 
-  async function runImport(hit: Hit, sex: Sex, extra: { update_shooter_id?: number; create_new?: boolean } = {}) {
+  async function runImport(hit: Hit, extra: { update_shooter_id?: number; create_new?: boolean } = {}) {
     error = "";
     busy = true;
-    const result = await api.POST("/api/shooters/import", { body: { ...hit, sex, ...extra } });
+    const result = await api.POST("/api/shooters/import", { body: { ...hit, ...extra } });
     busy = false;
     if (result.response.status === 409 && result.error && "candidates" in result.error) {
-      pending = { hit, sex, candidates: result.error.candidates };
+      pending = { hit, candidates: result.error.candidates };
       return;
     }
     if (!result.data) {
@@ -87,11 +85,6 @@
     }
     pending = null;
     await finish(result.data.id);
-  }
-
-  function importHit(hit: Hit) {
-    const sex = sexes[hit.waid];
-    if (sex) runImport(hit, sex);
   }
 
   async function saveManual(e: SubmitEvent) {
@@ -129,12 +122,7 @@
       {#each hits as h (h.waid)}
         <li class="row">
           <span>{hitName(h)} · {h.waid} · {h.club} · {h.country}</span>
-          <select aria-label={`Sex for ${hitName(h)}`} bind:value={sexes[h.waid]}>
-            <option value="">Sex</option>
-            <option value="M">M</option>
-            <option value="F">F</option>
-          </select>
-          <button type="button" class="primary" disabled={busy || !sexes[h.waid]} onclick={() => importHit(h)}>
+          <button type="button" class="primary" disabled={busy} onclick={() => runImport(h)}>
             Import {hitName(h)}
           </button>
         </li>
@@ -147,13 +135,6 @@
   {:else}
     <form class="row" onsubmit={saveManual} aria-label="Manual shooter entry">
       <NameFields bind:first={form.first_name} bind:last={form.last_name} />
-      <label>
-        Sex
-        <select bind:value={form.sex}>
-          <option value="M">M</option>
-          <option value="F">F</option>
-        </select>
-      </label>
       <label>Country <input bind:value={form.country} maxlength="3" size="4" required /></label>
       <label>Club <input bind:value={form.club} maxlength="128" required /></label>
       <label>WAID (blank for new shooter) <input bind:value={form.waid} maxlength="32" /></label>
@@ -172,14 +153,14 @@
       <ul>
         {#each current.candidates as c (c.id)}
           <li>
-            <button type="button" class="secondary" disabled={busy} onclick={() => runImport(current.hit, current.sex, { update_shooter_id: c.id })}>
+            <button type="button" class="secondary" disabled={busy} onclick={() => runImport(current.hit, { update_shooter_id: c.id })}>
               Update {c.first_name} {c.last_name} · {c.waid || "no WAID"} · {c.club} · {c.country}
             </button>
           </li>
         {/each}
       </ul>
       <div class="row">
-        <button type="button" class="primary" disabled={busy} onclick={() => runImport(current.hit, current.sex, { create_new: true })}>
+        <button type="button" class="primary" disabled={busy} onclick={() => runImport(current.hit, { create_new: true })}>
           Create new shooter
         </button>
         <button type="button" class="secondary" onclick={() => (pending = null)}>Cancel</button>

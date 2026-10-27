@@ -317,11 +317,11 @@ func buildDraftFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buf
 	t.Helper()
 	ctx := context.Background()
 	svc := service.New(repo, service.WithScoreLog(logger))
-	s1, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "ALM", Sex: "M", Country: "NOR", Club: "Club A", WAID: "W1"})
+	s1, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "ALM", Country: "NOR", Club: "Club A", WAID: "W1"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	s2, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Bo", LastName: "BERG", Sex: "M", Country: "NOR", Club: "Club B", WAID: "W2"})
+	s2, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Bo", LastName: "BERG", Country: "NOR", Club: "Club B", WAID: "W2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -524,7 +524,7 @@ func TestMatchEditReemitsLockedStages(t *testing.T) {
 	buf := &bytes.Buffer{}
 	repo := repository.New(conn)
 	svc := service.New(repo, service.WithScoreLog(newLogger(buf)))
-	sh, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "ALM", Sex: "M", Country: "NOR", Club: "Club A", WAID: "W1"})
+	sh, err := svc.CreateShooter(ctx, repository.Shooter{FirstName: "Al", LastName: "ALM", Country: "NOR", Club: "Club A", WAID: "W1"})
 	if err != nil {
 		t.Fatal(err)
 	}

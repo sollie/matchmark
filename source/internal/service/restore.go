@@ -10,10 +10,6 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-const (
-	restoredSex = "M"
-)
-
 var ErrRestoreTargetNotEmpty = errors.New("database already contains data; use --merge to apply only data whose ids match")
 
 func (s *Service) RestoreScoreLog(ctx context.Context, plan restore.Plan, merge bool) (restore.Applied, error) {
@@ -81,7 +77,7 @@ func buildRestoreMatch(c restore.RestoredMatch) (repository.RestoreMatch, error)
 			ID: e.ID, Category: e.Category, Lane: e.Lane,
 			Shooter: repository.Shooter{
 				WAID: e.Shooter.WAID, FirstName: e.Shooter.FirstName, LastName: e.Shooter.LastName,
-				Club: e.Shooter.Club, Sex: restoredSex,
+				Club: e.Shooter.Club,
 			},
 		}
 		scored := map[int]restore.ScoredStage{}
