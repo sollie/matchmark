@@ -55,7 +55,7 @@ The endpoints run behind the render guard (`handler.RenderGuard`, ADR 0016): at 
 
 ## Results report
 
-Filled in from the embedded `Results reporting mal.xlsx` using `excelize`. One sheet per category; competition name and date in the header; known shooters as WAID + total result, extra rows inserted as needed; new shooters in the "New shooters" block with last name, first name, sex, country, club, result. The template is a replaceable embedded file.
+Filled in from the embedded template (`docs/references/results_reporting_template.xlsx`) using `excelize`. One sheet per category; competition name and date in the header; known shooters as WAID + total result, extra rows inserted as needed; new shooters in the "New shooters" block with last name, first name, sex, country, club, result. The template is a replaceable embedded file.
 
 The `.xlsx` report and the detailed CSV are downloaded with buttons in the admin competition list, shown only for finished competitions; the endpoints themselves do not check the status.
 
