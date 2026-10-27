@@ -55,17 +55,18 @@ test.describe("matches", () => {
     adminPage: page,
   }) => {
     const name = uniqueName("Bad date");
+    const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Create match" }) });
 
-    await expect(page.getByLabel("Date")).toHaveValue(todayIso());
-    await page.getByLabel("Name").fill(name);
-    await page.getByLabel("Date").fill("19/10/2026");
+    await expect(form.getByLabel("Date", { exact: true })).toHaveValue(todayIso());
+    await form.getByLabel("Name", { exact: true }).fill(name);
+    await form.getByLabel("Date", { exact: true }).fill("19/10/2026");
     await page.getByRole("button", { name: "Create match" }).click();
 
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByLabel("Date")).toHaveJSProperty("validity.valid", false);
+    await expect(form.getByLabel("Date", { exact: true })).toHaveJSProperty("validity.valid", false);
     await expect(row(page, name)).toHaveCount(0);
 
-    await page.getByLabel("Date").fill("2026-10-19");
+    await form.getByLabel("Date", { exact: true }).fill("2026-10-19");
     await page.getByRole("button", { name: "Create match" }).click();
     await expect(page.getByRole("heading", { name })).toBeVisible();
     await expect(page.getByText("2026-10-19")).toBeVisible();
