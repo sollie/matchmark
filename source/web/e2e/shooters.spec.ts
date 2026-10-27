@@ -14,7 +14,6 @@ test.describe("shooters", () => {
     const form = page.locator("form");
     await form.getByLabel("Last name").fill(lastName);
     await form.getByLabel("First name").fill("Ada");
-    await form.getByLabel("Sex").selectOption("F");
     await form.getByLabel("Country").fill("SWE");
     await form.getByLabel("Club").fill("Added Club");
     await form.getByRole("button", { name: "Add shooter" }).click();
@@ -22,7 +21,6 @@ test.describe("shooters", () => {
     const added = row(page, lastName);
     await expect(added).toBeVisible();
     await expect(added.getByRole("cell", { name: `Ada ${lastName}` })).toBeVisible();
-    await expect(added.getByRole("cell", { name: "F", exact: true })).toBeVisible();
     await expect(added.getByRole("cell", { name: "SWE" })).toBeVisible();
     await expect(added.getByRole("cell", { name: "Added Club" })).toBeVisible();
     await expect(form.getByLabel("Last name")).toHaveValue("");
@@ -159,7 +157,7 @@ test.describe("shooters", () => {
     await expect(page.getByText("No matching shooters.")).toBeVisible();
   });
 
-  test("importing a WA1500 hit needs a sex and then lists the shooter", async ({ adminPage: page }) => {
+  test("importing a WA1500 hit lists the shooter", async ({ adminPage: page }) => {
     const lastName = uniqueLastName("Imported").replace(" ", "");
     const waid = `W${Date.now()}`;
     await page.route("**/api/wa1500/search*", (route) =>
@@ -173,14 +171,11 @@ test.describe("shooters", () => {
     await page.getByRole("button", { name: "Search", exact: true }).click();
 
     const importButton = page.getByRole("button", { name: `Import Ida ${lastName}` });
-    await expect(importButton).toBeDisabled();
-    await page.getByLabel(`Sex for Ida ${lastName}`).selectOption("F");
     await importButton.click();
 
     await expect(page.getByRole("status")).toContainText(`Saved Ida ${lastName}`);
     const added = row(page, lastName);
     await expect(added.getByRole("cell", { name: "Remote Club" })).toBeVisible();
-    await expect(added.getByRole("cell", { name: "F", exact: true })).toBeVisible();
   });
 
   test("a name conflict asks whether to update or create new", async ({ adminPage: page, admin }) => {
@@ -195,7 +190,6 @@ test.describe("shooters", () => {
     await page.getByRole("button", { name: "Import from WA1500" }).click();
     await page.getByRole("textbox", { name: "Search WA1500" }).fill(existing.last_name);
     await page.getByRole("button", { name: "Search", exact: true }).click();
-    await page.getByLabel(`Sex for Tim ${existing.last_name}`).selectOption("M");
     await page.getByRole("button", { name: `Import Tim ${existing.last_name}` }).click();
 
     const dialog = page.getByRole("dialog", { name: "Name already exists" });

@@ -19,7 +19,7 @@ type ReportEntry struct {
 func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]ReportEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT e.id, e.category, e.lane, e.withdrawn,
-		        sh.id, sh.last_name, sh.first_name, sh.sex, sh.country, sh.club, COALESCE(sh.waid, ''),
+		        sh.id, sh.last_name, sh.first_name, sh.country, sh.club, COALESCE(sh.waid, ''),
 		        s.stage_number, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.status, s.scorer_lane, COALESCE(s.scorer_name, '')
 		 FROM entries e
 		 JOIN shooters sh ON sh.id = e.shooter_id
@@ -37,7 +37,7 @@ func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]Report
 		var st ReportStage
 		var withdrawn int
 		if err := rows.Scan(&e.ID, &e.Category, &e.Lane, &withdrawn,
-			&sh.ID, &sh.LastName, &sh.FirstName, &sh.Sex, &sh.Country, &sh.Club, &sh.WAID,
+			&sh.ID, &sh.LastName, &sh.FirstName, &sh.Country, &sh.Club, &sh.WAID,
 			&st.Number, &st.Counts.X, &st.Counts.Ten, &st.Counts.Nine, &st.Counts.Eight, &st.Counts.Seven, &st.Counts.Zero, &st.Counts.Miss,
 			&st.Status, &st.ScorerLane, &st.ScorerName); err != nil {
 			return nil, err

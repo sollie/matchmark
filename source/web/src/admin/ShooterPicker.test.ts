@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import ShooterPicker from "./ShooterPicker.svelte";
 import { stubFetch } from "../test/fetch";
 
-const doe = { id: 7, last_name: "Doe", first_name: "Jane", sex: "F" as const, country: "SWE", club: "Alpha", waid: "W7" };
-const roe = { id: 8, last_name: "Roe", first_name: "Rick", sex: "M" as const, country: "NOR", club: "Beta", waid: "" };
+const doe = { id: 7, last_name: "Doe", first_name: "Jane", country: "SWE", club: "Alpha", waid: "W7" };
+const roe = { id: 8, last_name: "Roe", first_name: "Rick", country: "NOR", club: "Beta", waid: "" };
 
 function setup(props: Record<string, unknown> = {}) {
   const calls = stubFetch(() => ({ body: { shooters: [doe, roe] } }));

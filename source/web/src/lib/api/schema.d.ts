@@ -1237,8 +1237,6 @@ export interface components {
             last_name: string;
             /** @description Must already be normalized (each word capitalised, also after a hyphen or apostrophe, single spaces, trimmed); otherwise the call answers 422. */
             first_name: string;
-            /** @enum {string} */
-            sex: "M" | "F";
             country: string;
             club: string;
             waid: string;

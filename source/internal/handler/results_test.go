@@ -11,7 +11,7 @@ import (
 
 func (f *fixture) addShooterEntry(t *testing.T, last, waid, category string, lane int) int {
 	t.Helper()
-	body := map[string]any{"last_name": strings.ToUpper(last), "first_name": "A", "sex": "M", "country": "NOR", "club": "Club " + last}
+	body := map[string]any{"last_name": strings.ToUpper(last), "first_name": "A", "country": "NOR", "club": "Club " + last}
 	if waid != "" {
 		body["waid"] = waid
 	}

@@ -2,7 +2,6 @@ CREATE TABLE shooters (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     last_name  TEXT NOT NULL,
     first_name TEXT NOT NULL,
-    sex        TEXT NOT NULL CHECK (sex IN ('M', 'F')),
     country    TEXT NOT NULL,
     club       TEXT NOT NULL,
     waid       TEXT

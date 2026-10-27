@@ -10,7 +10,7 @@
   type Shooter = components["schemas"]["Shooter"];
   type ShooterInput = components["schemas"]["ShooterInput"];
 
-  const blank = (): ShooterInput => ({ last_name: "", first_name: "", sex: "M", country: "NOR", club: "", waid: "" });
+  const blank = (): ShooterInput => ({ last_name: "", first_name: "", country: "NOR", club: "", waid: "" });
 
   let shooters = $state<Shooter[]>([]);
   let form = $state<ShooterInput>(blank());
@@ -101,13 +101,6 @@
 
 <form class="row card" onsubmit={save}>
   <NameFields bind:first={form.first_name} bind:last={form.last_name} />
-  <label>
-    Sex
-    <select bind:value={form.sex}>
-      <option value="M">M</option>
-      <option value="F">F</option>
-    </select>
-  </label>
   <label>Country <input bind:value={form.country} maxlength="3" size="4" required /></label>
   <label>Club <input bind:value={form.club} maxlength="128" required /></label>
   <label>WAID (blank for new shooter) <input bind:value={form.waid} maxlength="32" /></label>
@@ -118,13 +111,12 @@
 <div class="card scroll">
 <table>
   <thead>
-    <tr><th>Name</th><th>Sex</th><th>Country</th><th>Club</th><th>WAID</th><th></th></tr>
+    <tr><th>Name</th><th>Country</th><th>Club</th><th>WAID</th><th></th></tr>
   </thead>
   <tbody>
     {#each shooters as s (s.id)}
       <tr>
         <td>{s.first_name} {s.last_name}</td>
-        <td>{s.sex}</td>
         <td>{s.country}</td>
         <td>{s.club}</td>
         <td>{s.waid || "—"}</td>

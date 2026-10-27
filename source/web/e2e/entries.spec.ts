@@ -173,7 +173,6 @@ test.describe("admin ring counts", () => {
     await expect(page.getByText("No match")).toBeVisible();
     await page.getByRole("option", { name: "Search WA1500 / add new" }).click();
     await expect(page.getByRole("textbox", { name: "Search WA1500" })).toHaveValue(lastName);
-    await page.getByLabel(`Sex for Ida ${lastName}`).selectOption("F");
     await page.getByRole("button", { name: `Import Ida ${lastName}` }).click();
 
     await expect(form.getByRole("combobox", { name: "Shooter" })).toHaveValue(`Ida ${lastName}`);

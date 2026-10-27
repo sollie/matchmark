@@ -10,7 +10,7 @@ import (
 )
 
 func shooterBody(last string) map[string]any {
-	return map[string]any{"last_name": strings.ToUpper(last), "first_name": "A", "sex": "M", "country": "NOR", "club": "Club"}
+	return map[string]any{"last_name": strings.ToUpper(last), "first_name": "A", "country": "NOR", "club": "Club"}
 }
 
 func TestShooterRegistry(t *testing.T) {
