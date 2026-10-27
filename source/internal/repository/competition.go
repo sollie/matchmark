@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Shooter struct {
@@ -16,11 +17,18 @@ type Shooter struct {
 
 type Competition struct {
 	ID           int64
+	ContainerID  int64
 	Name         string
 	Date         string
 	Course       string
 	Status       string
 	CurrentStage int
+}
+
+type DateRange struct {
+	Start   string
+	End     string
+	Matches int
 }
 
 type Entry struct {
@@ -52,19 +60,52 @@ func (r *Repository) CreateShooter(ctx context.Context, s Shooter) (int64, error
 }
 
 func (r *Repository) CreateCompetition(ctx context.Context, c Competition) (int64, error) {
-	res, err := r.db.ExecContext(ctx,
-		`INSERT INTO competitions (name, date, course) VALUES (?, ?, ?)`, c.Name, c.Date, c.Course)
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	containerID, err := ensureContainer(ctx, tx, c.ContainerID, c.Name, c.Date)
+	if err != nil {
+		return 0, err
+	}
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`, containerID, c.Name, c.Date, c.Course)
+	if err != nil {
+		return 0, mapErr(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return id, tx.Commit()
+}
+
+func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string) (int64, error) {
+	if id != 0 {
+		return id, nil
+	}
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO competitions (name, start_date, end_date) VALUES (?, ?, ?)`, name, date, date)
 	if err != nil {
 		return 0, mapErr(err)
 	}
 	return res.LastInsertId()
 }
 
+func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRange, error) {
+	var d DateRange
+	err := r.db.QueryRowContext(ctx,
+		`SELECT start_date, end_date, (SELECT COUNT(*) FROM matches WHERE competition_id = competitions.id)
+		 FROM competitions WHERE id = ?`, id).Scan(&d.Start, &d.End, &d.Matches)
+	return d, mapErr(err)
+}
+
 func (r *Repository) GetCompetition(ctx context.Context, id int64) (Competition, error) {
 	var c Competition
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, name, date, course, status, current_stage FROM competitions WHERE id = ?`, id).
-		Scan(&c.ID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage)
+		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches WHERE id = ?`, id).
+		Scan(&c.ID, &c.ContainerID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage)
 	return c, mapErr(err)
 }
 
@@ -75,7 +116,7 @@ func (r *Repository) CreateEntry(ctx context.Context, e Entry, stages []StageSee
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO entries (competition_id, shooter_id, category, lane) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO entries (match_id, shooter_id, category, lane) VALUES (?, ?, ?, ?)`,
 		e.CompetitionID, e.ShooterID, e.Category, e.Lane)
 	if err != nil {
 		return 0, mapErr(err)
@@ -96,7 +137,7 @@ func (r *Repository) CreateEntry(ctx context.Context, e Entry, stages []StageSee
 
 func (r *Repository) WithdrawEntry(ctx context.Context, competitionID, entryID int64) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE entries SET withdrawn = 1 WHERE id = ? AND competition_id = ?`, entryID, competitionID)
+		`UPDATE entries SET withdrawn = 1 WHERE id = ? AND match_id = ?`, entryID, competitionID)
 	if err != nil {
 		return mapErr(err)
 	}
