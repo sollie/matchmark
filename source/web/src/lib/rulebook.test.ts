@@ -34,11 +34,32 @@ describe("rulebook store", () => {
   });
 
   it("labels stages with their Part, or the plain number when the course has none", async () => {
-    const stage = (n: number, part?: string) => ({ stage_number: n, distance: "7 yd", expected_shots: 12, time_seconds: 20, position: "", part });
+    const stage = (n: number, part?: string) => ({
+      stage_number: n,
+      distance: "7 yd",
+      expected_shots: 12,
+      time_seconds: 20,
+      position: "",
+      part,
+    });
     const grouped = {
       courses: [
-        { key: "150", label: "150", discipline: "1500", total_shots: 150, categories: [], stages: [stage(4, "Match 3")] },
-        { key: "60", label: "60", discipline: "60", total_shots: 60, categories: [], stages: [stage(4)] },
+        {
+          key: "150",
+          label: "150",
+          discipline: "1500",
+          total_shots: 150,
+          categories: [],
+          stages: [stage(4, "Match 3")],
+        },
+        {
+          key: "60",
+          label: "60",
+          discipline: "60",
+          total_shots: 60,
+          categories: [],
+          stages: [stage(4)],
+        },
       ],
       rings: [],
     };

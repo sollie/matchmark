@@ -4,7 +4,14 @@ import userEvent from "@testing-library/user-event";
 import ShooterPicker from "./ShooterPicker.svelte";
 import { stubFetch } from "../test/fetch";
 
-const doe = { id: 7, last_name: "Doe", first_name: "Jane", country: "SWE", club: "Alpha", waid: "W7" };
+const doe = {
+  id: 7,
+  last_name: "Doe",
+  first_name: "Jane",
+  country: "SWE",
+  club: "Alpha",
+  waid: "W7",
+};
 const roe = { id: 8, last_name: "Roe", first_name: "Rick", country: "NOR", club: "Beta", waid: "" };
 
 function setup(props: Record<string, unknown> = {}) {
@@ -34,7 +41,9 @@ describe("ShooterPicker", () => {
     await screen.findByRole("option", { name: /Jane Doe/ });
     await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
     expect(onselect).toHaveBeenCalledWith(expect.objectContaining({ id: 8 }));
-    expect((screen.getByRole("combobox", { name: "Shooter" }) as HTMLInputElement).value).toBe("Rick Roe");
+    expect((screen.getByRole("combobox", { name: "Shooter" }) as HTMLInputElement).value).toBe(
+      "Rick Roe",
+    );
   });
 
   it("hides excluded shooters", async () => {

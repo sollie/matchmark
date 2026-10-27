@@ -16,7 +16,9 @@ test.describe("club settings", () => {
     await page.getByRole("button", { name: "Save name" }).click();
     await expect(page.getByRole("status")).toHaveText("Club name saved.");
 
-    await page.getByLabel("Logo file").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: pixelPng });
+    await page
+      .getByLabel("Logo file")
+      .setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: pixelPng });
     await page.getByRole("button", { name: "Upload logo" }).click();
     await expect(page.getByRole("status")).toHaveText("Logo saved.");
     await expect(page.getByRole("img", { name: "Current club logo" })).toBeVisible();
@@ -31,7 +33,10 @@ test.describe("club settings", () => {
 
     await page.goto("/");
     await expect(page.locator(".club-badge")).toContainText("E2E Pistol Club");
-    await expect(page.locator(".club-badge img")).toHaveAttribute("src", /\/api\/club\/logo\?v=\d+/);
+    await expect(page.locator(".club-badge img")).toHaveAttribute(
+      "src",
+      /\/api\/club\/logo\?v=\d+/,
+    );
 
     await page.goto("/admin/club");
     await page.getByRole("button", { name: "Remove logo" }).click();

@@ -6,7 +6,7 @@ describe("createSseParser", () => {
     const seen: [string, string][] = [];
     const parser = createSseParser((event, data) => seen.push([event, data]));
     parser.push(": heartbeat\n\nevent: snap");
-    parser.push("shot\ndata: {\"a\":1}\n\nevent: other\r\ndata: x\r\ndata: y\r\n\r\n");
+    parser.push('shot\ndata: {"a":1}\n\nevent: other\r\ndata: x\r\ndata: y\r\n\r\n');
     expect(seen).toEqual([
       ["snapshot", '{"a":1}'],
       ["other", "x\ny"],
@@ -50,7 +50,9 @@ function fakeServer() {
       push: (text) => controller.enqueue(enc.encode(text)),
       end: () => controller.close(),
     });
-    return Promise.resolve(new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } }));
+    return Promise.resolve(
+      new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    );
   }) as typeof fetch;
   return { conns, statuses, retryAfter, fetchFn };
 }
@@ -69,7 +71,10 @@ describe("openStream", () => {
     setHidden(false);
   });
 
-  function open(server: ReturnType<typeof fakeServer>, extra: Partial<Parameters<typeof openStream>[0]> = {}) {
+  function open(
+    server: ReturnType<typeof fakeServer>,
+    extra: Partial<Parameters<typeof openStream>[0]> = {},
+  ) {
     const events: [string, string][] = [];
     const states: StreamState[] = [];
     const handle = openStream({
@@ -186,7 +191,10 @@ describe("openStream", () => {
 
   it("reconnects when the server goes silent past the stale timeout", async () => {
     const server = fakeServer();
-    const { states } = open(server, { staleAfterMs: 5000, backoff: { initialMs: 100, maxMs: 1000 } });
+    const { states } = open(server, {
+      staleAfterMs: 5000,
+      backoff: { initialMs: 100, maxMs: 1000 },
+    });
     await tick();
     await tick(5000);
     expect(states).toContain("stale");

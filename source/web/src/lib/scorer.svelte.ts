@@ -82,7 +82,9 @@ export const httpScorerApi: ScorerApi = {
   async respond(token, stage, action) {
     return outcome(
       await api.POST(
-        action === "accept" ? "/api/scorer/stages/{stage}/accept" : "/api/scorer/stages/{stage}/dispute",
+        action === "accept"
+          ? "/api/scorer/stages/{stage}/accept"
+          : "/api/scorer/stages/{stage}/dispute",
         { params: { path: { stage } }, headers: deviceHeaders(token) },
       ),
     );
@@ -116,7 +118,8 @@ export class ScorerSession {
   stage = $derived(this.session?.current_stage ?? null);
   current = $derived(this.session?.stages.find((s) => s.stage_number === this.stage) ?? null);
   waitingStage = $derived(
-    this.session?.stages.find((s) => s.stage_number === this.stage && s.status !== "accepted") ?? null,
+    this.session?.stages.find((s) => s.stage_number === this.stage && s.status !== "accepted") ??
+      null,
   );
   acceptance = $derived(this.session?.acceptance ?? null);
   maxRing = $derived.by(() => {
@@ -143,7 +146,8 @@ export class ScorerSession {
   atCap = $derived(this.current !== null && this.sum >= this.current.expected_shots);
   unsaved = $derived(rings.some((r) => this.counts[r.key] !== this.saved[r.key]));
   savedValid = $derived(
-    this.current !== null && rings.reduce((n, r) => n + this.saved[r.key], 0) === this.current.expected_shots,
+    this.current !== null &&
+      rings.reduce((n, r) => n + this.saved[r.key], 0) === this.current.expected_shots,
   );
   canLock = $derived(!this.unsaved && this.savedValid);
   saveStatus = $derived(
