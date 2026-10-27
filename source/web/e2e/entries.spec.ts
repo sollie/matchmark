@@ -173,7 +173,6 @@ test.describe("admin ring counts", () => {
     await expect(page.getByText("No match")).toBeVisible();
     await page.getByRole("option", { name: "Search WA1500 / add new" }).click();
     await expect(page.getByRole("textbox", { name: "Search WA1500" })).toHaveValue(lastName);
-    await page.getByRole("button", { name: "Search", exact: true }).click();
     await page.getByLabel(`Sex for Ida ${lastName}`).selectOption("F");
     await page.getByRole("button", { name: `Import Ida ${lastName}` }).click();
 
@@ -184,16 +183,17 @@ test.describe("admin ring counts", () => {
 
   test("category dropdowns list only the categories the course allows", async ({ courses, adminPage: page, admin }) => {
     for (const key of ["40", "150"]) {
-      const expected = courses.find((c) => c.key === key)?.categories;
-      expect(expected).toBeDefined();
+      const categories = courses.find((c) => c.key === key)?.categories;
+      expect(categories).toBeDefined();
+      const expected = [...categories!].sort((a, b) => a.localeCompare(b));
       const match = await createMatch(admin, { course: key });
-      const entry = await seedEntry(admin, match.id, 1, expected![0] as Category);
+      const entry = await seedEntry(admin, match.id, 1, expected[0] as Category);
       await openMatch(page, match.id);
 
-      await expect(addForm(page).getByLabel("Entry category").getByRole("option")).toHaveText(expected!);
+      await expect(addForm(page).getByLabel("Entry category").getByRole("option")).toHaveText(expected);
       const entryRow = row(page, entry.shooter.last_name);
       await entryRow.getByRole("button", { name: "Move", exact: true }).click();
-      await expect(entryRow.getByLabel("Move category").getByRole("option")).toHaveText(expected!);
+      await expect(entryRow.getByLabel("Move category").getByRole("option")).toHaveText(expected);
     }
   });
 
