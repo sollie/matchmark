@@ -23,4 +23,4 @@ Editing a match (name, date, course), an entry (category, lane) or a shooter (na
 
 ## Consequences
 
-Known limits: entries with no locked stage are not recoverable, and lines contain personal data (WAID, names, club), so log retention must be treated accordingly. A user lock made through the admin UI or API records the same way. The `matchmark restore` subcommand rebuilds competitions, shooters, entries and locked stages from the log; unscored entries, devices and pairings are not restored, and shooters get sex `M` and an empty country because the log does not carry them.
+Known limits: entries with no locked stage are not recoverable, and lines contain personal data (WAID, names, club), so log retention must be treated accordingly. A user lock made through the admin UI or API records the same way. The `matchmark restore` subcommand rebuilds competitions, shooters, entries and locked stages from the log; unscored entries, devices and pairings are not restored, and shooters get an empty country because the log does not carry it (shooters no longer carry sex, see ADR 0018).

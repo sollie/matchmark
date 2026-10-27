@@ -128,11 +128,7 @@ func fillSheet(f *excelize.File, sheet string, comp repository.Match, known, fre
 		}
 	}
 	for i, e := range fresh {
-		sex := "male"
-		if e.Shooter.Sex == "F" {
-			sex = "female"
-		}
-		if err := setRow(f, sheet, firstNewRow+i, 1, e.Shooter.LastName, e.Shooter.FirstName, sex, e.Shooter.Country, e.Shooter.Club, "nn", total(e)); err != nil {
+		if err := setRow(f, sheet, firstNewRow+i, 1, e.Shooter.LastName, e.Shooter.FirstName, "", e.Shooter.Country, e.Shooter.Club, "nn", total(e)); err != nil {
 			return err
 		}
 	}

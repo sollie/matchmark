@@ -8,9 +8,9 @@ New shooters are mostly already in the WA1500 register, but WA1500 offers no API
 
 - The host is fixed in code (no user-supplied URL, so no SSRF). Requests have a timeout and a response size cap; the body is decoded using the charset it declares (UTF-8 in practice) and the result rows are parsed with `golang.org/x/net/html`. The scraper sits behind an interface so tests use fixtures and never touch the network.
 - Lookups are explicit (a Search button), rate limited and briefly cached. An unreachable or unparsable upstream returns 503 (not 502, because Cloudflare replaces the body of origin 502 and 504 responses and the client would lose the error message) and the admin falls back to manual entry. The register is a convenience, never a dependency: everything selected is stored locally.
-- WA1500 provides no sex, so the admin chooses M or F on import.
+- WA1500 provides no sex, so the admin chose M or F on import. Superseded by ADR 0018, which drops shooter sex.
 - The WAID is the identity key. `POST /api/shooters/import` updates a shooter whose WAID matches, silently. Without a WAID match, local shooters with the same first and last name (case-insensitive) make the server answer 409 with the candidates; the client resends with `update_shooter_id` (validated server-side to be one of the name matches) or `create_new`. This keeps two people with the same name apart and lets a manually entered shooter without a WAID receive one.
 
 ## Consequences
 
-The scraper depends on the page markup (`tr.ranking` rows with `data-title` cells) and breaks if WA1500 redesigns it; the 503 fallback keeps manual entry working. Imported data overwrites the local name, country, club and sex of the matched shooter.
+The scraper depends on the page markup (`tr.ranking` rows with `data-title` cells) and breaks if WA1500 redesigns it; the 503 fallback keeps manual entry working. Imported data overwrites the local name, country and club of the matched shooter.

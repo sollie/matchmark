@@ -5,7 +5,7 @@ import Wa1500Import from "./Wa1500Import.svelte";
 import { stubFetch, type Call } from "../test/fetch";
 
 const hit = { waid: "W100", first_name: "Mike", last_name: "Anderson", country: "SWE", club: "Alpha" };
-const saved = { id: 5, last_name: "Anderson", first_name: "Mike", sex: "M" as const, country: "SWE", club: "Alpha", waid: "W100" };
+const saved = { id: 5, last_name: "Anderson", first_name: "Mike", country: "SWE", club: "Alpha", waid: "W100" };
 const other = { ...saved, id: 9, waid: "", club: "Beta" };
 
 function setup(respond: (call: Call) => { status?: number; body?: unknown } | undefined) {
@@ -53,18 +53,16 @@ describe("Wa1500Import", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("requires a sex before importing and reports the saved shooter", async () => {
+  it("imports and reports the saved shooter", async () => {
     const { user, calls, onsaved } = setup((c) =>
       c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : { status: 201, body: { id: 5, action: "created" } },
     );
     await search(user);
     const importButton = await screen.findByRole("button", { name: "Import Mike Anderson" });
-    expect((importButton as HTMLButtonElement).disabled).toBe(true);
-    await user.selectOptions(screen.getByRole("combobox", { name: "Sex for Mike Anderson" }), "M");
     await user.click(importButton);
     await waitFor(() => expect(onsaved).toHaveBeenCalledWith(expect.objectContaining({ id: 5 })));
     const post = calls.find((c) => c.path === "/api/shooters/import");
-    expect(post?.body).toEqual({ ...hit, sex: "M" });
+    expect(post?.body).toEqual(hit);
   });
 
   it("lets the admin update a name-matching candidate after a conflict", async () => {
@@ -77,13 +75,12 @@ describe("Wa1500Import", () => {
         : { status: 200, body: { id: 9, action: "updated" } };
     });
     await search(user);
-    await user.selectOptions(await screen.findByRole("combobox", { name: "Sex for Mike Anderson" }), "M");
     await user.click(screen.getByRole("button", { name: "Import Mike Anderson" }));
     const dialog = await screen.findByRole("dialog", { name: "Name already exists" });
     await user.click(within(dialog).getByRole("button", { name: /Update Mike Anderson · no WAID · Beta/ }));
     await waitFor(() => expect(onsaved).toHaveBeenCalledWith(expect.objectContaining({ id: 9 })));
     const resend = calls.filter((c) => c.path === "/api/shooters/import")[1];
-    expect(resend.body).toEqual({ ...hit, sex: "M", update_shooter_id: 9 });
+    expect(resend.body).toEqual({ ...hit, update_shooter_id: 9 });
   });
 
   it("creates a new shooter after a conflict", async () => {
@@ -96,11 +93,10 @@ describe("Wa1500Import", () => {
         : { status: 201, body: { id: 5, action: "created" } };
     });
     await search(user);
-    await user.selectOptions(await screen.findByRole("combobox", { name: "Sex for Mike Anderson" }), "F");
     await user.click(screen.getByRole("button", { name: "Import Mike Anderson" }));
     await user.click(await screen.findByRole("button", { name: "Create new shooter" }));
     await waitFor(() => expect(calls.filter((c) => c.path === "/api/shooters/import")).toHaveLength(2));
-    expect(calls.filter((c) => c.path === "/api/shooters/import")[1].body).toEqual({ ...hit, sex: "F", create_new: true });
+    expect(calls.filter((c) => c.path === "/api/shooters/import")[1].body).toEqual({ ...hit, create_new: true });
   });
 
   it("falls back to manual entry when WA1500 is unavailable", async () => {
@@ -118,7 +114,6 @@ describe("Wa1500Import", () => {
     expect(calls.find((c) => c.method === "POST" && c.path === "/api/shooters")?.body).toEqual({
       last_name: "ANDERSON",
       first_name: "Mike",
-      sex: "M",
       country: "SWE",
       club: "Alpha",
       waid: "",

@@ -118,7 +118,7 @@ func TestRegularUserIsRefusedUserManagementButRunsMatches(t *testing.T) {
 			t.Fatalf("%s: %d", path, got)
 		}
 	}
-	resp, body := postBody(t, c, admin, "/api/shooters", `{"first_name":"Ola","last_name":"HANSEN","sex":"M","country":"NOR","club":"Club"}`)
+	resp, body := postBody(t, c, admin, "/api/shooters", `{"first_name":"Ola","last_name":"HANSEN","country":"NOR","club":"Club"}`)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create shooter: %d %s", resp.StatusCode, body)
 	}

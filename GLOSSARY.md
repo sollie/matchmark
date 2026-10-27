@@ -33,7 +33,7 @@ A shooter's name in the one canonical form the registry stores: the last name in
 _Avoid_: Cleaned name, formatted name
 
 **WA1500 import**:
-Copying a shooter found in the WA1500 register into the club's own shooters, with the sex chosen by the admin. A shooter with the same WAID is updated; one that only shares the name must be confirmed as the same person or created as a new shooter.
+Copying a shooter found in the WA1500 register into the club's own shooters. A shooter with the same WAID is updated; one that only shares the name must be confirmed as the same person or created as a new shooter.
 _Avoid_: Sync
 
 **New shooter**:

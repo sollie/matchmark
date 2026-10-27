@@ -108,7 +108,6 @@ export async function adminApi(baseURL: string): Promise<APIRequestContext> {
 interface ShooterSeed {
   last_name?: string;
   first_name?: string;
-  sex?: "M" | "F";
   country?: string;
   club?: string;
   waid?: string;
@@ -118,7 +117,6 @@ export async function createShooter(api: APIRequestContext, seed: ShooterSeed = 
   const shooter = {
     last_name: uniqueLastName("Shooter"),
     first_name: "Test",
-    sex: "M" as const,
     country: "NOR",
     club: "E2E Club",
     waid: "",

@@ -22,13 +22,13 @@ type EntryWithStages struct {
 	Stages []StageInfo
 }
 
-const shooterColumns = `id, last_name, first_name, sex, country, club, COALESCE(waid, '')`
+const shooterColumns = `id, last_name, first_name, country, club, COALESCE(waid, '')`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
 func scanShooter(row rowScanner) (Shooter, error) {
 	var s Shooter
-	err := row.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Sex, &s.Country, &s.Club, &s.WAID)
+	err := row.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Country, &s.Club, &s.WAID)
 	return s, err
 }
 
@@ -79,8 +79,8 @@ func (r *Repository) UpdateShooter(ctx context.Context, s Shooter) error {
 		waid = s.WAID
 	}
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE shooters SET last_name = ?, first_name = ?, sex = ?, country = ?, club = ?, waid = ? WHERE id = ?`,
-		s.LastName, s.FirstName, s.Sex, s.Country, s.Club, waid, s.ID)
+		`UPDATE shooters SET last_name = ?, first_name = ?, country = ?, club = ?, waid = ? WHERE id = ?`,
+		s.LastName, s.FirstName, s.Country, s.Club, waid, s.ID)
 	return affected(res, err)
 }
 
