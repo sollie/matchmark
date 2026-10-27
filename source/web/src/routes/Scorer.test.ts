@@ -12,6 +12,7 @@ type SessionOverrides = {
   current_stage?: number;
   acceptance?: object;
   disputed?: number[];
+  parts?: Record<number, string>;
   counts?: Record<string, number>;
 };
 
@@ -19,7 +20,7 @@ const zeroCounts = { x: 0, 10: 0, 9: 0, 8: 0, 7: 0, 0: 0, miss: 0 };
 
 const session = (
   locked: boolean[],
-  { disputed = [], counts = {}, ...overrides }: SessionOverrides = {},
+  { disputed = [], counts = {}, parts = {}, ...overrides }: SessionOverrides = {},
 ) => ({
   lane: 1,
   score_lane: 2,
@@ -34,6 +35,7 @@ const session = (
     expected_shots: 30,
     status: l ? "awaiting_acceptance" : "open",
     disputed: disputed.includes(i + 1),
+    ...(parts[i + 1] ? { part: parts[i + 1] } : {}),
   })),
   ...overrides,
 });
@@ -105,6 +107,38 @@ describe("Scorer", () => {
     expect(save?.body).toMatchObject({ x: 1 });
   });
 
+  it("labels the current stage with its Part when the course has groups", async () => {
+    const server = fakeStream();
+    await open(
+      server,
+      session([true, true, false], { parts: { 1: "Match 1", 2: "Match 1", 3: "Match 2" } }),
+    );
+    expect(screen.getByText(/Stage 3 · Match 2\./)).toBeTruthy();
+  });
+
+  it("labels locked and acceptance messages with the Part", async () => {
+    const server = fakeStream();
+    const acceptance = { ...zeroCounts, x: 12, stage_number: 1, total: 12, scorer_name: "Ann Lee" };
+    await open(
+      server,
+      session([true, false], {
+        phase: "needs_acceptance",
+        acceptance,
+        current_stage: 1,
+        parts: { 1: "Match 1", 2: "Match 1" },
+      }),
+    );
+    expect(screen.getByText(/Stage 1 · Match 1 is locked/)).toBeTruthy();
+    expect(screen.getByText(/Your result for Stage 1 · Match 1 awaits/)).toBeTruthy();
+  });
+
+  it("uses plain stage numbers when the stages have no Part", async () => {
+    const server = fakeStream();
+    await open(server, session([true, false]));
+    expect(screen.getByText(/Stage 2\./)).toBeTruthy();
+    expect(screen.queryByText(/·/)).toBeNull();
+  });
+
   it("stops accepting shots once the stage is full", async () => {
     const server = fakeStream();
     const user = userEvent.setup();
@@ -173,7 +207,7 @@ describe("Scorer", () => {
       server,
       session([true, false], { phase: "needs_acceptance", acceptance, current_stage: 1 }),
     );
-    expect(screen.getByText(/Your result for stage 1 awaits your acceptance/)).toBeTruthy();
+    expect(screen.getByText(/Your result for Stage 1 awaits your acceptance/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Review result" }));
@@ -214,7 +248,7 @@ describe("Scorer", () => {
   it("shows a persistent disputed notice with the previous values prefilled", async () => {
     const server = fakeStream();
     await open(server, session([false, false], { disputed: [1], counts: { x: 7, 10: 5 } }));
-    expect(screen.getByText(/Disputed: the shooter disputed stage 1/)).toBeTruthy();
+    expect(screen.getByText(/Disputed: the shooter disputed Stage 1/)).toBeTruthy();
     expect(screen.getByLabelText("X count")).toHaveProperty("value", "7");
     expect(screen.getByLabelText("10 count")).toHaveProperty("value", "5");
   });

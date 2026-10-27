@@ -89,6 +89,37 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 	})
 }
 
+func sessionParts(t *testing.T, f *scoringFixture, token string) []any {
+	t.Helper()
+	status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil)
+	if status != http.StatusOK {
+		t.Fatalf("session: %d %v", status, out)
+	}
+	parts := []any{}
+	for _, st := range out["stages"].([]any) {
+		parts = append(parts, st.(map[string]any)["part"])
+	}
+	return parts
+}
+
+func TestSessionCarriesPartsOnlyForGroupedCourses(t *testing.T) {
+	f := newScoringFixture(t, 1, 3)
+	parts := sessionParts(t, f, f.pair(t, 1))
+	if parts[0] != "Match 1" || parts[3] != "Match 3" || parts[9] != "Match 5" {
+		t.Fatalf("150 parts: %v", parts)
+	}
+
+	plain := &scoringFixture{fixture: newFixture(t, "60"), entries: map[int]int{}}
+	plain.entries[1] = plain.addEntry(t, "SHOOTER1", 1)
+	plain.entries[3] = plain.addEntry(t, "SHOOTER3", 3)
+	plain.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", plain.comp), map[string]any{"status": "active"})
+	for i, part := range sessionParts(t, plain, plain.pair(t, 1)) {
+		if part != nil {
+			t.Fatalf("60 stage %d has part %v", i+1, part)
+		}
+	}
+}
+
 func TestDevicePairedInDraftWaitsForStart(t *testing.T) {
 	f := &scoringFixture{fixture: newFixture(t, "150"), entries: map[int]int{}}
 	f.entries[1] = f.addEntry(t, "SHOOTER1", 1)

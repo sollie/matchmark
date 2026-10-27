@@ -34,12 +34,14 @@
     {:else}
       <h1>Scoring lane {scorer.session.score_lane}: {scorer.session.shooter_name}</h1>
       <p class="muted">
-        This device is paired to lane {scorer.session.lane}. Stage {scorer.session.current_stage}.
+        This device is paired to lane {scorer.session.lane}. {scorer.stageLabel(
+          scorer.session.current_stage,
+        )}.
       </p>
 
       {#if scorer.session.phase === "next_stage" && !scorer.started}
         <section class="card next-stage" aria-label="Next stage">
-          <h2>Stage {scorer.session.current_stage} has started</h2>
+          <h2>{scorer.stageLabel(scorer.session.current_stage)} has started</h2>
           <p class="banner">
             The next stage has started. Get ready to score lane {scorer.session.score_lane}.
           </p>
@@ -48,14 +50,16 @@
       {:else if scorer.session.phase === "scoring" || scorer.session.phase === "next_stage"}
         {#if scorer.current?.status === "open" && scorer.current.disputed}
           <p class="card banner disputed">
-            Disputed: the shooter disputed stage {scorer.current.stage_number}. Correct the ring
-            counts and lock it again.
+            Disputed: the shooter disputed {scorer.stageLabel(scorer.current.stage_number)}. Correct
+            the ring counts and lock it again.
           </p>
         {/if}
 
         {#if scorer.current}
           {#if scorer.current.status !== "open"}
-            <p class="card locked banner">🔒 Stage {scorer.current.stage_number} is locked.</p>
+            <p class="card locked banner">
+              🔒 {scorer.stageLabel(scorer.current.stage_number)} is locked.
+            </p>
           {:else}
             <div class="layout">
               <div class="rings">
@@ -140,7 +144,7 @@
             <span class="chip"
               >Stage {scorer.acceptance.stage_number} of {scorer.session.stages.length}</span
             >
-            <h2>Your result for stage {scorer.acceptance.stage_number}</h2>
+            <h2>Your result for {scorer.stageLabel(scorer.acceptance.stage_number)}</h2>
             <p class="total">{scorer.acceptance.total} hits, {scorer.acceptance.x} X</p>
             <p class="muted">Scored by {scorer.acceptance.scorer_name}</p>
           </div>
@@ -187,19 +191,20 @@
           <h2>Waiting</h2>
           {#if scorer.waitingStage}
             <p class="banner">
-              🔒 Stage {scorer.waitingStage.stage_number} is locked. Waiting for {scorer.session
-                .shooter_name} to accept.
+              🔒 {scorer.stageLabel(scorer.waitingStage.stage_number)} is locked. Waiting for {scorer
+                .session.shooter_name} to accept.
             </p>
           {:else}
             <p class="banner">
-              🔒 Stage {scorer.session.current_stage} is locked. Waiting for the other lanes and the admin.
+              🔒 {scorer.stageLabel(scorer.session.current_stage)} is locked. Waiting for the other lanes
+              and the admin.
             </p>
           {/if}
           {#if scorer.acceptance}
             <div class="attention" role="group" aria-label="Action needed">
               <span class="attention-icon" aria-hidden="true">!</span>
               <p class="banner needs-acceptance">
-                Your result for stage {scorer.acceptance.stage_number} awaits your acceptance.
+                Your result for {scorer.stageLabel(scorer.acceptance.stage_number)} awaits your acceptance.
               </p>
               <button class="primary" onclick={() => scorer.startReview()}>Review result</button>
             </div>

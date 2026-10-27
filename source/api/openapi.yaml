@@ -2727,6 +2727,9 @@ components:
                   disputed:
                     type: boolean
                     description: True from a dispute until the scorer locks the stage again
+                  part:
+                    type: string
+                    description: Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups.
         phase:
           type: string
           enum: [not_started, scoring, waiting, needs_acceptance, next_stage, finished]
@@ -2744,6 +2747,9 @@ components:
                   type: integer
                 scorer_name:
                   type: string
+                part:
+                  type: string
+                  description: Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups.
     ControlRoom:
       type: object
       required: [current_stage, can_start_next, can_accept_all, lanes]

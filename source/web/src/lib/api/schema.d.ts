@@ -1349,6 +1349,8 @@ export interface components {
                 status: components["schemas"]["StageStatus"];
                 /** @description True from a dispute until the scorer locks the stage again */
                 disputed: boolean;
+                /** @description Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups. */
+                part?: string;
             })[];
             /**
              * @description Derived by the server from the current stage. not_started while the match is a draft (the device is paired but shows only its lane; the other fields are empty); scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the match is finished (the other fields are then empty and the pairing is revoked)
@@ -1360,6 +1362,8 @@ export interface components {
                 stage_number: number;
                 total: number;
                 scorer_name: string;
+                /** @description Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups. */
+                part?: string;
             };
         };
         ControlRoom: {

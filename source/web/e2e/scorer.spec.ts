@@ -129,7 +129,7 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.locator("#save-status")).toHaveText("Saved ✓");
     await scorer.getByRole("button", { name: "Lock stage", exact: true }).click();
 
-    await expect(scorer.getByText("🔒 Stage 1 is locked.")).toBeVisible();
+    await expect(scorer.getByText("🔒 Stage 1 · Match 1 is locked.")).toBeVisible();
     await expect(scorer.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
     await expect(scorer.getByRole("button", { name: "Lock stage", exact: true })).toHaveCount(0);
     await expect(scorer.getByLabel("10 count", { exact: true })).toHaveCount(0);
@@ -213,7 +213,7 @@ test.describe("pairing and scorer device", () => {
 
     const base = `/api/matches/${match.id}/entries/${entries[1].entryId}/stages/1`;
     await setCounts(admin, match.id, entries[1].entryId, 1, { "10": 12 }, true);
-    await expect(scorer.getByText("🔒 Stage 1 is locked.")).toBeVisible();
+    await expect(scorer.getByText("🔒 Stage 1 · Match 1 is locked.")).toBeVisible();
     await expect(scorer.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
 
     await admin.post(`${base}/unlock`);
@@ -299,12 +299,16 @@ test.describe("pairing and scorer device", () => {
     await lane2.getByRole("button", { name: "Save", exact: true }).click();
     await expect(lane2.locator("#save-status")).toHaveText("Saved ✓");
     await lane2.getByRole("button", { name: "Lock stage", exact: true }).click();
-    await expect(lane2.getByText(/Your result for stage 1 awaits your acceptance/)).toBeVisible();
+    await expect(
+      lane2.getByText(/Your result for Stage 1 · Match 1 awaits your acceptance/),
+    ).toBeVisible();
     await lane2.getByRole("button", { name: "Review result" }).click();
     await expect(lane2.getByText("12 hits, 0 X")).toBeVisible();
 
     await lane2.reload();
-    await expect(lane2.getByText(/Your result for stage 1 awaits your acceptance/)).toBeVisible();
+    await expect(
+      lane2.getByText(/Your result for Stage 1 · Match 1 awaits your acceptance/),
+    ).toBeVisible();
     await lane2.getByRole("button", { name: "Review result" }).click();
     await lane2.getByRole("button", { name: "Dispute" }).click();
     await lane2.getByRole("button", { name: "Cancel" }).click();
@@ -312,16 +316,18 @@ test.describe("pairing and scorer device", () => {
     await lane2.getByRole("button", { name: "Dispute" }).click();
     await lane2.getByRole("button", { name: "Confirm dispute" }).click();
 
-    await expect(lane1.getByText(/Disputed: the shooter disputed stage 1/)).toBeVisible();
+    await expect(lane1.getByText(/Disputed: the shooter disputed Stage 1 · Match 1/)).toBeVisible();
     await expect(lane1.getByLabel("10 count", { exact: true })).toHaveValue("8");
     await expect(lane1.getByLabel("9 count", { exact: true })).toHaveValue("4");
     await lane1.reload();
-    await expect(lane1.getByText(/Disputed: the shooter disputed stage 1/)).toBeVisible();
+    await expect(lane1.getByText(/Disputed: the shooter disputed Stage 1 · Match 1/)).toBeVisible();
     await expect(lane1.getByLabel("9 count", { exact: true })).toHaveValue("4");
 
     await lane1.getByRole("button", { name: "Lock stage", exact: true }).click();
     await expect(lane1.getByText(/Disputed: the shooter disputed/)).toHaveCount(0);
-    await expect(lane1.getByText(/Your result for stage 1 awaits your acceptance/)).toBeVisible();
+    await expect(
+      lane1.getByText(/Your result for Stage 1 · Match 1 awaits your acceptance/),
+    ).toBeVisible();
     await lane1.getByRole("button", { name: "Review result" }).click();
     await expect(lane1.getByText("12 hits, 0 X")).toBeVisible();
     await lane1.getByRole("button", { name: "Accept" }).click();
