@@ -8,7 +8,13 @@ test.describe("change password", () => {
     baseURL,
   }) => {
     const other = await newApi(baseURL!);
-    expect((await other.post("/api/admin/login", { data: { username: adminUsername, password: adminPassword } })).status()).toBe(204);
+    expect(
+      (
+        await other.post("/api/admin/login", {
+          data: { username: adminUsername, password: adminPassword },
+        })
+      ).status(),
+    ).toBe(204);
     expect((await other.get("/api/shooters")).status()).toBe(200);
 
     await page.getByRole("link", { name: "Change password" }).click();

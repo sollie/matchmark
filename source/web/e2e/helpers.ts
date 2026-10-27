@@ -1,5 +1,12 @@
 import { randomBytes } from "node:crypto";
-import { request, test as base, expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import {
+  request,
+  test as base,
+  expect,
+  type APIRequestContext,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 export const adminUsername = process.env.E2E_ADMIN_USERNAME ?? "e2e-admin";
 export const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? "e2e-admin-password-1234";
@@ -36,7 +43,12 @@ export interface Course {
 }
 
 interface RulebookResponse {
-  courses: { key: string; label: string; categories: string[]; stages: { expected_shots: number }[] }[];
+  courses: {
+    key: string;
+    label: string;
+    categories: string[];
+    stages: { expected_shots: number }[];
+  }[];
 }
 
 let rulebook: Promise<Course[]> | undefined;
@@ -86,7 +98,10 @@ function ringCounts(partial: Partial<RingCounts> = {}): RingCounts {
   return { x: 0, "10": 0, "9": 0, "8": 0, "7": 0, "0": 0, miss: 0, ...partial };
 }
 
-async function checked<T>(response: Awaited<ReturnType<APIRequestContext["get"]>>, what: string): Promise<T> {
+async function checked<T>(
+  response: Awaited<ReturnType<APIRequestContext["get"]>>,
+  what: string,
+): Promise<T> {
   if (!response.ok()) {
     throw new Error(`${what} failed: ${response.status()} ${await response.text()}`);
   }
@@ -94,13 +109,18 @@ async function checked<T>(response: Awaited<ReturnType<APIRequestContext["get"]>
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-export async function newApi(baseURL: string, clientIp = uniqueClientIp()): Promise<APIRequestContext> {
+export async function newApi(
+  baseURL: string,
+  clientIp = uniqueClientIp(),
+): Promise<APIRequestContext> {
   return request.newContext({ baseURL, extraHTTPHeaders: { "X-Forwarded-For": clientIp } });
 }
 
 export async function adminApi(baseURL: string): Promise<APIRequestContext> {
   const api = await newApi(baseURL);
-  const response = await api.post("/api/admin/login", { data: { username: adminUsername, password: adminPassword } });
+  const response = await api.post("/api/admin/login", {
+    data: { username: adminUsername, password: adminPassword },
+  });
   await checked(response, "admin sign-in");
   return api;
 }
@@ -122,7 +142,10 @@ export async function createShooter(api: APIRequestContext, seed: ShooterSeed = 
     waid: "",
     ...seed,
   };
-  const { id } = await checked<{ id: number }>(await api.post("/api/shooters", { data: shooter }), "create shooter");
+  const { id } = await checked<{ id: number }>(
+    await api.post("/api/shooters", { data: shooter }),
+    "create shooter",
+  );
   return { id, ...shooter };
 }
 
@@ -151,7 +174,11 @@ export async function setStatus(api: APIRequestContext, matchId: number, status:
   );
 }
 
-export async function setVisibility(api: APIRequestContext, matchId: number, visibility: Partial<Visibility>) {
+export async function setVisibility(
+  api: APIRequestContext,
+  matchId: number,
+  visibility: Partial<Visibility>,
+) {
   const full: Visibility = {
     show_names: true,
     show_clubs: true,
@@ -182,7 +209,12 @@ export async function addEntry(
   return id;
 }
 
-export async function seedEntry(api: APIRequestContext, matchId: number, lane: number, category: Category = "Revolver") {
+export async function seedEntry(
+  api: APIRequestContext,
+  matchId: number,
+  lane: number,
+  category: Category = "Revolver",
+) {
   const shooter = await createShooter(api);
   const entryId = await addEntry(api, matchId, shooter.id, lane, category);
   return { shooter, entryId, lane };
@@ -214,17 +246,31 @@ export async function deviceLock(
   stage: number,
   counts: Partial<RingCounts>,
 ) {
-  const api = await request.newContext({ baseURL, extraHTTPHeaders: { Authorization: `Bearer ${token}` } });
+  const api = await request.newContext({
+    baseURL,
+    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+  });
   try {
-    await checked(await api.put(`/api/scorer/stages/${stage}`, { data: ringCounts(counts) }), "device set counts");
+    await checked(
+      await api.put(`/api/scorer/stages/${stage}`, { data: ringCounts(counts) }),
+      "device set counts",
+    );
     await checked(await api.post(`/api/scorer/stages/${stage}/lock`), "device lock");
   } finally {
     await api.dispose();
   }
 }
 
-export async function deviceAction(baseURL: string, token: string, stage: number, action: "accept" | "dispute" | "lock") {
-  const api = await request.newContext({ baseURL, extraHTTPHeaders: { Authorization: `Bearer ${token}` } });
+export async function deviceAction(
+  baseURL: string,
+  token: string,
+  stage: number,
+  action: "accept" | "dispute" | "lock",
+) {
+  const api = await request.newContext({
+    baseURL,
+    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+  });
   try {
     await checked(await api.post(`/api/scorer/stages/${stage}/${action}`), `device ${action}`);
   } finally {
@@ -248,9 +294,7 @@ export function row(page: Page | Locator, text: string | RegExp): Locator {
 }
 
 export function section(page: Page, heading: string | RegExp): Locator {
-  return page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: heading }) });
+  return page.locator("section").filter({ has: page.getByRole("heading", { name: heading }) });
 }
 
 export async function openMatch(page: Page, id: number) {

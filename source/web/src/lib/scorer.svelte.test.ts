@@ -1,12 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
-import { ScorerSession, type Outcome, type ScorerApi, type ScorerDeps, type Session } from "./scorer.svelte";
+import {
+  ScorerSession,
+  type Outcome,
+  type ScorerApi,
+  type ScorerDeps,
+  type Session,
+} from "./scorer.svelte";
 import type { StreamOptions } from "./sse";
 
 const zero = { x: 0, 10: 0, 9: 0, 8: 0, 7: 0, 0: 0, miss: 0 };
 const ok: Outcome = { ok: true, status: 200, error: "" };
-const failed = (status: number, error = `Request failed (${status})`): Outcome => ({ ok: false, status, error });
+const failed = (status: number, error = `Request failed (${status})`): Outcome => ({
+  ok: false,
+  status,
+  error,
+});
 
-const snapshot = (overrides: Record<string, unknown> = {}, stageOverrides: Record<string, unknown> = {}): Session =>
+const snapshot = (
+  overrides: Record<string, unknown> = {},
+  stageOverrides: Record<string, unknown> = {},
+): Session =>
   ({
     lane: 1,
     score_lane: 2,
@@ -15,7 +28,16 @@ const snapshot = (overrides: Record<string, unknown> = {}, stageOverrides: Recor
     entry_id: 4,
     shooter_name: "Rick Roe",
     phase: "scoring",
-    stages: [{ ...zero, stage_number: 1, expected_shots: 30, status: "open", disputed: false, ...stageOverrides }],
+    stages: [
+      {
+        ...zero,
+        stage_number: 1,
+        expected_shots: 30,
+        status: "open",
+        disputed: false,
+        ...stageOverrides,
+      },
+    ],
     ...overrides,
   }) as unknown as Session;
 
@@ -47,7 +69,9 @@ describe("snapshot reconciliation", () => {
     scorer.setCount("x", 5);
     scorer.apply(snapshot({ score_lane: 3 }));
     expect(scorer.counts.x).toBe(0);
-    expect(scorer.notice).toBe("Score lane changed to lane 3. Your unsaved ring counts were reset.");
+    expect(scorer.notice).toBe(
+      "Score lane changed to lane 3. Your unsaved ring counts were reset.",
+    );
   });
 
   it("keeps unsaved counts across snapshots for the same stage", () => {
@@ -127,7 +151,12 @@ describe("save, lock and respond", () => {
 
   it("accepts a result", async () => {
     const { scorer, api } = setup();
-    scorer.apply(snapshot({ phase: "needs_acceptance", acceptance: { ...zero, stage_number: 1, total: 0, scorer_name: "A" } }));
+    scorer.apply(
+      snapshot({
+        phase: "needs_acceptance",
+        acceptance: { ...zero, stage_number: 1, total: 0, scorer_name: "A" },
+      }),
+    );
     scorer.startReview();
     await scorer.respond("accept");
     expect(api.respond).toHaveBeenCalledWith("tok", 1, "accept");
@@ -137,7 +166,12 @@ describe("save, lock and respond", () => {
 
   it("keeps reviewing and shows the error when a dispute fails", async () => {
     const { scorer, api } = setup();
-    scorer.apply(snapshot({ phase: "needs_acceptance", acceptance: { ...zero, stage_number: 1, total: 0, scorer_name: "A" } }));
+    scorer.apply(
+      snapshot({
+        phase: "needs_acceptance",
+        acceptance: { ...zero, stage_number: 1, total: 0, scorer_name: "A" },
+      }),
+    );
     scorer.startReview();
     scorer.askDispute();
     vi.mocked(api.respond).mockResolvedValueOnce(failed(409, "Stage already accepted"));

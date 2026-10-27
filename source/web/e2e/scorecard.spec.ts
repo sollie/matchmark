@@ -1,7 +1,20 @@
-import { addEntry, createMatch, createShooter, expect, setCounts, setStatus, setVisibility, test, uniqueName } from "./helpers";
+import {
+  addEntry,
+  createMatch,
+  createShooter,
+  expect,
+  setCounts,
+  setStatus,
+  setVisibility,
+  test,
+  uniqueName,
+} from "./helpers";
 
 test.describe("scorecard", () => {
-  test("the spectator standings link to a lane's scorecard once finished", async ({ page, admin }) => {
+  test("the spectator standings link to a lane's scorecard once finished", async ({
+    page,
+    admin,
+  }) => {
     const match = await createMatch(admin, { name: uniqueName("Scorecard") });
     const shooter = await createShooter(admin);
     const entry = await addEntry(admin, match.id, shooter.id, 1);
@@ -17,10 +30,14 @@ test.describe("scorecard", () => {
     await setStatus(admin, match.id, "finished");
     await page.getByRole("link", { name: "Scorecard for lane 1" }).click();
     await expect(page).toHaveURL(`/scorecard/${match.id}/1`);
-    await expect(page.getByText(`${shooter.first_name} ${shooter.last_name}`, { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(`${shooter.first_name} ${shooter.last_name}`, { exact: true }),
+    ).toBeVisible();
     const image = page.getByRole("img", { name: /^Scorecard for .+, lane 1$/ });
     await expect(image).toBeVisible();
-    await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
+    await expect
+      .poll(() => image.evaluate((el: HTMLImageElement) => el.naturalWidth))
+      .toBeGreaterThan(0);
     await expect(page.getByRole("link", { name: "Download PNG" })).toHaveAttribute(
       "href",
       `/api/scorer/scorecard/${match.id}/1?format=png&download=1`,
@@ -37,11 +54,16 @@ test.describe("scorecard", () => {
     await page.goto(`/scorecard/${match.id}/1`);
     await expect(page.getByRole("img", { name: /^Scorecard for .+, lane 1$/ })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download PNG" })).toBeInViewport();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
   });
 
   test("an unfinished match explains that the card is not available", async ({ page, admin }) => {
-    const match = await createMatch(admin, { name: uniqueName("Scorecard unfinished"), status: "active" });
+    const match = await createMatch(admin, {
+      name: uniqueName("Scorecard unfinished"),
+      status: "active",
+    });
     await page.goto(`/scorecard/${match.id}/1`);
     await expect(page.getByText("This scorecard is not available.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Download PNG" })).toHaveCount(0);

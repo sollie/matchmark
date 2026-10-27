@@ -1,12 +1,31 @@
 import type { Locator } from "@playwright/test";
-import { createMatch, createPairing, deviceLock, expect, openMatch, section, seedEntry, setCounts, setStatus, test } from "./helpers";
+import {
+  createMatch,
+  createPairing,
+  deviceLock,
+  expect,
+  openMatch,
+  section,
+  seedEntry,
+  setCounts,
+  setStatus,
+  test,
+} from "./helpers";
 
 function laneRow(room: Locator, lane: number): Locator {
-  return room.locator("tbody tr").filter({ has: room.page().locator("td:first-child", { hasText: new RegExp(`^${lane}$`) }) });
+  return room
+    .locator("tbody tr")
+    .filter({ has: room.page().locator("td:first-child", { hasText: new RegExp(`^${lane}$`) }) });
 }
 
 test.describe("control room", () => {
-  test("shows one row per manned lane with scorer, status, pairing and best-effort connection", async ({ adminPage: page, admin, course, baseURL, openDevice }) => {
+  test("shows one row per manned lane with scorer, status, pairing and best-effort connection", async ({
+    adminPage: page,
+    admin,
+    course,
+    baseURL,
+    openDevice,
+  }) => {
     const match = await createMatch(admin);
     const first = await seedEntry(admin, match.id, 1);
     const second = await seedEntry(admin, match.id, 2);
@@ -32,7 +51,12 @@ test.describe("control room", () => {
     await expect(lane2.getByText("Open", { exact: true })).toHaveCount(0);
   });
 
-  test("accept all is enabled only when no lane is open and accepts every awaiting stage, then the next stage can start", async ({ adminPage: page, admin, course, baseURL }) => {
+  test("accept all is enabled only when no lane is open and accepts every awaiting stage, then the next stage can start", async ({
+    adminPage: page,
+    admin,
+    course,
+    baseURL,
+  }) => {
     const match = await createMatch(admin);
     await seedEntry(admin, match.id, 1);
     await seedEntry(admin, match.id, 2);
@@ -62,7 +86,12 @@ test.describe("control room", () => {
     await expect(startNext).toBeDisabled();
   });
 
-  test("the admin accepts and unlocks single lanes without a device", async ({ adminPage: page, admin, course, baseURL }) => {
+  test("the admin accepts and unlocks single lanes without a device", async ({
+    adminPage: page,
+    admin,
+    course,
+    baseURL,
+  }) => {
     const match = await createMatch(admin);
     const first = await seedEntry(admin, match.id, 1);
     const second = await seedEntry(admin, match.id, 2);

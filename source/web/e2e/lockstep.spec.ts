@@ -1,7 +1,22 @@
-import { createMatch, createPairing, defaultCourse, expect, openMatch, row, seedEntry, setCounts, setStatus, test } from "./helpers";
+import {
+  createMatch,
+  createPairing,
+  defaultCourse,
+  expect,
+  openMatch,
+  row,
+  seedEntry,
+  setCounts,
+  setStatus,
+  test,
+} from "./helpers";
 
 test.describe("lockstep stages", () => {
-  test("the admin starts the next stage only after every lane accepted, then devices announce it", async ({ adminPage: page, admin, openDevice }) => {
+  test("the admin starts the next stage only after every lane accepted, then devices announce it", async ({
+    adminPage: page,
+    admin,
+    openDevice,
+  }) => {
     const match = await createMatch(admin);
     const first = await seedEntry(admin, match.id, 1);
     const second = await seedEntry(admin, match.id, 2);
@@ -24,8 +39,12 @@ test.describe("lockstep stages", () => {
       await device.getByRole("button", { name: "Accept" }).click();
       await expect(device.getByRole("status")).toHaveText("Result accepted");
     }
-    await expect(row(page, first.shooter.last_name).getByText("Accepted", { exact: true }).first()).toBeVisible();
-    await expect(row(page, second.shooter.last_name).getByText("Accepted", { exact: true }).first()).toBeVisible();
+    await expect(
+      row(page, first.shooter.last_name).getByText("Accepted", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      row(page, second.shooter.last_name).getByText("Accepted", { exact: true }).first(),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: "Start next stage" }).click();
     await expect(page.getByText("· Stage 2")).toBeVisible();
@@ -37,7 +56,11 @@ test.describe("lockstep stages", () => {
     }
   });
 
-  test("the last acceptance finishes the match and a device lands on its lane's scorecard", async ({ adminPage: page, admin, openDevice }) => {
+  test("the last acceptance finishes the match and a device lands on its lane's scorecard", async ({
+    adminPage: page,
+    admin,
+    openDevice,
+  }) => {
     const course = await defaultCourse(admin);
     const match = await createMatch(admin);
     const first = await seedEntry(admin, match.id, 1);
@@ -51,7 +74,14 @@ test.describe("lockstep stages", () => {
         expect(response.ok()).toBe(true);
       }
       for (const entry of [first, second]) {
-        await setCounts(admin, match.id, entry.entryId, stage, { "10": course.stageShots[stage - 1] }, true);
+        await setCounts(
+          admin,
+          match.id,
+          entry.entryId,
+          stage,
+          { "10": course.stageShots[stage - 1] },
+          true,
+        );
       }
     }
 

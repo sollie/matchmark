@@ -1,7 +1,24 @@
-import { createMatch, createPairing, deviceAction, deviceLock, expect, openMatch, row, section, seedEntry, setStatus, test } from "./helpers";
+import {
+  createMatch,
+  createPairing,
+  deviceAction,
+  deviceLock,
+  expect,
+  openMatch,
+  row,
+  section,
+  seedEntry,
+  setStatus,
+  test,
+} from "./helpers";
 
 test.describe("dispute history", () => {
-  test("lists stage events with device actors resolved, counts disputes per scorer and filters", async ({ adminPage: page, admin, course, baseURL }) => {
+  test("lists stage events with device actors resolved, counts disputes per scorer and filters", async ({
+    adminPage: page,
+    admin,
+    course,
+    baseURL,
+  }) => {
     const match = await createMatch(admin);
     const first = await seedEntry(admin, match.id, 1);
     const second = await seedEntry(admin, match.id, 2);

@@ -1,7 +1,9 @@
 import { expect, test, uniqueName } from "./helpers";
 
 test.describe("competitions", () => {
-  test("create a competition, group matches under it and enforce its date range", async ({ adminPage: page }) => {
+  test("create a competition, group matches under it and enforce its date range", async ({
+    adminPage: page,
+  }) => {
     const competition = uniqueName("Nationals");
     const match = uniqueName("Day two");
 
@@ -16,7 +18,9 @@ test.describe("competitions", () => {
 
     await page.getByLabel("Name", { exact: true }).fill(match);
     await page.getByLabel("Date", { exact: true }).fill("2026-10-21");
-    await page.getByRole("combobox", { name: /^Competition/ }).selectOption({ label: `${competition} (2026-10-19 – 2026-10-20)` });
+    await page
+      .getByRole("combobox", { name: /^Competition/ })
+      .selectOption({ label: `${competition} (2026-10-19 – 2026-10-20)` });
     await page.getByRole("button", { name: "Create match" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
 
@@ -59,7 +63,9 @@ test.describe("competitions", () => {
 
     await page.getByLabel("Name", { exact: true }).fill(match);
     await page.getByLabel("Date", { exact: true }).fill("2026-11-02");
-    await page.getByRole("combobox", { name: /^Competition/ }).selectOption({ label: "New competition…" });
+    await page
+      .getByRole("combobox", { name: /^Competition/ })
+      .selectOption({ label: "New competition…" });
     await page.getByLabel("Competition name").fill(competition);
     await page.getByLabel("Start date").fill("2026-11-01");
     await page.getByLabel("End date").fill("2026-11-03");

@@ -1,5 +1,16 @@
 import type { APIRequestContext } from "@playwright/test";
-import { createMatch, createPairing, expect, openMatch, row, section, seedEntry, setCounts, setStatus, test } from "./helpers";
+import {
+  createMatch,
+  createPairing,
+  expect,
+  openMatch,
+  row,
+  section,
+  seedEntry,
+  setCounts,
+  setStatus,
+  test,
+} from "./helpers";
 
 const deviceTokenKey = "mm_device_token";
 
@@ -12,7 +23,11 @@ async function seedActive(api: APIRequestContext, lanes: number[]) {
 }
 
 test.describe("pairing and scorer device", () => {
-  test("the admin creates a pairing link and the device shows its lane and score lane", async ({ adminPage: page, admin, openDevice }) => {
+  test("the admin creates a pairing link and the device shows its lane and score lane", async ({
+    adminPage: page,
+    admin,
+    openDevice,
+  }) => {
     const { match, entries } = await seedActive(admin, [1, 2, 3]);
     await openMatch(page, match.id);
 
@@ -25,12 +40,17 @@ test.describe("pairing and scorer device", () => {
 
     const scorer = await openDevice(decodeURIComponent(new URL(link).hash.slice("#token=".length)));
     await expect(
-      scorer.getByRole("heading", { name: `Scoring lane 2: ${entries[1].shooter.first_name} ${entries[1].shooter.last_name}` }),
+      scorer.getByRole("heading", {
+        name: `Scoring lane 2: ${entries[1].shooter.first_name} ${entries[1].shooter.last_name}`,
+      }),
     ).toBeVisible();
     await expect(scorer.getByText("This device is paired to lane 1.")).toBeVisible();
   });
 
-  test("the total and Save stay visible on a small phone without scrolling", async ({ admin, openDevice }) => {
+  test("the total and Save stay visible on a small phone without scrolling", async ({
+    admin,
+    openDevice,
+  }) => {
     const { match } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, match.id, 1);
     const scorer = await openDevice(pairing.token);
@@ -40,17 +60,26 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.getByRole("button", { name: "Save" })).toBeInViewport();
   });
 
-  test("the score lane wraps from the last manned lane to the first", async ({ admin, openDevice }) => {
+  test("the score lane wraps from the last manned lane to the first", async ({
+    admin,
+    openDevice,
+  }) => {
     const { match, entries } = await seedActive(admin, [1, 4, 7]);
     const pairing = await createPairing(admin, match.id, 7);
     const scorer = await openDevice(pairing.token);
     await expect(
-      scorer.getByRole("heading", { name: `Scoring lane 1: ${entries[0].shooter.first_name} ${entries[0].shooter.last_name}` }),
+      scorer.getByRole("heading", {
+        name: `Scoring lane 1: ${entries[0].shooter.first_name} ${entries[0].shooter.last_name}`,
+      }),
     ).toBeVisible();
     await expect(scorer.getByText("This device is paired to lane 7.")).toBeVisible();
   });
 
-  test("the scorer sees a running total and a mismatch message, then saves and locks", async ({ adminPage: page, admin, openDevice }) => {
+  test("the scorer sees a running total and a mismatch message, then saves and locks", async ({
+    adminPage: page,
+    admin,
+    openDevice,
+  }) => {
     const { match, entries } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, match.id, 1);
     const scorer = await openDevice(pairing.token);
@@ -65,14 +94,18 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.locator(".total strong")).toHaveText("1");
 
     await scorer.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(scorer.getByRole("alert")).toHaveText("Ring counts must add up to 12 shots (entered 1).");
+    await expect(scorer.getByRole("alert")).toHaveText(
+      "Ring counts must add up to 12 shots (entered 1).",
+    );
 
     await scorer.getByLabel("10 count", { exact: true }).fill("8");
     await scorer.getByLabel("9 count", { exact: true }).fill("4");
     await expect(scorer.locator(".total strong")).toHaveText("12");
     await expect(scorer.getByText("✓ Shots match")).toBeVisible();
     await expect(scorer.getByRole("button", { name: "Lock stage", exact: true })).toBeDisabled();
-    await expect(scorer.locator("#save-status")).toHaveText("Unsaved changes: press Save, then Lock stage.");
+    await expect(scorer.locator("#save-status")).toHaveText(
+      "Unsaved changes: press Save, then Lock stage.",
+    );
     await scorer.getByRole("button", { name: "Save", exact: true }).click();
     await expect(scorer.locator("#save-status")).toHaveText("Saved ✓");
     await scorer.getByRole("button", { name: "Lock stage", exact: true }).click();
@@ -83,7 +116,11 @@ test.describe("pairing and scorer device", () => {
     await expect(stage.getByText("Awaiting acceptance", { exact: true })).toBeVisible();
   });
 
-  test("a locked stage is read-only for the scorer and the admin sees who locked it", async ({ adminPage: page, admin, openDevice }) => {
+  test("a locked stage is read-only for the scorer and the admin sees who locked it", async ({
+    adminPage: page,
+    admin,
+    openDevice,
+  }) => {
     const { match, entries } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, match.id, 1);
     const scorer = await openDevice(pairing.token);
@@ -98,7 +135,9 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.getByLabel("10 count", { exact: true })).toHaveCount(0);
 
     await openMatch(page, match.id);
-    const badge = row(section(page, "Entries and progress"), entries[1].shooter.last_name).getByText("Awaiting acceptance", { exact: true }).first();
+    const badge = row(section(page, "Entries and progress"), entries[1].shooter.last_name)
+      .getByText("Awaiting acceptance", { exact: true })
+      .first();
     await expect(badge).toBeVisible();
     await expect(badge).toHaveAttribute(
       "title",
@@ -106,15 +145,23 @@ test.describe("pairing and scorer device", () => {
     );
 
     await page.getByRole("button", { name: `Lane ${entries[1].lane} stage 1: Accept` }).click();
-    await expect(row(page, entries[1].shooter.last_name).getByText("Accepted", { exact: true }).first()).toBeVisible();
+    await expect(
+      row(page, entries[1].shooter.last_name).getByText("Accepted", { exact: true }).first(),
+    ).toBeVisible();
     await expect(badge).toHaveCount(0);
   });
 
-  test("the admin entries refresh when a scorer locks a stage without reloading", async ({ adminPage: page, admin, openDevice }) => {
+  test("the admin entries refresh when a scorer locks a stage without reloading", async ({
+    adminPage: page,
+    admin,
+    openDevice,
+  }) => {
     const { match, entries } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, match.id, 1);
     await openMatch(page, match.id);
-    const lockedBadge = row(page, entries[1].shooter.last_name).getByText("Awaiting acceptance", { exact: true });
+    const lockedBadge = row(page, entries[1].shooter.last_name).getByText("Awaiting acceptance", {
+      exact: true,
+    });
     await expect(lockedBadge).toHaveCount(0);
 
     const scorer = await openDevice(pairing.token);
@@ -126,24 +173,39 @@ test.describe("pairing and scorer device", () => {
     await expect(lockedBadge.first()).toBeVisible();
   });
 
-  test("revoking a pairing returns the device to the pairing screen without a reload", async ({ adminPage: page, admin, openDevice }) => {
+  test("revoking a pairing returns the device to the pairing screen without a reload", async ({
+    adminPage: page,
+    admin,
+    openDevice,
+  }) => {
     const { match } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, match.id, 1);
     const scorer = await openDevice(pairing.token);
     await expect(scorer.getByRole("heading", { name: /Scoring lane 2/ })).toBeVisible();
-    expect(await scorer.evaluate((key) => localStorage.getItem(key), deviceTokenKey)).toBe(pairing.token);
+    expect(await scorer.evaluate((key) => localStorage.getItem(key), deviceTokenKey)).toBe(
+      pairing.token,
+    );
 
     await openMatch(page, match.id);
     const pairings = section(page, "Scorer pairing");
     await expect(pairings.getByRole("row").filter({ hasText: "paired" }).first()).toBeVisible();
-    await pairings.getByRole("row").filter({ hasText: "paired" }).getByRole("button", { name: "Revoke" }).click();
+    await pairings
+      .getByRole("row")
+      .filter({ hasText: "paired" })
+      .getByRole("button", { name: "Revoke" })
+      .click();
     await expect(pairings.getByText("revoked", { exact: true })).toBeVisible();
 
-    await expect(scorer.getByText("Open a pairing link from the admin to score a lane.")).toBeVisible();
+    await expect(
+      scorer.getByText("Open a pairing link from the admin to score a lane."),
+    ).toBeVisible();
     expect(await scorer.evaluate((key) => localStorage.getItem(key), deviceTokenKey)).toBeNull();
   });
 
-  test("an admin lock and unlock show on the scorer screen without a reload", async ({ admin, openDevice }) => {
+  test("an admin lock and unlock show on the scorer screen without a reload", async ({
+    admin,
+    openDevice,
+  }) => {
     const { match, entries } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, match.id, 1);
     const scorer = await openDevice(pairing.token);
@@ -158,22 +220,33 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   });
 
-  test("unpairing a device forgets the pairing and a reload stays unpaired", async ({ admin, openDevice }) => {
+  test("unpairing a device forgets the pairing and a reload stays unpaired", async ({
+    admin,
+    openDevice,
+  }) => {
     const { match } = await seedActive(admin, [1, 2]);
     const pairing = await createPairing(admin, match.id, 1);
     const scorer = await openDevice(pairing.token);
     await expect(scorer.getByRole("heading", { name: /Scoring lane 2/ })).toBeVisible();
 
     await scorer.getByRole("button", { name: "Unpair device" }).click();
-    await expect(scorer.getByText("Open a pairing link from the admin to score a lane.")).toBeVisible();
+    await expect(
+      scorer.getByText("Open a pairing link from the admin to score a lane."),
+    ).toBeVisible();
     await expect(scorer.getByRole("heading", { name: /Scoring lane/ })).toHaveCount(0);
 
     await scorer.reload();
-    await expect(scorer.getByText("Open a pairing link from the admin to score a lane.")).toBeVisible();
+    await expect(
+      scorer.getByText("Open a pairing link from the admin to score a lane."),
+    ).toBeVisible();
     await expect(scorer.getByRole("heading", { name: /Scoring lane/ })).toHaveCount(0);
   });
 
-  test("with one manned lane the device needs admin scoring and the admin can score it", async ({ adminPage: page, admin, openDevice }) => {
+  test("with one manned lane the device needs admin scoring and the admin can score it", async ({
+    adminPage: page,
+    admin,
+    openDevice,
+  }) => {
     const { match, entries } = await seedActive(admin, [1]);
     const pairing = await createPairing(admin, match.id, 1);
     const scorer = await openDevice(pairing.token);
@@ -185,7 +258,9 @@ test.describe("pairing and scorer device", () => {
     await page.getByLabel("10", { exact: true }).fill("12");
     await expect(page.getByText("✓ Shots match")).toBeVisible();
     await page.getByRole("button", { name: "Save and lock" }).click();
-    await expect(entryRow.locator("td.stage").first().getByText("Accepted", { exact: true })).toBeVisible();
+    await expect(
+      entryRow.locator("td.stage").first().getByText("Accepted", { exact: true }),
+    ).toBeVisible();
   });
 
   test("a device paired to a draft match waits and cannot score", async ({ admin, openDevice }) => {
@@ -194,11 +269,16 @@ test.describe("pairing and scorer device", () => {
     await seedEntry(admin, match.id, 2);
     const pairing = await createPairing(admin, match.id, 1);
     const scorer = await openDevice(pairing.token);
-    await expect(scorer.getByRole("heading", { name: "Waiting for the match to start" })).toBeVisible();
+    await expect(
+      scorer.getByRole("heading", { name: "Waiting for the match to start" }),
+    ).toBeVisible();
     await expect(scorer.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
   });
 
-  test("the shooter reviews a locked result, disputes it, and the scorer re-scores with values prefilled", async ({ admin, openDevice }) => {
+  test("the shooter reviews a locked result, disputes it, and the scorer re-scores with values prefilled", async ({
+    admin,
+    openDevice,
+  }) => {
     const { match } = await seedActive(admin, [1, 2]);
     const lane1 = await openDevice((await createPairing(admin, match.id, 1)).token);
     const lane2 = await openDevice((await createPairing(admin, match.id, 2)).token);

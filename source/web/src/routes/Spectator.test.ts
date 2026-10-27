@@ -21,12 +21,16 @@ function install(status: string) {
   const previous = globalThis.fetch;
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const request = input instanceof Request ? input : new Request(input, init);
-    if (new URL(request.url).pathname !== "/api/spectator/matches/7/stream") return previous(input, init);
+    if (new URL(request.url).pathname !== "/api/spectator/matches/7/stream")
+      return previous(input, init);
     const enc = new TextEncoder();
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     const body = new ReadableStream<Uint8Array>({ start: (c) => (controller = c) });
-    send = (data) => controller.enqueue(enc.encode(`event: snapshot\ndata: ${JSON.stringify(data)}\n\n`));
-    return Promise.resolve(new Response(body, { headers: { "Content-Type": "text/event-stream" } }));
+    send = (data) =>
+      controller.enqueue(enc.encode(`event: snapshot\ndata: ${JSON.stringify(data)}\n\n`));
+    return Promise.resolve(
+      new Response(body, { headers: { "Content-Type": "text/event-stream" } }),
+    );
   }) as typeof fetch;
   return calls;
 }
@@ -102,10 +106,20 @@ describe("Spectator status row", () => {
     await waitFor(() => expect(send).not.toBeNull());
     const loads = () => calls.filter((c) => c.path === "/api/spectator/matches").length;
     const before = loads();
-    send!({ current_stage: 2, total_stages: 10, status: "active", standings: [standing(1, ["accepted"])] });
+    send!({
+      current_stage: 2,
+      total_stages: 10,
+      status: "active",
+      standings: [standing(1, ["accepted"])],
+    });
     await screen.findByRole("table");
     expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
-    send!({ current_stage: 10, total_stages: 10, status: "finished", standings: [standing(1, ["accepted"])] });
+    send!({
+      current_stage: 10,
+      total_stages: 10,
+      status: "finished",
+      standings: [standing(1, ["accepted"])],
+    });
     expect(await screen.findByRole("link", { name: "Scorecard for lane 1" })).toBeTruthy();
     expect(loads()).toBe(before);
   });

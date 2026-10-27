@@ -18,7 +18,10 @@ describe("StageCell", () => {
   });
 
   it("omits the stage number when used as a legend key", () => {
-    render(StageCell, { stage: { stage: 0, accepted: false, state: "in_progress" }, prefix: false });
+    render(StageCell, {
+      stage: { stage: 0, accepted: false, state: "in_progress" },
+      prefix: false,
+    });
     expect(screen.getByLabelText("in progress").textContent?.trim()).toBe("");
   });
 
