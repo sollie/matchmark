@@ -19,7 +19,11 @@ test.describe("matches", () => {
     return section(page, "Entries and progress").getByRole("columnheader", { name: /^S\d+$/ });
   }
 
-  test("every course shows its label and one column per stage", async ({ adminPage: page, admin, courses }) => {
+  test("every course shows its label and one column per stage", async ({
+    adminPage: page,
+    admin,
+    courses,
+  }) => {
     expect(courses).toHaveLength(4);
     for (const course of courses) {
       await test.step(`${course.key}-shot course`, async () => {
@@ -47,7 +51,9 @@ test.describe("matches", () => {
     }
   });
 
-  test("the date is prefilled in ISO 8601 and an invalid date is blocked", async ({ adminPage: page }) => {
+  test("the date is prefilled in ISO 8601 and an invalid date is blocked", async ({
+    adminPage: page,
+  }) => {
     const name = uniqueName("Bad date");
 
     await expect(page.getByLabel("Date")).toHaveValue(todayIso());
@@ -99,7 +105,9 @@ test.describe("matches", () => {
       await expect(r).toContainText(c.date);
       await expect(r).toContainText(course);
       await expect(r.getByText(status, { exact: true })).toBeVisible();
-      const downloads = r.getByRole("link", { name: /^(Results report \(\.xlsx\)|Detailed CSV|Results PDF) for / });
+      const downloads = r.getByRole("link", {
+        name: /^(Results report \(\.xlsx\)|Detailed CSV|Results PDF) for /,
+      });
       await expect(downloads).toHaveCount(status === "finished" ? 3 : 0);
     }
     await expect(table).toBeVisible();
@@ -108,7 +116,10 @@ test.describe("matches", () => {
     await expect(page.getByRole("heading", { name: active.name })).toBeVisible();
   });
 
-  test("start and finish ask for confirmation and declining changes nothing", async ({ adminPage: page, admin }) => {
+  test("start and finish ask for confirmation and declining changes nothing", async ({
+    adminPage: page,
+    admin,
+  }) => {
     const match = await createMatch(admin);
     await openMatch(page, match.id);
     await expect(page.getByRole("heading", { name: match.name })).toBeVisible();
@@ -145,7 +156,10 @@ test.describe("matches", () => {
     ]);
   });
 
-  test("a finished match shows revoked pairings and refuses new entries", async ({ adminPage: page, admin }) => {
+  test("a finished match shows revoked pairings and refuses new entries", async ({
+    adminPage: page,
+    admin,
+  }) => {
     const match = await createMatch(admin);
     await seedEntry(admin, match.id, 1);
     await seedEntry(admin, match.id, 2);
@@ -167,7 +181,9 @@ test.describe("matches", () => {
     await expect(pairings.getByRole("button", { name: "Revoke" })).toHaveCount(0);
 
     await expect(page.getByRole("form", { name: "Add entry" })).toHaveCount(0);
-    const refused = await admin.post(`/api/matches/${match.id}/entries`, { data: { shooter_id: extra.id, category: "Revolver", lane: 3 } });
+    const refused = await admin.post(`/api/matches/${match.id}/entries`, {
+      data: { shooter_id: extra.id, category: "Revolver", lane: 3 },
+    });
     expect(refused.status()).toBe(409);
     await expect(row(page, extra.last_name)).toHaveCount(0);
   });
@@ -221,7 +237,9 @@ test.describe("matches", () => {
     await page.getByRole("button", { name: "Edit match" }).click();
     const form = page.getByRole("form", { name: "Edit match" });
     await expect(form.getByLabel("Course of fire")).toBeDisabled();
-    await expect(form.getByText("The course cannot change once the match has entries.")).toBeVisible();
+    await expect(
+      form.getByText("The course cannot change once the match has entries."),
+    ).toBeVisible();
     await form.getByLabel("Name").fill(name);
     await form.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("heading", { name })).toBeVisible();
@@ -258,7 +276,10 @@ test.describe("matches", () => {
     await expect(row(page, match.name)).toHaveCount(0);
   });
 
-  test("visibility flags persist after saving and reloading", async ({ adminPage: page, admin }) => {
+  test("visibility flags persist after saving and reloading", async ({
+    adminPage: page,
+    admin,
+  }) => {
     const match = await createMatch(admin, { status: "active" });
     await openMatch(page, match.id);
 

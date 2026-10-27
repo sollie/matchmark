@@ -5,8 +5,22 @@ import { stubFetch } from "../test/fetch";
 import { navigate } from "../lib/router.svelte";
 
 const matches = [
-  { id: 7, name: "Spring Match", date: "2026-05-01", course: "150", status: "finished", current_stage: 10 },
-  { id: 8, name: "Live Match", date: "2026-06-01", course: "150", status: "active", current_stage: 2 },
+  {
+    id: 7,
+    name: "Spring Match",
+    date: "2026-05-01",
+    course: "150",
+    status: "finished",
+    current_stage: 10,
+  },
+  {
+    id: 8,
+    name: "Live Match",
+    date: "2026-06-01",
+    course: "150",
+    status: "active",
+    current_stage: 2,
+  },
 ];
 
 let originalFetch: typeof fetch;
@@ -33,12 +47,27 @@ describe("Results", () => {
       call.path.endsWith("/results")
         ? {
             body: {
-              match: { id: 7, name: "Spring Match", date: "2026-05-01", course: "150", course_label: "150 Course" },
+              match: {
+                id: 7,
+                name: "Spring Match",
+                date: "2026-05-01",
+                course: "150",
+                course_label: "150 Course",
+              },
               stages: [1, 2],
               categories: [
                 {
                   category: "Revolver",
-                  rows: [{ rank: 1, last_name: "Berg", first_name: "Ola", waid: "1001", stages: [{ stage: 1 }, { stage: 2 }], total: 230 }],
+                  rows: [
+                    {
+                      rank: 1,
+                      last_name: "Berg",
+                      first_name: "Ola",
+                      waid: "1001",
+                      stages: [{ stage: 1 }, { stage: 2 }],
+                      total: 230,
+                    },
+                  ],
                 },
               ],
               new_shooters: [],
@@ -52,12 +81,18 @@ describe("Results", () => {
     expect(screen.getByRole("cell", { name: "230" })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "S1" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "X" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Download PDF" }).getAttribute("href")).toBe("/api/matches/7/results?format=pdf");
+    expect(screen.getByRole("link", { name: "Download PDF" }).getAttribute("href")).toBe(
+      "/api/matches/7/results?format=pdf",
+    );
   });
 
   it("says so when the results are not available", async () => {
     navigate("/results/8");
-    stubFetch((call) => (call.path.endsWith("/results") ? { status: 404, body: { error: "not found" } } : { body: { matches } }));
+    stubFetch((call) =>
+      call.path.endsWith("/results")
+        ? { status: 404, body: { error: "not found" } }
+        : { body: { matches } },
+    );
     render(Results);
     expect(await screen.findByText("Results are not available for this match.")).toBeTruthy();
   });

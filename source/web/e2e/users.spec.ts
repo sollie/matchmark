@@ -36,7 +36,9 @@ test.describe("user management", () => {
     await signInViaUi(page, temporaryPassword, username);
 
     await expect(page.getByRole("heading", { name: "Change password" })).toBeVisible();
-    await expect(page.getByText("You must choose a new password before you can continue.")).toBeVisible();
+    await expect(
+      page.getByText("You must choose a new password before you can continue."),
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: "Shooters" })).toHaveCount(0);
     expect((await page.request.get("/api/shooters")).status()).toBe(403);
 
@@ -56,7 +58,10 @@ test.describe("user management", () => {
     await expect(page.getByText("Only admins can manage users.")).toBeVisible();
   });
 
-  test("an admin grants and revokes the backup permission and the Backup link follows", async ({ adminPage: page, baseURL }) => {
+  test("an admin grants and revokes the backup permission and the Backup link follows", async ({
+    adminPage: page,
+    baseURL,
+  }) => {
     const username = newUsername();
     await page.getByRole("link", { name: "Users" }).click();
     await page.getByLabel("New username").fill(username);
@@ -88,16 +93,32 @@ test.describe("user management", () => {
 
   test("a regular user can create a shooter", async ({ admin, baseURL }) => {
     const username = newUsername();
-    const created = await admin.post("/api/users", { data: { username, role: "user", password: temporaryPassword } });
+    const created = await admin.post("/api/users", {
+      data: { username, role: "user", password: temporaryPassword },
+    });
     expect(created.status()).toBe(201);
 
     const api = await newApi(baseURL!);
-    expect((await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })).status()).toBe(204);
     expect(
-      (await api.post("/api/admin/password", { data: { current_password: temporaryPassword, new_password: chosenPassword } })).status(),
+      (
+        await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })
+      ).status(),
+    ).toBe(204);
+    expect(
+      (
+        await api.post("/api/admin/password", {
+          data: { current_password: temporaryPassword, new_password: chosenPassword },
+        })
+      ).status(),
     ).toBe(204);
     const shooter = await api.post("/api/shooters", {
-      data: { last_name: uniqueLastName("User"), first_name: "Test", country: "NOR", club: "E2E Club", waid: "" },
+      data: {
+        last_name: uniqueLastName("User"),
+        first_name: "Test",
+        country: "NOR",
+        club: "E2E Club",
+        waid: "",
+      },
     });
     expect(shooter.status()).toBe(201);
     expect((await api.get("/api/users")).status()).toBe(403);
@@ -106,7 +127,10 @@ test.describe("user management", () => {
 });
 
 test.describe("user lifecycle", () => {
-  test("an admin resets, demotes, deactivates and reactivates a user", async ({ adminPage: page, baseURL }) => {
+  test("an admin resets, demotes, deactivates and reactivates a user", async ({
+    adminPage: page,
+    baseURL,
+  }) => {
     const username = newUsername();
     await page.getByRole("link", { name: "Users" }).click();
     await page.getByLabel("New username").fill(username);
@@ -116,9 +140,17 @@ test.describe("user lifecycle", () => {
     await expect(row(page, username)).toContainText("Admin");
 
     const api = await newApi(baseURL!);
-    expect((await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })).status()).toBe(204);
     expect(
-      (await api.post("/api/admin/password", { data: { current_password: temporaryPassword, new_password: chosenPassword } })).status(),
+      (
+        await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })
+      ).status(),
+    ).toBe(204);
+    expect(
+      (
+        await api.post("/api/admin/password", {
+          data: { current_password: temporaryPassword, new_password: chosenPassword },
+        })
+      ).status(),
     ).toBe(204);
     expect((await api.get("/api/users")).status()).toBe(200);
 
@@ -133,11 +165,19 @@ test.describe("user lifecycle", () => {
 
     await row(page, username).getByRole("button", { name: "Deactivate" }).click();
     await expect(row(page, username)).toContainText("Deactivated");
-    expect((await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })).status()).toBe(401);
+    expect(
+      (
+        await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })
+      ).status(),
+    ).toBe(401);
 
     await row(page, username).getByRole("button", { name: "Reactivate" }).click();
     await expect(row(page, username)).toContainText("Must change password");
-    expect((await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })).status()).toBe(204);
+    expect(
+      (
+        await api.post("/api/admin/login", { data: { username, password: temporaryPassword } })
+      ).status(),
+    ).toBe(204);
     await api.dispose();
   });
 });

@@ -4,13 +4,27 @@ import userEvent from "@testing-library/user-event";
 import Wa1500Import from "./Wa1500Import.svelte";
 import { stubFetch, type Call } from "../test/fetch";
 
-const hit = { waid: "W100", first_name: "Mike", last_name: "Anderson", country: "SWE", club: "Alpha" };
-const saved = { id: 5, last_name: "Anderson", first_name: "Mike", country: "SWE", club: "Alpha", waid: "W100" };
+const hit = {
+  waid: "W100",
+  first_name: "Mike",
+  last_name: "Anderson",
+  country: "SWE",
+  club: "Alpha",
+};
+const saved = {
+  id: 5,
+  last_name: "Anderson",
+  first_name: "Mike",
+  country: "SWE",
+  club: "Alpha",
+  waid: "W100",
+};
 const other = { ...saved, id: 9, waid: "", club: "Beta" };
 
 function setup(respond: (call: Call) => { status?: number; body?: unknown } | undefined) {
   const calls = stubFetch((call) => {
-    if (call.path === "/api/shooters/5" || call.path === "/api/shooters/9") return { body: call.path.endsWith("9") ? other : saved };
+    if (call.path === "/api/shooters/5" || call.path === "/api/shooters/9")
+      return { body: call.path.endsWith("9") ? other : saved };
     return respond(call);
   });
   const onsaved = vi.fn();
@@ -25,7 +39,9 @@ async function search(user: ReturnType<typeof userEvent.setup>, text = "anderson
 
 describe("Wa1500Import", () => {
   it("searches only when the button is pressed", async () => {
-    const { user, calls } = setup((c) => (c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : undefined));
+    const { user, calls } = setup((c) =>
+      c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : undefined,
+    );
     await user.type(screen.getByRole("textbox", { name: "Search WA1500" }), "anderson");
     expect(calls).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "Search" }));
@@ -40,14 +56,18 @@ describe("Wa1500Import", () => {
   });
 
   it("searches on mount when opened with a query", async () => {
-    const calls = stubFetch((c) => (c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : undefined));
+    const calls = stubFetch((c) =>
+      c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : undefined,
+    );
     render(Wa1500Import, { query: "anderson", onsaved: vi.fn() });
     expect(await screen.findByRole("button", { name: "Import Mike Anderson" })).toBeTruthy();
     expect(calls[0].search).toContain("q=anderson");
   });
 
   it("searches when Enter is pressed in the box", async () => {
-    const { user, calls } = setup((c) => (c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : undefined));
+    const { user, calls } = setup((c) =>
+      c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : undefined,
+    );
     await user.type(screen.getByRole("textbox", { name: "Search WA1500" }), "anderson{Enter}");
     expect(await screen.findByRole("button", { name: "Import Mike Anderson" })).toBeTruthy();
     expect(calls).toHaveLength(1);
@@ -55,7 +75,9 @@ describe("Wa1500Import", () => {
 
   it("imports and reports the saved shooter", async () => {
     const { user, calls, onsaved } = setup((c) =>
-      c.path === "/api/wa1500/search" ? { body: { results: [hit] } } : { status: 201, body: { id: 5, action: "created" } },
+      c.path === "/api/wa1500/search"
+        ? { body: { results: [hit] } }
+        : { status: 201, body: { id: 5, action: "created" } },
     );
     await search(user);
     const importButton = await screen.findByRole("button", { name: "Import Mike Anderson" });
@@ -77,7 +99,9 @@ describe("Wa1500Import", () => {
     await search(user);
     await user.click(screen.getByRole("button", { name: "Import Mike Anderson" }));
     const dialog = await screen.findByRole("dialog", { name: "Name already exists" });
-    await user.click(within(dialog).getByRole("button", { name: /Update Mike Anderson · no WAID · Beta/ }));
+    await user.click(
+      within(dialog).getByRole("button", { name: /Update Mike Anderson · no WAID · Beta/ }),
+    );
     await waitFor(() => expect(onsaved).toHaveBeenCalledWith(expect.objectContaining({ id: 9 })));
     const resend = calls.filter((c) => c.path === "/api/shooters/import")[1];
     expect(resend.body).toEqual({ ...hit, update_shooter_id: 9 });
@@ -95,13 +119,20 @@ describe("Wa1500Import", () => {
     await search(user);
     await user.click(screen.getByRole("button", { name: "Import Mike Anderson" }));
     await user.click(await screen.findByRole("button", { name: "Create new shooter" }));
-    await waitFor(() => expect(calls.filter((c) => c.path === "/api/shooters/import")).toHaveLength(2));
-    expect(calls.filter((c) => c.path === "/api/shooters/import")[1].body).toEqual({ ...hit, create_new: true });
+    await waitFor(() =>
+      expect(calls.filter((c) => c.path === "/api/shooters/import")).toHaveLength(2),
+    );
+    expect(calls.filter((c) => c.path === "/api/shooters/import")[1].body).toEqual({
+      ...hit,
+      create_new: true,
+    });
   });
 
   it("falls back to manual entry when WA1500 is unavailable", async () => {
     const { user, calls, onsaved } = setup((c) =>
-      c.path === "/api/wa1500/search" ? { status: 503, body: { error: "wa1500 unavailable" } } : { status: 201, body: { id: 5 } },
+      c.path === "/api/wa1500/search"
+        ? { status: 503, body: { error: "wa1500 unavailable" } }
+        : { status: 201, body: { id: 5 } },
     );
     await search(user);
     expect((await screen.findByRole("alert")).textContent).toContain("wa1500 unavailable");

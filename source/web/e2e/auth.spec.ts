@@ -17,7 +17,10 @@ test.describe("auth", () => {
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
   });
 
-  test("repeated failures lock out one client without affecting another", async ({ page, baseURL }) => {
+  test("repeated failures lock out one client without affecting another", async ({
+    page,
+    baseURL,
+  }) => {
     await page.goto("/admin");
     for (let attempt = 0; attempt < 5; attempt++) {
       await page.getByLabel("Username").fill(adminUsername);
@@ -33,12 +36,16 @@ test.describe("auth", () => {
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
 
     const other = await newApi(baseURL!);
-    const response = await other.post("/api/admin/login", { data: { username: adminUsername, password: adminPassword } });
+    const response = await other.post("/api/admin/login", {
+      data: { username: adminUsername, password: adminPassword },
+    });
     expect(response.status()).toBe(204);
     await other.dispose();
   });
 
-  test("sign out ends the session and admin pages show the sign-in form", async ({ adminPage: page }) => {
+  test("sign out ends the session and admin pages show the sign-in form", async ({
+    adminPage: page,
+  }) => {
     expect((await page.request.get("/api/shooters")).status()).toBe(200);
 
     await page.getByRole("button", { name: "Sign out" }).click();
@@ -54,7 +61,12 @@ test.describe("auth", () => {
 
   test("unauthenticated admin API calls return 401", async ({ baseURL }) => {
     const api = await newApi(baseURL!);
-    for (const path of ["/api/admin/session", "/api/shooters", "/api/matches", "/api/admin/backup"]) {
+    for (const path of [
+      "/api/admin/session",
+      "/api/shooters",
+      "/api/matches",
+      "/api/admin/backup",
+    ]) {
       const response = await api.get(path);
       expect(response.status(), path).toBe(401);
     }
@@ -72,6 +84,8 @@ test.describe("auth", () => {
   test("the scorer page without a pairing explains how to pair", async ({ page }) => {
     await page.goto("/score");
     await expect(page.getByRole("heading", { name: "Scorer" })).toBeVisible();
-    await expect(page.getByText("Open a pairing link from the admin to score a lane.")).toBeVisible();
+    await expect(
+      page.getByText("Open a pairing link from the admin to score a lane."),
+    ).toBeVisible();
   });
 });

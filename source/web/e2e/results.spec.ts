@@ -1,9 +1,25 @@
-import { addEntry, createMatch, createShooter, expect, row, setCounts, setStatus, setVisibility, test, uniqueName } from "./helpers";
+import {
+  addEntry,
+  createMatch,
+  createShooter,
+  expect,
+  row,
+  setCounts,
+  setStatus,
+  setVisibility,
+  test,
+  uniqueName,
+} from "./helpers";
 
 test.describe("results", () => {
-  test("a finished match shows ranked results per category and links from the spectator page", async ({ page, admin }) => {
+  test("a finished match shows ranked results per category and links from the spectator page", async ({
+    page,
+    admin,
+  }) => {
     const match = await createMatch(admin, { name: uniqueName("Results") });
-    const known = await createShooter(admin, { waid: String(Math.floor(Math.random() * 9e6) + 1e6) });
+    const known = await createShooter(admin, {
+      waid: String(Math.floor(Math.random() * 9e6) + 1e6),
+    });
     const fresh = await createShooter(admin);
     const first = await addEntry(admin, match.id, known.id, 1);
     const second = await addEntry(admin, match.id, fresh.id, 2);
