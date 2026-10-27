@@ -1512,6 +1512,62 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/competitions/{competitionID}/results.zip:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadCompetitionResults
+      tags: [reports]
+      summary: A zip of the reports of every finished match of the competition, rendered on demand and never stored
+      description: |
+        With `format` xlsx, csv or pdf the zip holds one file per finished match, named by match name, date and course. With `all` it holds one folder per match with all three formats. Unfinished matches are skipped and listed in `SKIPPED.txt`. Behind the render guard and audited as a `report.download`.
+      security:
+        - adminCookie: []
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [xlsx, csv, pdf, all]
+      responses:
+        '200':
+          description: The zip archive
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Missing or unknown format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Server busy
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/matches/{matchID}/results.xlsx:
     parameters:
       - $ref: '#/components/parameters/MatchID'

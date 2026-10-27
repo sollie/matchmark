@@ -15,12 +15,16 @@ func (s *Service) PublicResultsPDF(ctx context.Context, matchID int64) (Download
 	return s.renderResultsPDF(ctx, view)
 }
 
-func (s *Service) AdminResultsPDF(ctx context.Context, matchID int64) (Download, error) {
+func (s *Service) adminResultsPDF(ctx context.Context, matchID int64) (Download, error) {
 	view, err := s.AdminResults(ctx, matchID)
 	if err != nil {
 		return Download{}, err
 	}
-	file, err := s.renderResultsPDF(ctx, view)
+	return s.renderResultsPDF(ctx, view)
+}
+
+func (s *Service) AdminResultsPDF(ctx context.Context, matchID int64) (Download, error) {
+	file, err := s.adminResultsPDF(ctx, matchID)
 	if err != nil {
 		return Download{}, err
 	}

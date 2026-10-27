@@ -69,3 +69,21 @@ func (r *Repository) MatchDateBounds(ctx context.Context, competitionID int64) (
 	}
 	return first, last, mapErr(err)
 }
+
+func (r *Repository) ListCompetitionMatches(ctx context.Context, competitionID int64) ([]Match, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches WHERE competition_id = ? ORDER BY date, id`, competitionID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []Match{}
+	for rows.Next() {
+		var m Match
+		if err := rows.Scan(&m.ID, &m.CompetitionID, &m.Name, &m.Date, &m.Course, &m.Status, &m.CurrentStage); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}

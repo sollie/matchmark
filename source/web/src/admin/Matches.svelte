@@ -16,6 +16,12 @@
 
   const sameDay = "";
   const newCompetition = "new";
+  const downloadFormats = [
+    { format: "xlsx", label: "XLSX zip", title: "Results reports (.xlsx) zip" },
+    { format: "csv", label: "CSV zip", title: "Detailed CSVs zip" },
+    { format: "pdf", label: "PDF zip", title: "Results PDFs zip" },
+    { format: "all", label: "Download all", title: "All formats zip" },
+  ];
 
   let matches = $state<Match[]>([]);
   let competitions = $state<Competition[]>([]);
@@ -116,6 +122,11 @@
       <h3>{comp.name}</h3>
       <span class="muted">{comp.start_date === comp.end_date ? comp.start_date : `${comp.start_date} – ${comp.end_date}`}</span>
       <button type="button" onclick={() => (editingCompetition = comp.id)} aria-label={`Edit competition ${comp.name}`}>Edit</button>
+      {#if inComp.length > 0}
+        {#each downloadFormats as f (f.format)}
+          <a class="button" href={`/api/competitions/${comp.id}/results.zip?format=${f.format}`} download title={f.title} aria-label={`${f.title} for ${comp.name}`}>{f.label}</a>
+        {/each}
+      {/if}
       {#if inComp.length === 0}
         <button type="button" onclick={() => removeCompetition(comp)} aria-label={`Delete competition ${comp.name}`}>Delete</button>
       {/if}

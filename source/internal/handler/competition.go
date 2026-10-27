@@ -88,3 +88,17 @@ func (h *Handler) deleteCompetition(r *http.Request) (int, any, error) {
 	}
 	return okJSON(map[string]bool{"deleted": true})
 }
+
+func (h *Handler) competitionDownload(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	file, err := h.svc.CompetitionDownload(r.Context(), id, r.URL.Query().Get("format"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeRendered(w, "application/zip", "zip", file, true)
+}
