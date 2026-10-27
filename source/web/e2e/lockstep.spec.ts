@@ -51,7 +51,7 @@ test.describe("lockstep stages", () => {
     for (const device of [lane1, lane2]) {
       await expect(device.getByText("The next stage has started")).toBeVisible();
       await device.getByRole("button", { name: "Continue" }).click();
-      await expect(device.getByText(/Stage 2\./)).toBeVisible();
+      await expect(device.getByText(/Stage 2 · Match 1\./)).toBeVisible();
       await expect(device.getByRole("tab")).toHaveCount(0);
     }
   });
