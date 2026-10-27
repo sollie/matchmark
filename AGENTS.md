@@ -81,11 +81,10 @@ Specification and decisions:
 
 ## Rulebook Constants
 
-Never hard-code shot counts or weapon class lists outside of `source/internal/rulebook/`.
+Never hard-code shot counts outside of `source/internal/rulebook/`.
 That package is the single source of truth for:
 - Course-of-fire definitions (stages, shot counts, distances, times)
-- Allowed weapon classes per discipline
-- 5-shot revolver variant detection (`Standard Revolver 2.75" 5-Shot` → 40-shot 48-course)
+- The 40-shot 5-shot revolver course, keyed `40`
 
 ## Docker and Deployment
 
