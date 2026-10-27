@@ -268,7 +268,7 @@ func TestEntryUpdate(t *testing.T) {
 		}
 	})
 	t.Run("category not allowed for the course", func(t *testing.T) {
-		if status, _ := f.env.Do("PUT", path, map[string]any{"category": "Rifle", "lane": 5}); status != http.StatusUnprocessableEntity {
+		if status, _ := f.env.Do("PUT", path, map[string]any{"category": "Carbine", "lane": 5}); status != http.StatusUnprocessableEntity {
 			t.Fatalf("status %d", status)
 		}
 	})
