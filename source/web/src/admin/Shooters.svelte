@@ -28,6 +28,12 @@
     else error = failure(result);
   }
 
+  function onenter(e: KeyboardEvent) {
+    if (e.key !== "Enter") return;
+    clearTimeout(timer);
+    load();
+  }
+
   function onsearch() {
     clearTimeout(timer);
     timer = setTimeout(load, 250);
@@ -83,14 +89,14 @@
 {#if notice}<p role="status">{notice}</p>{/if}
 
 <div class="row">
-  <label>Search shooters <input type="search" bind:value={query} oninput={onsearch} placeholder="Name or WAID" /></label>
+  <label>Search shooters <input type="search" bind:value={query} oninput={onsearch} onkeydown={onenter} placeholder="Name or WAID" /></label>
   <button type="button" class="secondary" aria-expanded={importing} onclick={() => (importing = !importing)}>
     Import from WA1500
   </button>
 </div>
 
 {#if importing}
-  <Wa1500Import query={query} onsaved={imported} oncancel={() => (importing = false)} />
+  <Wa1500Import onsaved={imported} oncancel={() => (importing = false)} />
 {/if}
 
 <form class="row card" onsubmit={save}>
