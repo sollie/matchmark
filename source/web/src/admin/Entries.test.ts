@@ -15,7 +15,7 @@ const shooters = [
 
 const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
   id: 1,
-  competition_id: 5,
+  match_id: 5,
   shooter_id: 7,
   category: "Pistol",
   lane: 1,
@@ -33,7 +33,7 @@ function setup(entries: EntryWithStages[] = [entry()], courseKey = "150") {
   rulebook.courses = [course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]), course("40", ["Revolver"])];
   const calls = stubFetch();
   const reload = vi.fn(async () => {});
-  const view = render(Entries, { competitionId: 5, course: courseKey, entries, shooters, reload });
+  const view = render(Entries, { matchId: 5, course: courseKey, entries, shooters, reload });
   return { calls, reload, view, user: userEvent.setup() };
 }
 
@@ -93,14 +93,14 @@ describe("Entries", () => {
   it("unlocks a locked stage and reloads", async () => {
     const { calls, reload, user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 stage 1: Unlock" }));
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/competitions/5/entries/1/stages/1/unlock"]);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/matches/5/entries/1/stages/1/unlock"]);
     expect(reload).toHaveBeenCalledOnce();
   });
 
   it("locks an open stage", async () => {
     const { calls, user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Lock" }));
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/competitions/5/entries/1/stages/2/lock"]);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/matches/5/entries/1/stages/2/lock"]);
   });
 
   it("overwrites counts and locks the stage when asked", async () => {
@@ -111,8 +111,8 @@ describe("Entries", () => {
     await user.type(x, "30");
     await user.click(screen.getByRole("button", { name: "Save and lock" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
-      "PUT /api/competitions/5/entries/1/stages/2",
-      "POST /api/competitions/5/entries/1/stages/2/lock",
+      "PUT /api/matches/5/entries/1/stages/2",
+      "POST /api/matches/5/entries/1/stages/2/lock",
     ]);
     expect(calls[0].body).toEqual({ x: 30, 10: 0, 9: 0, 8: 0, 7: 0, 0: 0, miss: 0 });
   });
@@ -133,12 +133,12 @@ describe("Entries", () => {
     const { calls, user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Edit" }));
     await user.click(screen.getByRole("button", { name: "Save counts" }));
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["PUT /api/competitions/5/entries/1/stages/2"]);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["PUT /api/matches/5/entries/1/stages/2"]);
   });
 
   it.each([
-    ["Withdraw", "POST", "/api/competitions/5/entries/1/withdraw"],
-    ["Remove", "DELETE", "/api/competitions/5/entries/1"],
+    ["Withdraw", "POST", "/api/matches/5/entries/1/withdraw"],
+    ["Remove", "DELETE", "/api/matches/5/entries/1"],
   ])("asks before %s and only sends when confirmed", async (label, method, path) => {
     const { calls, user } = setup();
     const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
@@ -165,7 +165,7 @@ describe("Entries awaiting acceptance", () => {
     const { calls, reload, user } = setup([awaiting()]);
     expect(screen.getByText("Awaiting acceptance")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Lane 1 stage 1: Accept" }));
-    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/competitions/5/entries/1/stages/1/accept"]);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/matches/5/entries/1/stages/1/accept"]);
     expect(reload).toHaveBeenCalledOnce();
   });
 
@@ -183,7 +183,7 @@ describe("Entries awaiting acceptance", () => {
       if (c.path === "/api/shooters/11") return { body: imported };
       return { status: 201, body: {} };
     });
-    render(Entries, { competitionId: 5, course: "150", entries: [], shooters, reload: vi.fn(async () => {}) });
+    render(Entries, { matchId: 5, course: "150", entries: [], shooters, reload: vi.fn(async () => {}) });
     const user = userEvent.setup();
     await user.type(screen.getByRole("combobox", { name: "Shooter" }), "ande");
     await user.click(await screen.findByRole("option", { name: "Search WA1500 / add new" }));
@@ -194,7 +194,7 @@ describe("Entries awaiting acceptance", () => {
     await waitFor(() => expect((screen.getByRole("combobox", { name: "Shooter" }) as HTMLInputElement).value).toBe("Mike Anderson"));
     expect(screen.queryByRole("textbox", { name: "Search WA1500" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Add entry" }));
-    const post = calls.find((c) => c.method === "POST" && c.path === "/api/competitions/5/entries");
+    const post = calls.find((c) => c.method === "POST" && c.path === "/api/matches/5/entries");
     expect(post?.body).toMatchObject({ shooter_id: 11 });
   });
 });

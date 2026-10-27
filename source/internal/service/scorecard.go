@@ -20,15 +20,15 @@ type ScorecardSummary struct {
 	Scorers []ScorecardScorer `json:"scorers"`
 }
 
-func (s *Service) loadScorecard(ctx context.Context, competitionID int64, lane int) (report.ScorecardData, error) {
-	data, err := s.loadReport(ctx, competitionID)
+func (s *Service) loadScorecard(ctx context.Context, matchID int64, lane int) (report.ScorecardData, error) {
+	data, err := s.loadReport(ctx, matchID)
 	if err != nil {
 		return report.ScorecardData{}, err
 	}
-	if data.Competition.Status != string(StatusFinished) {
+	if data.Match.Status != string(StatusFinished) {
 		return report.ScorecardData{}, ErrNotFound
 	}
-	card := report.ScorecardData{Competition: data.Competition}
+	card := report.ScorecardData{Match: data.Match}
 	found := false
 	for _, e := range data.Entries {
 		if e.Lane == lane && !e.Withdrawn {
@@ -40,14 +40,14 @@ func (s *Service) loadScorecard(ctx context.Context, competitionID int64, lane i
 	if !found {
 		return report.ScorecardData{}, ErrNotFound
 	}
-	if card.Course, err = rulebook.CourseByKey(data.Competition.Course); err != nil {
+	if card.Course, err = rulebook.CourseByKey(data.Match.Course); err != nil {
 		return report.ScorecardData{}, err
 	}
 	return card, nil
 }
 
-func (s *Service) ScorecardSummary(ctx context.Context, competitionID int64, lane int) (ScorecardSummary, error) {
-	card, err := s.loadScorecard(ctx, competitionID, lane)
+func (s *Service) ScorecardSummary(ctx context.Context, matchID int64, lane int) (ScorecardSummary, error) {
+	card, err := s.loadScorecard(ctx, matchID, lane)
 	if err != nil {
 		return ScorecardSummary{}, err
 	}
@@ -61,8 +61,8 @@ func (s *Service) ScorecardSummary(ctx context.Context, competitionID int64, lan
 	return summary, nil
 }
 
-func (s *Service) ScorecardPNG(ctx context.Context, competitionID int64, lane int) (Download, error) {
-	card, err := s.loadScorecard(ctx, competitionID, lane)
+func (s *Service) ScorecardPNG(ctx context.Context, matchID int64, lane int) (Download, error) {
+	card, err := s.loadScorecard(ctx, matchID, lane)
 	if err != nil {
 		return Download{}, err
 	}
@@ -75,6 +75,6 @@ func (s *Service) ScorecardPNG(ctx context.Context, competitionID int64, lane in
 	if err != nil {
 		return Download{}, err
 	}
-	base := fmt.Sprintf("%s-lane-%d", downloadBaseName(card.Competition.Name, card.Competition.Date), lane)
+	base := fmt.Sprintf("%s-lane-%d", downloadBaseName(card.Match.Name, card.Match.Date), lane)
 	return Download{BaseName: base, Data: png}, nil
 }

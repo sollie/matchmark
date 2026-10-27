@@ -75,14 +75,14 @@ func TestBusyTimeout(t *testing.T) {
 	}
 }
 
-func TestMatchRequiresCompetition(t *testing.T) {
+func TestMatchRequiresMatch(t *testing.T) {
 	conn, err := db.Open(filepath.Join(t.TempDir(), "mm.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = conn.Close() }()
 	if _, err := conn.Exec(`INSERT INTO matches (competition_id, name, date, course) VALUES (99, 'M', '2026-10-19', '150')`); err == nil {
-		t.Fatalf("match without competition inserted")
+		t.Fatalf("match without match inserted")
 	}
 	if _, err := conn.Exec(`INSERT INTO competitions (name, start_date, end_date) VALUES ('C', '2026-10-19', '2026-10-20')`); err != nil {
 		t.Fatal(err)
@@ -91,6 +91,6 @@ func TestMatchRequiresCompetition(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := conn.Exec(`INSERT INTO competitions (name, start_date, end_date) VALUES ('C', '2026-10-20', '2026-10-19')`); err == nil {
-		t.Fatalf("inverted competition range inserted")
+		t.Fatalf("inverted match range inserted")
 	}
 }

@@ -237,20 +237,20 @@ describe("Scorer", () => {
     expect(screen.getByLabelText("X count")).toBeTruthy();
   });
 
-  it("shows a waiting screen before the competition starts", async () => {
+  it("shows a waiting screen before the match starts", async () => {
     const server = fakeStream();
     render(Scorer);
     await waitFor(() => expect(server.streams.length).toBe(1));
     server.streams[0].send("snapshot", { lane: 2, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "not_started" });
-    await screen.findByText("Waiting for the competition to start");
+    await screen.findByText("Waiting for the match to start");
     expect(screen.getByText(/paired to lane 2/)).toBeTruthy();
   });
 
-  it("drops the token and opens its own lane's scorecard when the competition finishes", async () => {
+  it("drops the token and opens its own lane's scorecard when the match finishes", async () => {
     const server = fakeStream();
     render(Scorer);
     await waitFor(() => expect(server.streams.length).toBe(1));
-    server.streams[0].send("snapshot", { competition_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" });
+    server.streams[0].send("snapshot", { match_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" });
     await waitFor(() => expect(window.location.pathname).toBe("/scorecard/7/3"));
     expect(localStorage.getItem("mm_device_token")).toBeNull();
   });
@@ -274,12 +274,12 @@ describe("Scorer", () => {
     expect(localStorage.getItem("mm_device_token")).toBeNull();
   });
 
-  it("opens its lane's scorecard and drops the token when the device is opened after the competition finished", async () => {
+  it("opens its lane's scorecard and drops the token when the device is opened after the match finished", async () => {
     const server = fakeStream();
     server.respondStatus = 410;
     calls = stubFetch((c) =>
       c.path === "/api/scorer/session"
-        ? { body: { competition_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" } }
+        ? { body: { match_id: 7, lane: 3, score_lane: 0, current_stage: 0, entry_id: 0, shooter_name: "", stages: [], phase: "finished" } }
         : undefined,
     );
     render(Scorer);

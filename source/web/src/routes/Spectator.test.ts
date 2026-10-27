@@ -16,12 +16,12 @@ let send: ((data: unknown) => void) | null;
 
 function install(status: string) {
   const calls = stubFetch(() => ({
-    body: { competitions: [{ id: 7, name: "Club Match", date: "2026-05-01", course: "150", status }] },
+    body: { matches: [{ id: 7, name: "Club Match", date: "2026-05-01", course: "150", status }] },
   }));
   const previous = globalThis.fetch;
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const request = input instanceof Request ? input : new Request(input, init);
-    if (new URL(request.url).pathname !== "/api/spectator/competitions/7/stream") return previous(input, init);
+    if (new URL(request.url).pathname !== "/api/spectator/matches/7/stream") return previous(input, init);
     const enc = new TextEncoder();
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     const body = new ReadableStream<Uint8Array>({ start: (c) => (controller = c) });
@@ -95,12 +95,12 @@ describe("Spectator status row", () => {
     expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
   });
 
-  it("notices a competition finishing from the snapshot without reloading the list", async () => {
+  it("notices a match finishing from the snapshot without reloading the list", async () => {
     const calls = install("active");
     render(Spectator);
     await screen.findByRole("combobox");
     await waitFor(() => expect(send).not.toBeNull());
-    const loads = () => calls.filter((c) => c.path === "/api/spectator/competitions").length;
+    const loads = () => calls.filter((c) => c.path === "/api/spectator/matches").length;
     const before = loads();
     send!({ current_stage: 2, total_stages: 10, status: "active", standings: [standing(1, ["accepted"])] });
     await screen.findByRole("table");

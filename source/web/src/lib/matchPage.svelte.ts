@@ -5,46 +5,46 @@ import { navigate } from "./router.svelte";
 import { openStream, type StreamHandle, type StreamOptions } from "./sse";
 import type { components } from "./api/schema";
 
-type Competition = components["schemas"]["Competition"];
+type Match = components["schemas"]["Match"];
 type Shooter = components["schemas"]["Shooter"];
 type EntryWithStages = components["schemas"]["EntryWithStages"];
 
-export type CompetitionPageDeps = {
+export type MatchPageDeps = {
   openStream(options: StreamOptions): StreamHandle;
   navigate(path: string): void;
 };
 
-const browserDeps: CompetitionPageDeps = { openStream, navigate };
+const browserDeps: MatchPageDeps = { openStream, navigate };
 
-export class CompetitionPage {
-  competition = $state<Competition | null>(null);
+export class MatchPage {
+  match = $state<Match | null>(null);
   shooters = $state<Shooter[]>([]);
   entries = $state<EntryWithStages[]>([]);
   error = $state("");
   version = $state(0);
 
-  next = $derived(this.competition ? nextStatus[this.competition.status] : null);
+  next = $derived(this.match ? nextStatus[this.match.status] : null);
 
   #id: number;
-  #deps: CompetitionPageDeps;
+  #deps: MatchPageDeps;
 
-  constructor(id: number, deps: CompetitionPageDeps = browserDeps) {
+  constructor(id: number, deps: MatchPageDeps = browserDeps) {
     this.#id = id;
     this.#deps = deps;
   }
 
   #path() {
-    return { params: { path: { competitionID: this.#id } } };
+    return { params: { path: { matchID: this.#id } } };
   }
 
-  loadCompetition = async () => {
-    const result = await settle(api.GET("/api/competitions/{competitionID}", this.#path()));
-    if (result.ok) this.competition = result.data;
+  loadMatch = async () => {
+    const result = await settle(api.GET("/api/matches/{matchID}", this.#path()));
+    if (result.ok) this.match = result.data;
     else this.error = result.error;
   };
 
   loadEntries = async () => {
-    const result = await settle(api.GET("/api/competitions/{competitionID}/entries", this.#path()));
+    const result = await settle(api.GET("/api/matches/{matchID}/entries", this.#path()));
     if (result.ok) this.entries = result.data.entries;
     else this.error = result.error;
   };
@@ -56,19 +56,19 @@ export class CompetitionPage {
   };
 
   refresh = async () => {
-    await this.loadCompetition();
+    await this.loadMatch();
     await this.loadEntries();
   };
 
   start(): () => void {
-    void this.loadCompetition();
+    void this.loadMatch();
     void this.loadShooters();
     const stream = this.#deps.openStream({
-      url: `/api/competitions/${this.#id}/stream`,
+      url: `/api/matches/${this.#id}/stream`,
       onEvent: (event) => {
         if (event === "changed") {
           void this.loadEntries();
-          void this.loadCompetition();
+          void this.loadMatch();
           this.version += 1;
         }
       },
@@ -76,24 +76,24 @@ export class CompetitionPage {
     return () => stream.close();
   }
 
-  saved(updated: Competition) {
-    this.competition = updated;
+  saved(updated: Match) {
+    this.match = updated;
   }
 
   async advance() {
-    const current = this.competition;
+    const current = this.match;
     const next = this.next;
     if (!current || !next) return;
     this.error = "";
     const result = await settle(
-      api.POST("/api/competitions/{competitionID}/status", { ...this.#path(), body: { status: next } }),
+      api.POST("/api/matches/{matchID}/status", { ...this.#path(), body: { status: next } }),
     );
-    if (result.ok) this.competition = { ...current, status: result.data.status };
+    if (result.ok) this.match = { ...current, status: result.data.status };
     else this.error = result.error;
   }
 
   async remove() {
-    const result = await settle(api.DELETE("/api/competitions/{competitionID}", this.#path()));
+    const result = await settle(api.DELETE("/api/matches/{matchID}", this.#path()));
     if (result.ok) this.#deps.navigate("/admin");
     else this.error = result.error;
   }

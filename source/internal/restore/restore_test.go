@@ -36,8 +36,9 @@ func (l line) String() string {
 	if l.status == "" {
 		l.status = StatusAccepted
 	}
-	return fmt.Sprintf(`{"time":"x","level":"INFO","msg":"stage_status","schema_version":2,"event":"stage_status","status":"%s","emitted_at":"%s","seq":%d,`+
-		`"competition":{"id":7,"name":"%s","date":"2026-10-19","course_of_fire":{"key":"150","discipline":"WA1500","total_shots":60}},`+
+	return fmt.Sprintf(`{"time":"x","level":"INFO","msg":"stage_status","schema_version":3,"event":"stage_status","status":"%s","emitted_at":"%s","seq":%d,`+
+		`"competition":{"id":3,"name":"Nationals"},`+
+		`"match":{"id":7,"name":"%s","date":"2026-10-19","course_of_fire":{"key":"150","discipline":"WA1500","total_shots":60}},`+
 		`"entry":{"id":%d,"lane":2,"category":"%s","shooter":{"waid":"W1","first_name":"Ann","last_name":"Lee","club":"SK"}},`+
 		`"stage":{"number":%d,"expected_shots":10},"ring_counts":%s,"locked_by":"bob","scorer_name":"bob","locked_at":"2026-10-19T10:00:00Z"}`,
 		l.status, l.emittedAt, l.seq, l.compName, l.entryID, l.category, l.stage, l.counts)
@@ -60,7 +61,7 @@ func TestParseSkipsNonScoreAndMalformedLines(t *testing.T) {
 	input := strings.Join([]string{
 		`{"msg":"request","method":"GET"}`,
 		"not json at all",
-		`{"msg":"stage_status","schema_version":2,"event":"stage_status","status":"accepted","ring_counts":[1]}`,
+		`{"msg":"stage_status","schema_version":3,"event":"stage_status","status":"accepted","ring_counts":[1]}`,
 		"",
 		lockedAt("01", 1).String(),
 	}, "\n")
@@ -68,15 +69,22 @@ func TestParseSkipsNonScoreAndMalformedLines(t *testing.T) {
 	if stats.Lines != 4 || stats.Events != 1 || stats.NonScore != 1 || stats.Malformed != 2 {
 		t.Fatalf("stats = %+v", stats)
 	}
-	if len(plan.Competitions) != 1 {
+	if len(plan.Matches) != 1 {
 		t.Fatalf("plan = %+v", plan)
 	}
 }
 
 func TestParseRejectsUnknownSchemaVersion(t *testing.T) {
-	bad := strings.Replace(lockedAt("01", 1).String(), `"schema_version":2`, `"schema_version":3`, 1)
+	bad := strings.Replace(lockedAt("01", 1).String(), `"schema_version":3`, `"schema_version":4`, 1)
 	_, _, err := Parse(strings.NewReader(bad))
-	if err == nil || !strings.Contains(err.Error(), "schema_version 3") {
+	if err == nil || !strings.Contains(err.Error(), "schema_version 4") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestParseRejectsVersionTwoLines(t *testing.T) {
+	bad := strings.Replace(lockedAt("01", 1).String(), `"schema_version":3`, `"schema_version":2`, 1)
+	if _, _, err := Parse(strings.NewReader(bad)); err == nil || !strings.Contains(err.Error(), "schema_version 2") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -92,7 +100,7 @@ func TestFoldKeepsOpenStageWithCounts(t *testing.T) {
 	open := lockedAt("06", 2)
 	open.status = StatusOpen
 	plan, _ := run(t, lockedAt("05", 1).String()+"\n"+open.String())
-	stages := plan.Competitions[0].Entries[0].Stages
+	stages := plan.Matches[0].Entries[0].Stages
 	if len(stages) != 1 || stages[0].Status != StatusOpen || stages[0].RingCounts != [7]int{1, 2, 3, 4, 0, 0, 0} {
 		t.Fatalf("stages = %+v", stages)
 	}
@@ -113,7 +121,7 @@ func TestFoldLastLineWinsByEmittedAtThenSeq(t *testing.T) {
 	c := lockedAt("04", 99)
 	c.counts = "[0,10,0,0,0,0,0]"
 	plan, _ := run(t, strings.Join([]string{b.String(), c.String(), a.String()}, "\n"))
-	stages := plan.Competitions[0].Entries[0].Stages
+	stages := plan.Matches[0].Entries[0].Stages
 	if len(stages) != 1 || stages[0].RingCounts != [7]int{10, 0, 0, 0, 0, 0, 0} {
 		t.Fatalf("stages = %+v", stages)
 	}
@@ -123,7 +131,7 @@ func TestFoldFinalOpenLineWins(t *testing.T) {
 	unlock := lockedAt("06", 2)
 	unlock.status = StatusOpen
 	plan, _ := run(t, lockedAt("05", 1).String()+"\n"+unlock.String())
-	if got := plan.Competitions[0].Entries[0].Stages[0].Status; got != StatusOpen {
+	if got := plan.Matches[0].Entries[0].Stages[0].Status; got != StatusOpen {
 		t.Fatalf("status = %q", got)
 	}
 }
@@ -133,7 +141,7 @@ func TestFoldRelockAfterUnlockIsAccepted(t *testing.T) {
 	unlock.status = StatusOpen
 	relock := lockedAt("07", 3)
 	plan, _ := run(t, lockedAt("05", 1).String()+"\n"+unlock.String()+"\n"+relock.String())
-	if got := plan.Competitions[0].Entries[0].Stages[0].Status; got != StatusAccepted {
+	if got := plan.Matches[0].Entries[0].Stages[0].Status; got != StatusAccepted {
 		t.Fatalf("status = %q", got)
 	}
 }
@@ -146,7 +154,7 @@ func TestFoldContextComesFromLatestLine(t *testing.T) {
 	newer.compName = "Renamed"
 	newer.category = "Veteran"
 	plan, _ := run(t, old.String()+"\n"+newer.String())
-	comp := plan.Competitions[0]
+	comp := plan.Matches[0]
 	entry := comp.Entries[0]
 	if comp.Name != "Renamed" || entry.Category != "Veteran" || len(entry.Stages) != 2 {
 		t.Fatalf("plan = %+v", plan)
@@ -156,8 +164,7 @@ func TestFoldContextComesFromLatestLine(t *testing.T) {
 	}
 }
 
-
-func TestSummaryListsCompetitionsEntriesAndStages(t *testing.T) {
+func TestSummaryListsMatchesEntriesAndStages(t *testing.T) {
 	plan, stats := run(t, lockedAt("05", 1).String()+"\nnot json")
 	var b strings.Builder
 	WriteSummary(&b, plan, stats)

@@ -28,8 +28,8 @@
       <h1>Scorer</h1>
       <p class="muted">This device is paired to lane {scorer.session.lane}.</p>
       <section class="card" aria-label="Not started">
-        <h2>Waiting for the competition to start</h2>
-        <p class="banner">This device is paired. Scoring begins when the admin starts the competition.</p>
+        <h2>Waiting for the match to start</h2>
+        <p class="banner">This device is paired. Scoring begins when the admin starts the match.</p>
       </section>
     {:else}
     <h1>Scoring lane {scorer.session.score_lane}: {scorer.session.shooter_name}</h1>

@@ -17,45 +17,45 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/shooters/{shooterID}", serve(h.getShooter))
 	r.Put("/shooters/{shooterID}", serve(h.updateShooter))
 	r.Delete("/shooters/{shooterID}", serve(h.deleteShooter))
-	r.Post("/competitions", serve(h.createCompetition))
-	r.Get("/competitions", serve(h.listCompetitions))
-	r.Get("/competitions/{competitionID}", serve(h.getCompetition))
-	r.Put("/competitions/{competitionID}", serve(h.updateCompetition))
-	r.Delete("/competitions/{competitionID}", serve(h.deleteCompetition))
-	r.Post("/competitions/{competitionID}/status", serve(h.setCompetitionStatus))
-	r.Post("/competitions/{competitionID}/next-stage", serve(h.startNextStage))
-	r.Get("/competitions/{competitionID}/control-room", serve(h.controlRoom))
-	r.Post("/competitions/{competitionID}/accept-all", serve(h.acceptAll))
-	r.Get("/competitions/{competitionID}/stage-events", serve(h.stageEvents))
-	r.Get("/competitions/{competitionID}/entries", serve(h.listEntries))
-	r.Post("/competitions/{competitionID}/entries", serve(h.addEntry))
-	r.Put("/competitions/{competitionID}/entries/{entryID}", serve(h.updateEntry))
-	r.Delete("/competitions/{competitionID}/entries/{entryID}", serve(h.deleteEntry))
-	r.Post("/competitions/{competitionID}/entries/{entryID}/withdraw", serve(h.withdrawEntry))
-	r.Get("/competitions/{competitionID}/lanes/{lane}/score-lane", serve(h.scoreLane))
-	r.Put("/competitions/{competitionID}/entries/{entryID}/stages/{stage}", serve(h.setRingCounts))
-	r.Get("/competitions/{competitionID}/results.xlsx", h.resultsWorkbook)
-	r.Get("/competitions/{competitionID}/results.csv", h.resultsCSV)
-	r.With(h.render.MiddlewareUncoalesced(ResourceByPath)).Get("/admin/competitions/{competitionID}/results", h.adminResultsPDF)
-	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock", serve(h.lockStage))
-	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept", serve(h.acceptStage))
-	r.Post("/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock", serve(h.unlockStage))
-	r.Post("/competitions/{competitionID}/pairings", serve(h.createPairing))
-	r.Get("/competitions/{competitionID}/pairings", serve(h.listPairings))
-	r.Delete("/competitions/{competitionID}/pairings/{pairingID}", serve(h.revokePairing))
-	r.Get("/competitions/{competitionID}/stream", h.adminStream)
+	r.Post("/matches", serve(h.createMatch))
+	r.Get("/matches", serve(h.listMatches))
+	r.Get("/matches/{matchID}", serve(h.getMatch))
+	r.Put("/matches/{matchID}", serve(h.updateMatch))
+	r.Delete("/matches/{matchID}", serve(h.deleteMatch))
+	r.Post("/matches/{matchID}/status", serve(h.setMatchStatus))
+	r.Post("/matches/{matchID}/next-stage", serve(h.startNextStage))
+	r.Get("/matches/{matchID}/control-room", serve(h.controlRoom))
+	r.Post("/matches/{matchID}/accept-all", serve(h.acceptAll))
+	r.Get("/matches/{matchID}/stage-events", serve(h.stageEvents))
+	r.Get("/matches/{matchID}/entries", serve(h.listEntries))
+	r.Post("/matches/{matchID}/entries", serve(h.addEntry))
+	r.Put("/matches/{matchID}/entries/{entryID}", serve(h.updateEntry))
+	r.Delete("/matches/{matchID}/entries/{entryID}", serve(h.deleteEntry))
+	r.Post("/matches/{matchID}/entries/{entryID}/withdraw", serve(h.withdrawEntry))
+	r.Get("/matches/{matchID}/lanes/{lane}/score-lane", serve(h.scoreLane))
+	r.Put("/matches/{matchID}/entries/{entryID}/stages/{stage}", serve(h.setRingCounts))
+	r.Get("/matches/{matchID}/results.xlsx", h.resultsWorkbook)
+	r.Get("/matches/{matchID}/results.csv", h.resultsCSV)
+	r.With(h.render.MiddlewareUncoalesced(ResourceByPath)).Get("/admin/matches/{matchID}/results", h.adminResultsPDF)
+	r.Post("/matches/{matchID}/entries/{entryID}/stages/{stage}/lock", serve(h.lockStage))
+	r.Post("/matches/{matchID}/entries/{entryID}/stages/{stage}/accept", serve(h.acceptStage))
+	r.Post("/matches/{matchID}/entries/{entryID}/stages/{stage}/unlock", serve(h.unlockStage))
+	r.Post("/matches/{matchID}/pairings", serve(h.createPairing))
+	r.Get("/matches/{matchID}/pairings", serve(h.listPairings))
+	r.Delete("/matches/{matchID}/pairings/{pairingID}", serve(h.revokePairing))
+	r.Get("/matches/{matchID}/stream", h.adminStream)
 }
 
-type competitionBody struct {
+type matchBody struct {
 	Name   string `json:"name"`
 	Date   string `json:"date"`
 	Course string `json:"course"`
 }
 
-func competitionsJSON(comps []repository.Competition) []map[string]any {
+func matchesJSON(comps []repository.Match) []map[string]any {
 	out := make([]map[string]any, 0, len(comps))
 	for _, c := range comps {
-		out = append(out, competitionJSON(c))
+		out = append(out, matchJSON(c))
 	}
 	return out
 }
@@ -80,13 +80,13 @@ func shooterJSON(s repository.Shooter) map[string]any {
 	}
 }
 
-func competitionJSON(c repository.Competition) map[string]any {
+func matchJSON(c repository.Match) map[string]any {
 	return map[string]any{"id": c.ID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_stage": c.CurrentStage}
 }
 
 func entryJSON(e repository.Entry) map[string]any {
 	return map[string]any{
-		"id": e.ID, "competition_id": e.CompetitionID, "shooter_id": e.ShooterID,
+		"id": e.ID, "match_id": e.MatchID, "shooter_id": e.ShooterID,
 		"category": e.Category, "lane": e.Lane, "withdrawn": e.Withdrawn,
 	}
 }
@@ -147,60 +147,60 @@ func (h *Handler) deleteShooter(r *http.Request) (int, any, error) {
 	return okJSON(map[string]bool{"deleted": true})
 }
 
-func (h *Handler) listCompetitions(r *http.Request) (int, any, error) {
-	comps, err := h.repo.ListCompetitions(r.Context())
+func (h *Handler) listMatches(r *http.Request) (int, any, error) {
+	comps, err := h.repo.ListMatches(r.Context())
 	if err != nil {
 		return fail(err)
 	}
-	return okJSON(map[string]any{"competitions": competitionsJSON(comps)})
+	return okJSON(map[string]any{"matches": matchesJSON(comps)})
 }
 
-func (h *Handler) getCompetition(r *http.Request) (int, any, error) {
+func (h *Handler) getMatch(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
-	c, err := h.repo.GetCompetition(r.Context(), id)
+	c, err := h.repo.GetMatch(r.Context(), id)
 	if err != nil {
 		return fail(err)
 	}
-	return okJSON(competitionJSON(c))
+	return okJSON(matchJSON(c))
 }
 
-func (h *Handler) updateCompetition(r *http.Request) (int, any, error) {
+func (h *Handler) updateMatch(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
-	var body competitionBody
+	id := req.path("matchID")
+	var body matchBody
 	req.body(&body)
 	if req.err != nil {
 		return fail(req.err)
 	}
-	if err := h.svc.UpdateCompetition(r.Context(), repository.Competition{ID: id, Name: body.Name, Date: body.Date, Course: body.Course}); err != nil {
+	if err := h.svc.UpdateMatch(r.Context(), repository.Match{ID: id, Name: body.Name, Date: body.Date, Course: body.Course}); err != nil {
 		return fail(err)
 	}
-	c, err := h.repo.GetCompetition(r.Context(), id)
+	c, err := h.repo.GetMatch(r.Context(), id)
 	if err != nil {
 		return fail(err)
 	}
-	return okJSON(competitionJSON(c))
+	return okJSON(matchJSON(c))
 }
 
-func (h *Handler) deleteCompetition(r *http.Request) (int, any, error) {
+func (h *Handler) deleteMatch(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
-	if err := h.svc.DeleteCompetition(r.Context(), id); err != nil {
+	if err := h.svc.DeleteMatch(r.Context(), id); err != nil {
 		return fail(err)
 	}
 	return okJSON(map[string]bool{"deleted": true})
 }
 
-func (h *Handler) setCompetitionStatus(r *http.Request) (int, any, error) {
+func (h *Handler) setMatchStatus(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	var body struct {
 		Status string `json:"status"`
 	}
@@ -208,7 +208,7 @@ func (h *Handler) setCompetitionStatus(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	if err := h.svc.SetCompetitionStatus(r.Context(), id, service.CompetitionStatus(body.Status)); err != nil {
+	if err := h.svc.SetMatchStatus(r.Context(), id, service.MatchStatus(body.Status)); err != nil {
 		return fail(err)
 	}
 	return okJSON(map[string]string{"status": body.Status})
@@ -216,7 +216,7 @@ func (h *Handler) setCompetitionStatus(r *http.Request) (int, any, error) {
 
 func (h *Handler) startNextStage(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -229,7 +229,7 @@ func (h *Handler) startNextStage(r *http.Request) (int, any, error) {
 
 func (h *Handler) listEntries(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -252,7 +252,7 @@ func (h *Handler) listEntries(r *http.Request) (int, any, error) {
 
 func (h *Handler) updateEntry(r *http.Request) (int, any, error) {
 	req := in(r)
-	compID, entryID := req.path("competitionID"), req.path("entryID")
+	compID, entryID := req.path("matchID"), req.path("entryID")
 	var body struct {
 		Category string `json:"category"`
 		Lane     int    `json:"lane"`
@@ -270,7 +270,7 @@ func (h *Handler) updateEntry(r *http.Request) (int, any, error) {
 
 func (h *Handler) deleteEntry(r *http.Request) (int, any, error) {
 	req := in(r)
-	compID, entryID := req.path("competitionID"), req.path("entryID")
+	compID, entryID := req.path("matchID"), req.path("entryID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -281,7 +281,7 @@ func (h *Handler) deleteEntry(r *http.Request) (int, any, error) {
 }
 
 func (h *Handler) adminStream(w http.ResponseWriter, r *http.Request) {
-	id, err := pathInt(r, "competitionID")
+	id, err := pathInt(r, "matchID")
 	if err != nil {
 		writeError(w, err)
 		return
@@ -311,7 +311,7 @@ func controlRoomJSON(room service.ControlRoom) map[string]any {
 
 func (h *Handler) controlRoom(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -324,7 +324,7 @@ func (h *Handler) controlRoom(r *http.Request) (int, any, error) {
 
 func (h *Handler) acceptAll(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
@@ -337,7 +337,7 @@ func (h *Handler) acceptAll(r *http.Request) (int, any, error) {
 
 func (h *Handler) stageEvents(r *http.Request) (int, any, error) {
 	req := in(r)
-	id := req.path("competitionID")
+	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}

@@ -327,65 +327,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions": {
+    "/api/matches": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listCompetitions"];
+        get: operations["listMatches"];
         put?: never;
-        post: operations["createCompetition"];
+        post: operations["createMatch"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}": {
+    "/api/matches/{matchID}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
-        get: operations["getCompetition"];
-        put: operations["updateCompetition"];
+        get: operations["getMatch"];
+        put: operations["updateMatch"];
         post?: never;
-        delete: operations["deleteCompetition"];
+        delete: operations["deleteMatch"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/status": {
+    "/api/matches/{matchID}/status": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
-        /** Advance the competition status (draft, active, finished) */
-        post: operations["setCompetitionStatus"];
+        /** Advance the match status (draft, active, finished) */
+        post: operations["setMatchStatus"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/next-stage": {
+    "/api/matches/{matchID}/next-stage": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -399,18 +399,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/control-room": {
+    "/api/matches/{matchID}/control-room": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
         /**
          * The current stage with one row per manned lane
-         * @description Answers 409 while the competition is a draft. connected is best-effort: it is true while the lane's device holds an open scorer stream and is never stored.
+         * @description Answers 409 while the match is a draft. connected is best-effort: it is true while the lane's device holds an open scorer stream and is never stored.
          */
         get: operations["getControlRoom"];
         put?: never;
@@ -421,12 +421,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/stage-events": {
+    "/api/matches/{matchID}/stage-events": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -443,12 +443,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/accept-all": {
+    "/api/matches/{matchID}/accept-all": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -456,7 +456,7 @@ export interface paths {
         put?: never;
         /**
          * Accept every stage of the current stage that awaits acceptance
-         * @description Answers 409 while any manned lane is still open for the current stage, or when the competition is not active. Accepting the last stage finishes the competition.
+         * @description Answers 409 while any manned lane is still open for the current stage, or when the match is not active. Accepting the last stage finishes the match.
          */
         post: operations["acceptAll"];
         delete?: never;
@@ -465,12 +465,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/visibility": {
+    "/api/matches/{matchID}/visibility": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -483,12 +483,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/entries": {
+    "/api/matches/{matchID}/entries": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -501,18 +501,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/entries/{entryID}": {
+    "/api/matches/{matchID}/entries/{entryID}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
             };
             cookie?: never;
         };
         get?: never;
-        /** @description A draft competition allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409 */
+        /** @description A draft match allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409 */
         put: operations["updateEntry"];
         post?: never;
         delete: operations["deleteEntry"];
@@ -521,12 +521,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/entries/{entryID}/withdraw": {
+    "/api/matches/{matchID}/entries/{entryID}/withdraw": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
             };
             cookie?: never;
@@ -540,12 +540,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}": {
+    "/api/matches/{matchID}/entries/{entryID}/stages/{stage}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
                 stage: components["parameters"]["Stage"];
             };
@@ -561,12 +561,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/lock": {
+    "/api/matches/{matchID}/entries/{entryID}/stages/{stage}/lock": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
                 stage: components["parameters"]["Stage"];
             };
@@ -582,12 +582,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept": {
+    "/api/matches/{matchID}/entries/{entryID}/stages/{stage}/accept": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
                 stage: components["parameters"]["Stage"];
             };
@@ -603,12 +603,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock": {
+    "/api/matches/{matchID}/entries/{entryID}/stages/{stage}/unlock": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
                 stage: components["parameters"]["Stage"];
             };
@@ -624,12 +624,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/lanes/{lane}/score-lane": {
+    "/api/matches/{matchID}/lanes/{lane}/score-lane": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 lane: number;
             };
             cookie?: never;
@@ -644,12 +644,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/pairings": {
+    "/api/matches/{matchID}/pairings": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -663,12 +663,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/pairings/{pairingID}": {
+    "/api/matches/{matchID}/pairings/{pairingID}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 pairingID: number;
             };
             cookie?: never;
@@ -682,18 +682,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/stream": {
+    "/api/matches/{matchID}/stream": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
         /**
          * Change notifications as server-sent events
-         * @description Sends a `changed` event on connect and after every change to the competition, coalesced over about 250 ms. The event carries an empty JSON object; the client refetches the entries. A `: heartbeat` comment is sent every 25 seconds and the server closes the stream after 30 minutes, so the client reconnects with backoff.
+         * @description Sends a `changed` event on connect and after every change to the match, coalesced over about 250 ms. The event carries an empty JSON object; the client refetches the entries. A `: heartbeat` comment is sent every 25 seconds and the server closes the stream after 30 minutes, so the client reconnects with backoff.
          */
         get: operations["streamAdminUpdates"];
         put?: never;
@@ -704,12 +704,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/results.xlsx": {
+    "/api/matches/{matchID}/results.xlsx": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -722,12 +722,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/results.csv": {
+    "/api/matches/{matchID}/results.csv": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -740,16 +740,16 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/competitions/{competitionID}/results": {
+    "/api/matches/{matchID}/results": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
-        /** The Results PDF of a finished competition, rendered on demand and honouring the visibility flags; public and never stored */
+        /** The Results PDF of a finished match, rendered on demand and honouring the visibility flags; public and never stored */
         get: operations["downloadPublicResultsPdf"];
         put?: never;
         post?: never;
@@ -759,12 +759,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/competitions/{competitionID}/results": {
+    "/api/admin/matches/{matchID}/results": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -778,14 +778,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scorer/scorecard/{competitionID}/{lane}": {
+    "/api/scorer/scorecard/{matchID}/{lane}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** The Scorecard copy of the entry on a lane, rendered on demand once the competition is finished; public, ignores spectator visibility flags and is never stored */
+        /** The Scorecard copy of the entry on a lane, rendered on demand once the match is finished; public, ignores spectator visibility flags and is never stored */
         get: operations["getScorecard"];
         put?: never;
         post?: never;
@@ -795,7 +795,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scorer/scorecard/{competitionID}/{lane}/summary": {
+    "/api/scorer/scorecard/{matchID}/{lane}/summary": {
         parameters: {
             query?: never;
             header?: never;
@@ -838,7 +838,7 @@ export interface paths {
         };
         /**
          * The paired device's session as server-sent events
-         * @description Sends a `snapshot` event with the ScorerSession on connect and again after every change in the competition, coalesced over about 250 ms. When the pairing is revoked, a terminal `revoked` event with an empty JSON object is sent and the stream ends. When the competition finishes, a final `snapshot` with phase `finished` is sent and the stream ends. In both cases the client must forget its token and not reconnect; connecting with the token of a finished competition answers 410. A `: heartbeat` comment is sent every 25 seconds and the server closes the stream after 30 minutes. The device token is sent in the Authorization header, so the client uses fetch instead of EventSource. Writes are always applied to the score lane the server derives at write time, so a client with a stale score lane cannot write to another lane's entry.
+         * @description Sends a `snapshot` event with the ScorerSession on connect and again after every change in the match, coalesced over about 250 ms. When the pairing is revoked, a terminal `revoked` event with an empty JSON object is sent and the stream ends. When the match finishes, a final `snapshot` with phase `finished` is sent and the stream ends. In both cases the client must forget its token and not reconnect; connecting with the token of a finished match answers 410. A `: heartbeat` comment is sent every 25 seconds and the server closes the stream after 30 minutes. The device token is sent in the Authorization header, so the client uses fetch instead of EventSource. Writes are always applied to the score lane the server derives at write time, so a client with a stale score lane cannot write to another lane's entry.
          */
         get: operations["streamScorerSession"];
         put?: never;
@@ -964,15 +964,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/spectator/competitions": {
+    "/api/spectator/matches": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Competitions that are not drafts */
-        get: operations["listSpectatorCompetitions"];
+        /** Matches that are not drafts */
+        get: operations["listSpectatorMatches"];
         put?: never;
         post?: never;
         delete?: never;
@@ -981,16 +981,16 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/spectator/competitions/{competitionID}/standings": {
+    "/api/spectator/matches/{matchID}/standings": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
-        /** Standings filtered by the competition's visibility flags */
+        /** Standings filtered by the match's visibility flags */
         get: operations["getSpectatorStandings"];
         put?: never;
         post?: never;
@@ -1000,18 +1000,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/spectator/competitions/{competitionID}/results": {
+    "/api/spectator/matches/{matchID}/results": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
         /**
-         * Printable results of a finished competition, filtered by the visibility flags
-         * @description Ranked per category by total then X count; entries tie only when both are equal and withdrawn entries are left out. Hidden names also hide WAID and the new shooters list; hidden stage scores omit `score`; hidden ring counts omit `x_count`. Answers 404 unless the competition is finished.
+         * Printable results of a finished match, filtered by the visibility flags
+         * @description Ranked per category by total then X count; entries tie only when both are equal and withdrawn entries are left out. Hidden names also hide WAID and the new shooters list; hidden stage scores omit `score`; hidden ring counts omit `x_count`. Answers 404 unless the match is finished.
          */
         get: operations["getSpectatorResults"];
         put?: never;
@@ -1022,12 +1022,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/spectator/competitions/{competitionID}/stream": {
+    "/api/spectator/matches/{matchID}/stream": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -1147,7 +1147,7 @@ export interface components {
             password: string;
         };
         /** @enum {string} */
-        CompetitionStatus: "draft" | "active" | "finished";
+        MatchStatus: "draft" | "active" | "finished";
         Shooter: {
             /** Format: int64 */
             id: number;
@@ -1183,20 +1183,20 @@ export interface components {
             club: string;
             waid: string;
         };
-        CompetitionInput: {
+        MatchInput: {
             name: string;
             /** @description ISO 8601 calendar date, YYYY-MM-DD */
             date: string;
             /** @description Course of fire key from the rulebook */
             course: string;
         };
-        Competition: {
+        Match: {
             /** Format: int64 */
             id: number;
-            status: components["schemas"]["CompetitionStatus"];
-            /** @description Stage the competition is on. Stage 1 at activation; moved only by starting the next stage */
+            status: components["schemas"]["MatchStatus"];
+            /** @description Stage the match is on. Stage 1 at activation; moved only by starting the next stage */
             current_stage: number;
-        } & components["schemas"]["CompetitionInput"];
+        } & components["schemas"]["MatchInput"];
         Visibility: {
             show_names: boolean;
             show_clubs: boolean;
@@ -1208,7 +1208,7 @@ export interface components {
             /** Format: int64 */
             id: number;
             /** Format: int64 */
-            competition_id: number;
+            match_id: number;
             /** Format: int64 */
             shooter_id: number;
             category: string;
@@ -1255,10 +1255,10 @@ export interface components {
         };
         ScorerSession: {
             /** Format: int64 */
-            competition_id: number;
+            match_id: number;
             lane: number;
             score_lane: number;
-            /** @description The competition's current stage; devices can score only this stage. Zero in the finished phase */
+            /** @description The match's current stage; devices can score only this stage. Zero in the finished phase */
             current_stage: number;
             /** Format: int64 */
             entry_id: number;
@@ -1271,7 +1271,7 @@ export interface components {
                 disputed: boolean;
             })[];
             /**
-             * @description Derived by the server from the current stage. not_started while the competition is a draft (the device is paired but shows only its lane; the other fields are empty); scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the competition is finished (the other fields are then empty and the pairing is revoked)
+             * @description Derived by the server from the current stage. not_started while the match is a draft (the device is paired but shows only its lane; the other fields are empty); scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the match is finished (the other fields are then empty and the pairing is revoked)
              * @enum {string}
              */
             phase: "not_started" | "scoring" | "waiting" | "needs_acceptance" | "next_stage" | "finished";
@@ -1299,7 +1299,7 @@ export interface components {
             status: components["schemas"]["StageStatus"];
             /** @description The stage is open again after a dispute */
             disputed: boolean;
-            /** @description Disputes across all stages of the competition */
+            /** @description Disputes across all stages of the match */
             disputes: number;
             paired: boolean;
             /** @description Best-effort, from open scorer streams */
@@ -1361,7 +1361,7 @@ export interface components {
             stages?: components["schemas"]["StageScore"][];
         };
         Results: {
-            competition: {
+            match: {
                 /** Format: int64 */
                 id: number;
                 name: string;
@@ -1412,13 +1412,13 @@ export interface components {
         SpectatorStageState: "not_started" | "in_progress" | "awaiting_acceptance" | "accepted";
         SpectatorSnapshot: {
             /**
-             * @description The competition's status, so a viewer notices when it finishes without reloading the list
+             * @description The match's status, so a viewer notices when it finishes without reloading the list
              * @enum {string}
              */
             status: "draft" | "active" | "finished";
-            /** @description The competition's current stage number */
+            /** @description The match's current stage number */
             current_stage: number;
-            /** @description Number of stages in the competition's course of fire */
+            /** @description Number of stages in the match's course of fire */
             total_stages: number;
             standings: components["schemas"]["Standing"][];
         };
@@ -1483,7 +1483,7 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Single-lane competitions require admin scoring */
+        /** @description Single-lane matches require admin scoring */
         AdminScoringRequired: {
             headers: {
                 [name: string]: unknown;
@@ -1503,7 +1503,7 @@ export interface components {
         };
     };
     parameters: {
-        CompetitionID: number;
+        MatchID: number;
         UserID: number;
         ShooterID: number;
         EntryID: number;
@@ -2296,7 +2296,7 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
-    listCompetitions: {
+    listMatches: {
         parameters: {
             query?: never;
             header?: never;
@@ -2305,21 +2305,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description All competitions */
+            /** @description All matches */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        competitions: components["schemas"]["Competition"][];
+                        matches: components["schemas"]["Match"][];
                     };
                 };
             };
             401: components["responses"]["Unauthorized"];
         };
     };
-    createCompetition: {
+    createMatch: {
         parameters: {
             query?: never;
             header?: never;
@@ -2328,7 +2328,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CompetitionInput"];
+                "application/json": components["schemas"]["MatchInput"];
             };
         };
         responses: {
@@ -2337,52 +2337,52 @@ export interface operations {
             422: components["responses"]["Invalid"];
         };
     };
-    getCompetition: {
+    getMatch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The competition */
+            /** @description The match */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Competition"];
+                    "application/json": components["schemas"]["Match"];
                 };
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
         };
     };
-    updateCompetition: {
+    updateMatch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CompetitionInput"];
+                "application/json": components["schemas"]["MatchInput"];
             };
         };
         responses: {
-            /** @description The updated competition */
+            /** @description The updated match */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Competition"];
+                    "application/json": components["schemas"]["Match"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -2391,12 +2391,12 @@ export interface operations {
             422: components["responses"]["Invalid"];
         };
     };
-    deleteCompetition: {
+    deleteMatch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2408,19 +2408,19 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
-    setCompetitionStatus: {
+    setMatchStatus: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
-                    status: components["schemas"]["CompetitionStatus"];
+                    status: components["schemas"]["MatchStatus"];
                 };
             };
         };
@@ -2432,7 +2432,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        status: components["schemas"]["CompetitionStatus"];
+                        status: components["schemas"]["MatchStatus"];
                     };
                 };
             };
@@ -2447,7 +2447,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2474,7 +2474,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2505,7 +2505,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2530,7 +2530,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2557,7 +2557,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2581,7 +2581,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2610,7 +2610,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2636,7 +2636,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2663,7 +2663,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
             };
             cookie?: never;
@@ -2697,7 +2697,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
             };
             cookie?: never;
@@ -2715,7 +2715,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
             };
             cookie?: never;
@@ -2743,7 +2743,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
                 stage: components["parameters"]["Stage"];
             };
@@ -2774,7 +2774,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
                 stage: components["parameters"]["Stage"];
             };
@@ -2802,7 +2802,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
                 stage: components["parameters"]["Stage"];
             };
@@ -2829,7 +2829,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 entryID: components["parameters"]["EntryID"];
                 stage: components["parameters"]["Stage"];
             };
@@ -2856,7 +2856,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 lane: number;
             };
             cookie?: never;
@@ -2885,7 +2885,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2911,7 +2911,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -2948,7 +2948,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 pairingID: number;
             };
             cookie?: never;
@@ -2971,7 +2971,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -3005,7 +3005,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -3029,7 +3029,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -3056,7 +3056,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -3072,7 +3072,7 @@ export interface operations {
                     "application/pdf": string;
                 };
             };
-            /** @description The competition is unknown or not finished */
+            /** @description The match is unknown or not finished */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3112,7 +3112,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -3143,7 +3143,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 lane: number;
             };
             cookie?: never;
@@ -3161,7 +3161,7 @@ export interface operations {
                     "image/png": string;
                 };
             };
-            /** @description The competition is unknown or not finished, or the lane is empty or its entry withdrawn */
+            /** @description The match is unknown or not finished, or the lane is empty or its entry withdrawn */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3198,7 +3198,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
                 lane: number;
             };
             cookie?: never;
@@ -3214,7 +3214,7 @@ export interface operations {
                     "application/json": components["schemas"]["ScorecardSummary"];
                 };
             };
-            /** @description The competition is unknown or not finished, or the lane is empty or its entry withdrawn */
+            /** @description The match is unknown or not finished, or the lane is empty or its entry withdrawn */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3291,7 +3291,7 @@ export interface operations {
             403: components["responses"]["AdminScoringRequired"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
-            /** @description The competition is finished; the device must forget its token */
+            /** @description The match is finished; the device must forget its token */
             410: {
                 headers: {
                     [name: string]: unknown;
@@ -3464,7 +3464,7 @@ export interface operations {
             };
         };
     };
-    listSpectatorCompetitions: {
+    listSpectatorMatches: {
         parameters: {
             query?: never;
             header?: never;
@@ -3473,14 +3473,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Public competitions */
+            /** @description Public matches */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        competitions: components["schemas"]["Competition"][];
+                        matches: components["schemas"]["Match"][];
                     };
                 };
             };
@@ -3491,7 +3491,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -3516,7 +3516,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };
@@ -3540,7 +3540,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                competitionID: components["parameters"]["CompetitionID"];
+                matchID: components["parameters"]["MatchID"];
             };
             cookie?: never;
         };

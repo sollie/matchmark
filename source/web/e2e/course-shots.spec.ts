@@ -1,4 +1,4 @@
-import { createCompetition, expect, openCompetition, row, section, seedEntry, setStatus, test } from "./helpers";
+import { createMatch, expect, openMatch, row, section, seedEntry, setStatus, test } from "./helpers";
 
 test.describe("course shot counts", () => {
   test("every stage of every course demands its expected shots", async ({ courses, adminPage: page, admin }) => {
@@ -6,10 +6,10 @@ test.describe("course shot counts", () => {
     expect(courses).toHaveLength(4);
     for (const course of courses) {
       await test.step(`${course.key}-shot course`, async () => {
-        const competition = await createCompetition(admin, { course: course.key });
-        const entry = await seedEntry(admin, competition.id, 1);
-        await setStatus(admin, competition.id, "active");
-        await openCompetition(page, competition.id);
+        const match = await createMatch(admin, { course: course.key });
+        const entry = await seedEntry(admin, match.id, 1);
+        await setStatus(admin, match.id, "active");
+        await openMatch(page, match.id);
         const entryRow = row(page, entry.shooter.last_name);
         const alert = section(page, "Entries and progress").getByRole("alert");
 

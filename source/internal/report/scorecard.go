@@ -35,11 +35,11 @@ var (
 )
 
 type ScorecardData struct {
-	Competition repository.Competition
-	Entry       repository.ReportEntry
-	Course      rulebook.Course
-	ClubName    string
-	Logo        []byte
+	Match    repository.Match
+	Entry    repository.ReportEntry
+	Course   rulebook.Course
+	ClubName string
+	Logo     []byte
 }
 
 type cardFonts struct {
@@ -121,7 +121,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 		club = "Scorecard"
 	}
 	drawText(img, fonts.title, colorInk, textX, cardMargin+44, fitText(fonts.title, club, cardWidth-cardMargin-textX))
-	drawText(img, fonts.regular, colorMuted, textX, cardMargin+84, fitText(fonts.regular, d.Competition.Name+"  ·  "+d.Competition.Date, cardWidth-cardMargin-textX))
+	drawText(img, fonts.regular, colorMuted, textX, cardMargin+84, fitText(fonts.regular, d.Match.Name+"  ·  "+d.Match.Date, cardWidth-cardMargin-textX))
 	hline(img, cardMargin, cardWidth-cardMargin, headerBottom)
 
 	shooter := d.Entry.Shooter

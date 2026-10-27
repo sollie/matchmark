@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	scoreLogSchemaVersion = 2
+	scoreLogSchemaVersion = 3
 	emittedAtLayout       = "2006-01-02T15:04:05.000Z"
 )
 
@@ -32,19 +32,19 @@ func WithScoreLog(l *slog.Logger) Option {
 	return func(s *Service) { s.scoreLogger = l }
 }
 
-func (l *ScoreLog) EmitStage(ctx context.Context, competitionID, entryID int64, stageNumber int) {
+func (l *ScoreLog) EmitStage(ctx context.Context, matchID, entryID int64, stageNumber int) {
 	if l == nil || l.log == nil {
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	stage, err := l.repo.GetStage(ctx, competitionID, entryID, stageNumber)
+	stage, err := l.repo.GetStage(ctx, matchID, entryID, stageNumber)
 	if err != nil {
 		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageStatus, "error", err)
 		return
 	}
-	attrs, err := l.stageEventAttrs(ctx, competitionID, entryID, stage)
+	attrs, err := l.stageEventAttrs(ctx, matchID, entryID, stage)
 	if err != nil {
 		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageStatus, "error", err)
 		return
@@ -52,8 +52,8 @@ func (l *ScoreLog) EmitStage(ctx context.Context, competitionID, entryID int64, 
 	l.log.LogAttrs(ctx, slog.LevelInfo, eventStageStatus, attrs...)
 }
 
-func (l *ScoreLog) stageEventAttrs(ctx context.Context, competitionID, entryID int64, stage repository.Stage) ([]slog.Attr, error) {
-	comp, err := l.repo.GetCompetition(ctx, competitionID)
+func (l *ScoreLog) stageEventAttrs(ctx context.Context, matchID, entryID int64, stage repository.Stage) ([]slog.Attr, error) {
+	comp, err := l.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,11 @@ func (l *ScoreLog) stageEventAttrs(ctx context.Context, competitionID, entryID i
 	if err != nil {
 		return nil, err
 	}
-	entry, err := l.repo.GetEntry(ctx, competitionID, entryID)
+	competitionName, err := l.repo.CompetitionName(ctx, comp.CompetitionID)
+	if err != nil {
+		return nil, err
+	}
+	entry, err := l.repo.GetEntry(ctx, matchID, entryID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +88,10 @@ func (l *ScoreLog) stageEventAttrs(ctx context.Context, competitionID, entryID i
 		slog.String("emitted_at", time.Now().UTC().Format(emittedAtLayout)),
 		slog.Int64("seq", l.seq),
 		slog.Group("competition",
+			slog.Int64("id", comp.CompetitionID),
+			slog.String("name", competitionName),
+		),
+		slog.Group("match",
 			slog.Int64("id", comp.ID),
 			slog.String("name", comp.Name),
 			slog.String("date", comp.Date),
@@ -130,6 +138,6 @@ func (l *ScoreLog) Reemit(ctx context.Context, f repository.LockedStageFilter) {
 		return
 	}
 	for _, ref := range refs {
-		l.EmitStage(ctx, ref.CompetitionID, ref.EntryID, ref.Number)
+		l.EmitStage(ctx, ref.MatchID, ref.EntryID, ref.Number)
 	}
 }

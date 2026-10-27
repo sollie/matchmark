@@ -44,21 +44,21 @@ func (s *Service) checkMatchDate(ctx context.Context, containerID int64, date st
 	return nil
 }
 
-func (s *Service) CreateCompetition(ctx context.Context, c repository.Competition) (int64, error) {
+func (s *Service) CreateMatch(ctx context.Context, c repository.Match) (int64, error) {
 	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || !validDate(c.Date) {
 		return 0, ErrInvalid
 	}
 	if _, err := rulebook.CourseByKey(c.Course); err != nil {
 		return 0, ErrInvalid
 	}
-	if err := s.checkMatchDate(ctx, c.ContainerID, c.Date, false); err != nil {
+	if err := s.checkMatchDate(ctx, c.CompetitionID, c.Date, false); err != nil {
 		return 0, err
 	}
-	id, err := s.repo.CreateCompetition(ctx, c)
+	id, err := s.repo.CreateMatch(ctx, c)
 	if err != nil {
 		return id, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.create", Target: idTarget("competition", id), Details: c.Name}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.create", Target: idTarget("match", id), Details: c.Name}})
 	return id, nil
 }
 
@@ -66,7 +66,7 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if e.Lane < 1 {
 		return 0, ErrInvalid
 	}
-	comp, err := s.requireDraft(ctx, e.CompetitionID)
+	comp, err := s.requireDraft(ctx, e.MatchID)
 	if err != nil {
 		return 0, err
 	}
@@ -85,18 +85,18 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if err != nil {
 		return id, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.add", Target: entryTarget(e.CompetitionID, id)}, CompetitionID: e.CompetitionID, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.add", Target: entryTarget(e.MatchID, id)}, MatchID: e.MatchID, Live: LiveMatch})
 	return id, nil
 }
 
-func (s *Service) WithdrawEntry(ctx context.Context, competitionID, entryID int64) error {
-	if err := s.requireWithdrawalAllowed(ctx, competitionID); err != nil {
+func (s *Service) WithdrawEntry(ctx context.Context, matchID, entryID int64) error {
+	if err := s.requireWithdrawalAllowed(ctx, matchID); err != nil {
 		return err
 	}
-	if err := s.repo.WithdrawEntry(ctx, competitionID, entryID); err != nil {
+	if err := s.repo.WithdrawEntry(ctx, matchID, entryID); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.withdraw", Target: entryTarget(competitionID, entryID)}, CompetitionID: competitionID, Live: LiveCompetition})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.withdraw", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch})
 	return nil
 }
 
@@ -104,10 +104,10 @@ func idTarget(kind string, id int64) string {
 	return kind + ":" + strconv.FormatInt(id, 10)
 }
 
-func entryTarget(competitionID, entryID int64) string {
-	return "competition:" + strconv.FormatInt(competitionID, 10) + "/entry:" + strconv.FormatInt(entryID, 10)
+func entryTarget(matchID, entryID int64) string {
+	return "match:" + strconv.FormatInt(matchID, 10) + "/entry:" + strconv.FormatInt(entryID, 10)
 }
 
-func stageTarget(competitionID, entryID int64, stage int) string {
-	return entryTarget(competitionID, entryID) + "/stage:" + strconv.Itoa(stage)
+func stageTarget(matchID, entryID int64, stage int) string {
+	return entryTarget(matchID, entryID) + "/stage:" + strconv.Itoa(stage)
 }

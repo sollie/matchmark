@@ -14,7 +14,7 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-const SchemaVersion = 2
+const SchemaVersion = 3
 
 const emittedAtLayout = "2006-01-02T15:04:05.000Z"
 
@@ -37,6 +37,11 @@ type CourseOfFire struct {
 }
 
 type Competition struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type Match struct {
 	ID           int64        `json:"id"`
 	Name         string       `json:"name"`
 	Date         string       `json:"date"`
@@ -68,6 +73,7 @@ type Event struct {
 	EmittedAt     string          `json:"emitted_at"`
 	Seq           int64           `json:"seq"`
 	Competition   Competition     `json:"competition"`
+	Match         Match           `json:"match"`
 	Entry         Entry           `json:"entry"`
 	Stage         Stage           `json:"stage"`
 	RingCounts    []int           `json:"ring_counts"`
@@ -109,7 +115,8 @@ type RestoredEntry struct {
 	Stages   []ScoredStage
 }
 
-type RestoredCompetition struct {
+type RestoredMatch struct {
+	Competition  Competition
 	ID           int64
 	Name         string
 	Date         string
@@ -118,7 +125,7 @@ type RestoredCompetition struct {
 }
 
 type Plan struct {
-	Competitions []RestoredCompetition
+	Matches []RestoredMatch
 }
 
 func Parse(r io.Reader) ([]Event, Stats, error) {
@@ -181,7 +188,7 @@ func parseLine(raw []byte) (Event, lineKind, error) {
 }
 
 func valid(ev Event) bool {
-	if _, err := rulebook.CourseByKey(ev.Competition.CourseOfFire.Key); err != nil {
+	if _, err := rulebook.CourseByKey(ev.Match.CourseOfFire.Key); err != nil {
 		return false
 	}
 	switch ev.Status {
@@ -198,6 +205,7 @@ func valid(ev Event) bool {
 	}
 	return len(ev.RingCounts) == 7 &&
 		ev.Competition.ID != 0 &&
+		ev.Match.ID != 0 &&
 		ev.Entry.ID != 0 &&
 		ev.Stage.Number > 0
 }
@@ -221,9 +229,9 @@ func ringCountsFromSlice(s []int) [7]int {
 }
 
 type stageKey struct {
-	competition int64
-	entry       int64
-	stage       int
+	match int64
+	entry int64
+	stage int
 }
 
 func Fold(events []Event) Plan {
@@ -236,20 +244,22 @@ func Fold(events []Event) Plan {
 		return ordered[i].Seq < ordered[j].Seq
 	})
 
-	comps := map[int64]Competition{}
+	comps := map[int64]Match{}
+	containers := map[int64]Competition{}
 	entries := map[[2]int64]Entry{}
 	stages := map[stageKey]Event{}
 	for _, ev := range ordered {
-		comps[ev.Competition.ID] = ev.Competition
-		entries[[2]int64{ev.Competition.ID, ev.Entry.ID}] = ev.Entry
-		k := stageKey{ev.Competition.ID, ev.Entry.ID, ev.Stage.Number}
+		comps[ev.Match.ID] = ev.Match
+		containers[ev.Match.ID] = ev.Competition
+		entries[[2]int64{ev.Match.ID, ev.Entry.ID}] = ev.Entry
+		k := stageKey{ev.Match.ID, ev.Entry.ID, ev.Stage.Number}
 		stages[k] = ev
 	}
 
 	byEntry := map[[2]int64][]ScoredStage{}
 	for k, ev := range stages {
 		lockedBy, lane, _ := parseLockedBy(ev.LockedBy)
-		ek := [2]int64{k.competition, k.entry}
+		ek := [2]int64{k.match, k.entry}
 		byEntry[ek] = append(byEntry[ek], ScoredStage{
 			Number:        k.stage,
 			ExpectedShots: ev.Stage.ExpectedShots,
@@ -278,10 +288,10 @@ func Fold(events []Event) Plan {
 	for id, es := range byComp {
 		sort.Slice(es, func(i, j int) bool { return es[i].ID < es[j].ID })
 		c := comps[id]
-		plan.Competitions = append(plan.Competitions, RestoredCompetition{
-			ID: c.ID, Name: c.Name, Date: c.Date, CourseOfFire: c.CourseOfFire, Entries: es,
+		plan.Matches = append(plan.Matches, RestoredMatch{
+			Competition: containers[id], ID: c.ID, Name: c.Name, Date: c.Date, CourseOfFire: c.CourseOfFire, Entries: es,
 		})
 	}
-	sort.Slice(plan.Competitions, func(i, j int) bool { return plan.Competitions[i].ID < plan.Competitions[j].ID })
+	sort.Slice(plan.Matches, func(i, j int) bool { return plan.Matches[i].ID < plan.Matches[j].ID })
 	return plan
 }

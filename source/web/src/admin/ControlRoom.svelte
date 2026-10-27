@@ -6,14 +6,14 @@
   type ControlRoom = components["schemas"]["ControlRoom"];
   type Lane = components["schemas"]["ControlRoomLane"];
 
-  let { competitionId, version, changed }: { competitionId: number; version: number; changed: () => Promise<void> } = $props();
+  let { matchId, version, changed }: { matchId: number; version: number; changed: () => Promise<void> } = $props();
 
   let room = $state<ControlRoom | null>(null);
   let error = $state("");
 
   async function load() {
-    const result = await api.GET("/api/competitions/{competitionID}/control-room", {
-      params: { path: { competitionID: competitionId } },
+    const result = await api.GET("/api/matches/{matchID}/control-room", {
+      params: { path: { matchID: matchId } },
     });
     if (result.data) room = result.data;
     else error = failure(result);
@@ -32,21 +32,21 @@
     await changed();
   }
 
-  const stagePath = (lane: Lane, stage: number) => ({ competitionID: competitionId, entryID: lane.entry_id, stage });
+  const stagePath = (lane: Lane, stage: number) => ({ matchID: matchId, entryID: lane.entry_id, stage });
 
   const startNext = () =>
-    run(api.POST("/api/competitions/{competitionID}/next-stage", { params: { path: { competitionID: competitionId } } }));
+    run(api.POST("/api/matches/{matchID}/next-stage", { params: { path: { matchID: matchId } } }));
   const acceptAll = () =>
-    run(api.POST("/api/competitions/{competitionID}/accept-all", { params: { path: { competitionID: competitionId } } }));
+    run(api.POST("/api/matches/{matchID}/accept-all", { params: { path: { matchID: matchId } } }));
   const accept = (lane: Lane, stage: number) =>
     run(
-      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/accept", {
+      api.POST("/api/matches/{matchID}/entries/{entryID}/stages/{stage}/accept", {
         params: { path: stagePath(lane, stage) },
       }),
     );
   const unlock = (lane: Lane, stage: number) =>
     run(
-      api.POST("/api/competitions/{competitionID}/entries/{entryID}/stages/{stage}/unlock", {
+      api.POST("/api/matches/{matchID}/entries/{entryID}/stages/{stage}/unlock", {
         params: { path: stagePath(lane, stage) },
       }),
     );

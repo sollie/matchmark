@@ -45,7 +45,7 @@ test.describe("user management", () => {
     await page.getByLabel("Confirm new password").fill(chosenPassword);
     await page.getByRole("button", { name: "Change password" }).click();
 
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Shooters" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Users" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Backup" })).toHaveCount(0);
@@ -71,7 +71,7 @@ test.describe("user management", () => {
     await page.getByLabel("New password", { exact: true }).fill(chosenPassword);
     await page.getByLabel("Confirm new password").fill(chosenPassword);
     await page.getByRole("button", { name: "Change password" }).click();
-    await expect(page.getByRole("heading", { name: "Competitions" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Backup" })).toHaveCount(0);
     expect((await page.request.get("/api/admin/backup")).status()).toBe(403);
 
