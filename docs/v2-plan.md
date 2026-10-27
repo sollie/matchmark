@@ -38,3 +38,4 @@ Work on branch `v2`. One step per commit, with checks run before each. Tick a st
 - [x] 23. Lockstep on a current stage, the gate and auto-finish (#237).
 - [x] 24. Admin control room (#238) and dispute history (#239).
 - [x] 25. Mid-competition restore (#240) and the documentation sweep (#241).
+- [x] 26. Rename the Rifle category to Carbine (#338) and allow it on the 150-shot course (#339).

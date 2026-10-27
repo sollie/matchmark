@@ -341,3 +341,40 @@ func TestMigrationNormalizationIsIdempotent(t *testing.T) {
 		t.Fatalf("normalization ran again: %v", got)
 	}
 }
+
+func TestMigrationRenamesRifleToCarbineKeepingStages(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mm.db")
+	migrateTo(t, path, 20)
+	conn, err := sql.Open("turso", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	execAll(t, conn,
+		`INSERT INTO shooters (last_name, first_name, sex, country, club) VALUES ('A', 'B', 'M', 'NOR', 'C')`,
+		`INSERT INTO shooters (last_name, first_name, sex, country, club) VALUES ('D', 'E', 'M', 'NOR', 'C')`,
+		`INSERT INTO competitions (name, date, course) VALUES ('M', '2026-10-19', '150')`,
+		`INSERT INTO entries (competition_id, shooter_id, category, lane) VALUES (1, 1, 'Rifle', 1)`,
+		`INSERT INTO entries (competition_id, shooter_id, category, lane) VALUES (1, 2, 'Revolver', 2)`,
+		`INSERT INTO stages (entry_id, stage_number, expected_shots, x) VALUES (1, 1, 12, 3)`,
+		`INSERT INTO stages (entry_id, stage_number, expected_shots) VALUES (2, 1, 12)`,
+	)
+	_ = conn.Close()
+	reopened, err := db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = reopened.Close() }()
+	var carbine, revolver, stages, x int
+	if err := reopened.QueryRow(`SELECT COUNT(*) FROM entries WHERE category = 'Carbine'`).Scan(&carbine); err != nil || carbine != 1 {
+		t.Fatalf("carbine entries = %d, err %v", carbine, err)
+	}
+	if err := reopened.QueryRow(`SELECT COUNT(*) FROM entries WHERE category = 'Revolver'`).Scan(&revolver); err != nil || revolver != 1 {
+		t.Fatalf("revolver entries = %d, err %v", revolver, err)
+	}
+	if err := reopened.QueryRow(`SELECT COUNT(*), MAX(x) FROM stages`).Scan(&stages, &x); err != nil || stages != 2 || x != 3 {
+		t.Fatalf("stages = %d x = %d, err %v", stages, x, err)
+	}
+	if _, err := reopened.Exec(`UPDATE entries SET category = 'Rifle' WHERE id = 1`); err == nil {
+		t.Fatal("expected Rifle to be rejected")
+	}
+}
