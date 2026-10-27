@@ -42,7 +42,17 @@
 
 <form class="row card" onsubmit={save} aria-label="Edit match">
   <label>Name <input bind:value={name} maxlength="128" required /></label>
-  <label>Date <input type="text" bind:value={date} placeholder="YYYY-MM-DD" pattern={datePattern} inputmode="numeric" size="10" required /></label>
+  <label
+    >Date <input
+      type="text"
+      bind:value={date}
+      placeholder="YYYY-MM-DD"
+      pattern={datePattern}
+      inputmode="numeric"
+      size="10"
+      required
+    /></label
+  >
   <label>
     Course of fire
     <select bind:value={course} disabled={hasEntries}>

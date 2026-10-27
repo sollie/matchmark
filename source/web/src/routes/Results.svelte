@@ -13,11 +13,23 @@
   let missing = $state(false);
 
   const id = $derived(matchRoute("/results/:id", router.path)?.id ?? null);
-  const showNames = $derived(results?.categories.some((c) => c.rows.some((r) => r.last_name !== undefined)) ?? false);
-  const showClubs = $derived(results?.categories.some((c) => c.rows.some((r) => r.club !== undefined)) ?? false);
-  const showCountries = $derived(results?.categories.some((c) => c.rows.some((r) => r.country !== undefined)) ?? false);
-  const showStages = $derived(results?.categories.some((c) => c.rows.some((r) => r.stages.some((s) => s.score !== undefined))) ?? false);
-  const showX = $derived(results?.categories.some((c) => c.rows.some((r) => r.x_count !== undefined)) ?? false);
+  const showNames = $derived(
+    results?.categories.some((c) => c.rows.some((r) => r.last_name !== undefined)) ?? false,
+  );
+  const showClubs = $derived(
+    results?.categories.some((c) => c.rows.some((r) => r.club !== undefined)) ?? false,
+  );
+  const showCountries = $derived(
+    results?.categories.some((c) => c.rows.some((r) => r.country !== undefined)) ?? false,
+  );
+  const showStages = $derived(
+    results?.categories.some((c) =>
+      c.rows.some((r) => r.stages.some((s) => s.score !== undefined)),
+    ) ?? false,
+  );
+  const showX = $derived(
+    results?.categories.some((c) => c.rows.some((r) => r.x_count !== undefined)) ?? false,
+  );
 
   $effect(() => {
     void (async () => {
@@ -54,7 +66,9 @@
     <label class="picker">
       Finished match
       <select value={id ?? ""} onchange={pick}>
-        <option value="" disabled>{loaded && matches.length === 0 ? "No finished matches" : "Select a match"}</option>
+        <option value="" disabled
+          >{loaded && matches.length === 0 ? "No finished matches" : "Select a match"}</option
+        >
         {#each matches as c (c.id)}
           <option value={String(c.id)}>{c.name} ({c.date})</option>
         {/each}
@@ -62,7 +76,9 @@
     </label>
     {#if results}
       <button type="button" onclick={() => window.print()}>Print</button>
-      <a class="button" href={`/api/matches/${results.match.id}/results?format=pdf`} download>Download PDF</a>
+      <a class="button" href={`/api/matches/${results.match.id}/results?format=pdf`} download
+        >Download PDF</a
+      >
     {/if}
   </div>
 
@@ -90,7 +106,8 @@
                   {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
                   {#if showClubs}<th>Club</th>{/if}
                   {#if showCountries}<th>Country</th>{/if}
-                  {#if showStages}{#each results.stages as n (n)}<th class="num">S{n}</th>{/each}{/if}
+                  {#if showStages}{#each results.stages as n (n)}<th class="num">S{n}</th
+                      >{/each}{/if}
                   <th class="num">Total</th>
                   {#if showX}<th class="num">X</th>{/if}
                 </tr>
@@ -99,10 +116,13 @@
                 {#each category.rows as row, i (i)}
                   <tr>
                     <td class="num">{row.rank}</td>
-                    {#if showNames}<td>{row.first_name} {row.last_name}</td><td>{row.waid ?? ""}</td>{/if}
+                    {#if showNames}<td>{row.first_name} {row.last_name}</td><td>{row.waid ?? ""}</td
+                      >{/if}
                     {#if showClubs}<td>{row.club}</td>{/if}
                     {#if showCountries}<td>{row.country}</td>{/if}
-                    {#if showStages}{#each row.stages as st (st.stage)}<td class="num">{st.score ?? ""}</td>{/each}{/if}
+                    {#if showStages}{#each row.stages as st (st.stage)}<td class="num"
+                          >{st.score ?? ""}</td
+                        >{/each}{/if}
                     <td class="num total">{row.total}</td>
                     {#if showX}<td class="num">{row.x_count}</td>{/if}
                   </tr>
@@ -154,20 +174,65 @@
 </main>
 
 <style>
-  .picker { display: block; margin: var(--space-3) 0; }
-  .picker select { font-size: var(--text-base); padding: var(--space-2) var(--space-3); max-width: 100%; }
-  .empty { text-align: center; padding: var(--space-6) var(--space-4); }
-  .sheet-header { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-4) 0; }
-  .club-logo { display: block; height: 4rem; width: auto; max-width: 8rem; object-fit: contain; }
-  .club-name { margin: 0; font-weight: 600; }
-  .sheet-header h2 { margin: 0; }
-  .meta { margin: 0; color: var(--text-muted); }
-  .category { margin: var(--space-4) 0; break-inside: avoid; }
-  .total { font-weight: 700; }
+  .picker {
+    display: block;
+    margin: var(--space-3) 0;
+  }
+  .picker select {
+    font-size: var(--text-base);
+    padding: var(--space-2) var(--space-3);
+    max-width: 100%;
+  }
+  .empty {
+    text-align: center;
+    padding: var(--space-6) var(--space-4);
+  }
+  .sheet-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin: var(--space-4) 0;
+  }
+  .club-logo {
+    display: block;
+    height: 4rem;
+    width: auto;
+    max-width: 8rem;
+    object-fit: contain;
+  }
+  .club-name {
+    margin: 0;
+    font-weight: 600;
+  }
+  .sheet-header h2 {
+    margin: 0;
+  }
+  .meta {
+    margin: 0;
+    color: var(--text-muted);
+  }
+  .category {
+    margin: var(--space-4) 0;
+    break-inside: avoid;
+  }
+  .total {
+    font-weight: 700;
+  }
   @media print {
-    :global(.site-header), :global(.site-footer), .no-print { display: none !important; }
-    .results { max-width: none; padding: 0; }
-    .meta { color: #000; }
-    table { font-size: 10pt; }
+    :global(.site-header),
+    :global(.site-footer),
+    .no-print {
+      display: none !important;
+    }
+    .results {
+      max-width: none;
+      padding: 0;
+    }
+    .meta {
+      color: #000;
+    }
+    table {
+      font-size: 10pt;
+    }
   }
 </style>

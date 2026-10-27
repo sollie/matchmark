@@ -39,7 +39,9 @@
   async function search(q: string) {
     const current = ++sequence;
     loading = true;
-    const result = await api.GET("/api/shooters", { params: { query: { q: q.trim() || undefined, limit: Math.min(20 + exclude.length, 100) } } });
+    const result = await api.GET("/api/shooters", {
+      params: { query: { q: q.trim() || undefined, limit: Math.min(20 + exclude.length, 100) } },
+    });
     if (current !== sequence) return;
     loading = false;
     results = result.data?.shooters ?? [];
@@ -125,15 +127,30 @@
   </label>
   <ul id={listId} role="listbox" aria-label={label} hidden={!open}>
     {#each visible as s, i (s.id)}
-      <li id={optionId(i)} role="option" aria-selected={i === active} class:active={i === active} onmousedown={(e) => e.preventDefault()} onclick={() => choose(s)}>
-        {s.first_name} {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
+      <li
+        id={optionId(i)}
+        role="option"
+        aria-selected={i === active}
+        class:active={i === active}
+        onmousedown={(e) => e.preventDefault()}
+        onclick={() => choose(s)}
+      >
+        {s.first_name}
+        {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
       </li>
     {/each}
     {#if searched && !loading && visible.length === 0}
       <li class="empty" role="presentation">No match</li>
     {/if}
     {#if onadd}
-      <li id={optionId(visible.length)} role="option" aria-selected={active === visible.length} class:active={active === visible.length} onmousedown={(e) => e.preventDefault()} onclick={add}>
+      <li
+        id={optionId(visible.length)}
+        role="option"
+        aria-selected={active === visible.length}
+        class:active={active === visible.length}
+        onmousedown={(e) => e.preventDefault()}
+        onclick={add}
+      >
         Search WA1500 / add new
       </li>
     {/if}
@@ -141,10 +158,36 @@
 </div>
 
 <style>
-  .picker { position: relative; }
-  ul { position: absolute; z-index: 10; left: 0; right: 0; margin: 0; padding: 0; list-style: none; background: var(--surface); color: var(--text); border: 1px solid var(--border); max-height: 16rem; overflow-y: auto; }
-  li { padding: var(--space-2) var(--space-3); cursor: pointer; }
-  li.active { background: var(--brand-tint); color: var(--text); }
-  li.empty { cursor: default; color: var(--text-muted); }
-  [hidden] { display: none; }
+  .picker {
+    position: relative;
+  }
+  ul {
+    position: absolute;
+    z-index: 10;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    max-height: 16rem;
+    overflow-y: auto;
+  }
+  li {
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer;
+  }
+  li.active {
+    background: var(--brand-tint);
+    color: var(--text);
+  }
+  li.empty {
+    cursor: default;
+    color: var(--text-muted);
+  }
+  [hidden] {
+    display: none;
+  }
 </style>

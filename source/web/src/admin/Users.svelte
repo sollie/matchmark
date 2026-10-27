@@ -57,26 +57,38 @@
 
   const setActive = (u: User, active: boolean) =>
     act(
-      api.POST(active ? "/api/users/{userID}/reactivate" : "/api/users/{userID}/deactivate", params(u)),
+      api.POST(
+        active ? "/api/users/{userID}/reactivate" : "/api/users/{userID}/deactivate",
+        params(u),
+      ),
       `User ${u.username} ${active ? "reactivated" : "deactivated"}.`,
     );
 
   const setBackup = (u: User, allowed: boolean) =>
     act(
-      api.PUT("/api/users/{userID}/backup-permission", { params: { path: { userID: u.id } }, body: { can_download_backup: allowed } }),
+      api.PUT("/api/users/{userID}/backup-permission", {
+        params: { path: { userID: u.id } },
+        body: { can_download_backup: allowed },
+      }),
       `Backup download ${allowed ? "allowed" : "forbidden"} for ${u.username}.`,
     ).then(refreshAdminSession);
 
   const setRole = (u: User, next: Role) =>
     act(
-      api.PUT("/api/users/{userID}/role", { params: { path: { userID: u.id } }, body: { role: next } }),
+      api.PUT("/api/users/{userID}/role", {
+        params: { path: { userID: u.id } },
+        body: { role: next },
+      }),
       `User ${u.username} is now ${next === "admin" ? "an admin" : "a user"}.`,
     );
 
   async function reset(e: SubmitEvent, u: User) {
     e.preventDefault();
     await act(
-      api.POST("/api/users/{userID}/reset-password", { params: { path: { userID: u.id } }, body: { password: resetPassword } }),
+      api.POST("/api/users/{userID}/reset-password", {
+        params: { path: { userID: u.id } },
+        body: { password: resetPassword },
+      }),
       `Password for ${u.username} reset. They must change it at next login.`,
     );
     if (!error) {
@@ -93,7 +105,14 @@
 <form class="row card" onsubmit={create}>
   <label>
     New username
-    <input bind:value={username} minlength="3" maxlength="32" pattern="[A-Za-z0-9._\-]+" autocomplete="off" required />
+    <input
+      bind:value={username}
+      minlength="3"
+      maxlength="32"
+      pattern="[A-Za-z0-9._\-]+"
+      autocomplete="off"
+      required
+    />
   </label>
   <label>
     Role
@@ -104,13 +123,20 @@
   </label>
   <label>
     Temporary password
-    <input type="password" bind:value={password} minlength="16" maxlength="128" autocomplete="new-password" required />
+    <input
+      type="password"
+      bind:value={password}
+      minlength="16"
+      maxlength="128"
+      autocomplete="new-password"
+      required
+    />
   </label>
   <button type="submit" class="primary">Create user</button>
 </form>
 <p class="muted">
-  Usernames use a-z, 0-9, '.', '_' and '-' (3 to 32 characters) and are never reused. The password is 16 to 128
-  characters and must be changed at first login.
+  Usernames use a-z, 0-9, '.', '_' and '-' (3 to 32 characters) and are never reused. The password
+  is 16 to 128 characters and must be changed at first login.
 </p>
 
 <div class="card scroll">
@@ -123,21 +149,39 @@
         <tr>
           <td>{u.username}</td>
           <td>{u.role === "admin" ? "Admin" : "User"}</td>
-          <td>{!u.active ? "Deactivated" : u.must_change_password ? "Must change password" : "Active"}</td>
+          <td
+            >{!u.active
+              ? "Deactivated"
+              : u.must_change_password
+                ? "Must change password"
+                : "Active"}</td
+          >
           <td>{u.role !== "admin" ? "-" : u.can_download_backup ? "Allowed" : "Not allowed"}</td>
           <td>
             {#if resetFor === u.id}
               <form class="row" onsubmit={(e) => reset(e, u)}>
                 <label>
                   Temporary password for {u.username}
-                  <input type="password" bind:value={resetPassword} minlength="16" maxlength="128" autocomplete="new-password" required />
+                  <input
+                    type="password"
+                    bind:value={resetPassword}
+                    minlength="16"
+                    maxlength="128"
+                    autocomplete="new-password"
+                    required
+                  />
                 </label>
                 <button type="submit" class="primary">Confirm reset</button>
                 <button type="button" onclick={() => (resetFor = null)}>Cancel</button>
               </form>
             {:else}
-              <button type="button" onclick={() => setActive(u, !u.active)}>{u.active ? "Deactivate" : "Reactivate"}</button>
-              <button type="button" onclick={() => setRole(u, u.role === "admin" ? "user" : "admin")}>
+              <button type="button" onclick={() => setActive(u, !u.active)}
+                >{u.active ? "Deactivate" : "Reactivate"}</button
+              >
+              <button
+                type="button"
+                onclick={() => setRole(u, u.role === "admin" ? "user" : "admin")}
+              >
                 {u.role === "admin" ? "Make user" : "Make admin"}
               </button>
               {#if u.role === "admin"}
@@ -145,7 +189,13 @@
                   {u.can_download_backup ? "Forbid backup" : "Allow backup"}
                 </button>
               {/if}
-              <button type="button" onclick={() => { resetFor = u.id; resetPassword = ""; }}>Reset password</button>
+              <button
+                type="button"
+                onclick={() => {
+                  resetFor = u.id;
+                  resetPassword = "";
+                }}>Reset password</button
+              >
             {/if}
           </td>
         </tr>
