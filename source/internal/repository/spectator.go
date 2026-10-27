@@ -28,21 +28,21 @@ type SpectatorEntry struct {
 func (r *Repository) GetVisibility(ctx context.Context, competitionID int64) (Visibility, error) {
 	var v Visibility
 	err := r.db.QueryRowContext(ctx,
-		`SELECT show_names, show_clubs, show_countries, show_stage_scores, show_ring_counts FROM competitions WHERE id = ?`,
+		`SELECT show_names, show_clubs, show_countries, show_stage_scores, show_ring_counts FROM matches WHERE id = ?`,
 		competitionID).Scan(&v.Names, &v.Clubs, &v.Countries, &v.StageScores, &v.RingCounts)
 	return v, mapErr(err)
 }
 
 func (r *Repository) SetVisibility(ctx context.Context, competitionID int64, v Visibility) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE competitions SET show_names = ?, show_clubs = ?, show_countries = ?, show_stage_scores = ?, show_ring_counts = ? WHERE id = ?`,
+		`UPDATE matches SET show_names = ?, show_clubs = ?, show_countries = ?, show_stage_scores = ?, show_ring_counts = ? WHERE id = ?`,
 		v.Names, v.Clubs, v.Countries, v.StageScores, v.RingCounts, competitionID)
 	return affected(res, mapErr(err))
 }
 
 func (r *Repository) ListPublicCompetitions(ctx context.Context) ([]Competition, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, date, course, status FROM competitions WHERE status != 'draft' ORDER BY date DESC, id DESC`)
+		`SELECT id, name, date, course, status FROM matches WHERE status != 'draft' ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (r *Repository) ListSpectatorEntries(ctx context.Context, competitionID int
 		 FROM entries e
 		 JOIN shooters sh ON sh.id = e.shooter_id
 		 JOIN stages st ON st.entry_id = e.id
-		 WHERE e.competition_id = ?
+		 WHERE e.match_id = ?
 		 ORDER BY e.lane, e.id, st.stage_number`, competitionID)
 	if err != nil {
 		return nil, err

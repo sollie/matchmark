@@ -27,12 +27,32 @@ func (s *Service) CreateShooter(ctx context.Context, sh repository.Shooter) (int
 	return id, nil
 }
 
+func (s *Service) checkMatchDate(ctx context.Context, containerID int64, date string, editing bool) error {
+	if containerID == 0 {
+		return nil
+	}
+	r, err := s.repo.CompetitionDateRange(ctx, containerID)
+	if err != nil {
+		return mapRepoErr(err)
+	}
+	if editing && r.Matches == 1 {
+		return nil
+	}
+	if date < r.Start || date > r.End {
+		return ErrInvalid
+	}
+	return nil
+}
+
 func (s *Service) CreateCompetition(ctx context.Context, c repository.Competition) (int64, error) {
 	if strings.TrimSpace(c.Name) == "" || len(c.Name) > 128 || !validDate(c.Date) {
 		return 0, ErrInvalid
 	}
 	if _, err := rulebook.CourseByKey(c.Course); err != nil {
 		return 0, ErrInvalid
+	}
+	if err := s.checkMatchDate(ctx, c.ContainerID, c.Date, false); err != nil {
+		return 0, err
 	}
 	id, err := s.repo.CreateCompetition(ctx, c)
 	if err != nil {

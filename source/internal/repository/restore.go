@@ -40,7 +40,7 @@ type RestoreCounts struct {
 
 func (r *Repository) CountCompetitions(ctx context.Context) (int, error) {
 	var n int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM competitions`).Scan(&n)
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM matches`).Scan(&n)
 	return n, err
 }
 
@@ -75,13 +75,20 @@ func (r *Repository) RestoreCompetitions(ctx context.Context, rcs []RestoreCompe
 }
 
 func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, counts *RestoreCounts) error {
-	res, err := tx.ExecContext(ctx,
-		`INSERT OR IGNORE INTO competitions (id, name, date, course, status, current_stage) VALUES (?, ?, ?, ?, ?, ?)`,
-		rc.Competition.ID, rc.Competition.Name, rc.Competition.Date, rc.Competition.Course, rc.Competition.Status, rc.Competition.CurrentStage)
-	if err != nil {
-		return mapErr(err)
+	var exists int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM matches WHERE id = ?`, rc.Competition.ID).Scan(&exists); err != nil {
+		return err
 	}
-	if n, _ := res.RowsAffected(); n > 0 {
+	if exists == 0 {
+		containerID, err := ensureContainer(ctx, tx, 0, rc.Competition.Name, rc.Competition.Date)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO matches (id, competition_id, name, date, course, status, current_stage) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			rc.Competition.ID, containerID, rc.Competition.Name, rc.Competition.Date, rc.Competition.Course, rc.Competition.Status, rc.Competition.CurrentStage); err != nil {
+			return mapErr(err)
+		}
 		counts.Competitions++
 	}
 	for _, e := range rc.Entries {
@@ -95,7 +102,7 @@ func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreCompetition, 
 				return err
 			}
 			if _, err := tx.ExecContext(ctx,
-				`INSERT INTO entries (id, competition_id, shooter_id, category, lane) VALUES (?, ?, ?, ?, ?)`,
+				`INSERT INTO entries (id, match_id, shooter_id, category, lane) VALUES (?, ?, ?, ?, ?)`,
 				e.ID, rc.Competition.ID, shooterID, e.Category, e.Lane); err != nil {
 				return mapErr(err)
 			}

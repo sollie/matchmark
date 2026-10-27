@@ -78,7 +78,7 @@ func (r *Repository) GetStage(ctx context.Context, competitionID, entryID int64,
 		        s.scorer_lane, COALESCE(s.scorer_name, ''), COALESCE(s.locked_at, ''),
 		        COALESCE(s.accepted_by, ''), COALESCE(s.accepted_at, ''), COALESCE(s.disputed_at, '')
 		 FROM stages s JOIN entries e ON e.id = s.entry_id
-		 WHERE e.competition_id = ? AND e.id = ? AND s.stage_number = ?`,
+		 WHERE e.match_id = ? AND e.id = ? AND s.stage_number = ?`,
 		competitionID, entryID, number).
 		Scan(&s.ID, &s.EntryID, &s.Number, &s.ExpectedShots,
 			&s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &s.Status,
@@ -133,7 +133,7 @@ func (r *Repository) transition(ctx context.Context, record bool, ev StageEvent,
 
 func insertStageEvent(ctx context.Context, tx *sql.Tx, ev StageEvent) error {
 	_, err := tx.ExecContext(ctx,
-		`INSERT INTO stage_events (competition_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at)
+		`INSERT INTO stage_events (match_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		ev.CompetitionID, ev.EntryID, ev.StageNumber, ev.Event, ev.ActorType, ev.ActorName, ev.ScorerName, ev.ShooterName, lockTimestamp())
 	return mapErr(err)
@@ -178,8 +178,8 @@ func conflictIfNone(res sql.Result, err error) error {
 
 func (r *Repository) ListStageEvents(ctx context.Context, competitionID int64) ([]StageEvent, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, competition_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at
-		 FROM stage_events WHERE competition_id = ? ORDER BY id`, competitionID)
+		`SELECT id, match_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at
+		 FROM stage_events WHERE match_id = ? ORDER BY id`, competitionID)
 	if err != nil {
 		return nil, err
 	}
@@ -209,13 +209,13 @@ type LockedStageFilter struct {
 
 func (r *Repository) ListLockedStages(ctx context.Context, f LockedStageFilter) ([]LockedStageRef, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT e.competition_id, s.entry_id, s.stage_number FROM stages s
+		`SELECT e.match_id, s.entry_id, s.stage_number FROM stages s
 		 JOIN entries e ON e.id = s.entry_id
 		 WHERE s.status <> 'open'
-		   AND (? = 0 OR e.competition_id = ?)
+		   AND (? = 0 OR e.match_id = ?)
 		   AND (? = 0 OR s.entry_id = ?)
 		   AND (? = 0 OR e.shooter_id = ?)
-		 ORDER BY e.competition_id, s.entry_id, s.stage_number`,
+		 ORDER BY e.match_id, s.entry_id, s.stage_number`,
 		f.CompetitionID, f.CompetitionID, f.EntryID, f.EntryID, f.ShooterID, f.ShooterID)
 	if err != nil {
 		return nil, err
