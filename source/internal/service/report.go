@@ -61,7 +61,7 @@ func downloadBaseName(name, date string) string {
 	return base + "-" + date
 }
 
-func (s *Service) ResultsWorkbook(ctx context.Context, matchID int64) (Download, error) {
+func (s *Service) renderWorkbook(ctx context.Context, matchID int64) (Download, error) {
 	data, err := s.loadReport(ctx, matchID)
 	if err != nil {
 		return Download{}, err
@@ -70,11 +70,10 @@ func (s *Service) ResultsWorkbook(ctx context.Context, matchID int64) (Download,
 	if err != nil {
 		return Download{}, err
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("match", matchID), Details: "xlsx"}})
 	return Download{BaseName: downloadBaseName(data.Match.Name, data.Match.Date), Data: out}, nil
 }
 
-func (s *Service) ResultsCSV(ctx context.Context, matchID int64) (Download, error) {
+func (s *Service) renderCSV(ctx context.Context, matchID int64) (Download, error) {
 	data, err := s.loadReport(ctx, matchID)
 	if err != nil {
 		return Download{}, err
@@ -83,6 +82,23 @@ func (s *Service) ResultsCSV(ctx context.Context, matchID int64) (Download, erro
 	if err != nil {
 		return Download{}, err
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("match", matchID), Details: "csv"}})
 	return Download{BaseName: downloadBaseName(data.Match.Name, data.Match.Date), Data: out}, nil
+}
+
+func (s *Service) ResultsWorkbook(ctx context.Context, matchID int64) (Download, error) {
+	file, err := s.renderWorkbook(ctx, matchID)
+	if err != nil {
+		return Download{}, err
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("match", matchID), Details: "xlsx"}})
+	return file, nil
+}
+
+func (s *Service) ResultsCSV(ctx context.Context, matchID int64) (Download, error) {
+	file, err := s.renderCSV(ctx, matchID)
+	if err != nil {
+		return Download{}, err
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("match", matchID), Details: "csv"}})
+	return file, nil
 }

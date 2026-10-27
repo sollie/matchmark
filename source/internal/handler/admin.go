@@ -22,6 +22,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/competitions/{competitionID}", serve(h.getCompetition))
 	r.Put("/competitions/{competitionID}", serve(h.updateCompetition))
 	r.Delete("/competitions/{competitionID}", serve(h.deleteCompetition))
+	r.With(h.render.MiddlewareUncoalesced(ResourceByPath)).Get("/competitions/{competitionID}/results.zip", h.competitionDownload)
 	r.Post("/matches", serve(h.createMatch))
 	r.Get("/matches", serve(h.listMatches))
 	r.Get("/matches/{matchID}", serve(h.getMatch))

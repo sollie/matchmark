@@ -51,6 +51,26 @@ test.describe("reports and backup", () => {
     expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
   });
 
+  test("the competition downloads a zip of every finished match", async ({ adminPage: page, admin }) => {
+    const { match } = await seedReportMatch(admin);
+    await page.goto("/admin");
+    const group = page.getByRole("region", { name: `Competition ${match.name}` });
+
+    for (const [name, entry] of [
+      ["Results reports (.xlsx) zip", `${match.name}`],
+      ["All formats zip", ""],
+    ] as const) {
+      const downloadPromise = page.waitForEvent("download");
+      await group.getByRole("link", { name: `${name} for ${match.name}` }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toMatch(/\.zip$/);
+      const bytes = await readFile(await download.path());
+      expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK");
+      if (entry) expect(bytes.toString("latin1")).toContain(".xlsx");
+      else expect(bytes.toString("latin1")).toMatch(/\.pdf/);
+    }
+  });
+
   test("the match page offers no downloads", async ({ adminPage: page, admin }) => {
     const { match } = await seedReportMatch(admin);
     await openMatch(page, match.id);
@@ -64,6 +84,7 @@ test.describe("reports and backup", () => {
     for (const path of [
       `/api/matches/${match.id}/results.xlsx`,
       `/api/matches/${match.id}/results.csv`,
+      `/api/competitions/1/results.zip?format=csv`,
       `/api/admin/matches/${match.id}/results`,
       "/api/admin/backup",
     ]) {
