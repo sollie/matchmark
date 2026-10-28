@@ -558,7 +558,7 @@ paths:
                   shooters:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Shooter'
+                      $ref: '#/components/schemas/ShooterListItem'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -675,11 +675,11 @@ paths:
         - adminCookie: []
       responses:
         '200':
-          description: The shooter
+          description: The shooter and the matches they are entered in
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Shooter'
+                $ref: '#/components/schemas/ShooterDetail'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -2460,6 +2460,40 @@ components:
               type: integer
               format: int64
         - $ref: '#/components/schemas/ShooterInput'
+    ShooterListItem:
+      allOf:
+        - $ref: '#/components/schemas/Shooter'
+        - type: object
+          required: [entry_count]
+          properties:
+            entry_count:
+              type: integer
+              minimum: 0
+              description: Entries of the shooter in any match, withdrawn ones included. Any entry blocks deleting the shooter (409).
+    ShooterDetail:
+      allOf:
+        - $ref: '#/components/schemas/ShooterListItem'
+        - type: object
+          required: [matches]
+          properties:
+            matches:
+              type: array
+              description: Matches the shooter is entered in, newest first
+              items:
+                type: object
+                required: [id, name, date, status]
+                properties:
+                  id:
+                    type: integer
+                    format: int64
+                  name:
+                    type: string
+                  date:
+                    type: string
+                    format: date
+                  status:
+                    type: string
+                    enum: [draft, active, finished]
     ShooterImportInput:
       allOf:
         - $ref: '#/components/schemas/ShooterInput'

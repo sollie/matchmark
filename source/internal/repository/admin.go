@@ -68,6 +68,44 @@ func (r *Repository) ListShooters(ctx context.Context, query string, limit int) 
 	return r.queryShooters(ctx, keep, limit, "", "last_name, first_name, id")
 }
 
+func (r *Repository) ShooterEntryCounts(ctx context.Context) (map[int64]int, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT shooter_id, COUNT(*) FROM entries GROUP BY shooter_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	counts := map[int64]int{}
+	for rows.Next() {
+		var id int64
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		counts[id] = n
+	}
+	return counts, rows.Err()
+}
+
+func (r *Repository) ShooterMatches(ctx context.Context, shooterID int64) ([]Match, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT m.id, m.competition_id, m.name, m.date, m.course, m.status, m.current_stage
+		 FROM matches m JOIN entries e ON e.match_id = m.id
+		 WHERE e.shooter_id = ? ORDER BY m.date DESC, m.id DESC`, shooterID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	matches := []Match{}
+	for rows.Next() {
+		var m Match
+		if err := rows.Scan(&m.ID, &m.CompetitionID, &m.Name, &m.Date, &m.Course, &m.Status, &m.CurrentStage); err != nil {
+			return nil, err
+		}
+		matches = append(matches, m)
+	}
+	return matches, rows.Err()
+}
+
 func (r *Repository) GetShooter(ctx context.Context, id int64) (Shooter, error) {
 	s, err := scanShooter(r.db.QueryRowContext(ctx, `SELECT `+shooterColumns+` FROM shooters WHERE id = ?`, id))
 	return s, mapErr(err)

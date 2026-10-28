@@ -1,5 +1,14 @@
 import type { Page } from "@playwright/test";
-import { createShooter, expect, row, test, uniqueLastName } from "./helpers";
+import {
+  addEntry,
+  createMatch,
+  createShooter,
+  expect,
+  row,
+  setStatus,
+  test,
+  uniqueLastName,
+} from "./helpers";
 
 async function openShooters(page: Page) {
   await page.goto("/admin/shooters");
@@ -149,6 +158,54 @@ test.describe("shooters", () => {
     await page.reload();
     await expect(page.getByRole("heading", { name: "Shooters" })).toBeVisible();
     await expect(row(page, shooter.last_name)).toHaveCount(0);
+  });
+
+  test("a shooter with entries cannot be deleted and links to their matches", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const shooter = await createShooter(admin, { last_name: uniqueLastName("Entered") });
+    const draft = await createMatch(admin);
+    const active = await createMatch(admin);
+    await addEntry(admin, draft.id, shooter.id, 1);
+    await addEntry(admin, active.id, shooter.id, 1);
+    await setStatus(admin, active.id, "active");
+    await openShooters(page);
+
+    const entered = row(page, shooter.last_name);
+    await expect(entered.getByRole("button", { name: "Delete" })).toBeDisabled();
+    await entered.getByRole("button", { name: "Entered in 2 matches" }).click();
+    await expect(entered.getByRole("link", { name: draft.name })).toHaveAttribute(
+      "href",
+      `/admin/matches/${draft.id}`,
+    );
+    await expect(entered.getByRole("link", { name: active.name })).toHaveAttribute(
+      "href",
+      `/admin/matches/${active.id}`,
+    );
+    await entered.getByRole("link", { name: draft.name }).click();
+    await expect(page).toHaveURL(`/admin/matches/${draft.id}`);
+  });
+
+  test("a delete refused by the server shows the conflict", async ({ adminPage: page, admin }) => {
+    const shooter = await createShooter(admin, { last_name: uniqueLastName("Raced") });
+    await openShooters(page);
+    await expect(
+      row(page, shooter.last_name).getByRole("button", { name: "Delete" }),
+    ).toBeEnabled();
+
+    const match = await createMatch(admin);
+    await addEntry(admin, match.id, shooter.id, 1);
+    page.once("dialog", (dialog) => dialog.accept());
+    await row(page, shooter.last_name).getByRole("button", { name: "Delete" }).click();
+
+    await expect(page.getByRole("alert")).toContainText("cannot be deleted");
+    await expect(
+      row(page, shooter.last_name).getByRole("button", { name: "Entered in 1 match" }),
+    ).toBeVisible();
+    await expect(
+      row(page, shooter.last_name).getByRole("button", { name: "Delete" }),
+    ).toBeDisabled();
   });
 
   test("an incomplete form is blocked", async ({ adminPage: page }) => {

@@ -370,6 +370,11 @@ label.check {
 .error {
   color: var(--danger-fg);
 }
+.matches {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
 .muted {
   color: var(--text-muted);
 }
