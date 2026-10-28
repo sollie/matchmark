@@ -163,6 +163,36 @@ a {
   color: #ffffff;
   font-weight: 600;
 }
+.club-badge {
+  min-width: 0;
+}
+.club-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: var(--space-2);
+  color: #ffffff;
+  border-radius: var(--radius-sm);
+}
+.site-header .brand-link + .account-link {
+  margin-left: auto;
+}
+.account-link:focus-visible {
+  outline-offset: -2px;
+}
+@media (max-width: 480px) {
+  .club-badge:has(img) .club-name {
+    display: none;
+  }
+}
 .club-badge img {
   display: block;
   height: 2rem;
