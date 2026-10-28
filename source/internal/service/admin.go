@@ -42,7 +42,7 @@ const (
 	maxShooterSearchLimit     = 100
 )
 
-func (s *Service) ListShooters(ctx context.Context, query string, limit int) ([]repository.Shooter, error) {
+func (s *Service) ListShooters(ctx context.Context, query string, includeArchived bool, limit int) ([]repository.Shooter, error) {
 	query = strings.TrimSpace(query)
 	if limit < 0 || limit > maxShooterSearchLimit {
 		return nil, ErrInvalid
@@ -50,7 +50,7 @@ func (s *Service) ListShooters(ctx context.Context, query string, limit int) ([]
 	if limit == 0 && query != "" {
 		limit = defaultShooterSearchLimit
 	}
-	return s.repo.ListShooters(ctx, query, limit)
+	return s.repo.ListShooters(ctx, query, includeArchived, limit)
 }
 
 type ShooterUsage struct {
@@ -83,6 +83,26 @@ func (s *Service) UpdateShooter(ctx context.Context, sh repository.Shooter) erro
 	}
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "shooter.update", Target: idTarget("shooter", sh.ID)}, Live: LiveAll, Reemit: &repository.LockedStageFilter{ShooterID: sh.ID}})
 	return nil
+}
+
+func (s *Service) ArchiveShooter(ctx context.Context, id int64) (repository.Shooter, error) {
+	return s.setShooterArchived(ctx, id, true, "shooter.archive")
+}
+
+func (s *Service) UnarchiveShooter(ctx context.Context, id int64) (repository.Shooter, error) {
+	return s.setShooterArchived(ctx, id, false, "shooter.unarchive")
+}
+
+func (s *Service) setShooterArchived(ctx context.Context, id int64, archived bool, action string) (repository.Shooter, error) {
+	if err := s.repo.SetShooterArchived(ctx, id, archived); err != nil {
+		return repository.Shooter{}, mapRepoErr(err)
+	}
+	sh, err := s.repo.GetShooter(ctx, id)
+	if err != nil {
+		return sh, mapRepoErr(err)
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: action, Target: idTarget("shooter", id)}, Live: LiveAll})
+	return sh, nil
 }
 
 func (s *Service) DeleteShooter(ctx context.Context, id int64) error {

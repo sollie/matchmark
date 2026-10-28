@@ -34,7 +34,7 @@
   async function load() {
     const q = query.trim();
     const result = await api.GET("/api/shooters", {
-      params: { query: q ? { q, limit: 100 } : {} },
+      params: { query: q ? { q, limit: 100, include_archived: true } : {} },
     });
     if (result.data) shooters = result.data.shooters;
     else error = failure(result);
@@ -102,7 +102,7 @@
   const entriesLabel = (n: number) => `Entered in ${n} ${n === 1 ? "match" : "matches"}`;
 
   function edit(s: Shooter) {
-    const { id, ...rest } = s;
+    const { id, archived: _archived, ...rest } = s;
     editing = id;
     form = rest;
   }
@@ -110,6 +110,15 @@
   function cancel() {
     editing = null;
     form = blank();
+  }
+
+  async function setArchived(s: ShooterListItem, archive: boolean) {
+    error = "";
+    const result = await (archive
+      ? api.POST("/api/shooters/{shooterID}/archive", { params: { path: { shooterID: s.id } } })
+      : api.POST("/api/shooters/{shooterID}/unarchive", { params: { path: { shooterID: s.id } } }));
+    if (!result.response.ok) error = failure(result);
+    await load();
   }
 
   async function remove(s: ShooterListItem) {
@@ -169,7 +178,11 @@
     <tbody>
       {#each shooters as s (s.id)}
         <tr>
-          <td>{s.first_name} {s.last_name}</td>
+          <td>
+            {s.first_name}
+            {s.last_name}
+            {#if s.archived}<span class="badge neutral">Archived</span>{/if}
+          </td>
           <td>{s.country}</td>
           <td>{s.club}</td>
           <td>{s.waid || "—"}</td>
@@ -194,6 +207,11 @@
           </td>
           <td class="row-actions">
             <button class="secondary" onclick={() => edit(s)}>Edit</button>
+            {#if s.archived}
+              <button class="secondary" onclick={() => setArchived(s, false)}>Unarchive</button>
+            {:else}
+              <button class="secondary" onclick={() => setArchived(s, true)}>Archive</button>
+            {/if}
             <button
               class="danger"
               disabled={s.entry_count > 0}
@@ -202,6 +220,9 @@
                 : undefined}
               onclick={() => remove(s)}>Delete</button
             >
+            {#if s.entry_count > 0}
+              <span class="muted">Archive or merge this shooter instead.</span>
+            {/if}
           </td>
         </tr>
       {:else}

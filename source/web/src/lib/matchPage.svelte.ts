@@ -50,7 +50,9 @@ export class MatchPage {
   };
 
   loadShooters = async () => {
-    const result = await settle(api.GET("/api/shooters"));
+    const result = await settle(
+      api.GET("/api/shooters", { params: { query: { include_archived: true } } }),
+    );
     if (result.ok) this.shooters = result.data.shooters;
     else this.error = result.error;
   };

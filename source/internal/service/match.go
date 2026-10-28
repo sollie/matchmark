@@ -141,6 +141,13 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if err != nil {
 		return 0, err
 	}
+	shooter, err := s.repo.GetShooter(ctx, e.ShooterID)
+	if err != nil {
+		return 0, mapRepoErr(err)
+	}
+	if shooter.Archived {
+		return 0, ErrShooterArchived
+	}
 	if rulebook.ValidateCategory(comp.Course, e.Category) != nil {
 		return 0, ErrInvalid
 	}

@@ -31,6 +31,11 @@ func (h *Handler) importShooter(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]any{"error": "name_conflict", "candidates": candidates})
 		return
 	}
+	var archived *service.ArchivedShooterError
+	if errors.As(err, &archived) {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "shooter_archived", "shooter": shooterJSON(archived.Shooter)})
+		return
+	}
 	if err != nil {
 		writeError(w, err)
 		return
