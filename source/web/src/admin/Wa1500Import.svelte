@@ -9,6 +9,7 @@
   type Shooter = components["schemas"]["Shooter"];
   type ShooterInput = components["schemas"]["ShooterInput"];
   type Hit = components["schemas"]["Wa1500Shooter"];
+  type ImportExtra = { update_shooter_id?: number; create_new?: boolean };
 
   let {
     query = "",
@@ -37,6 +38,7 @@
   let form = $state<ShooterInput>(blank());
   let pending = $state<{ hit: Hit; candidates: Shooter[] } | null>(null);
   let busy = $state(false);
+  let archivedMatch = $state<{ hit: Hit; shooter: Shooter; extra: ImportExtra } | null>(null);
 
   const hitName = (h: Hit) => `${h.first_name} ${h.last_name}`;
 
@@ -77,16 +79,19 @@
     else error = failure(result);
   }
 
-  async function runImport(
-    hit: Hit,
-    extra: { update_shooter_id?: number; create_new?: boolean } = {},
-  ) {
+  async function runImport(hit: Hit, extra: ImportExtra = {}) {
     error = "";
+    archivedMatch = null;
     busy = true;
     const result = await api.POST("/api/shooters/import", { body: { ...hit, ...extra } });
     busy = false;
     if (result.response.status === 409 && result.error && "candidates" in result.error) {
       pending = { hit, candidates: result.error.candidates };
+      return;
+    }
+    if (result.response.status === 409 && result.error && "shooter" in result.error) {
+      pending = null;
+      archivedMatch = { hit, shooter: result.error.shooter, extra };
       return;
     }
     if (!result.data) {
@@ -96,6 +101,21 @@
     }
     pending = null;
     await finish(result.data.id);
+  }
+
+  async function unarchiveAndImport() {
+    if (!archivedMatch) return;
+    const { hit, shooter, extra } = archivedMatch;
+    busy = true;
+    const result = await api.POST("/api/shooters/{shooterID}/unarchive", {
+      params: { path: { shooterID: shooter.id } },
+    });
+    busy = false;
+    if (!result.response.ok) {
+      error = failure(result);
+      return;
+    }
+    await runImport(hit, extra);
   }
 
   async function saveManual(e: SubmitEvent) {
@@ -163,6 +183,23 @@
       <label>WAID (blank for new shooter) <input bind:value={form.waid} maxlength="32" /></label>
       <button type="submit" class="primary" disabled={busy}>Save shooter</button>
     </form>
+  {/if}
+
+  {#if archivedMatch}
+    <div class="dialog card" role="alert">
+      <p>
+        {hitName(archivedMatch.hit)} matched an archived shooter ({archivedMatch.shooter.first_name}
+        {archivedMatch.shooter.last_name}). Unarchive the shooter to import.
+      </p>
+      <div class="row">
+        <button type="button" class="primary" disabled={busy} onclick={unarchiveAndImport}>
+          Unarchive
+        </button>
+        <button type="button" class="secondary" onclick={() => (archivedMatch = null)}>
+          Cancel
+        </button>
+      </div>
+    </div>
   {/if}
 
   {#if pending}

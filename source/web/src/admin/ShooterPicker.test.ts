@@ -11,8 +11,17 @@ const doe = {
   country: "SWE",
   club: "Alpha",
   waid: "W7",
+  archived: false,
 };
-const roe = { id: 8, last_name: "Roe", first_name: "Rick", country: "NOR", club: "Beta", waid: "" };
+const roe = {
+  id: 8,
+  last_name: "Roe",
+  first_name: "Rick",
+  country: "NOR",
+  club: "Beta",
+  waid: "",
+  archived: false,
+};
 
 function setup(props: Record<string, unknown> = {}) {
   const calls = stubFetch(() => ({ body: { shooters: [doe, roe] } }));
@@ -68,5 +77,22 @@ describe("ShooterPicker", () => {
     await waitFor(() => expect(screen.getByText("No match")).toBeTruthy());
     await user.click(screen.getByRole("option", { name: "Search WA1500 / add new" }));
     expect(onadd).toHaveBeenCalledWith("zzz");
+  });
+
+  it("shows archived shooters with a badge and does not select them", async () => {
+    const gone = { ...roe, id: 9, last_name: "Gone", archived: true };
+    const calls = stubFetch(() => ({ body: { shooters: [doe, gone] } }));
+    const onselect = vi.fn();
+    render(ShooterPicker, { onselect });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole("combobox", { name: "Shooter" }), "o");
+    const option = await screen.findByRole("option", { name: /Rick Gone/ });
+    expect(option.textContent).toContain("Archived");
+    expect(option.getAttribute("aria-disabled")).toBe("true");
+    await user.click(option);
+    expect(onselect).not.toHaveBeenCalledWith(expect.objectContaining({ id: 9 }));
+    await waitFor(() =>
+      expect(calls.some((c) => c.search.includes("include_archived=true"))).toBe(true),
+    );
   });
 });

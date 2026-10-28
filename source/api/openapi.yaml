@@ -538,6 +538,12 @@ paths:
           description: Case-insensitive partial match on WAID or first/last name. Without it all shooters are returned.
           schema:
             type: string
+        - name: include_archived
+          in: query
+          required: false
+          description: Include archived shooters. They are hidden by default.
+          schema:
+            type: boolean
         - name: limit
           in: query
           required: false
@@ -587,7 +593,7 @@ paths:
       tags: [shooters]
       summary: Import a WA1500 hit as a local shooter, matching by WAID and then by name
       description: >-
-        A WAID match updates that shooter. Without a WAID match, shooters sharing the first and last
+        A WAID match updates that shooter. A match with an archived shooter, by WAID or as the chosen update_shooter_id, answers 409 shooter_archived and changes nothing; unarchive the shooter and retry. Without a WAID match, shooters sharing the first and last
         name (case-insensitive) make the call answer 409 with candidates; resend with
         update_shooter_id (one of the candidates, otherwise 422) or create_new true. Otherwise a new shooter is created.
       security:
@@ -614,11 +620,13 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
-          description: Local shooters share the name; the client must choose one or create a new shooter
+          description: Local shooters share the name and the client must choose one or create a new shooter, or the matched shooter is archived and must be unarchived first
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ShooterImportConflict'
+                oneOf:
+                  - $ref: '#/components/schemas/ShooterImportConflict'
+                  - $ref: '#/components/schemas/ShooterImportArchived'
         '422':
           $ref: '#/components/responses/Invalid'
   /api/wa1500/search:
@@ -722,6 +730,45 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/shooters/{shooterID}/archive:
+    parameters:
+      - $ref: '#/components/parameters/ShooterID'
+    post:
+      operationId: archiveShooter
+      description: Hides the shooter from pickers and the default list and refuses new entries. Past results, reports and the audit trail keep the shooter and the WAID stays reserved.
+      tags: [shooters]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The archived shooter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shooter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/shooters/{shooterID}/unarchive:
+    parameters:
+      - $ref: '#/components/parameters/ShooterID'
+    post:
+      operationId: unarchiveShooter
+      tags: [shooters]
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The unarchived shooter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shooter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/competitions:
     get:
       operationId: listCompetitions
@@ -1153,6 +1200,7 @@ paths:
             schema:
               type: object
               required: [shooter_id, category, lane]
+              description: An archived shooter answers 409 shooter_archived
               properties:
                 shooter_id:
                   type: integer
@@ -2454,11 +2502,13 @@ components:
     Shooter:
       allOf:
         - type: object
-          required: [id]
+          required: [id, archived]
           properties:
             id:
               type: integer
               format: int64
+            archived:
+              type: boolean
         - $ref: '#/components/schemas/ShooterInput'
     ShooterListItem:
       allOf:
@@ -2527,6 +2577,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Shooter'
+    ShooterImportArchived:
+      type: object
+      required: [error, shooter]
+      properties:
+        error:
+          type: string
+          enum: [shooter_archived]
+        shooter:
+          $ref: '#/components/schemas/Shooter'
     ShooterInput:
       type: object
       required: [last_name, first_name, country, club, waid]
