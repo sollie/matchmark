@@ -24,6 +24,14 @@ _Avoid_: Match (for a group of stages)
 A person registered with the club who can enter Matches. A shooter with a WAID is a known shooter; one without is a new shooter. Admins find a shooter by searching the local registry on WAID or name. A shooter with any entry, including a withdrawn one, cannot be deleted.
 _Avoid_: Competitor, participant
 
+**Archived shooter**:
+A shooter an admin has retired from the club. It stays in past results, reports and the audit trail but is hidden from pickers and cannot be entered into new Matches until unarchived. Its WAID stays reserved.
+_Avoid_: Deleted shooter, inactive shooter
+
+**Shooter merge**:
+Absorbing a duplicate shooter into another one, moving all its entries to the target and then removing it. Refused when both have different WAIDs or both have an entry in the same Match.
+_Avoid_: Dedupe, combine
+
 **WAID**:
 The identifier the World Association assigns to a shooter and uses to match results to their record. New shooters have none yet.
 _Avoid_: WA-ID, member number
