@@ -8,6 +8,8 @@
   import { normalizeFirstName, normalizeLastName } from "../lib/names";
 
   type Shooter = components["schemas"]["Shooter"];
+  type ShooterListItem = components["schemas"]["ShooterListItem"];
+  type ShooterMatch = components["schemas"]["ShooterDetail"]["matches"][number];
   type ShooterInput = components["schemas"]["ShooterInput"];
 
   const blank = (): ShooterInput => ({
@@ -18,7 +20,9 @@
     waid: "",
   });
 
-  let shooters = $state<Shooter[]>([]);
+  let shooters = $state<ShooterListItem[]>([]);
+  let expanded = $state<number | null>(null);
+  let matches = $state<ShooterMatch[]>([]);
   let form = $state<ShooterInput>(blank());
   let editing = $state<number | null>(null);
   let error = $state("");
@@ -79,6 +83,24 @@
     await load();
   }
 
+  async function toggleMatches(s: ShooterListItem) {
+    if (expanded === s.id) {
+      expanded = null;
+      return;
+    }
+    const result = await api.GET("/api/shooters/{shooterID}", {
+      params: { path: { shooterID: s.id } },
+    });
+    if (!result.data) {
+      error = failure(result);
+      return;
+    }
+    matches = result.data.matches;
+    expanded = s.id;
+  }
+
+  const entriesLabel = (n: number) => `Entered in ${n} ${n === 1 ? "match" : "matches"}`;
+
   function edit(s: Shooter) {
     const { id, ...rest } = s;
     editing = id;
@@ -90,14 +112,14 @@
     form = blank();
   }
 
-  async function remove(s: Shooter) {
+  async function remove(s: ShooterListItem) {
     if (!confirm(`Delete ${s.first_name} ${s.last_name}?`)) return;
     error = "";
     const result = await api.DELETE("/api/shooters/{shooterID}", {
       params: { path: { shooterID: s.id } },
     });
     if (!result.response.ok) error = failure(result);
-    else await load();
+    await load();
   }
 </script>
 
@@ -142,7 +164,7 @@
 <div class="card scroll">
   <table>
     <thead>
-      <tr><th>Name</th><th>Country</th><th>Club</th><th>WAID</th><th></th></tr>
+      <tr><th>Name</th><th>Country</th><th>Club</th><th>WAID</th><th>Entries</th><th></th></tr>
     </thead>
     <tbody>
       {#each shooters as s (s.id)}
@@ -151,14 +173,40 @@
           <td>{s.country}</td>
           <td>{s.club}</td>
           <td>{s.waid || "—"}</td>
+          <td>
+            {#if s.entry_count > 0}
+              <button
+                type="button"
+                class="secondary"
+                aria-expanded={expanded === s.id}
+                onclick={() => toggleMatches(s)}>{entriesLabel(s.entry_count)}</button
+              >
+              {#if expanded === s.id}
+                <ul class="matches">
+                  {#each matches as m (m.id)}
+                    <li><a href={`/admin/matches/${m.id}`}>{m.name}</a>, {m.date}, {m.status}</li>
+                  {/each}
+                </ul>
+              {/if}
+            {:else}
+              <span class="muted">None</span>
+            {/if}
+          </td>
           <td class="row-actions">
             <button class="secondary" onclick={() => edit(s)}>Edit</button>
-            <button class="danger" onclick={() => remove(s)}>Delete</button>
+            <button
+              class="danger"
+              disabled={s.entry_count > 0}
+              title={s.entry_count > 0
+                ? "Remove the shooter's entries first. Entries in finished matches cannot be removed."
+                : undefined}
+              onclick={() => remove(s)}>Delete</button
+            >
           </td>
         </tr>
       {:else}
         <tr
-          ><td colspan="6" class="muted"
+          ><td colspan="7" class="muted"
             >{query.trim() ? "No matching shooters." : "No shooters yet."}</td
           ></tr
         >

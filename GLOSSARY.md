@@ -21,7 +21,7 @@ One of the rulebook's "Match 1" to "Match 5" groups of stages within the 150 cou
 _Avoid_: Match (for a group of stages)
 
 **Shooter**:
-A person registered with the club who can enter Matches. A shooter with a WAID is a known shooter; one without is a new shooter. Admins find a shooter by searching the local registry on WAID or name.
+A person registered with the club who can enter Matches. A shooter with a WAID is a known shooter; one without is a new shooter. Admins find a shooter by searching the local registry on WAID or name. A shooter with any entry, including a withdrawn one, cannot be deleted.
 _Avoid_: Competitor, participant
 
 **WAID**:

@@ -53,6 +53,27 @@ func (s *Service) ListShooters(ctx context.Context, query string, limit int) ([]
 	return s.repo.ListShooters(ctx, query, limit)
 }
 
+type ShooterUsage struct {
+	EntryCount int
+	Matches    []repository.Match
+}
+
+func (s *Service) ShooterEntryCounts(ctx context.Context) (map[int64]int, error) {
+	return s.repo.ShooterEntryCounts(ctx)
+}
+
+func (s *Service) ShooterUsage(ctx context.Context, id int64) (repository.Shooter, ShooterUsage, error) {
+	sh, err := s.repo.GetShooter(ctx, id)
+	if err != nil {
+		return sh, ShooterUsage{}, mapRepoErr(err)
+	}
+	matches, err := s.repo.ShooterMatches(ctx, id)
+	if err != nil {
+		return sh, ShooterUsage{}, mapRepoErr(err)
+	}
+	return sh, ShooterUsage{EntryCount: len(matches), Matches: matches}, nil
+}
+
 func (s *Service) UpdateShooter(ctx context.Context, sh repository.Shooter) error {
 	if !validShooter(sh) {
 		return ErrInvalid
