@@ -107,9 +107,15 @@ func (h *Handler) listShooters(r *http.Request) (int, any, error) {
 	if err != nil {
 		return fail(err)
 	}
+	counts, err := h.svc.ShooterEntryCounts(r.Context())
+	if err != nil {
+		return fail(err)
+	}
 	out := make([]map[string]any, 0, len(shooters))
 	for _, s := range shooters {
-		out = append(out, shooterJSON(s))
+		j := shooterJSON(s)
+		j["entry_count"] = counts[s.ID]
+		out = append(out, j)
 	}
 	return okJSON(map[string]any{"shooters": out})
 }
@@ -120,11 +126,18 @@ func (h *Handler) getShooter(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	s, err := h.repo.GetShooter(r.Context(), id)
+	s, usage, err := h.svc.ShooterUsage(r.Context(), id)
 	if err != nil {
 		return fail(err)
 	}
-	return okJSON(shooterJSON(s))
+	matches := make([]map[string]any, 0, len(usage.Matches))
+	for _, m := range usage.Matches {
+		matches = append(matches, map[string]any{"id": m.ID, "name": m.Name, "date": m.Date, "status": m.Status})
+	}
+	j := shooterJSON(s)
+	j["entry_count"] = usage.EntryCount
+	j["matches"] = matches
+	return okJSON(j)
 }
 
 func (h *Handler) updateShooter(r *http.Request) (int, any, error) {

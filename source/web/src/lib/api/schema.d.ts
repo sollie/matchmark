@@ -1212,6 +1212,22 @@ export interface components {
             /** Format: int64 */
             id: number;
         } & components["schemas"]["ShooterInput"];
+        ShooterListItem: components["schemas"]["Shooter"] & {
+            /** @description Entries of the shooter in any match, withdrawn ones included. Any entry blocks deleting the shooter (409). */
+            entry_count: number;
+        };
+        ShooterDetail: components["schemas"]["ShooterListItem"] & {
+            /** @description Matches the shooter is entered in, newest first */
+            matches: {
+                /** Format: int64 */
+                id: number;
+                name: string;
+                /** Format: date */
+                date: string;
+                /** @enum {string} */
+                status: "draft" | "active" | "finished";
+            }[];
+        };
         ShooterImportInput: components["schemas"]["ShooterInput"] & {
             /**
              * Format: int64
@@ -2197,7 +2213,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        shooters: components["schemas"]["Shooter"][];
+                        shooters: components["schemas"]["ShooterListItem"][];
                     };
                 };
             };
@@ -2322,13 +2338,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The shooter */
+            /** @description The shooter and the matches they are entered in */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Shooter"];
+                    "application/json": components["schemas"]["ShooterDetail"];
                 };
             };
             401: components["responses"]["Unauthorized"];

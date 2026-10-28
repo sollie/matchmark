@@ -107,6 +107,41 @@ func TestShooterRegistry(t *testing.T) {
 	})
 }
 
+func TestShooterEntryUsage(t *testing.T) {
+	f := newFixture(t, "150")
+	f.addEntry(t, "Entered", 1)
+	free := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "FREE", "first_name": "A", "country": "NOR", "club": "Club"})
+
+	_, list := f.env.Do("GET", "/api/shooters", nil)
+	counts := map[string]float64{}
+	var enteredID float64
+	for _, v := range list["shooters"].([]any) {
+		sh := v.(map[string]any)
+		counts[sh["last_name"].(string)] = sh["entry_count"].(float64)
+		if sh["last_name"] == "ENTERED" {
+			enteredID = sh["id"].(float64)
+		}
+	}
+	if counts["ENTERED"] != 1 || counts["FREE"] != 0 {
+		t.Fatalf("counts %v", counts)
+	}
+
+	_, detail := f.env.Do("GET", fmt.Sprintf("/api/shooters/%d", int(enteredID)), nil)
+	matches := detail["matches"].([]any)
+	if detail["entry_count"] != float64(1) || len(matches) != 1 {
+		t.Fatalf("detail %v", detail)
+	}
+	m := matches[0].(map[string]any)
+	if m["id"] == nil || m["name"] == nil || m["date"] == nil || m["status"] != "draft" {
+		t.Fatalf("match %v", m)
+	}
+
+	_, none := f.env.Do("GET", fmt.Sprintf("/api/shooters/%d", free), nil)
+	if none["entry_count"] != float64(0) || len(none["matches"].([]any)) != 0 {
+		t.Fatalf("free %v", none)
+	}
+}
+
 func TestMatchLifecycle(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	id := env.ID("POST", "/api/matches", map[string]any{"name": "Spring", "date": "2026-05-01", "course": "150"})
