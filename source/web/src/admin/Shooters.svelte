@@ -5,6 +5,7 @@
   import type { components } from "../lib/api/schema";
   import Wa1500Import from "./Wa1500Import.svelte";
   import NameFields from "./NameFields.svelte";
+  import ShooterMerge from "./ShooterMerge.svelte";
   import { normalizeFirstName, normalizeLastName } from "../lib/names";
 
   type Shooter = components["schemas"]["Shooter"];
@@ -29,12 +30,13 @@
   let query = $state("");
   let importing = $state(false);
   let notice = $state("");
+  let merging = $state<ShooterListItem | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function load() {
     const q = query.trim();
     const result = await api.GET("/api/shooters", {
-      params: { query: q ? { q, limit: 100 } : {} },
+      params: { query: q ? { q, limit: 100, include_archived: true } : {} },
     });
     if (result.data) shooters = result.data.shooters;
     else error = failure(result);
@@ -55,6 +57,14 @@
     importing = false;
     query = "";
     notice = `Saved ${s.first_name} ${s.last_name}.`;
+    await load();
+  }
+
+  async function merged(target: Shooter) {
+    const source = merging;
+    merging = null;
+    notice = `Merged ${source?.first_name} ${source?.last_name} into ${target.first_name} ${target.last_name}.`;
+    expanded = null;
     await load();
   }
 
@@ -102,7 +112,7 @@
   const entriesLabel = (n: number) => `Entered in ${n} ${n === 1 ? "match" : "matches"}`;
 
   function edit(s: Shooter) {
-    const { id, ...rest } = s;
+    const { id, archived: _archived, ...rest } = s;
     editing = id;
     form = rest;
   }
@@ -110,6 +120,15 @@
   function cancel() {
     editing = null;
     form = blank();
+  }
+
+  async function setArchived(s: ShooterListItem, archive: boolean) {
+    error = "";
+    const result = await (archive
+      ? api.POST("/api/shooters/{shooterID}/archive", { params: { path: { shooterID: s.id } } })
+      : api.POST("/api/shooters/{shooterID}/unarchive", { params: { path: { shooterID: s.id } } }));
+    if (!result.response.ok) error = failure(result);
+    await load();
   }
 
   async function remove(s: ShooterListItem) {
@@ -147,6 +166,10 @@
   </button>
 </div>
 
+{#if merging}
+  <ShooterMerge source={merging} onmerged={merged} oncancel={() => (merging = null)} />
+{/if}
+
 {#if importing}
   <Wa1500Import onsaved={imported} oncancel={() => (importing = false)} />
 {/if}
@@ -169,7 +192,11 @@
     <tbody>
       {#each shooters as s (s.id)}
         <tr>
-          <td>{s.first_name} {s.last_name}</td>
+          <td>
+            {s.first_name}
+            {s.last_name}
+            {#if s.archived}<span class="badge neutral">Archived</span>{/if}
+          </td>
           <td>{s.country}</td>
           <td>{s.club}</td>
           <td>{s.waid || "—"}</td>
@@ -194,6 +221,12 @@
           </td>
           <td class="row-actions">
             <button class="secondary" onclick={() => edit(s)}>Edit</button>
+            {#if s.archived}
+              <button class="secondary" onclick={() => setArchived(s, false)}>Unarchive</button>
+            {:else}
+              <button class="secondary" onclick={() => setArchived(s, true)}>Archive</button>
+            {/if}
+            <button class="secondary" onclick={() => (merging = s)}>Merge into…</button>
             <button
               class="danger"
               disabled={s.entry_count > 0}
@@ -202,6 +235,9 @@
                 : undefined}
               onclick={() => remove(s)}>Delete</button
             >
+            {#if s.entry_count > 0}
+              <span class="muted">Archive or merge this shooter instead.</span>
+            {/if}
           </td>
         </tr>
       {:else}

@@ -19,6 +19,14 @@ type ShooterImportResult struct {
 	Created bool
 }
 
+type ArchivedShooterError struct {
+	Shooter repository.Shooter
+}
+
+func (e *ArchivedShooterError) Error() string { return ErrShooterArchived.Error() }
+
+func (e *ArchivedShooterError) Is(target error) bool { return target == ErrShooterArchived }
+
 type NameConflictError struct {
 	Candidates []repository.Shooter
 }
@@ -38,7 +46,7 @@ func (s *Service) ImportShooter(ctx context.Context, in ShooterImport) (ShooterI
 	existing, err := s.repo.FindShooterByWAID(ctx, sh.WAID)
 	switch {
 	case err == nil:
-		return s.importUpdate(ctx, existing.ID, sh)
+		return s.importUpdate(ctx, existing, sh)
 	case !errors.Is(err, repository.ErrNotFound):
 		return ShooterImportResult{}, mapRepoErr(err)
 	}
@@ -53,7 +61,7 @@ func (s *Service) ImportShooter(ctx context.Context, in ShooterImport) (ShooterI
 	if in.UpdateShooterID != 0 {
 		for _, m := range matches {
 			if m.ID == in.UpdateShooterID {
-				return s.importUpdate(ctx, m.ID, sh)
+				return s.importUpdate(ctx, m, sh)
 			}
 		}
 		return ShooterImportResult{}, ErrInvalid
@@ -64,7 +72,11 @@ func (s *Service) ImportShooter(ctx context.Context, in ShooterImport) (ShooterI
 	return s.importCreate(ctx, sh)
 }
 
-func (s *Service) importUpdate(ctx context.Context, id int64, sh repository.Shooter) (ShooterImportResult, error) {
+func (s *Service) importUpdate(ctx context.Context, existing, sh repository.Shooter) (ShooterImportResult, error) {
+	if existing.Archived {
+		return ShooterImportResult{}, &ArchivedShooterError{Shooter: existing}
+	}
+	id := existing.ID
 	sh.ID = id
 	if err := s.UpdateShooter(ctx, sh); err != nil {
 		return ShooterImportResult{}, err

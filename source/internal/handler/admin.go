@@ -17,6 +17,10 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/shooters/{shooterID}", serve(h.getShooter))
 	r.Put("/shooters/{shooterID}", serve(h.updateShooter))
 	r.Delete("/shooters/{shooterID}", serve(h.deleteShooter))
+	r.Post("/shooters/{shooterID}/archive", serve(h.archiveShooter))
+	r.Post("/shooters/{shooterID}/unarchive", serve(h.unarchiveShooter))
+	r.Get("/shooters/{shooterID}/merge-preview", serve(h.previewShooterMerge))
+	r.Post("/shooters/{shooterID}/merge", serve(h.mergeShooter))
 	r.Get("/competitions", serve(h.listCompetitions))
 	r.Post("/competitions", serve(h.createCompetition))
 	r.Get("/competitions/{competitionID}", serve(h.getCompetition))
@@ -83,7 +87,7 @@ func (b shooterBody) shooter(id int64) repository.Shooter {
 func shooterJSON(s repository.Shooter) map[string]any {
 	return map[string]any{
 		"id": s.ID, "last_name": s.LastName, "first_name": s.FirstName,
-		"country": s.Country, "club": s.Club, "waid": s.WAID,
+		"country": s.Country, "club": s.Club, "waid": s.WAID, "archived": s.Archived,
 	}
 }
 
@@ -103,7 +107,7 @@ func (h *Handler) listShooters(r *http.Request) (int, any, error) {
 	if err != nil {
 		return fail(err)
 	}
-	shooters, err := h.svc.ListShooters(r.Context(), r.URL.Query().Get("q"), limit)
+	shooters, err := h.svc.ListShooters(r.Context(), r.URL.Query().Get("q"), r.URL.Query().Get("include_archived") == "true", limit)
 	if err != nil {
 		return fail(err)
 	}
@@ -150,6 +154,31 @@ func (h *Handler) updateShooter(r *http.Request) (int, any, error) {
 	}
 	s := body.shooter(id)
 	if err := h.svc.UpdateShooter(r.Context(), s); err != nil {
+		return fail(err)
+	}
+	stored, _, err := h.svc.ShooterUsage(r.Context(), id)
+	if err != nil {
+		return fail(err)
+	}
+	return okJSON(shooterJSON(stored))
+}
+
+func (h *Handler) archiveShooter(r *http.Request) (int, any, error) {
+	return h.setShooterArchived(r, h.svc.ArchiveShooter)
+}
+
+func (h *Handler) unarchiveShooter(r *http.Request) (int, any, error) {
+	return h.setShooterArchived(r, h.svc.UnarchiveShooter)
+}
+
+func (h *Handler) setShooterArchived(r *http.Request, set func(context.Context, int64) (repository.Shooter, error)) (int, any, error) {
+	req := in(r)
+	id := req.path("shooterID")
+	if req.err != nil {
+		return fail(req.err)
+	}
+	s, err := set(r.Context(), id)
+	if err != nil {
 		return fail(err)
 	}
 	return okJSON(shooterJSON(s))

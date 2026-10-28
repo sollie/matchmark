@@ -283,7 +283,7 @@ export interface paths {
         put?: never;
         /**
          * Import a WA1500 hit as a local shooter, matching by WAID and then by name
-         * @description A WAID match updates that shooter. Without a WAID match, shooters sharing the first and last name (case-insensitive) make the call answer 409 with candidates; resend with update_shooter_id (one of the candidates, otherwise 422) or create_new true. Otherwise a new shooter is created.
+         * @description A WAID match updates that shooter. A match with an archived shooter, by WAID or as the chosen update_shooter_id, answers 409 shooter_archived and changes nothing; unarchive the shooter and retry. Without a WAID match, shooters sharing the first and last name (case-insensitive) make the call answer 409 with candidates; resend with update_shooter_id (one of the candidates, otherwise 422) or create_new true. Otherwise a new shooter is created.
          */
         post: operations["importShooter"];
         delete?: never;
@@ -322,6 +322,89 @@ export interface paths {
         put: operations["updateShooter"];
         post?: never;
         delete: operations["deleteShooter"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shooters/{shooterID}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Hides the shooter from pickers and the default list and refuses new entries. Past results, reports and the audit trail keep the shooter and the WAID stays reserved. */
+        post: operations["archiveShooter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shooters/{shooterID}/merge-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Preview merging this shooter (the source) into another (the target)
+         * @description Answers 409 shooter_archived when the target is archived.
+         */
+        get: operations["previewShooterMerge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shooters/{shooterID}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["unarchiveShooter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shooters/{shooterID}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge this shooter (the source) into another (the target); irreversible
+         * @description Re-points every entry of the source to the target and deletes the source in one transaction.
+         *     The target wins on every field; the source WAID carries over only when the target has none.
+         *     Refused with 409 when the WAIDs differ or both shooters have an entry in the same match, and with 409 shooter_archived when the target is archived.
+         */
+        post: operations["mergeShooter"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1211,6 +1294,7 @@ export interface components {
         Shooter: {
             /** Format: int64 */
             id: number;
+            archived: boolean;
         } & components["schemas"]["ShooterInput"];
         ShooterListItem: components["schemas"]["Shooter"] & {
             /** @description Entries of the shooter in any match, withdrawn ones included. Any entry blocks deleting the shooter (409). */
@@ -1227,6 +1311,39 @@ export interface components {
                 /** @enum {string} */
                 status: "draft" | "active" | "finished";
             }[];
+        };
+        ShooterMergePreview: {
+            source: components["schemas"]["Shooter"];
+            target: components["schemas"]["Shooter"];
+            /** @description The source's entries that move to the target */
+            entries: {
+                /** Format: int64 */
+                entry_id: number;
+                /** Format: int64 */
+                match_id: number;
+                match_name: string;
+                /** Format: date */
+                match_date: string;
+                /** @enum {string} */
+                match_status: "draft" | "active" | "finished";
+            }[];
+            /** @description Matches both shooters are entered in; each blocks the merge */
+            conflicts: {
+                /** Format: int64 */
+                match_id: number;
+                match_name: string;
+                /** Format: date */
+                match_date: string;
+            }[];
+            /** @description Both shooters have different WAIDs, which blocks the merge */
+            waid_conflict: boolean;
+            /** @description The target WAID, or the source WAID when the target has none; empty when neither has one */
+            resulting_waid: string;
+            can_merge: boolean;
+        };
+        ShooterMergeBlocked: components["schemas"]["ShooterMergePreview"] & {
+            /** @enum {string} */
+            error: "merge_blocked";
         };
         ShooterImportInput: components["schemas"]["ShooterInput"] & {
             /**
@@ -1247,6 +1364,11 @@ export interface components {
             /** @enum {string} */
             error: "name_conflict";
             candidates: components["schemas"]["Shooter"][];
+        };
+        ShooterImportArchived: {
+            /** @enum {string} */
+            error: "shooter_archived";
+            shooter: components["schemas"]["Shooter"];
         };
         ShooterInput: {
             /** @description Must already be normalized (uppercase, single spaces, trimmed); otherwise the call answers 422. */
@@ -2197,6 +2319,8 @@ export interface operations {
             query?: {
                 /** @description Case-insensitive partial match on WAID or first/last name. Without it all shooters are returned. */
                 q?: string;
+                /** @description Include archived shooters. They are hidden by default. */
+                include_archived?: boolean;
                 /** @description Maximum number of results. Defaults to 20 when q is given, otherwise unlimited. */
                 limit?: number;
             };
@@ -2271,13 +2395,13 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description Local shooters share the name; the client must choose one or create a new shooter */
+            /** @description Local shooters share the name and the client must choose one or create a new shooter, or the matched shooter is archived and must be unarchived first */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ShooterImportConflict"];
+                    "application/json": components["schemas"]["ShooterImportConflict"] | components["schemas"]["ShooterImportArchived"];
                 };
             };
             422: components["responses"]["Invalid"];
@@ -2395,6 +2519,127 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    archiveShooter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The archived shooter */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shooter"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    previewShooterMerge: {
+        parameters: {
+            query: {
+                target_id: number;
+            };
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The entries that would move, the blocking conflicts and the resulting WAID */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShooterMergePreview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    unarchiveShooter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The unarchived shooter */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shooter"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    mergeShooter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: int64 */
+                    target_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The shooter was merged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        target_id: number;
+                        moved_entries: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description The merge is blocked by a WAID difference or a match both shooters are entered in (merge_blocked), or the target is archived (shooter_archived) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShooterMergeBlocked"] | components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["Invalid"];
         };
     };
     listCompetitions: {
