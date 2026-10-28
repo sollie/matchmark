@@ -332,34 +332,3 @@ func (r *Repository) ShooterEntries(ctx context.Context, shooterID int64) ([]Sho
 	}
 	return refs, rows.Err()
 }
-
-func (r *Repository) MergeShooters(ctx context.Context, sourceID, targetID int64, targetWAID, targetName string) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	var waid any
-	if targetWAID != "" {
-		waid = targetWAID
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE shooters SET waid = NULL WHERE id = ?`, sourceID); err != nil {
-		return mapErr(err)
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE shooters SET waid = ? WHERE id = ?`, waid, targetID); err != nil {
-		return mapErr(err)
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE entries SET shooter_id = ? WHERE shooter_id = ?`, targetID, sourceID); err != nil {
-		return mapErr(err)
-	}
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE stage_events SET shooter_name = ? WHERE entry_id IN (SELECT id FROM entries WHERE shooter_id = ?)`,
-		targetName, targetID); err != nil {
-		return err
-	}
-	res, err := tx.ExecContext(ctx, `DELETE FROM shooters WHERE id = ?`, sourceID)
-	if err := affected(res, err); err != nil {
-		return err
-	}
-	return tx.Commit()
-}

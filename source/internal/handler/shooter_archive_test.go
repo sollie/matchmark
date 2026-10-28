@@ -54,6 +54,39 @@ func TestArchivedShooterIsHiddenFromTheDefaultListButSearchable(t *testing.T) {
 	}
 }
 
+func TestArchivingTwiceIsANoOpWithoutAudit(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	id := env.ID("POST", "/api/shooters", shooterBody("TWICE"))
+	count := func(action string) int {
+		n := 0
+		for _, row := range auditEntries(t, env, "?page_size=200") {
+			if row["action"] == action {
+				n++
+			}
+		}
+		return n
+	}
+	for i := 0; i < 2; i++ {
+		if status, out := env.Do("POST", fmt.Sprintf("/api/shooters/%d/archive", id), nil); status != http.StatusOK || out["archived"] != true {
+			t.Fatalf("archive %d %v", status, out)
+		}
+	}
+	if n := count("shooter.archive"); n != 1 {
+		t.Fatalf("archive audited %d times", n)
+	}
+	for i := 0; i < 2; i++ {
+		if status, out := env.Do("POST", fmt.Sprintf("/api/shooters/%d/unarchive", id), nil); status != http.StatusOK || out["archived"] != false {
+			t.Fatalf("unarchive %d %v", status, out)
+		}
+	}
+	if n := count("shooter.unarchive"); n != 1 {
+		t.Fatalf("unarchive audited %d times", n)
+	}
+	if status, _ := env.Do("POST", "/api/shooters/9999/archive", nil); status != http.StatusNotFound {
+		t.Fatalf("unknown shooter %d", status)
+	}
+}
+
 func TestArchivedShooterKeepsEntriesAndCannotBeEnteredAgain(t *testing.T) {
 	f := newFixture(t, "150")
 	f.addEntry(t, "Kept", 1)

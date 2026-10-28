@@ -72,7 +72,7 @@ func TestMergeMovesEntriesAndDeletesSource(t *testing.T) {
 	}
 
 	row := findAudit(auditEntries(t, m.env, ""), "shooter.merge")
-	if row == nil || row["target"] != fmt.Sprintf("shooter:%d", source) || row["details"] != fmt.Sprintf("into shooter:%d", target) {
+	if row == nil || row["target"] != fmt.Sprintf("shooter:%d", source) || row["details"] != fmt.Sprintf("into shooter:%d, 1 entries moved, WAID W900", target) {
 		t.Fatalf("audit %v", row)
 	}
 }
