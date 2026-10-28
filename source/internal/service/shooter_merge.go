@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/sollie/matchmark/internal/repository"
 )
@@ -82,11 +84,23 @@ func (s *Service) MergeShooters(ctx context.Context, sourceID, targetID int64) (
 	if !preview.CanMerge() {
 		return preview, &MergeBlockedError{Preview: preview}
 	}
-	if err := s.repo.MergeShooters(ctx, sourceID, targetID, preview.ResultingWAID, shooterName(preview.Target)); err != nil {
+	outcome, err := s.repo.MergeShooters(ctx, sourceID, targetID)
+	switch {
+	case errors.Is(err, repository.ErrMergeArchived):
+		return preview, ErrShooterArchived
+	case errors.Is(err, repository.ErrMergeBlocked):
+		current, perr := s.PreviewShooterMerge(ctx, sourceID, targetID)
+		if perr != nil {
+			return current, perr
+		}
+		return current, &MergeBlockedError{Preview: current}
+	case err != nil:
 		return preview, mapRepoErr(err)
 	}
+	preview.ResultingWAID = outcome.WAID
+	details := fmt.Sprintf("into %s, %d entries moved, WAID %s", idTarget("shooter", targetID), outcome.Moved, outcome.WAID)
 	s.changes.Record(ctx, Change{
-		Audit:  AuditEvent{Action: "shooter.merge", Target: idTarget("shooter", sourceID), Details: "into " + idTarget("shooter", targetID)},
+		Audit:  AuditEvent{Action: "shooter.merge", Target: idTarget("shooter", sourceID), Details: details},
 		Live:   LiveAll,
 		Reemit: &repository.LockedStageFilter{ShooterID: targetID},
 	})

@@ -94,13 +94,17 @@ func (s *Service) UnarchiveShooter(ctx context.Context, id int64) (repository.Sh
 }
 
 func (s *Service) setShooterArchived(ctx context.Context, id int64, archived bool, action string) (repository.Shooter, error) {
-	if err := s.repo.SetShooterArchived(ctx, id, archived); err != nil {
-		return repository.Shooter{}, mapRepoErr(err)
-	}
 	sh, err := s.repo.GetShooter(ctx, id)
 	if err != nil {
 		return sh, mapRepoErr(err)
 	}
+	if sh.Archived == archived {
+		return sh, nil
+	}
+	if err := s.repo.SetShooterArchived(ctx, id, archived); err != nil {
+		return repository.Shooter{}, mapRepoErr(err)
+	}
+	sh.Archived = archived
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: action, Target: idTarget("shooter", id)}, Live: LiveAll})
 	return sh, nil
 }
