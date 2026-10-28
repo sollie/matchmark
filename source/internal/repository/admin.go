@@ -304,3 +304,62 @@ func (r *Repository) FindShootersByName(ctx context.Context, firstName, lastName
 		return strings.EqualFold(s.FirstName, firstName) && strings.EqualFold(s.LastName, lastName)
 	}, 0, "", "id")
 }
+
+type ShooterEntryRef struct {
+	EntryID     int64
+	MatchID     int64
+	MatchName   string
+	MatchDate   string
+	MatchStatus string
+}
+
+func (r *Repository) ShooterEntries(ctx context.Context, shooterID int64) ([]ShooterEntryRef, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT e.id, m.id, m.name, m.date, m.status
+		 FROM entries e JOIN matches m ON m.id = e.match_id
+		 WHERE e.shooter_id = ? ORDER BY m.date, m.id`, shooterID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	refs := []ShooterEntryRef{}
+	for rows.Next() {
+		var ref ShooterEntryRef
+		if err := rows.Scan(&ref.EntryID, &ref.MatchID, &ref.MatchName, &ref.MatchDate, &ref.MatchStatus); err != nil {
+			return nil, err
+		}
+		refs = append(refs, ref)
+	}
+	return refs, rows.Err()
+}
+
+func (r *Repository) MergeShooters(ctx context.Context, sourceID, targetID int64, targetWAID, targetName string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var waid any
+	if targetWAID != "" {
+		waid = targetWAID
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE shooters SET waid = NULL WHERE id = ?`, sourceID); err != nil {
+		return mapErr(err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE shooters SET waid = ? WHERE id = ?`, waid, targetID); err != nil {
+		return mapErr(err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE entries SET shooter_id = ? WHERE shooter_id = ?`, targetID, sourceID); err != nil {
+		return mapErr(err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE stage_events SET shooter_name = ? WHERE entry_id IN (SELECT id FROM entries WHERE shooter_id = ?)`,
+		targetName, targetID); err != nil {
+		return err
+	}
+	res, err := tx.ExecContext(ctx, `DELETE FROM shooters WHERE id = ?`, sourceID)
+	if err := affected(res, err); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
