@@ -722,6 +722,85 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/shooters/{shooterID}/merge-preview:
+    parameters:
+      - $ref: '#/components/parameters/ShooterID'
+    get:
+      operationId: previewShooterMerge
+      tags: [shooters]
+      summary: Preview merging this shooter (the source) into another (the target)
+      security:
+        - adminCookie: []
+      parameters:
+        - name: target_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The entries that would move, the blocking conflicts and the resulting WAID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShooterMergePreview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/shooters/{shooterID}/merge:
+    parameters:
+      - $ref: '#/components/parameters/ShooterID'
+    post:
+      operationId: mergeShooter
+      tags: [shooters]
+      summary: Merge this shooter (the source) into another (the target); irreversible
+      description: |
+        Re-points every entry of the source to the target and deletes the source in one transaction.
+        The target wins on every field; the source WAID carries over only when the target has none.
+        Refused with 409 when the WAIDs differ or both shooters have an entry in the same match.
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_id]
+              properties:
+                target_id:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          description: The shooter was merged
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [target_id, moved_entries]
+                properties:
+                  target_id:
+                    type: integer
+                    format: int64
+                  moved_entries:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The merge is blocked by a WAID difference or a match both shooters are entered in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShooterMergeBlocked'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/competitions:
     get:
       operationId: listCompetitions
@@ -2494,6 +2573,67 @@ components:
                   status:
                     type: string
                     enum: [draft, active, finished]
+    ShooterMergePreview:
+      type: object
+      required: [source, target, entries, conflicts, waid_conflict, resulting_waid, can_merge]
+      properties:
+        source:
+          $ref: '#/components/schemas/Shooter'
+        target:
+          $ref: '#/components/schemas/Shooter'
+        entries:
+          type: array
+          description: The source's entries that move to the target
+          items:
+            type: object
+            required: [entry_id, match_id, match_name, match_date, match_status]
+            properties:
+              entry_id:
+                type: integer
+                format: int64
+              match_id:
+                type: integer
+                format: int64
+              match_name:
+                type: string
+              match_date:
+                type: string
+                format: date
+              match_status:
+                type: string
+                enum: [draft, active, finished]
+        conflicts:
+          type: array
+          description: Matches both shooters are entered in; each blocks the merge
+          items:
+            type: object
+            required: [match_id, match_name, match_date]
+            properties:
+              match_id:
+                type: integer
+                format: int64
+              match_name:
+                type: string
+              match_date:
+                type: string
+                format: date
+        waid_conflict:
+          type: boolean
+          description: Both shooters have different WAIDs, which blocks the merge
+        resulting_waid:
+          type: string
+          description: The target WAID, or the source WAID when the target has none; empty when neither has one
+        can_merge:
+          type: boolean
+    ShooterMergeBlocked:
+      allOf:
+        - $ref: '#/components/schemas/ShooterMergePreview'
+        - type: object
+          required: [error]
+          properties:
+            error:
+              type: string
+              enum: [merge_blocked]
     ShooterImportInput:
       allOf:
         - $ref: '#/components/schemas/ShooterInput'

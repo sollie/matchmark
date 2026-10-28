@@ -5,6 +5,7 @@
   import type { components } from "../lib/api/schema";
   import Wa1500Import from "./Wa1500Import.svelte";
   import NameFields from "./NameFields.svelte";
+  import ShooterMerge from "./ShooterMerge.svelte";
   import { normalizeFirstName, normalizeLastName } from "../lib/names";
 
   type Shooter = components["schemas"]["Shooter"];
@@ -29,6 +30,7 @@
   let query = $state("");
   let importing = $state(false);
   let notice = $state("");
+  let merging = $state<ShooterListItem | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function load() {
@@ -55,6 +57,14 @@
     importing = false;
     query = "";
     notice = `Saved ${s.first_name} ${s.last_name}.`;
+    await load();
+  }
+
+  async function merged(target: Shooter) {
+    const source = merging;
+    merging = null;
+    notice = `Merged ${source?.first_name} ${source?.last_name} into ${target.first_name} ${target.last_name}.`;
+    expanded = null;
     await load();
   }
 
@@ -147,6 +157,10 @@
   </button>
 </div>
 
+{#if merging}
+  <ShooterMerge source={merging} onmerged={merged} oncancel={() => (merging = null)} />
+{/if}
+
 {#if importing}
   <Wa1500Import onsaved={imported} oncancel={() => (importing = false)} />
 {/if}
@@ -194,6 +208,7 @@
           </td>
           <td class="row-actions">
             <button class="secondary" onclick={() => edit(s)}>Edit</button>
+            <button class="secondary" onclick={() => (merging = s)}>Merge into…</button>
             <button
               class="danger"
               disabled={s.entry_count > 0}

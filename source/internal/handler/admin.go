@@ -17,6 +17,8 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/shooters/{shooterID}", serve(h.getShooter))
 	r.Put("/shooters/{shooterID}", serve(h.updateShooter))
 	r.Delete("/shooters/{shooterID}", serve(h.deleteShooter))
+	r.Get("/shooters/{shooterID}/merge-preview", serve(h.previewShooterMerge))
+	r.Post("/shooters/{shooterID}/merge", serve(h.mergeShooter))
 	r.Get("/competitions", serve(h.listCompetitions))
 	r.Post("/competitions", serve(h.createCompetition))
 	r.Get("/competitions/{competitionID}", serve(h.getCompetition))
