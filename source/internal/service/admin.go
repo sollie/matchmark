@@ -66,6 +66,9 @@ func (s *Service) UpdateShooter(ctx context.Context, sh repository.Shooter) erro
 
 func (s *Service) DeleteShooter(ctx context.Context, id int64) error {
 	if err := s.repo.DeleteShooter(ctx, id); err != nil {
+		if errors.Is(err, repository.ErrConflict) {
+			return ErrShooterHasEntries
+		}
 		return mapRepoErr(err)
 	}
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "shooter.delete", Target: idTarget("shooter", id)}, Live: LiveAll})

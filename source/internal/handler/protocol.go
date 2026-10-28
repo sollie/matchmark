@@ -79,6 +79,7 @@ var errorRules = []errorRule{
 	{service.ErrForbidden, http.StatusForbidden, "forbidden"},
 	{service.ErrBackupNotPermitted, http.StatusForbidden, "backup_not_permitted"},
 	{service.ErrLastAdmin, http.StatusConflict, ""},
+	{service.ErrShooterHasEntries, http.StatusConflict, ""},
 	{service.ErrConflict, http.StatusConflict, "conflict"},
 	{service.ErrLaneNotManned, http.StatusConflict, "lane is not manned"},
 	{service.ErrNotBetweenStages, http.StatusConflict, "entries can only change between stages"},

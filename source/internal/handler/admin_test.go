@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sollie/matchmark/internal/apitest"
+	"github.com/sollie/matchmark/internal/service"
 )
 
 func shooterBody(last string) map[string]any {
@@ -99,8 +100,9 @@ func TestShooterRegistry(t *testing.T) {
 		f.addEntry(t, "Entered", 1)
 		_, out := f.env.Do("GET", "/api/shooters", nil)
 		sid := int(out["shooters"].([]any)[0].(map[string]any)["id"].(float64))
-		if status, _ := f.env.Do("DELETE", fmt.Sprintf("/api/shooters/%d", sid), nil); status != http.StatusConflict {
-			t.Fatalf("status %d", status)
+		status, body := f.env.Do("DELETE", fmt.Sprintf("/api/shooters/%d", sid), nil)
+		if status != http.StatusConflict || body["error"] != service.ErrShooterHasEntries.Error() {
+			t.Fatalf("status %d body %v", status, body)
 		}
 	})
 }
