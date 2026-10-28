@@ -332,4 +332,61 @@ test.describe("shooters", () => {
 
     await expect(row(page, lastName).getByRole("cell", { name: "Manual Club" })).toBeVisible();
   });
+
+  test("archiving hides a shooter until searched and unarchiving restores it", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const shooter = await createShooter(admin, { last_name: uniqueLastName("Retired") });
+    await openShooters(page);
+    await row(page, shooter.last_name)
+      .getByRole("button", { name: "Archive", exact: true })
+      .click();
+    await expect(row(page, shooter.last_name)).toHaveCount(0);
+
+    await page.getByLabel("Search shooters").fill(shooter.last_name);
+    const archived = row(page, shooter.last_name);
+    await expect(archived.getByText("Archived")).toBeVisible();
+    await archived.getByRole("button", { name: "Unarchive" }).click();
+    await expect(archived.getByText("Archived")).toHaveCount(0);
+  });
+
+  test("a shooter with entries points to archive or merge", async ({ adminPage: page, admin }) => {
+    const match = await createMatch(admin);
+    const shooter = await createShooter(admin, { last_name: uniqueLastName("Entered") });
+    await addEntry(admin, match.id, shooter.id, 1);
+    await openShooters(page);
+    await expect(
+      row(page, shooter.last_name).getByText("Archive or merge this shooter instead."),
+    ).toBeVisible();
+  });
+
+  test("importing a hit that matches an archived shooter asks to unarchive", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const lastName = uniqueLastName("Archimport").replace(" ", "");
+    const waid = `W${Date.now()}`;
+    const shooter = await createShooter(admin, { last_name: lastName, first_name: "Ida", waid });
+    await admin.post(`/api/shooters/${shooter.id}/archive`);
+    await page.route("**/api/wa1500/search*", (route) =>
+      route.fulfill({
+        json: {
+          results: [
+            { waid, first_name: "Ida", last_name: lastName, country: "SWE", club: "Remote Club" },
+          ],
+        },
+      }),
+    );
+    await openShooters(page);
+    await page.getByRole("button", { name: "Import from WA1500" }).click();
+    await page.getByRole("textbox", { name: "Search WA1500" }).fill(lastName);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByRole("button", { name: `Import Ida ${lastName}` }).click();
+
+    await expect(page.getByText("matched an archived shooter")).toBeVisible();
+    await page.getByRole("button", { name: "Unarchive", exact: true }).click();
+    await expect(page.getByRole("status")).toContainText(`Saved Ida ${lastName}`);
+    await expect(row(page, lastName).getByRole("cell", { name: "Remote Club" })).toBeVisible();
+  });
 });

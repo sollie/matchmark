@@ -12,6 +12,7 @@ type Shooter struct {
 	Country   string
 	Club      string
 	WAID      string
+	Archived  bool
 }
 
 type Match struct {

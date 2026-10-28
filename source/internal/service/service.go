@@ -13,6 +13,7 @@ var (
 	ErrConflict           = errors.New("conflict")
 	ErrInvalid            = errors.New("invalid input")
 	ErrShooterHasEntries  = errors.New("shooter has match entries and cannot be deleted")
+	ErrShooterArchived    = errors.New("shooter_archived")
 	ErrGone               = errors.New("gone")
 	ErrLaneNotManned      = errors.New("lane is not manned")
 	ErrAdminScoringNeeded = errors.New("admin scoring required")

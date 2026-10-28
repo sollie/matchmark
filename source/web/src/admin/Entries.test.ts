@@ -9,8 +9,24 @@ import type { components } from "../lib/api/schema";
 type EntryWithStages = components["schemas"]["EntryWithStages"];
 
 const shooters = [
-  { id: 7, last_name: "Doe", first_name: "Jane", country: "SWE", club: "Club", waid: "" },
-  { id: 8, last_name: "Roe", first_name: "Rick", country: "SWE", club: "Club", waid: "" },
+  {
+    id: 7,
+    last_name: "Doe",
+    first_name: "Jane",
+    country: "SWE",
+    club: "Club",
+    waid: "",
+    archived: false,
+  },
+  {
+    id: 8,
+    last_name: "Roe",
+    first_name: "Rick",
+    country: "SWE",
+    club: "Club",
+    waid: "",
+    archived: false,
+  },
 ];
 
 const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
@@ -291,5 +307,32 @@ describe("Entries awaiting acceptance", () => {
     await user.click(screen.getByRole("button", { name: "Add entry" }));
     const post = calls.find((c) => c.method === "POST" && c.path === "/api/matches/5/entries");
     expect(post?.body).toMatchObject({ shooter_id: 11 });
+  });
+
+  it("explains an archived shooter and offers an inline unarchive", async () => {
+    const calls = stubFetch((c) => {
+      if (c.path === "/api/shooters" && c.method === "GET")
+        return { body: { shooters: [shooters[0]] } };
+      if (c.path === "/api/matches/5/entries")
+        return { status: 409, body: { error: "shooter_archived" } };
+      return { body: { ...shooters[0] } };
+    });
+    render(Entries, {
+      matchId: 5,
+      course: "150",
+      entries: [],
+      shooters,
+      reload: vi.fn(async () => {}),
+    });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole("combobox", { name: "Shooter" }), "Doe");
+    await user.click(await screen.findByRole("option", { name: /Jane Doe/ }));
+    await user.click(screen.getByRole("button", { name: "Add entry" }));
+    expect(await screen.findByText(/This shooter is archived/)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Unarchive" }));
+    await waitFor(() => expect(screen.queryByText(/This shooter is archived/)).toBeNull());
+    expect(calls.some((c) => c.method === "POST" && c.path === "/api/shooters/7/unarchive")).toBe(
+      true,
+    );
   });
 });
