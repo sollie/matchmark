@@ -327,6 +327,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/shooters/{shooterID}/merge-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        /** Preview merging this shooter (the source) into another (the target) */
+        get: operations["previewShooterMerge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shooters/{shooterID}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge this shooter (the source) into another (the target); irreversible
+         * @description Re-points every entry of the source to the target and deletes the source in one transaction.
+         *     The target wins on every field; the source WAID carries over only when the target has none.
+         *     Refused with 409 when the WAIDs differ or both shooters have an entry in the same match.
+         */
+        post: operations["mergeShooter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/competitions": {
         parameters: {
             query?: never;
@@ -1227,6 +1270,39 @@ export interface components {
                 /** @enum {string} */
                 status: "draft" | "active" | "finished";
             }[];
+        };
+        ShooterMergePreview: {
+            source: components["schemas"]["Shooter"];
+            target: components["schemas"]["Shooter"];
+            /** @description The source's entries that move to the target */
+            entries: {
+                /** Format: int64 */
+                entry_id: number;
+                /** Format: int64 */
+                match_id: number;
+                match_name: string;
+                /** Format: date */
+                match_date: string;
+                /** @enum {string} */
+                match_status: "draft" | "active" | "finished";
+            }[];
+            /** @description Matches both shooters are entered in; each blocks the merge */
+            conflicts: {
+                /** Format: int64 */
+                match_id: number;
+                match_name: string;
+                /** Format: date */
+                match_date: string;
+            }[];
+            /** @description Both shooters have different WAIDs, which blocks the merge */
+            waid_conflict: boolean;
+            /** @description The target WAID, or the source WAID when the target has none; empty when neither has one */
+            resulting_waid: string;
+            can_merge: boolean;
+        };
+        ShooterMergeBlocked: components["schemas"]["ShooterMergePreview"] & {
+            /** @enum {string} */
+            error: "merge_blocked";
         };
         ShooterImportInput: components["schemas"]["ShooterInput"] & {
             /**
@@ -2395,6 +2471,78 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    previewShooterMerge: {
+        parameters: {
+            query: {
+                target_id: number;
+            };
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The entries that would move, the blocking conflicts and the resulting WAID */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShooterMergePreview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    mergeShooter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shooterID: components["parameters"]["ShooterID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: int64 */
+                    target_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The shooter was merged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        target_id: number;
+                        moved_entries: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description The merge is blocked by a WAID difference or a match both shooters are entered in */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShooterMergeBlocked"];
+                };
+            };
+            422: components["responses"]["Invalid"];
         };
     };
     listCompetitions: {

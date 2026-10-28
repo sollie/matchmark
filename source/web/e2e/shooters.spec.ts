@@ -332,4 +332,52 @@ test.describe("shooters", () => {
 
     await expect(row(page, lastName).getByRole("cell", { name: "Manual Club" })).toBeVisible();
   });
+  test("merging a duplicate moves its entries and removes it", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const dupe = await createShooter(admin, { last_name: uniqueLastName("Dupe") });
+    const real = await createShooter(admin, { last_name: uniqueLastName("Real") });
+    const match = await createMatch(admin);
+    await addEntry(admin, match.id, dupe.id, 1);
+    await openShooters(page);
+
+    await row(page, dupe.last_name).getByRole("button", { name: "Merge into…" }).click();
+    const dialog = page.getByRole("dialog", { name: /Merge/ });
+    await dialog.getByRole("combobox", { name: "Merge into" }).fill(real.last_name);
+    await page.getByRole("option", { name: new RegExp(real.last_name) }).click();
+    await expect(dialog.getByText(match.name)).toBeVisible();
+
+    const confirm = dialog.getByRole("button", { name: "Merge shooters" });
+    await expect(confirm).toBeDisabled();
+    await dialog.getByLabel("I understand this cannot be undone").check();
+    await confirm.click();
+
+    await expect(page.getByRole("status")).toContainText("Merged");
+    await expect(row(page, dupe.last_name)).toHaveCount(0);
+    await expect(
+      row(page, real.last_name).getByRole("button", { name: "Entered in 1 match" }),
+    ).toBeVisible();
+  });
+
+  test("a merge is blocked when both shooters are entered in the same match", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const dupe = await createShooter(admin, { last_name: uniqueLastName("Both") });
+    const real = await createShooter(admin, { last_name: uniqueLastName("Other") });
+    const match = await createMatch(admin);
+    await addEntry(admin, match.id, dupe.id, 1);
+    await addEntry(admin, match.id, real.id, 2);
+    await openShooters(page);
+
+    await row(page, dupe.last_name).getByRole("button", { name: "Merge into…" }).click();
+    const dialog = page.getByRole("dialog", { name: /Merge/ });
+    await dialog.getByRole("combobox", { name: "Merge into" }).fill(real.last_name);
+    await page.getByRole("option", { name: new RegExp(real.last_name) }).click();
+
+    await expect(dialog.getByRole("link", { name: match.name })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Merge shooters" })).toBeDisabled();
+    await expect(dialog.getByLabel("I understand this cannot be undone")).toHaveCount(0);
+  });
 });
