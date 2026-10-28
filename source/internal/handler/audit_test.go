@@ -57,6 +57,8 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 
 	extra := env.ID("POST", "/api/shooters", map[string]any{"last_name": "EXTRA", "first_name": "A", "country": "NOR", "club": "Club"})
 	env.Do("PUT", fmt.Sprintf("/api/shooters/%d", extra), map[string]any{"last_name": "EXTRA2", "first_name": "A", "country": "NOR", "club": "Club"})
+	env.Do("POST", fmt.Sprintf("/api/shooters/%d/archive", extra), nil)
+	env.Do("POST", fmt.Sprintf("/api/shooters/%d/unarchive", extra), nil)
 	env.Do("DELETE", fmt.Sprintf("/api/shooters/%d", extra), nil)
 	env.Do("PUT", fmt.Sprintf("/api/matches/%d", comp), map[string]any{"name": "Renamed", "date": "2026-05-02", "course": "150"})
 	env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", comp), map[string]any{"names": true})
@@ -105,6 +107,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 
 	want := map[string]string{
 		"shooter.create": apitest.AdminUsername, "shooter.update": apitest.AdminUsername, "shooter.delete": apitest.AdminUsername,
+		"shooter.archive": apitest.AdminUsername, "shooter.unarchive": apitest.AdminUsername,
 		"match.create": apitest.AdminUsername, "match.update": apitest.AdminUsername,
 		"match.delete": apitest.AdminUsername, "match.status": apitest.AdminUsername,
 		"match.visibility": apitest.AdminUsername,

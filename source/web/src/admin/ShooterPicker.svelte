@@ -33,14 +33,23 @@
   let timer: ReturnType<typeof setTimeout> | undefined;
   let sequence = 0;
 
-  const visible = $derived(results.filter((s) => !exclude.includes(s.id)));
+  const shown = $derived(results.filter((s) => !exclude.includes(s.id)));
+  const visible = $derived(shown.filter((s) => !s.archived));
+  const archived = $derived(shown.filter((s) => s.archived));
   const optionCount = $derived(visible.length + (onadd ? 1 : 0));
 
   async function search(q: string) {
     const current = ++sequence;
     loading = true;
+    const term = q.trim();
     const result = await api.GET("/api/shooters", {
-      params: { query: { q: q.trim() || undefined, limit: Math.min(20 + exclude.length, 100) } },
+      params: {
+        query: {
+          q: term || undefined,
+          include_archived: term ? true : undefined,
+          limit: Math.min(20 + exclude.length, 100),
+        },
+      },
     });
     if (current !== sequence) return;
     loading = false;
@@ -139,7 +148,14 @@
         {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
       </li>
     {/each}
-    {#if searched && !loading && visible.length === 0}
+    {#each archived as s (s.id)}
+      <li role="option" aria-selected="false" aria-disabled="true" class="archived">
+        {s.first_name}
+        {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
+        <span class="badge neutral">Archived</span>
+      </li>
+    {/each}
+    {#if searched && !loading && shown.length === 0}
       <li class="empty" role="presentation">No match</li>
     {/if}
     {#if onadd}
@@ -182,6 +198,10 @@
   li.active {
     background: var(--brand-tint);
     color: var(--text);
+  }
+  li.archived {
+    cursor: default;
+    color: var(--text-muted);
   }
   li.empty {
     cursor: default;

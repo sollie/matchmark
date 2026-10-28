@@ -18,6 +18,7 @@ const saved = {
   country: "SWE",
   club: "Alpha",
   waid: "W100",
+  archived: false,
 };
 const other = { ...saved, id: 9, waid: "", club: "Beta" };
 
@@ -157,5 +158,31 @@ describe("Wa1500Import", () => {
     expect(await screen.findByText("No WA1500 results")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Enter manually" }));
     expect(screen.getByRole("textbox", { name: "Last name" })).toBeTruthy();
+  });
+
+  it("asks to unarchive a matched archived shooter and then imports", async () => {
+    let imports = 0;
+    const { user, calls, onsaved } = setup((c) => {
+      if (c.path === "/api/wa1500/search") return { body: { results: [hit] } };
+      if (c.path === "/api/shooters/5/unarchive") return { body: { ...saved } };
+      imports++;
+      return imports === 1
+        ? {
+            status: 409,
+            body: { error: "shooter_archived", shooter: { ...saved, archived: true } },
+          }
+        : { status: 200, body: { id: 5, action: "updated" } };
+    });
+    await search(user);
+    await user.click(screen.getByRole("button", { name: "Import Mike Anderson" }));
+    const alert = await screen.findByText(/matched an archived shooter/);
+    expect(alert).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Unarchive" }));
+    await waitFor(() => expect(onsaved).toHaveBeenCalledWith(expect.objectContaining({ id: 5 })));
+    expect(calls.map((c) => `${c.method} ${c.path}`).filter((c) => c.includes("/5"))).toEqual([
+      "POST /api/shooters/5/unarchive",
+      "GET /api/shooters/5",
+    ]);
+    expect(calls.filter((c) => c.path === "/api/shooters/import")).toHaveLength(2);
   });
 });

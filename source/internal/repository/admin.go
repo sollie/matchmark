@@ -22,13 +22,13 @@ type EntryWithStages struct {
 	Stages []StageInfo
 }
 
-const shooterColumns = `id, last_name, first_name, country, club, COALESCE(waid, '')`
+const shooterColumns = `id, last_name, first_name, country, club, COALESCE(waid, ''), archived`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
 func scanShooter(row rowScanner) (Shooter, error) {
 	var s Shooter
-	err := row.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Country, &s.Club, &s.WAID)
+	err := row.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Country, &s.Club, &s.WAID, &s.Archived)
 	return s, err
 }
 
@@ -55,15 +55,18 @@ func (r *Repository) queryShooters(ctx context.Context, keep func(Shooter) bool,
 	return shooters, rows.Err()
 }
 
-func (r *Repository) ListShooters(ctx context.Context, query string, limit int) ([]Shooter, error) {
-	var keep func(Shooter) bool
-	if query != "" {
-		needle := strings.ToLower(query)
-		keep = func(s Shooter) bool {
-			return strings.Contains(strings.ToLower(s.WAID), needle) ||
-				strings.Contains(strings.ToLower(s.FirstName+" "+s.LastName), needle) ||
-				strings.Contains(strings.ToLower(s.LastName+" "+s.FirstName), needle)
+func (r *Repository) ListShooters(ctx context.Context, query string, includeArchived bool, limit int) ([]Shooter, error) {
+	needle := strings.ToLower(query)
+	keep := func(s Shooter) bool {
+		if s.Archived && !includeArchived {
+			return false
 		}
+		if needle == "" {
+			return true
+		}
+		return strings.Contains(strings.ToLower(s.WAID), needle) ||
+			strings.Contains(strings.ToLower(s.FirstName+" "+s.LastName), needle) ||
+			strings.Contains(strings.ToLower(s.LastName+" "+s.FirstName), needle)
 	}
 	return r.queryShooters(ctx, keep, limit, "", "last_name, first_name, id")
 }
@@ -119,6 +122,11 @@ func (r *Repository) UpdateShooter(ctx context.Context, s Shooter) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE shooters SET last_name = ?, first_name = ?, country = ?, club = ?, waid = ? WHERE id = ?`,
 		s.LastName, s.FirstName, s.Country, s.Club, waid, s.ID)
+	return affected(res, err)
+}
+
+func (r *Repository) SetShooterArchived(ctx context.Context, id int64, archived bool) error {
+	res, err := r.db.ExecContext(ctx, `UPDATE shooters SET archived = ? WHERE id = ?`, archived, id)
 	return affected(res, err)
 }
 

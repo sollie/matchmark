@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { api } from "../lib/api/client";
+  import { settle } from "../lib/api/util";
   import { entryCommands } from "../lib/entries";
   import { courseCategories, stageLabel } from "../lib/rulebook.svelte";
   import ShooterPicker from "./ShooterPicker.svelte";
@@ -46,6 +48,7 @@
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
   let scoring = $state<{ entry: EntryWithStages; stage: number; counts: RingCounts } | null>(null);
   let error = $state("");
+  let archivedBlock = $state<Shooter | null>(null);
 
   const nextLane = $derived.by(() => {
     const taken = new Set(entries.filter((e) => !e.withdrawn).map((e) => e.lane));
@@ -87,13 +90,29 @@
   async function add(e: SubmitEvent) {
     e.preventDefault();
     if (shooterId === null) return;
+    archivedBlock = null;
     const ok = await run(commands.add({ shooter_id: shooterId, category, lane }));
+    if (!ok && error === "shooter_archived") {
+      error = "";
+      archivedBlock = chosen;
+    }
     if (ok) {
       laneInput = null;
       shooterId = null;
       chosen = null;
       pickerKey++;
     }
+  }
+
+  async function unarchive() {
+    if (!archivedBlock) return;
+    const result = await settle(
+      api.POST("/api/shooters/{shooterID}/unarchive", {
+        params: { path: { shooterID: archivedBlock.id } },
+      }),
+    );
+    if (result.ok) archivedBlock = null;
+    else error = result.error;
   }
 
   async function saveEdit() {
@@ -131,6 +150,12 @@
 <section class="card">
   <h2>Entries and progress</h2>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if archivedBlock}
+    <p class="error row" role="alert">
+      This shooter is archived
+      <button type="button" class="secondary" onclick={unarchive}>Unarchive</button>
+    </p>
+  {/if}
 
   {#if status === "draft"}
     <form class="row add-form" aria-label="Add entry" onsubmit={add}>
@@ -142,6 +167,7 @@
           onselect={(s) => {
             shooterId = s?.id ?? null;
             chosen = s;
+            archivedBlock = null;
           }}
           onadd={(q) => (importQuery = q)}
         />
