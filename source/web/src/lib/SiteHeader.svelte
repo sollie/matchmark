@@ -1,7 +1,9 @@
 <script lang="ts">
   import { router } from "./router.svelte";
   import { club, clubLogoUrl } from "./club.svelte";
+  import { admin } from "./session.svelte";
   import AccountIcon from "./AccountIcon.svelte";
+  import AccountMenu from "./AccountMenu.svelte";
 
   const scorerRoute = $derived(router.path === "/score");
   const adminRoute = $derived(router.path === "/admin" || router.path.startsWith("/admin/"));
@@ -17,7 +19,9 @@
       {#if club.name}<span class="club-name">{club.name}</span>{/if}
     </span>
   {/if}
-  {#if !scorerRoute && !adminRoute}
+  {#if adminRoute}
+    {#if admin.authed && !admin.mustChangePassword}<AccountMenu />{/if}
+  {:else if !scorerRoute}
     <a class="account-link" href="/admin" aria-label="Sign in" title="Sign in"><AccountIcon /></a>
   {/if}
 </header>
