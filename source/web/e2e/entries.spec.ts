@@ -269,4 +269,26 @@ test.describe("admin ring counts", () => {
     await openMatch(page, match.id);
     await expect(row(page, entry.shooter.last_name).locator("td.category")).toHaveText("Carbine");
   });
+
+  test("an archived shooter is refused with an inline unarchive", async ({
+    course,
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const shooter = await createShooter(admin);
+    await openMatch(page, match.id);
+
+    const form = addForm(page);
+    await form.getByRole("combobox", { name: "Shooter" }).fill(shooter.last_name);
+    await page.getByRole("option", { name: new RegExp(shooter.last_name) }).click();
+    await admin.post(`/api/shooters/${shooter.id}/archive`);
+    await form.getByRole("button", { name: "Add entry" }).click();
+
+    await expect(page.getByText("This shooter is archived")).toBeVisible();
+    await page.getByRole("button", { name: "Unarchive" }).click();
+    await expect(page.getByText("This shooter is archived")).toHaveCount(0);
+    await form.getByRole("button", { name: "Add entry" }).click();
+    await expect(row(page, shooter.last_name)).toBeVisible();
+  });
 });
