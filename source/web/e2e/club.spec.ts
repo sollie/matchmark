@@ -1,4 +1,4 @@
-import { expect, test } from "./helpers";
+import { expect, openAccountLink, test } from "./helpers";
 
 const pixelPng = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==",
@@ -9,7 +9,7 @@ test.describe("club settings", () => {
   test("an admin sets the club name and logo, which then show on the public page", async ({
     adminPage: page,
   }) => {
-    await page.getByRole("link", { name: "Club", exact: true }).click();
+    await openAccountLink(page, "Club");
     await expect(page.getByRole("heading", { name: "Club settings" })).toBeVisible();
 
     await page.getByRole("textbox", { name: "Name" }).fill("E2E Pistol Club");

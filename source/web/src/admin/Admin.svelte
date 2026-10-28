@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { router, matchRoute, navigate } from "../lib/router.svelte";
-  import { admin, refreshAdminSession, logout } from "../lib/session.svelte";
+  import { router, matchRoute } from "../lib/router.svelte";
+  import { admin, refreshAdminSession } from "../lib/session.svelte";
   import ChangePassword from "./ChangePassword.svelte";
   import Login from "./Login.svelte";
   import Shooters from "./Shooters.svelte";
@@ -18,19 +18,10 @@
   const activeSection = $derived(
     router.path.startsWith("/admin/shooters")
       ? "shooters"
-      : router.path.startsWith("/admin/users")
-        ? "users"
-        : router.path.startsWith("/admin/audit")
-          ? "audit"
-          : router.path.startsWith("/admin/club")
-            ? "club"
-            : "matches",
+      : router.path === "/admin" || router.path.startsWith("/admin/matches")
+        ? "matches"
+        : "",
   );
-
-  async function signOut() {
-    await logout();
-    navigate("/admin");
-  }
 </script>
 
 {#if !admin.checked}
@@ -45,22 +36,7 @@
     <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}
       >Shooters</a
     >
-    {#if admin.isAdmin}
-      <a href="/admin/users" aria-current={activeSection === "users" ? "page" : undefined}>Users</a>
-      <a href="/admin/club" aria-current={activeSection === "club" ? "page" : undefined}>Club</a>
-      <a href="/admin/audit" aria-current={activeSection === "audit" ? "page" : undefined}
-        >Audit log</a
-      >
-    {/if}
-    {#if admin.isAdmin && admin.canDownloadBackup}
-      <a href="/api/admin/backup" download>Backup</a>
-    {/if}
-    <a href="/admin/password" aria-current={router.path === "/admin/password" ? "page" : undefined}
-      >Change password</a
-    >
     <a href="/">Spectator view</a>
-    <span class="spacer"></span>
-    <button onclick={signOut}>Sign out</button>
   </nav>
   <main>
     {#if router.path === "/admin" || router.path === "/admin/matches"}
