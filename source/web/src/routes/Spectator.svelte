@@ -3,6 +3,7 @@
   import { clockTime } from "../lib/datetime";
   import StageCell from "../lib/StageCell.svelte";
   import { openStream, type StreamState } from "../lib/sse";
+  import { ScreenControl } from "../lib/screenControl.svelte";
   import type { components } from "../lib/api/schema";
 
   type Match = components["schemas"]["Match"];
@@ -15,13 +16,22 @@
   let snapshot = $state<Snapshot | null>(null);
   let connection = $state<StreamState>("connecting");
   let updated = $state<Date | null>(null);
+  const control = new ScreenControl();
+
+  const viewed = $derived(
+    control.managed
+      ? control.assignment?.state === "match"
+        ? control.assignment.match_id
+        : null
+      : selected,
+  );
 
   const showNames = $derived(standings.some((s) => s.last_name !== undefined));
   const showClubs = $derived(standings.some((s) => s.club !== undefined));
   const showCountries = $derived(standings.some((s) => s.country !== undefined));
   const showX = $derived(standings.some((s) => s.x_count !== undefined));
-  const current = $derived(matches.find((c) => c.id === selected));
-  const finished = $derived(current?.status === "finished");
+  const current = $derived(matches.find((c) => c.id === viewed));
+  const finished = $derived((current?.status ?? snapshot?.status) === "finished");
   const acceptance = $derived.by(() => {
     if (!snapshot) return null;
     const stages = snapshot.standings
@@ -39,6 +49,7 @@
     const { data } = await api.GET("/api/spectator/matches");
     if (!data) return;
     matches = data.matches;
+    if (control.managed) return;
     if (selected === null || !data.matches.some((c) => c.id === selected)) {
       selected = (data.matches.find((c) => c.status === "active") ?? data.matches[0])?.id ?? null;
     }
@@ -49,16 +60,25 @@
   });
 
   $effect(() => {
-    if (selected === null) return;
+    control.start();
+    return () => control.stop();
+  });
+
+  $effect(() => {
+    const id = viewed;
+    snapshot = null;
+    standings = [];
+    updated = null;
+    if (id === null) return;
     const stream = openStream({
-      url: `/api/spectator/matches/${selected}/stream`,
+      url: `/api/spectator/matches/${id}/stream`,
       onEvent: (event, data) => {
         if (event !== "snapshot") return;
         snapshot = JSON.parse(data);
         standings = snapshot?.standings ?? [];
         updated = new Date();
         const status = snapshot?.status;
-        if (status) matches = matches.map((c) => (c.id === selected ? { ...c, status } : c));
+        if (status) matches = matches.map((c) => (c.id === id ? { ...c, status } : c));
       },
       onState: (next) => {
         connection = next;
@@ -75,28 +95,53 @@
   }
 </script>
 
+{#snippet enable()}
+  <p>
+    <button onclick={() => control.enable()} disabled={control.busy}>Enable remote control</button>
+  </p>
+  {#if control.error}<p class="error" role="alert">{control.error}</p>{/if}
+{/snippet}
+
 <main class="spectator">
   <h1>Live standings</h1>
-  {#if matches.length === 0}
+  {#if control.notice}
+    <p class="card notice" role="alert">{control.notice}</p>
+  {/if}
+  {#if control.managed && control.registration}
+    <div class="card remote" role="region" aria-label="Remote control">
+      <span>Remote control code <strong class="code">{control.registration.code}</strong></span>
+      <button onclick={() => control.leave()} disabled={control.busy}>Leave remote control</button>
+    </div>
+  {/if}
+  {#if control.managed && viewed === null}
+    <div class="card empty" role="status">
+      <h2>Waiting for a match</h2>
+      <p class="muted">This screen will show a match as soon as one is assigned.</p>
+    </div>
+  {:else if !control.managed && matches.length === 0}
     <div class="card empty">
       <p>No matches are live yet.</p>
       <p class="muted">Reload this page once a match has started.</p>
     </div>
+    {@render enable()}
   {:else}
-    <label class="picker">
-      Match
-      <select bind:value={selected}>
-        {#each matches as c (c.id)}
-          <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
-        {/each}
-      </select>
-    </label>
+    {#if !control.managed}
+      <label class="picker">
+        Match
+        <select bind:value={selected}>
+          {#each matches as c (c.id)}
+            <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
+          {/each}
+        </select>
+      </label>
+      {@render enable()}
+    {/if}
     <div class="status card" role="status">
       <div class="progress-info">
         {#if current}<span class="badge neutral">{current.status}</span>{/if}
         {#if finished}
           <strong>Finished</strong>
-          <a href={`/results/${selected}`}>View results</a>
+          <a href={`/results/${viewed}`}>View results</a>
         {:else if snapshot && acceptance}
           <strong>Stage {snapshot.current_stage} of {snapshot.total_stages}</strong>
           <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
@@ -155,7 +200,7 @@
                 {#if showX}<td class="num">{s.x_count}</td>{/if}
                 {#if finished}<td
                     >{#if !s.withdrawn}<a
-                        href={`/scorecard/${selected}/${s.lane}`}
+                        href={`/scorecard/${viewed}/${s.lane}`}
                         aria-label={`Scorecard for lane ${s.lane}`}>View</a
                       >{/if}</td
                   >{/if}
@@ -217,6 +262,22 @@
     align-items: center;
     gap: var(--space-2);
     flex-wrap: wrap;
+  }
+  .remote {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-4);
+    margin: var(--space-3) 0;
+  }
+  .code {
+    font-family: monospace;
+    letter-spacing: 0.1em;
+  }
+  .notice {
+    padding: var(--space-2) var(--space-4);
   }
   .empty {
     text-align: center;
