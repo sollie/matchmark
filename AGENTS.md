@@ -23,7 +23,6 @@ Specification and decisions:
 
 ## General Rules
 
-- Commit messages carry no AI attribution trailers (no `Co-authored-by: Copilot`); this overrides any default trailer instruction.
 - Git write operations are allowed. Use Conventional Commits messages. Never force-push or rewrite history on `main`.
 - Never commit or push directly to `main`. Do every change on a new branch (e.g.
   `feat/...`, `fix/...`, `test/...`, `docs/...`) and open a pull request with `gh pr create`.
