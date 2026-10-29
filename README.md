@@ -13,6 +13,7 @@ The rulebook (courses, ring values) is public at `GET /api/rulebook`; the SPA re
 | `Dockerfile` | Node build stage, Go build stage, Alpine 3.24 final image built with `-tags musl` (non-root) |
 | `docker-compose.yml` | The app plus a `./data` volume |
 | `scripts/smoke-image.sh` | Starts an image and checks it opens its database |
+| `scripts/ci-failures.sh` | Prints only the failing Go and Playwright test lines of a CI run (`<run-id>`) |
 | `.goreleaser.yaml`, `.github/workflows/` | Release binaries, CI, tag-triggered release (ADR 0012) |
 | `docs/` | Spec, ADRs, plan |
 

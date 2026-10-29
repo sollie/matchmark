@@ -32,6 +32,8 @@ Specification and decisions:
   asks; leave it for review.
 - When working through a list of items (e.g. a code review or security review), complete
   one item, run all required checks, and commit it before starting the next item.
+- Work in a dedicated worktree (`git worktree add ../mm-<branch> -b <branch> origin/main`) and run `npm ci` in `source/web` inside it; the shared checkout can be switched by another session.
+- To inspect a failed CI run, use `scripts/ci-failures.sh <run-id>`; it prints only the failing Go and Playwright test lines from `gh run view --log-failed`.
 - Stage files by explicit path (`git add <path>`) so only intended changes are committed.
 - Run `scripts/install-hooks.sh` once per clone to enable the pre-commit (untracked files) and pre-push (web verify and e2e) hooks.
 - Never add comments to code (enforced by `scripts/check-no-comments.sh`).
