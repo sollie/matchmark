@@ -30,3 +30,10 @@ export function segmentLabel(key: string, segmentNumber: number): string {
     ?.segments?.find((s) => s.number === segmentNumber)?.name;
   return name ?? `Segment ${segmentNumber}`;
 }
+
+export function segmentColumn(key: string, segmentNumber: number): string {
+  const name = segmentLabel(key, segmentNumber);
+  const match = /^Match (\d+)$/.exec(name);
+  if (match) return `M${match[1]}`;
+  return name.replace(/^Match \d+ · /, "");
+}

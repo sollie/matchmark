@@ -51,16 +51,24 @@ describe("rulebook store", () => {
           total_shots: 150,
           categories: [],
           stages: [],
-          segments: [segment(5, "Match 5 · Stage 1+2")],
+          segments: [
+            segment(2, "Match 2"),
+            segment(5, "Match 5 · Stage 1+2"),
+            segment(6, "Match 5 · Stage 3+4"),
+          ],
         },
       ],
       rings: [],
     };
     stubFetch(() => ({ body: grouped }));
-    const { loadRulebook, segmentLabel } = await import("./rulebook.svelte");
+    const { loadRulebook, segmentLabel, segmentColumn } = await import("./rulebook.svelte");
     await loadRulebook();
     expect(segmentLabel("150", 5)).toBe("Match 5 · Stage 1+2");
     expect(segmentLabel("150", 9)).toBe("Segment 9");
     expect(segmentLabel("unknown", 4)).toBe("Segment 4");
+    expect(segmentColumn("150", 2)).toBe("M2");
+    expect(segmentColumn("150", 5)).toBe("Stage 1+2");
+    expect(segmentColumn("150", 6)).toBe("Stage 3+4");
+    expect(segmentColumn("unknown", 4)).toBe("Segment 4");
   });
 });

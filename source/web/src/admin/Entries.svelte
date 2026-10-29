@@ -2,7 +2,7 @@
   import { api } from "../lib/api/client";
   import { settle } from "../lib/api/util";
   import { entryCommands } from "../lib/entries";
-  import { courseCategories, segmentLabel } from "../lib/rulebook.svelte";
+  import { courseCategories, segmentColumn, segmentLabel } from "../lib/rulebook.svelte";
   import ShooterPicker from "./ShooterPicker.svelte";
   import Wa1500Import from "./Wa1500Import.svelte";
   import type { components } from "../lib/api/schema";
@@ -212,7 +212,9 @@
       <thead>
         <tr>
           <th>Lane</th><th>Shooter</th><th>Category</th>
-          {#each segmentNumbers as n (n)}<th title={segmentLabel(course, n)}>S{n}</th>{/each}
+          {#each segmentNumbers as n (n)}<th title={segmentLabel(course, n)}
+              >{segmentColumn(course, n)}</th
+            >{/each}
           <th>Actions</th>
         </tr>
       </thead>
