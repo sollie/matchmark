@@ -107,7 +107,7 @@
   {#if control.notice}
     <p class="card notice" role="alert">{control.notice}</p>
   {/if}
-  {#if control.managed && control.registration}
+  {#if control.managed && control.registration && !control.assignment?.approved}
     <div class="card remote" role="region" aria-label="Remote control">
       <span>Remote control code <strong class="code">{control.registration.code}</strong></span>
       <button onclick={() => control.leave()} disabled={control.busy}>Leave remote control</button>
@@ -234,6 +234,11 @@
         </ul>
       {/if}
     {/if}
+  {/if}
+  {#if control.managed && control.assignment?.approved}
+    <p class="leave">
+      <button onclick={() => control.leave()} disabled={control.busy}>Leave remote control</button>
+    </p>
   {/if}
 </main>
 

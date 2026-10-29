@@ -242,8 +242,9 @@ func (s *Service) RunScreenSweep(ctx context.Context) {
 const screenTopic int64 = -1
 
 type ScreenState struct {
-	State   string
-	MatchID int64
+	State    string
+	MatchID  int64
+	Approved bool
 }
 
 func (s *Service) screenConnected(id int64) bool {
@@ -283,19 +284,19 @@ func (s *Service) ScreenState(ctx context.Context, sc repository.Screen) (Screen
 		m, err := s.repo.GetMatch(ctx, *cur.MatchID)
 		switch {
 		case err == nil && MatchStatus(m.Status) == StatusDraft:
-			return ScreenState{State: "waiting"}, nil
+			return ScreenState{State: "waiting", Approved: cur.Approved}, nil
 		case err == nil:
-			return ScreenState{State: "match", MatchID: m.ID}, nil
+			return ScreenState{State: "match", MatchID: m.ID, Approved: cur.Approved}, nil
 		case !errors.Is(err, repository.ErrNotFound):
 			return ScreenState{}, err
 		}
 	}
 	id, err := s.repo.DefaultMatchID(ctx)
 	if errors.Is(err, repository.ErrNotFound) {
-		return ScreenState{State: "waiting"}, nil
+		return ScreenState{State: "waiting", Approved: cur.Approved}, nil
 	}
 	if err != nil {
 		return ScreenState{}, err
 	}
-	return ScreenState{State: "match", MatchID: id}, nil
+	return ScreenState{State: "match", MatchID: id, Approved: cur.Approved}, nil
 }
