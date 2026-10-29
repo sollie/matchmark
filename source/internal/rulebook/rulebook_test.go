@@ -164,3 +164,51 @@ func TestStageParts(t *testing.T) {
 		}
 	}
 }
+
+func TestSegments(t *testing.T) {
+	type seg struct {
+		name   string
+		stages []int
+		shots  int
+	}
+	want := map[string][]seg{
+		"150": {
+			{"Match 1", []int{1, 2}, 24},
+			{"Match 2", []int{3}, 18},
+			{"Match 3", []int{4}, 24},
+			{"Match 4", []int{5, 6}, 24},
+			{"Match 5 · Stage 1+2", []int{7, 8}, 30},
+			{"Match 5 · Stage 3+4", []int{9, 10}, 30},
+		},
+		"60": {{"Stage 1+2", []int{1, 2}, 30}, {"Stage 3+4", []int{3, 4}, 30}},
+		"48": {{"Stage 1+2", []int{1, 2}, 18}, {"Stage 3+4", []int{3, 4}, 30}},
+		"40": {{"Stage 1+2", []int{1, 2}, 15}, {"Stage 3+4", []int{3, 4}, 25}},
+	}
+	for key, segs := range want {
+		course, err := rulebook.CourseByKey(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(course.Segments) != len(segs) {
+			t.Fatalf("course %s segments = %d, want %d", key, len(course.Segments), len(segs))
+		}
+		total := 0
+		for i, w := range segs {
+			got := course.Segments[i]
+			if got.Number != i+1 || got.Name != w.name || got.Shots != w.shots || !slices.Equal(got.Stages, w.stages) {
+				t.Errorf("course %s segment %d = %+v, want %+v", key, i+1, got, w)
+			}
+			sum := 0
+			for _, n := range got.Stages {
+				sum += course.Stages[n-1].ExpectedShots
+			}
+			if sum != got.Shots {
+				t.Errorf("course %s segment %d stage shots = %d, want %d", key, i+1, sum, got.Shots)
+			}
+			total += got.Shots
+		}
+		if total != course.TotalShots {
+			t.Errorf("course %s segment total = %d, want %d", key, total, course.TotalShots)
+		}
+	}
+}

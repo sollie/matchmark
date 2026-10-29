@@ -1,14 +1,13 @@
 import { api, deviceHeaders } from "./api/client";
 import { errorMessage } from "./api/util";
 import { openStream, type StreamHandle, type StreamOptions, type StreamState } from "./sse";
-import { formatStageLabel } from "./rulebook.svelte";
 import { navigate } from "./router.svelte";
 import { forgetDeviceToken, loadDeviceToken } from "./pairing";
 import type { components } from "./api/schema";
 
 export type Session = components["schemas"]["ScorerSession"];
 type Rings = components["schemas"]["RingCounts"];
-type SessionStage = Session["stages"][number];
+type SessionSegment = Session["segments"][number];
 
 export const rings = [
   { key: "x", label: "X" },
@@ -25,9 +24,9 @@ export type LoadOutcome = Outcome & { session?: Session };
 
 export type ScorerApi = {
   load(token: string): Promise<LoadOutcome>;
-  save(token: string, stage: number, counts: Record<string, number>): Promise<Outcome>;
-  lock(token: string, stage: number): Promise<Outcome>;
-  respond(token: string, stage: number, action: "accept" | "dispute"): Promise<Outcome>;
+  save(token: string, segment: number, counts: Record<string, number>): Promise<Outcome>;
+  lock(token: string, segment: number): Promise<Outcome>;
+  respond(token: string, segment: number, action: "accept" | "dispute"): Promise<Outcome>;
 };
 
 export type ScorerDeps = {
@@ -39,7 +38,7 @@ export type ScorerDeps = {
 
 const emptyCounts = (): Record<string, number> => Object.fromEntries(rings.map((r) => [r.key, 0]));
 
-const savedCounts = (s: SessionStage | undefined): Record<string, number> =>
+const savedCounts = (s: SessionSegment | undefined): Record<string, number> =>
   s ? Object.fromEntries(rings.map((r) => [r.key, s[r.key]])) : emptyCounts();
 
 function outcome(result: { error?: unknown; response: Response }): Outcome {
@@ -55,10 +54,10 @@ export const httpScorerApi: ScorerApi = {
     const result = await api.GET("/api/scorer/session", { headers: deviceHeaders(token) });
     return { ...outcome(result), session: result.data };
   },
-  async save(token, stage, counts) {
+  async save(token, segment, counts) {
     return outcome(
-      await api.PUT("/api/scorer/stages/{stage}", {
-        params: { path: { stage } },
+      await api.PUT("/api/scorer/segments/{segment}", {
+        params: { path: { segment } },
         headers: deviceHeaders(token),
         body: {
           x: counts.x,
@@ -72,21 +71,21 @@ export const httpScorerApi: ScorerApi = {
       }),
     );
   },
-  async lock(token, stage) {
+  async lock(token, segment) {
     return outcome(
-      await api.POST("/api/scorer/stages/{stage}/lock", {
-        params: { path: { stage } },
+      await api.POST("/api/scorer/segments/{segment}/lock", {
+        params: { path: { segment } },
         headers: deviceHeaders(token),
       }),
     );
   },
-  async respond(token, stage, action) {
+  async respond(token, segment, action) {
     return outcome(
       await api.POST(
         action === "accept"
-          ? "/api/scorer/stages/{stage}/accept"
-          : "/api/scorer/stages/{stage}/dispute",
-        { params: { path: { stage } }, headers: deviceHeaders(token) },
+          ? "/api/scorer/segments/{segment}/accept"
+          : "/api/scorer/segments/{segment}/dispute",
+        { params: { path: { segment } }, headers: deviceHeaders(token) },
       ),
     );
   },
@@ -114,19 +113,22 @@ export class ScorerSession {
   reviewing = $state(false);
   started = $state(false);
   confirmingDispute = $state(false);
-  stageFull = $state(false);
+  segmentFull = $state(false);
 
-  stage = $derived(this.session?.current_stage ?? null);
-  current = $derived(this.session?.stages.find((s) => s.stage_number === this.stage) ?? null);
-  waitingStage = $derived(
-    this.session?.stages.find((s) => s.stage_number === this.stage && s.status !== "accepted") ??
-      null,
+  segment = $derived(this.session?.current_segment ?? null);
+  current = $derived(this.session?.segments.find((s) => s.segment_number === this.segment) ?? null);
+  waitingSegment = $derived(
+    this.session?.segments.find(
+      (s) => s.segment_number === this.segment && s.status !== "accepted",
+    ) ?? null,
   );
   acceptance = $derived(this.session?.acceptance ?? null);
 
-  stageLabel(stageNumber: number): string {
-    const part = this.session?.stages.find((s) => s.stage_number === stageNumber)?.part;
-    return formatStageLabel(stageNumber, part);
+  segmentLabel(segmentNumber: number): string {
+    return (
+      this.session?.segments.find((s) => s.segment_number === segmentNumber)?.name ??
+      `Segment ${segmentNumber}`
+    );
   }
   maxRing = $derived.by(() => {
     const acceptance = this.acceptance;
@@ -138,8 +140,8 @@ export class ScorerSession {
     switch (session.phase) {
       case "not_started":
         return "Status: waiting for the match to start.";
-      case "next_stage":
-        return `Status: stage ${session.current_stage} started.`;
+      case "next_segment":
+        return `Status: segment ${session.current_segment} started.`;
       case "needs_acceptance":
         return "Status: action needed, review your result.";
       case "waiting":
@@ -158,7 +160,7 @@ export class ScorerSession {
   canLock = $derived(!this.unsaved && this.savedValid);
   saveStatus = $derived(
     this.unsaved
-      ? "Unsaved changes: press Save, then Lock stage."
+      ? "Unsaved changes: press Save, then Lock segment."
       : this.savedValid
         ? "Saved ✓"
         : `Enter ring counts that add up to ${this.current?.expected_shots} shots, then press Save.`,
@@ -238,17 +240,17 @@ export class ScorerSession {
       this.error = "";
       this.notice = `Score lane changed to lane ${next.score_lane}. Your unsaved ring counts were reset.`;
     }
-    const now = next.stages.find((s) => s.stage_number === next.current_stage);
+    const now = next.segments.find((s) => s.segment_number === next.current_segment);
     this.saved = savedCounts(now);
-    if (!previous || previous.current_stage !== next.current_stage) {
+    if (!previous || previous.current_segment !== next.current_segment) {
       this.counts = savedCounts(now);
       this.message = "";
       this.error = "";
     } else {
-      const was = previous.stages.find((s) => s.stage_number === next.current_stage);
+      const was = previous.segments.find((s) => s.segment_number === next.current_segment);
       if (now?.disputed && !was?.disputed) this.counts = savedCounts(now);
     }
-    if (next.phase !== "next_stage") this.started = false;
+    if (next.phase !== "next_segment") this.started = false;
     if (next.phase !== "needs_acceptance") {
       this.reviewing = false;
       this.confirmingDispute = false;
@@ -259,7 +261,7 @@ export class ScorerSession {
     const wanted = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
     const room = Math.max(0, (this.current?.expected_shots ?? Infinity) - this.sum);
     const next = wanted > this.counts[key] ? Math.min(wanted, this.counts[key] + room) : wanted;
-    this.stageFull = next < wanted;
+    this.segmentFull = next < wanted;
     this.counts[key] = next;
     return next !== wanted;
   }
@@ -285,12 +287,12 @@ export class ScorerSession {
   }
 
   async save() {
-    const stage = this.stage;
-    if (stage === null || !this.token) return;
+    const segment = this.segment;
+    if (segment === null || !this.token) return;
     this.#begin();
     this.notice = "";
     this.message = "";
-    const result = await this.#deps.api.save(this.token, stage, this.counts);
+    const result = await this.#deps.api.save(this.token, segment, this.counts);
     this.busy = false;
     if (result.ok) this.saved = { ...this.counts };
     else if (result.status === 422)
@@ -299,15 +301,16 @@ export class ScorerSession {
   }
 
   async lock() {
-    const stage = this.stage;
-    if (stage === null || !this.token) return;
+    const segment = this.segment;
+    if (segment === null || !this.token) return;
     this.#begin();
     this.notice = "";
     this.message = "";
-    const result = await this.#deps.api.lock(this.token, stage);
+    const result = await this.#deps.api.lock(this.token, segment);
     this.busy = false;
-    if (result.ok) this.message = "Stage locked";
-    else if (result.status === 422) this.error = "Save valid ring counts before locking the stage.";
+    if (result.ok) this.message = "Segment locked";
+    else if (result.status === 422)
+      this.error = "Save valid ring counts before locking the segment.";
     else this.error = result.error;
   }
 
@@ -315,7 +318,7 @@ export class ScorerSession {
     const acceptance = this.acceptance;
     if (!acceptance || !this.token) return;
     this.#begin();
-    const result = await this.#deps.api.respond(this.token, acceptance.stage_number, action);
+    const result = await this.#deps.api.respond(this.token, acceptance.segment_number, action);
     this.busy = false;
     this.confirmingDispute = false;
     if (result.ok) {

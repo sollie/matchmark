@@ -146,7 +146,7 @@ paths:
             type: string
         - name: action
           in: query
-          description: Exact action, for example stage.lock or login_failed
+          description: Exact action, for example segment.lock or login_failed
           schema:
             type: string
         - name: from
@@ -1116,25 +1116,25 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/matches/{matchID}/next-stage:
+  /api/matches/{matchID}/next-segment:
     parameters:
       - $ref: '#/components/parameters/MatchID'
     post:
-      operationId: startNextStage
+      operationId: startNextSegment
       tags: [matches]
-      summary: Start the next stage once every manned, non-withdrawn lane has accepted the current one
+      summary: Start the next segment once every manned, non-withdrawn lane has accepted the current one
       security:
         - adminCookie: []
       responses:
         '200':
-          description: The new current stage
+          description: The new current segment
           content:
             application/json:
               schema:
                 type: object
-                required: [current_stage]
+                required: [current_segment]
                 properties:
-                  current_stage:
+                  current_segment:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -1148,7 +1148,7 @@ paths:
     get:
       operationId: getControlRoom
       tags: [matches]
-      summary: The current stage with one row per manned lane
+      summary: The current segment with one row per manned lane
       description: |
         Answers 409 while the match is a draft. connected is best-effort: it is true while the lane's device holds an open scorer stream and is never stored.
       security:
@@ -1166,13 +1166,13 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/matches/{matchID}/stage-events:
+  /api/matches/{matchID}/segment-events:
     parameters:
       - $ref: '#/components/parameters/MatchID'
     get:
-      operationId: listStageEvents
+      operationId: listSegmentEvents
       tags: [matches]
-      summary: Stage event history with lock and dispute counts per scorer
+      summary: Segment event history with lock and dispute counts per scorer
       description: |
         Events are oldest first and cover locks, acceptances, disputes, accept-all and unlocks. Device actors carry the shooter and scorer resolved from the pairing. The per-scorer counts cover the filtered events.
       security:
@@ -1188,18 +1188,18 @@ paths:
           description: Exact shooter name
           schema:
             type: string
-        - name: stage
+        - name: segment
           in: query
           schema:
             type: integer
             minimum: 1
       responses:
         '200':
-          description: Stage event history
+          description: Segment event history
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StageHistory'
+                $ref: '#/components/schemas/SegmentHistory'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1212,13 +1212,13 @@ paths:
     post:
       operationId: acceptAll
       tags: [matches]
-      summary: Accept every stage of the current stage that awaits acceptance
-      description: Answers 409 while any manned lane is still open for the current stage, or when the match is not active. Accepting the last stage finishes the match.
+      summary: Accept every segment of the current segment that awaits acceptance
+      description: Answers 409 while any manned lane is still open for the current segment, or when the match is not active. Accepting the last segment finishes the match.
       security:
         - adminCookie: []
       responses:
         '200':
-          description: Number of stages accepted
+          description: Number of segments accepted
           content:
             application/json:
               schema:
@@ -1286,7 +1286,7 @@ paths:
         - adminCookie: []
       responses:
         '200':
-          description: Entries with their stages
+          description: Entries with their segments
           content:
             application/json:
               schema:
@@ -1296,7 +1296,7 @@ paths:
                   entries:
                     type: array
                     items:
-                      $ref: '#/components/schemas/EntryWithStages'
+                      $ref: '#/components/schemas/EntryWithSegments'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1412,15 +1412,15 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/matches/{matchID}/entries/{entryID}/stages/{stage}:
+  /api/matches/{matchID}/entries/{entryID}/segments/{segment}:
     parameters:
       - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
-      - $ref: '#/components/parameters/Stage'
+      - $ref: '#/components/parameters/Segment'
     put:
       operationId: setRingCounts
       tags: [entries]
-      summary: Admin overwrite of a stage's ring counts, allowed on a stage awaiting acceptance or accepted, which then ends accepted
+      summary: Admin overwrite of a segment's ring counts, allowed on a segment awaiting acceptance or accepted, which then ends accepted
       security:
         - adminCookie: []
       requestBody:
@@ -1442,24 +1442,24 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/matches/{matchID}/entries/{entryID}/stages/{stage}/lock:
+  /api/matches/{matchID}/entries/{entryID}/segments/{segment}/lock:
     parameters:
       - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
-      - $ref: '#/components/parameters/Stage'
+      - $ref: '#/components/parameters/Segment'
     post:
-      operationId: lockStage
+      operationId: lockSegment
       tags: [entries]
-      summary: Admin lock of a stage whose ring counts are complete, accepted directly
+      summary: Admin lock of a segment whose ring counts are complete, accepted directly
       security:
         - adminCookie: []
       responses:
         '200':
-          description: Stage accepted
+          description: Segment accepted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StageStatusResult'
+                $ref: '#/components/schemas/SegmentStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1468,48 +1468,48 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/matches/{matchID}/entries/{entryID}/stages/{stage}/accept:
+  /api/matches/{matchID}/entries/{entryID}/segments/{segment}/accept:
     parameters:
       - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
-      - $ref: '#/components/parameters/Stage'
+      - $ref: '#/components/parameters/Segment'
     post:
-      operationId: acceptStage
+      operationId: acceptSegment
       tags: [entries]
-      summary: Admin acceptance of a stage that is awaiting acceptance
+      summary: Admin acceptance of a segment that is awaiting acceptance
       security:
         - adminCookie: []
       responses:
         '200':
-          description: Stage accepted
+          description: Segment accepted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StageStatusResult'
+                $ref: '#/components/schemas/SegmentStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/matches/{matchID}/entries/{entryID}/stages/{stage}/unlock:
+  /api/matches/{matchID}/entries/{entryID}/segments/{segment}/unlock:
     parameters:
       - $ref: '#/components/parameters/MatchID'
       - $ref: '#/components/parameters/EntryID'
-      - $ref: '#/components/parameters/Stage'
+      - $ref: '#/components/parameters/Segment'
     post:
-      operationId: unlockStage
+      operationId: unlockSegment
       tags: [entries]
-      summary: Admin unlock of a stage that is awaiting acceptance or accepted, reopening it with its ring counts kept
+      summary: Admin unlock of a segment that is awaiting acceptance or accepted, reopening it with its ring counts kept
       security:
         - adminCookie: []
       responses:
         '200':
-          description: Stage reopened
+          description: Segment reopened
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StageStatusResult'
+                $ref: '#/components/schemas/SegmentStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1929,7 +1929,7 @@ paths:
     get:
       operationId: getScorecardSummary
       tags: [scorer]
-      summary: The shooter and the scorer of each accepted stage on a Scorecard copy, as text; public, ignores spectator visibility flags and has the same availability as the Scorecard copy
+      summary: The shooter and the scorer of each accepted segment on a Scorecard copy, as text; public, ignores spectator visibility flags and has the same availability as the Scorecard copy
       parameters:
         - $ref: '#/components/parameters/MatchID'
         - name: lane
@@ -1975,7 +1975,7 @@ paths:
     get:
       operationId: getScorerSession
       tags: [scorer]
-      summary: The paired device's lane, score lane and stages
+      summary: The paired device's lane, score lane and segments
       security:
         - deviceBearer: []
       responses:
@@ -2048,13 +2048,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/scorer/stages/{stage}:
+  /api/scorer/segments/{segment}:
     parameters:
-      - $ref: '#/components/parameters/Stage'
+      - $ref: '#/components/parameters/Segment'
     put:
       operationId: scorerSetCounts
       tags: [scorer]
-      summary: Replace the ring counts of a stage on the score lane
+      summary: Replace the ring counts of a segment on the score lane
       security:
         - deviceBearer: []
       requestBody:
@@ -2080,21 +2080,21 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
-  /api/scorer/stages/{stage}/lock:
+  /api/scorer/segments/{segment}/lock:
     parameters:
-      - $ref: '#/components/parameters/Stage'
+      - $ref: '#/components/parameters/Segment'
     post:
-      operationId: scorerLockStage
+      operationId: scorerLockSegment
       tags: [scorer]
       security:
         - deviceBearer: []
       responses:
         '200':
-          description: Stage awaiting acceptance
+          description: Segment awaiting acceptance
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StageStatusResult'
+                $ref: '#/components/schemas/SegmentStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2103,24 +2103,24 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/scorer/stages/{stage}/accept:
+  /api/scorer/segments/{segment}/accept:
     parameters:
-      - $ref: '#/components/parameters/Stage'
+      - $ref: '#/components/parameters/Segment'
     post:
-      operationId: scorerAcceptStage
+      operationId: scorerAcceptSegment
       tags: [scorer]
-      summary: Accept the device's own locked stage
+      summary: Accept the device's own locked segment
       description: >
-        Acts on the stage of the device's own lane, never on another lane. Answers 409 unless the stage is awaiting acceptance, and 403 if the device itself locked it.
+        Acts on the segment of the device's own lane, never on another lane. Answers 409 unless the segment is awaiting acceptance, and 403 if the device itself locked it.
       security:
         - deviceBearer: []
       responses:
         '200':
-          description: The new stage status
+          description: The new segment status
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StageStatusResult'
+                $ref: '#/components/schemas/SegmentStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2129,24 +2129,24 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-  /api/scorer/stages/{stage}/dispute:
+  /api/scorer/segments/{segment}/dispute:
     parameters:
-      - $ref: '#/components/parameters/Stage'
+      - $ref: '#/components/parameters/Segment'
     post:
-      operationId: scorerDisputeStage
+      operationId: scorerDisputeSegment
       tags: [scorer]
-      summary: Dispute the device's own locked stage
+      summary: Dispute the device's own locked segment
       description: >
-        Reopens the stage of the device's own lane with its hits kept and records the disputed time, which the next lock clears. Answers 409 unless the stage is awaiting acceptance, and 403 if the device itself locked it.
+        Reopens the segment of the device's own lane with its hits kept and records the disputed time, which the next lock clears. Answers 409 unless the segment is awaiting acceptance, and 403 if the device itself locked it.
       security:
         - deviceBearer: []
       responses:
         '200':
-          description: The new stage status
+          description: The new segment status
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StageStatusResult'
+                $ref: '#/components/schemas/SegmentStatusResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2536,7 +2536,7 @@ paths:
       description: >
         Ranked per category by total then X count; entries tie only when both
         are equal and withdrawn entries are left out. Hidden names also hide
-        WAID and the new shooters list; hidden stage scores omit `score`;
+        WAID and the new shooters list; hidden segment scores omit `score`;
         hidden ring counts omit `x_count`. Answers 404 unless the match
         is finished.
       responses:
@@ -2637,8 +2637,8 @@ components:
       schema:
         type: integer
         format: int64
-    Stage:
-      name: stage
+    Segment:
+      name: segment
       in: path
       required: true
       schema:
@@ -2685,7 +2685,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Conflict:
-      description: Conflicts with current state (stage locked, lane not manned, not between stages)
+      description: Conflicts with current state (segment locked, lane not manned, not between segments)
       content:
         application/json:
           schema:
@@ -2775,7 +2775,7 @@ components:
             $ref: '#/components/schemas/RulebookRing'
     RulebookCourse:
       type: object
-      required: [key, label, discipline, total_shots, categories, stages]
+      required: [key, label, discipline, total_shots, categories, stages, segments]
       properties:
         key:
           type: string
@@ -2794,6 +2794,27 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RulebookStage'
+        segments:
+          type: array
+          description: Scoring segments in order; one set of ring counts is recorded per segment.
+          items:
+            $ref: '#/components/schemas/RulebookSegment'
+    RulebookSegment:
+      type: object
+      required: [number, name, stages, shots]
+      properties:
+        number:
+          type: integer
+        name:
+          type: string
+          description: Name printed on the score card, for example "Match 5 · Stage 1+2".
+        stages:
+          type: array
+          description: Stage numbers the segment covers.
+          items:
+            type: integer
+        shots:
+          type: integer
     RulebookStage:
       type: object
       required: [stage_number, distance, expected_shots, time_seconds, position]
@@ -3160,7 +3181,7 @@ components:
     Match:
       allOf:
         - type: object
-          required: [id, competition_id, status, current_stage]
+          required: [id, competition_id, status, current_segment]
           properties:
             id:
               type: integer
@@ -3170,9 +3191,9 @@ components:
               format: int64
             status:
               $ref: '#/components/schemas/MatchStatus'
-            current_stage:
+            current_segment:
               type: integer
-              description: Stage the match is on. Stage 1 at activation; moved only by starting the next stage
+              description: Segment the match is on. Segment 1 at activation; moved only by starting the next segment
             activated_at:
               type: string
               nullable: true
@@ -3180,7 +3201,7 @@ components:
         - $ref: '#/components/schemas/MatchInput'
     Visibility:
       type: object
-      required: [show_names, show_clubs, show_countries, show_stage_scores, show_ring_counts]
+      required: [show_names, show_clubs, show_countries, show_segment_scores, show_ring_counts]
       properties:
         show_names:
           type: boolean
@@ -3188,7 +3209,7 @@ components:
           type: boolean
         show_countries:
           type: boolean
-        show_stage_scores:
+        show_segment_scores:
           type: boolean
         show_ring_counts:
           type: boolean
@@ -3211,16 +3232,16 @@ components:
           type: integer
         withdrawn:
           type: boolean
-    EntryStage:
+    EntrySegment:
       type: object
-      required: [stage_number, expected_shots, status, scorer_lane, scorer_name, score, shots_entered]
+      required: [segment_number, expected_shots, status, scorer_lane, scorer_name, score, shots_entered]
       properties:
-        stage_number:
+        segment_number:
           type: integer
         expected_shots:
           type: integer
         status:
-          $ref: '#/components/schemas/StageStatus'
+          $ref: '#/components/schemas/SegmentStatus'
         scorer_lane:
           type: integer
           nullable: true
@@ -3229,20 +3250,20 @@ components:
           nullable: true
         score:
           type: integer
-          description: Stage score from the stored ring counts, whether or not the stage is accepted
+          description: Segment score from the stored ring counts, whether or not the segment is accepted
         shots_entered:
           type: integer
           description: Sum of all stored ring counts
-    EntryWithStages:
+    EntryWithSegments:
       allOf:
         - $ref: '#/components/schemas/Entry'
         - type: object
-          required: [stages]
+          required: [segments]
           properties:
-            stages:
+            segments:
               type: array
               items:
-                $ref: '#/components/schemas/EntryStage'
+                $ref: '#/components/schemas/EntrySegment'
     RingCounts:
       type: object
       required: [x, '10', '9', '8', '7', '0', miss]
@@ -3289,18 +3310,20 @@ components:
           type: integer
         scorers:
           type: array
-          description: One item per accepted stage; Range admin when the admin scored the stage
+          description: One item per accepted segment; Range admin when the admin scored the segment
           items:
             type: object
-            required: [stage, scorer]
+            required: [segment, segment_name, scorer]
             properties:
-              stage:
+              segment:
                 type: integer
+              segment_name:
+                type: string
               scorer:
                 type: string
     ScorerSession:
       type: object
-      required: [match_id, lane, score_lane, current_stage, entry_id, shooter_name, stages, phase]
+      required: [match_id, lane, score_lane, current_segment, entry_id, shooter_name, segments, phase]
       properties:
         match_id:
           type: integer
@@ -3309,67 +3332,67 @@ components:
           type: integer
         score_lane:
           type: integer
-        current_stage:
+        current_segment:
           type: integer
-          description: The match's current stage; devices can score only this stage. Zero in the finished phase
+          description: The match's current segment; devices can score only this segment. Zero in the finished phase
         entry_id:
           type: integer
           format: int64
         shooter_name:
           type: string
-        stages:
+        segments:
           type: array
           items:
             type: object
             allOf:
               - $ref: '#/components/schemas/RingCounts'
               - type: object
-                required: [stage_number, expected_shots, status, disputed]
+                required: [segment_number, expected_shots, status, disputed, name]
                 properties:
-                  stage_number:
+                  segment_number:
                     type: integer
                   expected_shots:
                     type: integer
                   status:
-                    $ref: '#/components/schemas/StageStatus'
+                    $ref: '#/components/schemas/SegmentStatus'
                   disputed:
                     type: boolean
-                    description: True from a dispute until the scorer locks the stage again
-                  part:
+                    description: True from a dispute until the scorer locks the segment again
+                  name:
                     type: string
-                    description: Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups.
+                    description: Scoring segment name from the rulebook, for example "Match 5 · Stage 1+2".
         phase:
           type: string
-          enum: [not_started, scoring, waiting, needs_acceptance, next_stage, finished]
-          description: Derived by the server from the current stage. not_started while the match is a draft (the device is paired but shows only its lane; the other fields are empty); scoring while the score lane's current stage is open (including after a dispute); next_stage when the admin has started the stage and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current stage awaits acceptance and it has nothing left to score; finished once the match is finished (the other fields are then empty and the pairing is revoked)
+          enum: [not_started, scoring, waiting, needs_acceptance, next_segment, finished]
+          description: Derived by the server from the current segment. not_started while the match is a draft (the device is paired but shows only its lane; the other fields are empty); scoring while the score lane's current segment is open (including after a dispute); next_segment when the admin has started the segment and the scorer has not saved hits or locked it yet; needs_acceptance when the device's own current segment awaits acceptance and it has nothing left to score; finished once the match is finished (the other fields are then empty and the pairing is revoked)
         acceptance:
           description: Present while phase is needs_acceptance
           allOf:
             - $ref: '#/components/schemas/RingCounts'
             - type: object
-              required: [stage_number, total, scorer_name]
+              required: [segment_number, total, scorer_name, name]
               properties:
-                stage_number:
+                segment_number:
                   type: integer
                 total:
                   type: integer
                 scorer_name:
                   type: string
-                part:
+                name:
                   type: string
-                  description: Rulebook group the stage belongs to (for example "Match 2"); absent for courses with no groups.
+                  description: Scoring segment name from the rulebook, for example "Match 5 · Stage 1+2".
     ControlRoom:
       type: object
-      required: [current_stage, can_start_next, can_accept_all, lanes]
+      required: [current_segment, can_start_next, can_accept_all, lanes]
       properties:
-        current_stage:
+        current_segment:
           type: integer
         can_start_next:
           type: boolean
-          description: True at the gate, when every manned lane has accepted the current stage and a later stage exists
+          description: True at the gate, when every manned lane has accepted the current segment and a later segment exists
         can_accept_all:
           type: boolean
-          description: True when no manned lane is open for the current stage and at least one awaits acceptance
+          description: True when no manned lane is open for the current segment and at least one awaits acceptance
         lanes:
           type: array
           items:
@@ -3388,33 +3411,33 @@ components:
           type: string
           description: The locking scorer, or the scorer the lane is derived to have; empty when the lane is scored by the admin
         status:
-          $ref: '#/components/schemas/StageStatus'
+          $ref: '#/components/schemas/SegmentStatus'
         disputed:
           type: boolean
-          description: The stage is open again after a dispute
+          description: The segment is open again after a dispute
         disputes:
           type: integer
-          description: Disputes across all stages of the match
+          description: Disputes across all segments of the match
         paired:
           type: boolean
         connected:
           type: boolean
           description: Best-effort, from open scorer streams
-    StageHistory:
+    SegmentHistory:
       type: object
       required: [events, scorers]
       properties:
         events:
           type: array
           items:
-            $ref: '#/components/schemas/StageHistoryEvent'
+            $ref: '#/components/schemas/SegmentHistoryEvent'
         scorers:
           type: array
           items:
             $ref: '#/components/schemas/ScorerDisputes'
-    StageHistoryEvent:
+    SegmentHistoryEvent:
       type: object
-      required: [id, time, stage, entry_id, event, actor_type, actor_name, shooter_name, scorer_name]
+      required: [id, time, segment, entry_id, event, actor_type, actor_name, shooter_name, scorer_name]
       properties:
         id:
           type: integer
@@ -3422,7 +3445,7 @@ components:
         time:
           type: string
           format: date-time
-        stage:
+        segment:
           type: integer
         entry_id:
           type: integer
@@ -3439,7 +3462,7 @@ components:
           type: string
         scorer_name:
           type: string
-          description: The locking scorer; empty when the admin scored the stage
+          description: The locking scorer; empty when the admin scored the segment
     ScorerDisputes:
       type: object
       required: [scorer_name, locks, disputes]
@@ -3450,29 +3473,29 @@ components:
           type: integer
         disputes:
           type: integer
-    StageStatus:
+    SegmentStatus:
       type: string
       enum: [open, awaiting_acceptance, accepted]
-      description: A device lock leaves a stage awaiting acceptance, an admin lock or accept makes it accepted. Only accepted stages count in public views and reports
-    StageStatusResult:
+      description: A device lock leaves a segment awaiting acceptance, an admin lock or accept makes it accepted. Only accepted segments count in public views and reports
+    SegmentStatusResult:
       type: object
       required: [status]
       properties:
         status:
-          $ref: '#/components/schemas/StageStatus'
-    StageScore:
+          $ref: '#/components/schemas/SegmentStatus'
+    SegmentScore:
       type: object
-      required: [stage, accepted, state]
+      required: [segment, accepted, state]
       properties:
-        stage:
+        segment:
           type: integer
         score:
           type: integer
-          description: Present only when stage scores are visible and the stage is accepted
+          description: Present only when segment scores are visible and the segment is accepted
         accepted:
           type: boolean
         state:
-          $ref: '#/components/schemas/SpectatorStageState'
+          $ref: '#/components/schemas/SpectatorSegmentState'
         ring_counts:
           $ref: '#/components/schemas/RingCounts'
     Standing:
@@ -3499,13 +3522,13 @@ components:
           type: integer
         ring_counts:
           $ref: '#/components/schemas/RingCounts'
-        stages:
+        segments:
           type: array
           items:
-            $ref: '#/components/schemas/StageScore'
+            $ref: '#/components/schemas/SegmentScore'
     Results:
       type: object
-      required: [match, stages, categories, new_shooters]
+      required: [match, segments, categories, new_shooters]
       properties:
         match:
           type: object
@@ -3523,11 +3546,11 @@ components:
               description: Course of fire key from the rulebook
             course_label:
               type: string
-        stages:
+        segments:
           type: array
           items:
             type: integer
-          description: Stage numbers of the course of fire, in order
+          description: Segment numbers of the course of fire, in order
         categories:
           type: array
           description: Categories with at least one non-withdrawn entry, in rulebook order
@@ -3548,7 +3571,7 @@ components:
             $ref: '#/components/schemas/ResultsNewShooter'
     ResultsRow:
       type: object
-      required: [rank, stages, total]
+      required: [rank, segments, total]
       properties:
         rank:
           type: integer
@@ -3563,17 +3586,19 @@ components:
           type: string
         country:
           type: string
-        stages:
+        segments:
           type: array
           items:
             type: object
-            required: [stage]
+            required: [segment]
             properties:
-              stage:
+              segment:
                 type: integer
               score:
                 type: integer
-                description: Present for accepted stages when stage scores are visible
+                description: Present for accepted segments when segment scores are visible
+              ring_counts:
+                $ref: '#/components/schemas/RingCounts'
         total:
           type: integer
         x_count:
@@ -3596,24 +3621,24 @@ components:
           type: integer
         x_count:
           type: integer
-    SpectatorStageState:
+    SpectatorSegmentState:
       type: string
       enum: [not_started, in_progress, awaiting_acceptance, accepted]
-      description: A stage after the current stage is not started; an open stage of the current or an earlier stage, including a disputed (reopened) one, is in progress; a locked stage awaits acceptance until it is accepted. Only an accepted stage has a score
+      description: A segment after the current segment is not started; an open segment of the current or an earlier segment, including a disputed (reopened) one, is in progress; a locked segment awaits acceptance until it is accepted. Only an accepted segment has a score
     SpectatorSnapshot:
       type: object
-      required: [current_stage, total_stages, status, standings]
+      required: [current_segment, total_segments, status, standings]
       properties:
         status:
           type: string
           enum: [draft, active, finished]
           description: The match's status, so a viewer notices when it finishes without reloading the list
-        current_stage:
+        current_segment:
           type: integer
-          description: The match's current stage number
-        total_stages:
+          description: The match's current segment number
+        total_segments:
           type: integer
-          description: Number of stages in the match's course of fire
+          description: Number of segments in the match's course of fire
         standings:
           type: array
           items:

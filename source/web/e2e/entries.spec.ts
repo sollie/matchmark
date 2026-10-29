@@ -95,7 +95,7 @@ test.describe("entries", () => {
 });
 
 test.describe("entries layout", () => {
-  test("every stage is reachable without horizontal scrolling", async ({
+  test("every segment is reachable without horizontal scrolling", async ({
     course,
     adminPage: page,
     admin,
@@ -105,11 +105,11 @@ test.describe("entries layout", () => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await openMatch(page, match.id);
 
-    const stages = row(page, entry.shooter.last_name).locator("td.stage");
-    await expect(stages).toHaveCount(course.stages);
+    const segments = row(page, entry.shooter.last_name).locator("td.segment");
+    await expect(segments).toHaveCount(course.segments);
     const scroll = page.locator(".scroll", { has: page.locator("table.entries") });
     expect(await scroll.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    await expect(stages.last()).toBeInViewport();
+    await expect(segments.last()).toBeInViewport();
   });
 });
 
@@ -124,16 +124,16 @@ test.describe("admin ring counts", () => {
     await setStatus(admin, match.id, "active");
     await openMatch(page, match.id);
 
-    await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Edit` }).click();
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
     const counts = page.locator(".counts");
-    await expect(counts).toContainText(`must sum to ${course.stageOneShots} shots`);
+    await expect(counts).toContainText(`must sum to ${course.segmentOneShots} shots`);
 
-    await counts.getByLabel("10", { exact: true }).fill("5");
-    await counts.getByLabel("9", { exact: true }).fill("4");
-    await expect(counts.locator(".total")).toContainText("3 to go");
+    await counts.getByLabel("10", { exact: true }).fill("10");
+    await counts.getByLabel("9", { exact: true }).fill("8");
+    await expect(counts.locator(".total")).toContainText("6 to go");
 
-    await counts.getByLabel("8", { exact: true }).fill("5");
-    await expect(counts.locator(".total")).toContainText("2 too many");
+    await counts.getByLabel("8", { exact: true }).fill("10");
+    await expect(counts.locator(".total")).toContainText("4 too many");
 
     await counts.getByRole("button", { name: "Save counts" }).click();
     await expect(section(page, "Entries and progress").getByRole("alert")).toHaveText(
@@ -141,11 +141,11 @@ test.describe("admin ring counts", () => {
     );
     await expect(counts).toBeVisible();
 
-    await counts.getByLabel("8", { exact: true }).fill("3");
+    await counts.getByLabel("8", { exact: true }).fill("6");
     await expect(counts.locator(".total")).toContainText("Shots match");
   });
 
-  test("save and lock records the stage as locked by the signed-in user and unlock reopens it", async ({
+  test("save and lock records the segment as locked by the signed-in user and unlock reopens it", async ({
     course,
     adminPage: page,
     admin,
@@ -156,32 +156,32 @@ test.describe("admin ring counts", () => {
     await openMatch(page, match.id);
 
     const entryRow = row(page, entry.shooter.last_name);
-    const stage = entryRow.locator("td.stage").first();
-    await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Edit` }).click();
+    const segment = entryRow.locator("td.segment").first();
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
     const counts = page.locator(".counts");
-    await counts.getByLabel("X", { exact: true }).fill("2");
-    await counts.getByLabel("10", { exact: true }).fill("4");
-    await counts.getByLabel("9", { exact: true }).fill("3");
-    await counts.getByLabel("0", { exact: true }).fill("1");
-    await counts.getByLabel("miss", { exact: true }).fill("2");
+    await counts.getByLabel("X", { exact: true }).fill("4");
+    await counts.getByLabel("10", { exact: true }).fill("8");
+    await counts.getByLabel("9", { exact: true }).fill("6");
+    await counts.getByLabel("0", { exact: true }).fill("2");
+    await counts.getByLabel("miss", { exact: true }).fill("4");
     await expect(counts.locator(".total")).toContainText("Shots match");
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
     await expect(counts).toHaveCount(0);
-    const locked = stage.getByText("Accepted", { exact: true });
+    const locked = segment.getByText("Accepted", { exact: true });
     await expect(locked).toBeVisible();
     await expect(locked).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
-    await expect(stage).toContainText("pts");
+    await expect(segment).toContainText("pts");
 
-    await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Unlock` }).click();
-    await expect(stage.getByText("Scored, not locked")).toBeVisible();
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Unlock` }).click();
+    await expect(segment.getByText("Scored, not locked")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Lock` }),
+      page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Lock` }),
     ).toBeVisible();
-    await expect(stage.getByText("Accepted", { exact: true })).toHaveCount(0);
+    await expect(segment.getByText("Accepted", { exact: true })).toHaveCount(0);
   });
 
-  test("an admin overwrite replaces the counts of a stage that already has them", async ({
+  test("an admin overwrite replaces the counts of a segment that already has them", async ({
     course,
     adminPage: page,
     admin,
@@ -189,19 +189,19 @@ test.describe("admin ring counts", () => {
     const match = await createMatch(admin);
     const entry = await seedEntry(admin, match.id, 1);
     await setStatus(admin, match.id, "active");
-    await setCounts(admin, match.id, entry.entryId, 1, { "10": course.stageOneShots }, true);
+    await setCounts(admin, match.id, entry.entryId, 1, { "10": course.segmentOneShots }, true);
     await openMatch(page, match.id);
 
-    const stage = row(page, entry.shooter.last_name).locator("td.stage").first();
-    await expect(stage.locator(".score strong")).toHaveText("120");
-    await page.getByRole("button", { name: `Lane ${entry.lane} stage 1: Edit` }).click();
+    const segment = row(page, entry.shooter.last_name).locator("td.segment").first();
+    await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 10));
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
     const counts = page.locator(".counts");
-    await counts.getByLabel("9", { exact: true }).fill(String(course.stageOneShots));
+    await counts.getByLabel("9", { exact: true }).fill(String(course.segmentOneShots));
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
     await expect(counts).toHaveCount(0);
-    await expect(stage.locator(".score strong")).toHaveText("108");
-    await expect(stage.getByText("Accepted", { exact: true })).toHaveAttribute(
+    await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 9));
+    await expect(segment.getByText("Accepted", { exact: true })).toHaveAttribute(
       "title",
       new RegExp(`Locked by ${adminUsername}`),
     );

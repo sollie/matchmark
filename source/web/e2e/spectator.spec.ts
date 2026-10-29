@@ -33,10 +33,10 @@ async function seedScored(api: APIRequestContext, finish = false) {
     country: string;
   }[];
   const plans = [
-    { lane: 1, counts: { x: 2, "10": 6, "9": 4 }, lock: true },
-    { lane: 2, counts: { x: 6, "10": 6 }, lock: true },
-    { lane: 3, counts: { "9": 12 }, lock: false },
-    { lane: 4, counts: { x: 5, "10": 7 }, lock: false },
+    { lane: 1, counts: { x: 4, "10": 12, "9": 8 }, lock: true },
+    { lane: 2, counts: { x: 12, "10": 12 }, lock: true },
+    { lane: 3, counts: { "9": 24 }, lock: false },
+    { lane: 4, counts: { x: 10, "10": 14 }, lock: false },
   ];
   const shooters = [];
   for (const plan of plans) {
@@ -60,7 +60,8 @@ async function seedScored(api: APIRequestContext, finish = false) {
 }
 
 test.describe("spectator", () => {
-  test("standings are ranked by total then X count with the stage status row", async ({
+  test("standings are ranked by total then X count with the segment status row", async ({
+    course,
     page,
     admin,
   }) => {
@@ -75,7 +76,7 @@ test.describe("spectator", () => {
     await expect(byLane(1).getByRole("cell").first()).toHaveText("2");
     await expect(byLane(3).getByRole("cell").first()).toHaveText("3");
     await expect(byLane(1).getByRole("cell").nth(1)).toHaveText("1");
-    await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "M1", exact: true })).toBeVisible();
     await expect(table.getByRole("columnheader", { name: "X", exact: true })).toBeVisible();
 
     const rows = table.locator("tbody tr");
@@ -83,11 +84,11 @@ test.describe("spectator", () => {
 
     const progress = page.getByRole("status");
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
-    await expect(progress.getByText("Stage 1 of 10")).toBeVisible();
+    await expect(progress.getByText(`Segment 1 of ${course.segments}`)).toBeVisible();
     await expect(page.locator("progress")).toHaveCount(0);
   });
 
-  test("an accepted stage appears live without polling requests", async ({ page, admin }) => {
+  test("an accepted segment appears live without polling requests", async ({ page, admin }) => {
     const { match, entries } = await seedScored(admin);
     const polled: string[] = [];
     page.on("request", (request) => {
@@ -101,7 +102,7 @@ test.describe("spectator", () => {
     const entryId = (
       await (await admin.get(`/api/matches/${match.id}/entries`)).json()
     ).entries.find((e: { lane: number }) => e.lane === 3).id;
-    await setCounts(admin, match.id, entryId, 1, { "9": 12 }, true);
+    await setCounts(admin, match.id, entryId, 1, { "9": 24 }, true);
 
     await expect(progress.getByText("3/4 accepted")).toBeVisible();
     await expect(row(page, entries[2].last_name)).toBeVisible();
@@ -132,7 +133,7 @@ test.describe("spectator", () => {
     const entryId = (
       await (await admin.get(`/api/matches/${match.id}/entries`)).json()
     ).entries.find((e: { lane: number }) => e.lane === 3).id;
-    await setCounts(admin, match.id, entryId, 1, { "9": 12 }, true);
+    await setCounts(admin, match.id, entryId, 1, { "9": 24 }, true);
     await page.waitForTimeout(1000);
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
     expect(streams).toBe(1);
@@ -156,23 +157,25 @@ test.describe("spectator", () => {
       "finished",
     );
     await expect(page.getByRole("status").getByText("Finished", { exact: true })).toBeVisible();
-    await expect(page.getByRole("status").getByText(/Stage \d+ of/)).toHaveCount(0);
+    await expect(page.getByRole("status").getByText(/Segment \d+ of/)).toHaveCount(0);
     await expect(row(page, entries[0].last_name)).toBeVisible();
     await expect(row(page, entries[1].last_name)).toBeVisible();
   });
 
-  test("stage cells show state as color and label with a legend", async ({ page, admin }) => {
+  test("segment cells show state as color and label with a legend", async ({ page, admin }) => {
     const { match, entries } = await seedScored(admin);
     await openMatch(page, match.name);
 
     const accepted = row(page, entries[1].last_name);
-    await expect(accepted.getByLabel("Stage 1: accepted, 120", { exact: true })).toHaveText("120");
+    await expect(accepted.getByLabel("Segment 1: accepted, 240", { exact: true })).toHaveText(
+      "240",
+    );
     const inProgress = row(page, entries[2].last_name);
-    await expect(inProgress.getByLabel("Stage 1: in progress", { exact: true })).toHaveText("");
-    await expect(inProgress.getByLabel("Stage 2: not started", { exact: true })).toHaveText("");
-    await expect(inProgress.getByTitle("Stage 2: not started", { exact: true })).toBeVisible();
+    await expect(inProgress.getByLabel("Segment 1: in progress", { exact: true })).toHaveText("");
+    await expect(inProgress.getByLabel("Segment 2: not started", { exact: true })).toHaveText("");
+    await expect(inProgress.getByTitle("Segment 2: not started", { exact: true })).toBeVisible();
 
-    const legend = page.getByRole("list", { name: "Stage state legend" });
+    const legend = page.getByRole("list", { name: "Segment state legend" });
     for (const state of ["Not started", "In progress", "Awaiting acceptance", "Accepted"]) {
       await expect(legend).toContainText(state);
     }
@@ -185,7 +188,7 @@ test.describe("spectator", () => {
       names?: boolean;
       clubs?: boolean;
       countries?: boolean;
-      stage?: boolean;
+      segment?: boolean;
       x?: boolean;
     }) => [
       "1",
@@ -194,10 +197,10 @@ test.describe("spectator", () => {
       ...(shown.clubs ? [shooter.club] : []),
       ...(shown.countries ? [shooter.country] : []),
       "Revolver",
-      shown.stage ? "120" : "",
-      ...Array<string>(course.stages - 1).fill(""),
-      "120",
-      ...(shown.x ? ["6"] : []),
+      shown.segment ? "240" : "",
+      ...Array<string>(course.segments - 1).fill(""),
+      "240",
+      ...(shown.x ? ["12"] : []),
     ];
     const table = page.getByRole("table");
     const winner = table.locator("tbody tr").first();
@@ -205,14 +208,14 @@ test.describe("spectator", () => {
     await openMatch(page, match.name);
     await expect(table.locator("tbody tr")).toHaveCount(4);
     await expect(winner.getByRole("cell")).toHaveText(
-      winnerCells({ names: true, clubs: true, countries: true, stage: true, x: true }),
+      winnerCells({ names: true, clubs: true, countries: true, segment: true, x: true }),
     );
 
     await setVisibility(admin, match.id, { show_clubs: false });
     await openMatch(page, match.name);
     await expect(table.getByRole("columnheader", { name: "Club", exact: true })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(
-      winnerCells({ names: true, countries: true, stage: true, x: true }),
+      winnerCells({ names: true, countries: true, segment: true, x: true }),
     );
     await expect(table).not.toContainText(shooter.club);
 
@@ -220,24 +223,24 @@ test.describe("spectator", () => {
     await openMatch(page, match.name);
     await expect(table.getByRole("columnheader", { name: "Country" })).toHaveCount(0);
     await expect(winner.getByRole("cell")).toHaveText(
-      winnerCells({ names: true, stage: true, x: true }),
+      winnerCells({ names: true, segment: true, x: true }),
     );
     await expect(table).not.toContainText(shooter.country);
 
     await setVisibility(admin, match.id, {
       show_clubs: false,
       show_countries: false,
-      show_stage_scores: false,
+      show_segment_scores: false,
     });
     await openMatch(page, match.name);
-    await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "M1", exact: true })).toBeVisible();
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, x: true }));
-    await expect(winner.getByLabel("Stage 1: accepted", { exact: true })).toBeVisible();
+    await expect(winner.getByLabel("Segment 1: accepted", { exact: true })).toBeVisible();
 
     await setVisibility(admin, match.id, {
       show_clubs: false,
       show_countries: false,
-      show_stage_scores: false,
+      show_segment_scores: false,
       show_ring_counts: false,
     });
     await openMatch(page, match.name);
@@ -248,7 +251,7 @@ test.describe("spectator", () => {
       show_clubs: false,
       show_countries: false,
       show_names: false,
-      show_stage_scores: false,
+      show_segment_scores: false,
       show_ring_counts: false,
     });
     await openMatch(page, match.name);

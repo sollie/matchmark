@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/png"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 )
@@ -22,7 +23,7 @@ func sampleResults() ResultsPDFData {
 	row := func(rank int, last string) ResultsPDFRow {
 		return ResultsPDFRow{
 			Rank: rank, LastName: ptr(last), FirstName: ptr("Åse"), WAID: ptr("1001"), Club: ptr("Łódź SK"), Country: ptr("NOR"),
-			Stages: []ResultsPDFStage{{Stage: 1, Score: ptr(90)}, {Stage: 2, Score: ptr(88)}}, Total: 178, XCount: ptr(9),
+			Segments: []ResultsPDFSegment{{Segment: 1, Score: ptr(90)}, {Segment: 2, Score: ptr(88)}}, Total: 178, XCount: ptr(9),
 		}
 	}
 	return ResultsPDFData{
@@ -31,7 +32,7 @@ func sampleResults() ResultsPDFData {
 		Name:        "Autumn Match",
 		Date:        "2026-10-24",
 		CourseLabel: "WA1500 150",
-		Stages:      []int{1, 2},
+		Segments:    []int{1, 2},
 		Categories: []ResultsPDFCategory{
 			{Category: "Revolver", Rows: []ResultsPDFRow{row(1, "Ørn"), row(2, "Berg")}},
 			{Category: "Pistol", Rows: []ResultsPDFRow{row(1, "Dahl")}},
@@ -59,8 +60,8 @@ func TestResultsPDFWithHiddenColumnsAndLogo(t *testing.T) {
 		for j := range d.Categories[i].Rows {
 			r := &d.Categories[i].Rows[j]
 			r.LastName, r.FirstName, r.WAID, r.Club, r.Country, r.XCount = nil, nil, nil, nil, nil, nil
-			for k := range r.Stages {
-				r.Stages[k].Score = nil
+			for k := range r.Segments {
+				r.Segments[k].Score = nil
 			}
 		}
 	}
@@ -121,5 +122,53 @@ func TestResultsPDFWithoutClubSettings(t *testing.T) {
 	}
 	if got := pageCount(out); got != 3 {
 		t.Fatalf("pages = %d", got)
+	}
+}
+
+func TestResultsColumnsUseSegmentNames(t *testing.T) {
+	d := sampleResults()
+	d.SegmentNames = []string{"Match 1", "Match 2"}
+	columns, _ := resultsColumns(d)
+	var titles []string
+	for _, c := range columns {
+		titles = append(titles, c.title)
+	}
+	for _, want := range d.SegmentNames {
+		if !slices.Contains(titles, want) {
+			t.Fatalf("titles %q lack %q", titles, want)
+		}
+	}
+	if slices.Contains(titles, "S1") {
+		t.Fatalf("titles %q still numbered", titles)
+	}
+}
+
+func TestScoreCardCellsListRingsPerSegmentWithTotals(t *testing.T) {
+	r := ResultsPDFRow{Segments: []ResultsPDFSegment{
+		{Segment: 1, Counts: []int{1, 2, 3, 4, 5, 6, 7}},
+		{Segment: 2},
+		{Segment: 3, Counts: []int{1, 1, 1, 1, 1, 1, 1}},
+	}}
+	got := scoreCardCells(r)
+	if len(got) != 7 || !slices.Equal(got[0], []string{"X", "1", "", "1", "2"}) || !slices.Equal(got[6], []string{"M", "7", "", "1", "8"}) {
+		t.Fatalf("cells %q", got)
+	}
+	if scoreCardCells(ResultsPDFRow{Segments: []ResultsPDFSegment{{Segment: 1}}}) != nil {
+		t.Fatal("card without counts")
+	}
+}
+
+func TestResultsPDFWithScoreCards(t *testing.T) {
+	d := sampleResults()
+	for i := range d.Categories {
+		for j := range d.Categories[i].Rows {
+			for k := range d.Categories[i].Rows[j].Segments {
+				d.Categories[i].Rows[j].Segments[k].Counts = []int{1, 2, 3, 4, 5, 6, 7}
+			}
+		}
+	}
+	out, err := ResultsPDF(d)
+	if err != nil || !bytes.HasPrefix(out, []byte("%PDF-")) {
+		t.Fatalf("pdf: %v", err)
 	}
 }

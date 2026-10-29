@@ -16,14 +16,14 @@ type Shooter struct {
 }
 
 type Match struct {
-	ID            int64
-	CompetitionID int64
-	Name          string
-	Date          string
-	Course        string
-	Status        string
-	CurrentStage  int
-	ActivatedAt   string
+	ID             int64
+	CompetitionID  int64
+	Name           string
+	Date           string
+	Course         string
+	Status         string
+	CurrentSegment int
+	ActivatedAt    string
 }
 
 type DateRange struct {
@@ -41,7 +41,7 @@ type Entry struct {
 	Withdrawn bool
 }
 
-type StageSeed struct {
+type SegmentSeed struct {
 	Number        int
 	ExpectedShots int
 }
@@ -138,12 +138,12 @@ func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRa
 func (r *Repository) GetMatch(ctx context.Context, id int64) (Match, error) {
 	var c Match
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_stage, COALESCE(activated_at, '') FROM matches WHERE id = ?`, id).
-		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage, &c.ActivatedAt)
+		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, '') FROM matches WHERE id = ?`, id).
+		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt)
 	return c, mapErr(err)
 }
 
-func (r *Repository) CreateEntry(ctx context.Context, e Entry, stages []StageSeed) (int64, error) {
+func (r *Repository) CreateEntry(ctx context.Context, e Entry, segments []SegmentSeed) (int64, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -159,9 +159,9 @@ func (r *Repository) CreateEntry(ctx context.Context, e Entry, stages []StageSee
 	if err != nil {
 		return 0, err
 	}
-	for _, s := range stages {
+	for _, s := range segments {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO stages (entry_id, stage_number, expected_shots) VALUES (?, ?, ?)`,
+			`INSERT INTO segments (entry_id, segment_number, expected_shots) VALUES (?, ?, ?)`,
 			id, s.Number, s.ExpectedShots); err != nil {
 			return 0, mapErr(err)
 		}

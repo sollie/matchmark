@@ -1,7 +1,8 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
-  import StageCell from "../lib/StageCell.svelte";
+  import SegmentCell from "../lib/SegmentCell.svelte";
+  import { loadRulebook, segmentColumn, segmentLabel } from "../lib/rulebook.svelte";
   import { openStream, type StreamState } from "../lib/sse";
   import { ScreenControl } from "../lib/screenControl.svelte";
   import type { components } from "../lib/api/schema";
@@ -34,13 +35,13 @@
   const finished = $derived((current?.status ?? snapshot?.status) === "finished");
   const acceptance = $derived.by(() => {
     if (!snapshot) return null;
-    const stages = snapshot.standings
+    const segments = snapshot.standings
       .filter((s) => !s.withdrawn)
-      .flatMap((s) => s.stages?.filter((st) => st.stage === snapshot?.current_stage) ?? []);
-    return { accepted: stages.filter((st) => st.accepted).length, total: stages.length };
+      .flatMap((s) => s.segments?.filter((st) => st.segment === snapshot?.current_segment) ?? []);
+    return { accepted: segments.filter((st) => st.accepted).length, total: segments.length };
   });
-  const stageNumbers = $derived(
-    [...new Set(standings.flatMap((s) => s.stages?.map((st) => st.stage) ?? []))].sort(
+  const segmentNumbers = $derived(
+    [...new Set(standings.flatMap((s) => s.segments?.map((st) => st.segment) ?? []))].sort(
       (a, b) => a - b,
     ),
   );
@@ -56,6 +57,7 @@
   }
 
   $effect(() => {
+    void loadRulebook();
     void loadMatches();
   });
 
@@ -143,7 +145,7 @@
           <strong>Finished</strong>
           <a href={`/results/${viewed}`}>View results</a>
         {:else if snapshot && acceptance}
-          <strong>Stage {snapshot.current_stage} of {snapshot.total_stages}</strong>
+          <strong>Segment {snapshot.current_segment} of {snapshot.total_segments}</strong>
           <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
         {/if}
       </div>
@@ -176,7 +178,11 @@
               {#if showClubs}<th class="optional">Club</th>{/if}
               {#if showCountries}<th class="optional">Country</th>{/if}
               <th class="optional">Category</th>
-              {#each stageNumbers as n (n)}<th class="num">S{n}</th>{/each}
+              {#each segmentNumbers as n (n)}<th
+                  class="num"
+                  title={segmentLabel(current?.course ?? "", n)}
+                  >{segmentColumn(current?.course ?? "", n)}</th
+                >{/each}
               <th class="num">Total</th>
               {#if showX}<th class="num">X</th>{/if}
               {#if finished}<th>Scorecard</th>{/if}
@@ -193,8 +199,10 @@
                 {#if showClubs}<td class="optional">{s.club}</td>{/if}
                 {#if showCountries}<td class="optional">{s.country}</td>{/if}
                 <td class="optional">{s.category}</td>
-                {#each stageNumbers as n (n)}
-                  <td class="num"><StageCell stage={s.stages?.find((st) => st.stage === n)} /></td>
+                {#each segmentNumbers as n (n)}
+                  <td class="num"
+                    ><SegmentCell segment={s.segments?.find((st) => st.segment === n)} /></td
+                  >
                 {/each}
                 <td class="num total">{s.total}</td>
                 {#if showX}<td class="num">{s.x_count}</td>{/if}
@@ -209,25 +217,29 @@
           </tbody>
         </table>
       </div>
-      {#if stageNumbers.length > 0}
-        <ul class="legend" aria-label="Stage state legend">
+      {#if segmentNumbers.length > 0}
+        <ul class="legend" aria-label="Segment state legend">
           <li>
-            <StageCell stage={{ stage: 0, accepted: false, state: "not_started" }} prefix={false} /> Not
-            started
+            <SegmentCell
+              segment={{ segment: 0, accepted: false, state: "not_started" }}
+              prefix={false}
+            /> Not started
           </li>
           <li>
-            <StageCell stage={{ stage: 0, accepted: false, state: "in_progress" }} prefix={false} /> In
-            progress
+            <SegmentCell
+              segment={{ segment: 0, accepted: false, state: "in_progress" }}
+              prefix={false}
+            /> In progress
           </li>
           <li>
-            <StageCell
-              stage={{ stage: 0, accepted: false, state: "awaiting_acceptance" }}
+            <SegmentCell
+              segment={{ segment: 0, accepted: false, state: "awaiting_acceptance" }}
               prefix={false}
             /> Awaiting acceptance
           </li>
           <li>
-            <StageCell
-              stage={{ stage: 0, accepted: true, state: "accepted", score: 118 }}
+            <SegmentCell
+              segment={{ segment: 0, accepted: true, state: "accepted", score: 118 }}
               prefix={false}
             /> Accepted
           </li>

@@ -15,7 +15,7 @@ import {
 async function seedReportMatch(api: APIRequestContext) {
   const match = await createMatch(api);
   const { shooter, entryId } = await seedEntry(api, match.id, 1);
-  await setCounts(api, match.id, entryId, 1, { x: 7, "10": 5 }, true);
+  await setCounts(api, match.id, entryId, 1, { x: 14, "10": 10 }, true);
   await setStatus(api, match.id, "active");
   await setStatus(api, match.id, "finished");
   return { match, shooter };

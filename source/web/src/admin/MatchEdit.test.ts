@@ -10,7 +10,7 @@ const course = (key: string, label: string) => ({
   label,
   discipline: "1500",
   total_shots: 0,
-  stages: [],
+  segments: [],
 });
 
 beforeAll(async () => {
@@ -30,7 +30,7 @@ const match = {
   date: "2026-03-01",
   course: "150",
   status: "draft" as const,
-  current_stage: 1,
+  current_segment: 1,
 };
 
 function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0]) {

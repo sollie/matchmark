@@ -25,11 +25,13 @@ test.describe("matches", () => {
     await expect(link).toHaveAttribute("rel", /noopener/);
   });
 
-  function stageHeaders(page: Page) {
-    return section(page, "Entries and progress").getByRole("columnheader", { name: /^S\d+$/ });
+  function segmentHeaders(page: Page) {
+    return section(page, "Entries and progress").getByRole("columnheader", {
+      name: /^(M\d|Stage \d\+\d)$/,
+    });
   }
 
-  test("every course shows its label and one column per stage", async ({
+  test("every course shows its label and one column per segment", async ({
     adminPage: page,
     admin,
     courses,
@@ -51,9 +53,12 @@ test.describe("matches", () => {
         const id = Number(page.url().split("/").pop());
         await seedEntry(admin, id, 1);
         await openMatch(page, id);
-        await expect(stageHeaders(page)).toHaveCount(course.stages);
-        await expect(stageHeaders(page).first()).toHaveText("S1");
-        await expect(stageHeaders(page).last()).toHaveText(`S${course.stages}`);
+        await expect(segmentHeaders(page)).toHaveCount(course.segments);
+        await expect(segmentHeaders(page)).toHaveText(
+          course.segments === 6
+            ? ["M1", "M2", "M3", "M4", "Stage 1+2", "Stage 3+4"]
+            : ["Stage 1+2", "Stage 3+4"],
+        );
 
         await page.goto("/admin");
         await expect(row(page, name)).toContainText(course.label);
@@ -214,7 +219,7 @@ test.describe("matches", () => {
     const { entryId } = await seedEntry(admin, match.id, 1);
     await seedEntry(admin, match.id, 2);
     await setStatus(admin, match.id, "active");
-    await setCounts(admin, match.id, entryId, 1, { "10": course.stageOneShots });
+    await setCounts(admin, match.id, entryId, 1, { "10": course.segmentOneShots });
     await openMatch(page, match.id);
     await expect(page.getByRole("button", { name: "Finish match" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Back to draft" })).toHaveCount(0);
@@ -271,7 +276,7 @@ test.describe("matches", () => {
 
     await seedEntry(admin, match.id, 1);
     await openMatch(page, match.id);
-    await expect(stageHeaders(page)).toHaveCount(target.stages);
+    await expect(segmentHeaders(page)).toHaveCount(target.segments);
 
     await page.goto("/admin");
     const listed = row(page, name);
@@ -360,7 +365,7 @@ test.describe("matches", () => {
     await expect(reloaded.getByLabel("Names")).toBeChecked();
     await expect(reloaded.getByLabel("Clubs")).not.toBeChecked();
     await expect(reloaded.getByLabel("Countries")).toBeChecked();
-    await expect(reloaded.getByLabel("Stage scores")).toBeChecked();
+    await expect(reloaded.getByLabel("Segment scores")).toBeChecked();
     await expect(reloaded.getByLabel("X count")).toBeChecked();
   });
 });

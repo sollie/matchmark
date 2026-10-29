@@ -213,15 +213,15 @@ func TestCourseChangeRejectedWithEntries(t *testing.T) {
 	}
 }
 
-func TestEntriesListWithStages(t *testing.T) {
+func TestEntriesListWithSegments(t *testing.T) {
 	tests := []struct {
 		course string
 		shots  []int
 	}{
-		{"150", []int{12, 12, 18, 24, 12, 12, 12, 18, 24, 6}},
-		{"60", []int{12, 18, 24, 6}},
-		{"48", []int{6, 12, 12, 18}},
-		{"40", []int{5, 10, 10, 15}},
+		{"150", []int{24, 18, 24, 24, 30, 30}},
+		{"60", []int{30, 30}},
+		{"48", []int{18, 30}},
+		{"40", []int{15, 25}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.course, func(t *testing.T) {
@@ -239,29 +239,29 @@ func TestEntriesListWithStages(t *testing.T) {
 			if e["lane"].(float64) != 2 || e["category"] != "Revolver" || e["withdrawn"] != false {
 				t.Fatalf("got %v", e)
 			}
-			stages := e["stages"].([]any)
-			if len(stages) != len(tt.shots) {
-				t.Fatalf("got %d stages", len(stages))
+			segments := e["segments"].([]any)
+			if len(segments) != len(tt.shots) {
+				t.Fatalf("got %d segments", len(segments))
 			}
-			for i, s := range stages {
+			for i, s := range segments {
 				m := s.(map[string]any)
-				if int(m["stage_number"].(float64)) != i+1 || int(m["expected_shots"].(float64)) != tt.shots[i] {
-					t.Fatalf("stage %d: %v", i+1, m)
+				if int(m["segment_number"].(float64)) != i+1 || int(m["expected_shots"].(float64)) != tt.shots[i] {
+					t.Fatalf("segment %d: %v", i+1, m)
 				}
 			}
 		})
 	}
 }
 
-func TestEntriesListStageScores(t *testing.T) {
+func TestEntriesListSegmentScores(t *testing.T) {
 	f := newFixture(t, "150")
 	entry := f.addEntry(t, "One", 1)
-	base := fmt.Sprintf("/api/matches/%d/entries/%d/stages", f.comp, entry)
+	base := fmt.Sprintf("/api/matches/%d/entries/%d/segments", f.comp, entry)
 	f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "active"})
-	if status, out := f.env.Do("PUT", base+"/1", map[string]any{"x": 10, "9": 1, "8": 1}); status != http.StatusOK {
+	if status, out := f.env.Do("PUT", base+"/1", map[string]any{"x": 20, "9": 2, "8": 2}); status != http.StatusOK {
 		t.Fatalf("set counts: %d %v", status, out)
 	}
-	if status, out := f.env.Do("PUT", base+"/2", map[string]any{"x": 12}); status != http.StatusOK {
+	if status, out := f.env.Do("PUT", base+"/2", map[string]any{"x": 18}); status != http.StatusOK {
 		t.Fatalf("set counts: %d %v", status, out)
 	}
 	if status, out := f.env.Do("POST", base+"/2/lock", nil); status != http.StatusNoContent && status != http.StatusOK {
@@ -269,15 +269,15 @@ func TestEntriesListStageScores(t *testing.T) {
 	}
 
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
-	stages := out["entries"].([]any)[0].(map[string]any)["stages"].([]any)
+	segments := out["entries"].([]any)[0].(map[string]any)["segments"].([]any)
 	want := []struct {
 		score, shots int
 		status       string
-	}{{117, 12, "open"}, {120, 12, "accepted"}, {0, 0, "open"}}
+	}{{234, 24, "open"}, {180, 18, "accepted"}, {0, 0, "open"}}
 	for i, w := range want {
-		m := stages[i].(map[string]any)
+		m := segments[i].(map[string]any)
 		if int(m["score"].(float64)) != w.score || int(m["shots_entered"].(float64)) != w.shots || m["status"] != w.status {
-			t.Fatalf("stage %d: %v", i+1, m)
+			t.Fatalf("segment %d: %v", i+1, m)
 		}
 	}
 }

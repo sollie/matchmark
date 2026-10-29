@@ -19,9 +19,9 @@ func (s *Service) loadReport(ctx context.Context, matchID int64) (report.Data, e
 		return report.Data{}, err
 	}
 	for i := range entries {
-		for j := range entries[i].Stages {
-			if entries[i].Stages[j].Status != repository.StatusAccepted {
-				entries[i].Stages[j].Counts = repository.RingCounts{}
+		for j := range entries[i].Segments {
+			if entries[i].Segments[j].Status != repository.StatusAccepted {
+				entries[i].Segments[j].Counts = repository.RingCounts{}
 			}
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"strconv"
+	"strings"
 
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
@@ -20,11 +21,12 @@ import (
 )
 
 const (
-	cardWidth   = 1200
-	cardMargin  = 48
-	logoHeight  = 96
-	rowHeight   = 46
-	adminScorer = "Range admin"
+	cardWidth       = 1200
+	cardMargin      = 48
+	logoHeight      = 96
+	rowHeight       = 46
+	headerRowHeight = 74
+	adminScorer     = "Range admin"
 )
 
 var (
@@ -92,22 +94,20 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	columns := []cardColumn{{"Stage", 170, true}, {"Distance", 110, true}, {"Shots", 90, false}}
-	for _, ring := range rulebook.RingValues() {
-		columns = append(columns, cardColumn{ring, 70, false})
+	grid := scorecardGrid(d)
+	labelWidth, totalWidth := 140, 110
+	segWidth := (cardWidth - 2*cardMargin - labelWidth - totalWidth) / max(len(d.Course.Segments), 1)
+	columns := []cardColumn{{"", labelWidth, true}}
+	for range d.Course.Segments {
+		columns = append(columns, cardColumn{"", segWidth, false})
 	}
-	columns = append(columns, cardColumn{"Score", 100, false})
-	used := 0
-	for _, c := range columns {
-		used += c.width
-	}
-	columns = append(columns, cardColumn{"Scorer", cardWidth - 2*cardMargin - used, true})
+	columns = append(columns, cardColumn{"", totalWidth, false})
 
 	const infoRows = 3
 	headerBottom := cardMargin + logoHeight + 24
 	infoTop := headerBottom + 20
 	tableTop := infoTop + infoRows*40 + 24
-	height := tableTop + (len(d.Course.Stages)+2)*rowHeight + 36 + cardMargin
+	height := tableTop + headerRowHeight + (len(grid)-1)*rowHeight + 36 + cardMargin
 	img := image.NewRGBA(image.Rect(0, 0, cardWidth, height))
 	draw.Draw(img, img.Bounds(), image.White, image.Point{}, draw.Src)
 
@@ -144,43 +144,22 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	}
 
 	y := tableTop
-	fillRect(img, image.Rect(cardMargin, y, cardWidth-cardMargin, y+rowHeight), colorHeader)
-	drawRow(img, fonts.bold, colorInk, columns, y, headerCells(columns))
-	byNumber := map[int]repository.ReportStage{}
-	for _, s := range d.Entry.Stages {
-		byNumber[s.Number] = s
-	}
-	var totals repository.RingCounts
-	totalScore, totalShots := 0, 0
-	for _, stage := range d.Course.Stages {
+	fillRect(img, image.Rect(cardMargin, y, cardWidth-cardMargin, y+headerRowHeight), colorHeader)
+	drawHeaderRow(img, fonts, columns, y, grid[0])
+	y += headerRowHeight - rowHeight
+	for i, cells := range grid[1:] {
 		y += rowHeight
 		hline(img, cardMargin, cardWidth-cardMargin, y)
-		cells := []string{stageCell(stage), stage.Distance, strconv.Itoa(stage.ExpectedShots)}
-		st, ok := byNumber[stage.StageNumber]
-		if ok && st.Status == repository.StatusAccepted {
-			for _, n := range ringCounts(st.Counts) {
-				cells = append(cells, strconv.Itoa(n))
-			}
-			cells = append(cells, strconv.Itoa(st.Counts.Score()), ScorerLabel(st))
-			totals = addCounts(totals, st.Counts)
-			totalScore += st.Counts.Score()
-			totalShots += stage.ExpectedShots
-		} else {
-			for len(cells) < len(columns) {
-				cells = append(cells, "")
-			}
+		face := fonts.regular
+		switch {
+		case i == len(grid)-4:
+			face = fonts.bold
+		case i >= len(grid)-3:
+			face = fonts.small
 		}
-		drawRow(img, fonts.regular, colorInk, columns, y, cells)
+		drawRow(img, face, colorInk, columns, y, cells)
 	}
-	y += rowHeight
-	hline(img, cardMargin, cardWidth-cardMargin, y)
-	cells := []string{"Total", "", strconv.Itoa(totalShots)}
-	for _, n := range ringCounts(totals) {
-		cells = append(cells, strconv.Itoa(n))
-	}
-	cells = append(cells, strconv.Itoa(totalScore), "")
-	drawRow(img, fonts.bold, colorInk, columns, y, cells)
-	drawText(img, fonts.small, colorMuted, cardMargin, y+rowHeight+36, "Only accepted stages are counted.")
+	drawText(img, fonts.small, colorMuted, cardMargin, y+rowHeight+36, "Only accepted segments are counted.")
 
 	var buf bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestCompression}
@@ -190,7 +169,70 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func ScorerLabel(s repository.ReportStage) string {
+func scorecardGrid(d ScorecardData) [][]string {
+	byNumber := map[int]repository.ReportSegment{}
+	for _, s := range d.Entry.Segments {
+		byNumber[s.Number] = s
+	}
+	rings := rulebook.RingValues()
+	header := []string{""}
+	body := make([][]string, len(rings)+3)
+	for i, ring := range rings {
+		body[i] = []string{ring}
+	}
+	score, scorer, shooter := len(rings), len(rings)+1, len(rings)+2
+	body[score], body[scorer], body[shooter] = []string{"Score"}, []string{"Scorer"}, []string{"Shooter"}
+	name := d.Entry.Shooter.FirstName + " " + d.Entry.Shooter.LastName
+	var totals repository.RingCounts
+	totalScore := 0
+	for _, segment := range d.Course.Segments {
+		header = append(header, segment.Name)
+		body[shooter] = append(body[shooter], name)
+		st, ok := byNumber[segment.Number]
+		if !ok || st.Status != repository.StatusAccepted {
+			for i := range rings {
+				body[i] = append(body[i], "")
+			}
+			body[score] = append(body[score], "")
+			body[scorer] = append(body[scorer], "")
+			continue
+		}
+		for i, n := range ringCounts(st.Counts) {
+			body[i] = append(body[i], strconv.Itoa(n))
+		}
+		body[score] = append(body[score], strconv.Itoa(st.Counts.Score()))
+		body[scorer] = append(body[scorer], ScorerLabel(st))
+		totals = addCounts(totals, st.Counts)
+		totalScore += st.Counts.Score()
+	}
+	header = append(header, "Total")
+	for i, n := range ringCounts(totals) {
+		body[i] = append(body[i], strconv.Itoa(n))
+	}
+	body[score] = append(body[score], strconv.Itoa(totalScore))
+	body[scorer] = append(body[scorer], "")
+	body[shooter] = append(body[shooter], "")
+	return append([][]string{header}, body...)
+}
+
+func drawHeaderRow(img *image.RGBA, fonts cardFonts, columns []cardColumn, top int, cells []string) {
+	x := cardMargin
+	for i, col := range columns {
+		lines := strings.Split(cells[i], " · ")
+		for j, line := range lines {
+			text := fitText(fonts.bold, line, col.width-16)
+			baseline := top + rowHeight - 14 + j*28 - (len(lines)-1)*14
+			if col.left {
+				drawText(img, fonts.bold, colorInk, x+8, baseline, text)
+			} else {
+				drawText(img, fonts.bold, colorInk, x+col.width-8-textWidth(fonts.bold, text), baseline, text)
+			}
+		}
+		x += col.width
+	}
+}
+
+func ScorerLabel(s repository.ReportSegment) string {
 	if s.ScorerLane == nil {
 		return adminScorer
 	}
@@ -202,14 +244,6 @@ func addCounts(a, b repository.RingCounts) repository.RingCounts {
 		X: a.X + b.X, Ten: a.Ten + b.Ten, Nine: a.Nine + b.Nine, Eight: a.Eight + b.Eight,
 		Seven: a.Seven + b.Seven, Zero: a.Zero + b.Zero, Miss: a.Miss + b.Miss,
 	}
-}
-
-func headerCells(columns []cardColumn) []string {
-	cells := make([]string, len(columns))
-	for i, c := range columns {
-		cells[i] = c.title
-	}
-	return cells
 }
 
 func drawRow(img *image.RGBA, face font.Face, c color.Color, columns []cardColumn, top int, cells []string) {
@@ -282,11 +316,4 @@ func hline(img *image.RGBA, x0, x1, y int) {
 
 func fillRect(img *image.RGBA, r image.Rectangle, c color.Color) {
 	draw.Draw(img, r, image.NewUniform(c), image.Point{}, draw.Src)
-}
-
-func stageCell(s rulebook.Stage) string {
-	if s.Part == "" {
-		return strconv.Itoa(s.StageNumber)
-	}
-	return strconv.Itoa(s.StageNumber) + " · " + s.Part
 }

@@ -8,12 +8,12 @@ import (
 )
 
 type ScoreTarget struct {
-	ScorerName   string
-	ScoreLane    int
-	CurrentStage int
-	Entry        repository.EntryWithStages
-	Own          repository.EntryWithStages
-	ShooterName  string
+	ScorerName     string
+	ScoreLane      int
+	CurrentSegment int
+	Entry          repository.EntryWithSegments
+	Own            repository.EntryWithSegments
+	ShooterName    string
 }
 
 func deriveScoreLane(manned []int, ownLane int) (int, error) {
@@ -57,7 +57,7 @@ func (s *Service) resolveScoreTarget(ctx context.Context, d Device, requireActiv
 	if err != nil {
 		return ScoreTarget{}, err
 	}
-	manned := map[int]repository.EntryWithStages{}
+	manned := map[int]repository.EntryWithSegments{}
 	lanes := make([]int, 0, len(entries))
 	for _, e := range entries {
 		if e.Withdrawn {
@@ -80,11 +80,11 @@ func (s *Service) resolveScoreTarget(ctx context.Context, d Device, requireActiv
 		return ScoreTarget{}, mapRepoErr(err)
 	}
 	return ScoreTarget{
-		ScorerName:   shooterName(scorer),
-		ScoreLane:    scoreLane,
-		CurrentStage: comp.CurrentStage,
-		Entry:        target,
-		Own:          manned[d.Lane],
-		ShooterName:  shooterName(shooter),
+		ScorerName:     shooterName(scorer),
+		ScoreLane:      scoreLane,
+		CurrentSegment: comp.CurrentSegment,
+		Entry:          target,
+		Own:            manned[d.Lane],
+		ShooterName:    shooterName(shooter),
 	}, nil
 }

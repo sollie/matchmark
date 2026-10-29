@@ -14,10 +14,10 @@ import (
 const eventWait = 3 * time.Second
 
 type snapshotBody struct {
-	CurrentStage int              `json:"current_stage"`
-	Standings    []map[string]any `json:"standings"`
-	TotalStages  int              `json:"total_stages"`
-	Status       string           `json:"status"`
+	CurrentSegment int              `json:"current_segment"`
+	Standings      []map[string]any `json:"standings"`
+	TotalSegments  int              `json:"total_segments"`
+	Status         string           `json:"status"`
 }
 
 func streamPath(f *fixture) string {
@@ -66,19 +66,19 @@ func TestSpectatorStreamSendsSnapshotOnConnect(t *testing.T) {
 func TestSpectatorStreamPushesSnapshotAfterLock(t *testing.T) {
 	f := newFixture(t, "150")
 	entry := f.addEntry(t, "HANSEN", 1)
-	f.score(t, entry, 1, map[string]any{"x": 12})
+	f.score(t, entry, 1, map[string]any{"x": 24})
 	f.activate(t)
 	s := f.env.OpenStream(streamPath(f), nil)
 	first := nextSnapshot(t, s)
-	if first.Standings[0]["stages"].([]any)[0].(map[string]any)["accepted"] != false {
+	if first.Standings[0]["segments"].([]any)[0].(map[string]any)["accepted"] != false {
 		t.Fatalf("standings %v", first.Standings)
 	}
-	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1/lock", f.comp, entry)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1/lock", f.comp, entry)
 	if status, out := f.env.Do("POST", path, nil); status != http.StatusOK && status != http.StatusNoContent {
 		t.Fatalf("lock: %d %v", status, out)
 	}
 	second := nextSnapshot(t, s)
-	if second.Standings[0]["stages"].([]any)[0].(map[string]any)["accepted"] != true {
+	if second.Standings[0]["segments"].([]any)[0].(map[string]any)["accepted"] != true {
 		t.Fatalf("standings %v", second.Standings)
 	}
 }
@@ -219,20 +219,20 @@ func TestRejectedStreamRequestsDoNotConsumeCapAtCapacity(t *testing.T) {
 	}
 }
 
-func TestSpectatorSnapshotStageStates(t *testing.T) {
+func TestSpectatorSnapshotSegmentStates(t *testing.T) {
 	f := newFixture(t, "150")
 	one := f.addEntry(t, "HANSEN", 1)
 	two := f.addEntry(t, "BERG", 2)
-	f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", f.comp), map[string]any{"show_names": true, "show_stage_scores": true})
-	f.scoreAccepted(t, one, 1, map[string]any{"x": 12})
-	f.score(t, two, 1, map[string]any{"x": 12})
+	f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", f.comp), map[string]any{"show_names": true, "show_segment_scores": true})
+	f.scoreAccepted(t, one, 1, map[string]any{"x": 24})
+	f.score(t, two, 1, map[string]any{"x": 24})
 	f.activate(t)
 	snap := nextSnapshot(t, f.env.OpenStream(streamPath(f), nil))
-	if snap.TotalStages != 10 {
-		t.Fatalf("total stages %d", snap.TotalStages)
+	if snap.TotalSegments != 6 {
+		t.Fatalf("total segments %d", snap.TotalSegments)
 	}
-	if snap.CurrentStage != 1 {
-		t.Fatalf("current stage %d", snap.CurrentStage)
+	if snap.CurrentSegment != 1 {
+		t.Fatalf("current segment %d", snap.CurrentSegment)
 	}
 	if snap.Status != "active" {
 		t.Fatalf("status %q", snap.Status)
@@ -240,7 +240,7 @@ func TestSpectatorSnapshotStageStates(t *testing.T) {
 	states := map[string][]string{}
 	for _, row := range snap.Standings {
 		var list []string
-		for _, st := range row["stages"].([]any) {
+		for _, st := range row["segments"].([]any) {
 			list = append(list, st.(map[string]any)["state"].(string))
 		}
 		states[row["last_name"].(string)] = list

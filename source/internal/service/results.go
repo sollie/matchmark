@@ -16,21 +16,22 @@ type ResultsMatch struct {
 	CourseLabel string `json:"course_label"`
 }
 
-type ResultsStage struct {
-	Stage int  `json:"stage"`
-	Score *int `json:"score,omitempty"`
+type ResultsSegment struct {
+	Segment    int             `json:"segment"`
+	Score      *int            `json:"score,omitempty"`
+	RingCounts *RingCountsView `json:"ring_counts,omitempty"`
 }
 
 type ResultsRow struct {
-	Rank      int            `json:"rank"`
-	LastName  *string        `json:"last_name,omitempty"`
-	FirstName *string        `json:"first_name,omitempty"`
-	WAID      *string        `json:"waid,omitempty"`
-	Club      *string        `json:"club,omitempty"`
-	Country   *string        `json:"country,omitempty"`
-	Stages    []ResultsStage `json:"stages"`
-	Total     int            `json:"total"`
-	XCount    *int           `json:"x_count,omitempty"`
+	Rank      int              `json:"rank"`
+	LastName  *string          `json:"last_name,omitempty"`
+	FirstName *string          `json:"first_name,omitempty"`
+	WAID      *string          `json:"waid,omitempty"`
+	Club      *string          `json:"club,omitempty"`
+	Country   *string          `json:"country,omitempty"`
+	Segments  []ResultsSegment `json:"segments"`
+	Total     int              `json:"total"`
+	XCount    *int             `json:"x_count,omitempty"`
 }
 
 type ResultsCategory struct {
@@ -50,12 +51,12 @@ type ResultsNewShooter struct {
 
 type ResultsView struct {
 	Match       ResultsMatch        `json:"match"`
-	Stages      []int               `json:"stages"`
+	Segments    []int               `json:"segments"`
 	Categories  []ResultsCategory   `json:"categories"`
 	NewShooters []ResultsNewShooter `json:"new_shooters"`
 }
 
-var showAll = repository.Visibility{Names: true, Clubs: true, Countries: true, StageScores: true, RingCounts: true}
+var showAll = repository.Visibility{Names: true, Clubs: true, Countries: true, SegmentScores: true, RingCounts: true}
 
 func (s *Service) PublicResults(ctx context.Context, matchID int64) (ResultsView, error) {
 	comp, err := s.repo.GetMatch(ctx, matchID)
@@ -84,7 +85,7 @@ type rankedEntry struct {
 	entry repository.ReportEntry
 	total int
 	x     int
-	view  []ResultsStage
+	view  []ResultsSegment
 }
 
 func (s *Service) results(ctx context.Context, comp repository.Match, vis repository.Visibility) (ResultsView, error) {
@@ -98,12 +99,12 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 	}
 	out := ResultsView{
 		Match:       ResultsMatch{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: course.Label},
-		Stages:      make([]int, len(course.Stages)),
+		Segments:    make([]int, len(course.Segments)),
 		Categories:  []ResultsCategory{},
 		NewShooters: []ResultsNewShooter{},
 	}
-	for i := range course.Stages {
-		out.Stages[i] = course.Stages[i].StageNumber
+	for i := range course.Segments {
+		out.Segments[i] = course.Segments[i].Number
 	}
 	byCategory := map[string][]rankedEntry{}
 	for _, e := range entries {
@@ -111,14 +112,18 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 			continue
 		}
 		r := rankedEntry{entry: e}
-		for _, st := range e.Stages {
-			rs := ResultsStage{Stage: st.Number}
+		for _, st := range e.Segments {
+			rs := ResultsSegment{Segment: st.Number}
 			if st.Status == repository.StatusAccepted {
 				score := st.Counts.Score()
 				r.total += score
 				r.x += st.Counts.X
-				if vis.StageScores {
+				if vis.SegmentScores {
 					rs.Score = &score
+				}
+				if vis.RingCounts {
+					counts := ringCountsView(st.Counts)
+					rs.RingCounts = &counts
 				}
 			}
 			r.view = append(r.view, rs)
@@ -154,7 +159,7 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 
 func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
 	sh := r.entry.Shooter
-	row := ResultsRow{Rank: rank, Stages: r.view, Total: r.total}
+	row := ResultsRow{Rank: rank, Segments: r.view, Total: r.total}
 	if vis.Names {
 		row.LastName, row.FirstName = &sh.LastName, &sh.FirstName
 		if sh.WAID != "" {

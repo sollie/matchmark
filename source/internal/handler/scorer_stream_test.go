@@ -13,9 +13,9 @@ import (
 type sessionBody struct {
 	Lane      int `json:"lane"`
 	ScoreLane int `json:"score_lane"`
-	Stages    []struct {
+	Segments  []struct {
 		Status string `json:"status"`
-	} `json:"stages"`
+	} `json:"segments"`
 }
 
 func openScorerStream(f *scoringFixture, token string) *apitest.Stream {
@@ -58,22 +58,22 @@ func TestScorerStreamPushesAdminLockAndUnlock(t *testing.T) {
 		t.Fatalf("status %d", s.Status)
 	}
 	first := nextSession(t, s)
-	if first.Lane != 1 || first.ScoreLane != 2 || first.Stages[0].Status != "open" {
+	if first.Lane != 1 || first.ScoreLane != 2 || first.Segments[0].Status != "open" {
 		t.Fatalf("first %+v", first)
 	}
-	base := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[2])
+	base := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", f.comp, f.entries[2])
 	if status, out := f.env.Do("PUT", base, counts(12, 0)); status != http.StatusOK {
 		t.Fatalf("set: %d %v", status, out)
 	}
 	if status, out := f.env.Do("POST", base+"/lock", nil); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
-	for nextSession(t, s).Stages[0].Status == "open" {
+	for nextSession(t, s).Segments[0].Status == "open" {
 	}
 	if status, out := f.env.Do("POST", base+"/unlock", nil); status != http.StatusOK && status != http.StatusNoContent {
 		t.Fatalf("unlock: %d %v", status, out)
 	}
-	for nextSession(t, s).Stages[0].Status != "open" {
+	for nextSession(t, s).Segments[0].Status != "open" {
 	}
 }
 
@@ -136,13 +136,13 @@ func TestDeviceWritesFollowCurrentScoreLane(t *testing.T) {
 		t.Fatalf("delete status %d", status)
 	}
 	f.startNext(f.comp)
-	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/stages/2", f.fullStage(t, 3, 2)); status != http.StatusOK {
+	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/segments/2", f.fullSegment(t, 3, 2)); status != http.StatusOK {
 		t.Fatalf("set: %d %v", status, out)
 	}
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
-		if int(m["lane"].(float64)) == 3 && m["stages"].([]any)[1].(map[string]any)["shots_entered"] != f.fullStage(t, 3, 2)["x"] {
+		if int(m["lane"].(float64)) == 3 && m["segments"].([]any)[1].(map[string]any)["shots_entered"] != f.fullSegment(t, 3, 2)["x"] {
 			t.Fatalf("lane 3 entry %v", m)
 		}
 	}

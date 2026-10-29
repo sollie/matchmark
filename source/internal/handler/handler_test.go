@@ -126,18 +126,18 @@ func TestLaneIsExclusive(t *testing.T) {
 func TestRingCounts(t *testing.T) {
 	f := newFixture(t, "150")
 	entry := f.addEntry(t, "One", 1)
-	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, entry)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", f.comp, entry)
 
 	tests := []struct {
 		name string
 		body map[string]any
 		want int
 	}{
-		{"sums to expected shots", map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 1, "0": 0, "miss": 0}, http.StatusOK},
-		{"too few", map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 0, "0": 0, "miss": 0}, http.StatusUnprocessableEntity},
-		{"too many", map[string]any{"x": 13}, http.StatusUnprocessableEntity},
-		{"negative count", map[string]any{"x": 14, "10": -2}, http.StatusUnprocessableEntity},
-		{"all misses", map[string]any{"miss": 12}, http.StatusOK},
+		{"sums to expected shots", map[string]any{"x": 6, "10": 8, "9": 6, "8": 2, "7": 2, "0": 0, "miss": 0}, http.StatusOK},
+		{"too few", map[string]any{"x": 6, "10": 8, "9": 6, "8": 2, "7": 0, "0": 0, "miss": 0}, http.StatusUnprocessableEntity},
+		{"too many", map[string]any{"x": 25}, http.StatusUnprocessableEntity},
+		{"negative count", map[string]any{"x": 26, "10": -2}, http.StatusUnprocessableEntity},
+		{"all misses", map[string]any{"miss": 24}, http.StatusOK},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -147,22 +147,22 @@ func TestRingCounts(t *testing.T) {
 		})
 	}
 
-	t.Run("stage number outside course", func(t *testing.T) {
-		status, _ := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/entries/%d/stages/11", f.comp, entry), map[string]any{"x": 12})
+	t.Run("segment number outside course", func(t *testing.T) {
+		status, _ := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/entries/%d/segments/11", f.comp, entry), map[string]any{"x": 24})
 		if status != http.StatusNotFound {
 			t.Fatalf("status %d", status)
 		}
 	})
 }
 
-func TestStageExpectedShotsFollowCourse(t *testing.T) {
+func TestSegmentExpectedShotsFollowCourse(t *testing.T) {
 	f := newFixture(t, "40")
 	entry := f.addEntry(t, "Five", 1)
-	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, entry)
-	if status, out := f.env.Do("PUT", path, map[string]any{"x": 5}); status != http.StatusOK {
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", f.comp, entry)
+	if status, out := f.env.Do("PUT", path, map[string]any{"x": 15}); status != http.StatusOK {
 		t.Fatalf("got %d %v", status, out)
 	}
-	if status, _ := f.env.Do("PUT", path, map[string]any{"x": 6}); status != http.StatusUnprocessableEntity {
+	if status, _ := f.env.Do("PUT", path, map[string]any{"x": 16}); status != http.StatusUnprocessableEntity {
 		t.Fatalf("status %d", status)
 	}
 }

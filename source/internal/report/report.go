@@ -30,7 +30,7 @@ type Data struct {
 
 func total(e repository.ReportEntry) int {
 	sum := 0
-	for _, s := range e.Stages {
+	for _, s := range e.Segments {
 		sum += s.Counts.Score()
 	}
 	return sum

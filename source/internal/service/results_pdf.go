@@ -38,7 +38,7 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		Name:        view.Match.Name,
 		Date:        view.Match.Date,
 		CourseLabel: view.Match.CourseLabel,
-		Stages:      view.Stages,
+		Segments:    view.Segments,
 	}
 	var logo ClubLogo
 	var err error
@@ -46,6 +46,10 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		return Download{}, err
 	}
 	data.Logo, data.LogoType = logo.Data, logo.ContentType
+	names := segmentNames(view.Match.Course)
+	for _, n := range view.Segments {
+		data.SegmentNames = append(data.SegmentNames, names[n])
+	}
 	for _, c := range view.Categories {
 		cat := report.ResultsPDFCategory{Category: c.Category}
 		for _, r := range c.Rows {
@@ -53,8 +57,12 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 				Rank: r.Rank, LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
 				Club: r.Club, Country: r.Country, Total: r.Total, XCount: r.XCount,
 			}
-			for _, st := range r.Stages {
-				row.Stages = append(row.Stages, report.ResultsPDFStage{Stage: st.Stage, Score: st.Score})
+			for _, st := range r.Segments {
+				seg := report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score}
+				if c := st.RingCounts; c != nil {
+					seg.Counts = []int{c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss}
+				}
+				row.Segments = append(row.Segments, seg)
 			}
 			cat.Rows = append(cat.Rows, row)
 		}

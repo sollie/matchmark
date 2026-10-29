@@ -2,30 +2,30 @@ package repository
 
 import "context"
 
-type ReportStage struct {
+type ReportSegment struct {
 	Number     int
 	Counts     RingCounts
-	Status     StageStatus
+	Status     SegmentStatus
 	ScorerLane *int
 	ScorerName string
 }
 
 type ReportEntry struct {
 	Entry
-	Shooter Shooter
-	Stages  []ReportStage
+	Shooter  Shooter
+	Segments []ReportSegment
 }
 
 func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]ReportEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT e.id, e.category, e.lane, e.withdrawn,
 		        sh.id, sh.last_name, sh.first_name, sh.country, sh.club, COALESCE(sh.waid, ''),
-		        s.stage_number, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.status, s.scorer_lane, COALESCE(s.scorer_name, '')
+		        s.segment_number, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.status, s.scorer_lane, COALESCE(s.scorer_name, '')
 		 FROM entries e
 		 JOIN shooters sh ON sh.id = e.shooter_id
-		 JOIN stages s ON s.entry_id = e.id
+		 JOIN segments s ON s.entry_id = e.id
 		 WHERE e.match_id = ?
-		 ORDER BY sh.last_name, sh.first_name, e.id, s.stage_number`, matchID)
+		 ORDER BY sh.last_name, sh.first_name, e.id, s.segment_number`, matchID)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]Report
 	for rows.Next() {
 		var e Entry
 		var sh Shooter
-		var st ReportStage
+		var st ReportSegment
 		var withdrawn int
 		if err := rows.Scan(&e.ID, &e.Category, &e.Lane, &withdrawn,
 			&sh.ID, &sh.LastName, &sh.FirstName, &sh.Country, &sh.Club, &sh.WAID,
@@ -49,7 +49,7 @@ func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]Report
 			entries = append(entries, ReportEntry{Entry: e, Shooter: sh})
 		}
 		last := &entries[len(entries)-1]
-		last.Stages = append(last.Stages, st)
+		last.Segments = append(last.Segments, st)
 	}
 	return entries, rows.Err()
 }

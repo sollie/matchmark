@@ -116,8 +116,8 @@
       <p><strong>{summary.shooter}</strong></p>
       {#if summary.scorers.length > 0}
         <ul class="scorers">
-          {#each summary.scorers as item (item.stage)}
-            <li>Stage {item.stage} scored by {item.scorer}</li>
+          {#each summary.scorers as item (item.segment)}
+            <li>{item.segment_name} scored by {item.scorer}</li>
           {/each}
         </ul>
       {/if}

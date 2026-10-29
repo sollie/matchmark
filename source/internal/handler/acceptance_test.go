@@ -9,30 +9,30 @@ import (
 	"github.com/sollie/matchmark/internal/apitest"
 )
 
-func (f *scoringFixture) stageStatus(t *testing.T, lane, stage int) string {
+func (f *scoringFixture) segmentStatus(t *testing.T, lane, segment int) string {
 	t.Helper()
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == lane {
-			return m["stages"].([]any)[stage-1].(map[string]any)["status"].(string)
+			return m["segments"].([]any)[segment-1].(map[string]any)["status"].(string)
 		}
 	}
 	t.Fatalf("lane %d not found", lane)
 	return ""
 }
 
-func (f *scoringFixture) adminStage(lane, stage int, action string) string {
-	return fmt.Sprintf("/api/matches/%d/entries/%d/stages/%d%s", f.comp, f.entries[lane], stage, action)
+func (f *scoringFixture) adminSegment(lane, segment int, action string) string {
+	return fmt.Sprintf("/api/matches/%d/entries/%d/segments/%d%s", f.comp, f.entries[lane], segment, action)
 }
 
-func (f *scoringFixture) deviceLock(t *testing.T, scorerLane, stage int) {
+func (f *scoringFixture) deviceLock(t *testing.T, scorerLane, segment int) {
 	t.Helper()
 	token := f.pair(t, scorerLane)
-	if status, out := f.env.DoToken(token, "PUT", fmt.Sprintf("/api/scorer/stages/%d", stage), counts(10, 2)); status != http.StatusOK {
+	if status, out := f.env.DoToken(token, "PUT", fmt.Sprintf("/api/scorer/segments/%d", segment), counts(10, 2)); status != http.StatusOK {
 		t.Fatalf("set counts: %d %v", status, out)
 	}
-	status, out := f.env.DoToken(token, "POST", fmt.Sprintf("/api/scorer/stages/%d/lock", stage), nil)
+	status, out := f.env.DoToken(token, "POST", fmt.Sprintf("/api/scorer/segments/%d/lock", segment), nil)
 	if status != http.StatusOK || out["status"] != "awaiting_acceptance" {
 		t.Fatalf("device lock: %d %v", status, out)
 	}
@@ -55,61 +55,61 @@ func TestDeviceLockAwaitsAcceptanceAndCountsNowhereUntilAccepted(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
 
-	if got := f.stageStatus(t, 2, 1); got != "awaiting_acceptance" {
+	if got := f.segmentStatus(t, 2, 1); got != "awaiting_acceptance" {
 		t.Fatalf("status %q", got)
 	}
-	if status, out := f.env.DoToken(f.pair(t, 1), "PUT", "/api/scorer/stages/1", counts(9, 3)); status != http.StatusConflict {
+	if status, out := f.env.DoToken(f.pair(t, 1), "PUT", "/api/scorer/segments/1", counts(9, 3)); status != http.StatusConflict {
 		t.Fatalf("hits must be frozen: %d %v", status, out)
 	}
 }
 
-func TestAwaitingStageIsNotCountedUntilAdminAccepts(t *testing.T) {
+func TestAwaitingSegmentIsNotCountedUntilAdminAccepts(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
 
 	for _, total := range f.standingTotals(t) {
 		if total != 0 {
-			t.Fatalf("awaiting stage counted: %v", f.standingTotals(t))
+			t.Fatalf("awaiting segment counted: %v", f.standingTotals(t))
 		}
 	}
 
-	if status, out := f.env.Do("POST", f.adminStage(2, 1, "/accept"), nil); status != http.StatusOK || out["status"] != "accepted" {
+	if status, out := f.env.Do("POST", f.adminSegment(2, 1, "/accept"), nil); status != http.StatusOK || out["status"] != "accepted" {
 		t.Fatalf("accept: %d %v", status, out)
 	}
 	if totals := f.standingTotals(t); totals[0] != 120 {
-		t.Fatalf("accepted stage not counted: %v", totals)
+		t.Fatalf("accepted segment not counted: %v", totals)
 	}
 }
 
 func TestAdminAcceptRequiresAwaitingAcceptance(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	f.env.Do("PUT", f.adminStage(2, 1, ""), counts(12, 0))
-	if status, _ := f.env.Do("POST", f.adminStage(2, 1, "/accept"), nil); status != http.StatusConflict {
-		t.Fatalf("accept open stage: %d", status)
+	f.env.Do("PUT", f.adminSegment(2, 1, ""), counts(12, 0))
+	if status, _ := f.env.Do("POST", f.adminSegment(2, 1, "/accept"), nil); status != http.StatusConflict {
+		t.Fatalf("accept open segment: %d", status)
 	}
-	f.env.Do("POST", f.adminStage(2, 1, "/lock"), nil)
-	if status, _ := f.env.Do("POST", f.adminStage(2, 1, "/accept"), nil); status != http.StatusConflict {
-		t.Fatalf("accept accepted stage: %d", status)
+	f.env.Do("POST", f.adminSegment(2, 1, "/lock"), nil)
+	if status, _ := f.env.Do("POST", f.adminSegment(2, 1, "/accept"), nil); status != http.StatusConflict {
+		t.Fatalf("accept accepted segment: %d", status)
 	}
 }
 
 func TestAdminLockAcceptsDirectlyAndUnlockReopensKeepingHits(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	f.env.Do("PUT", f.adminStage(2, 1, ""), counts(12, 0))
-	if status, out := f.env.Do("POST", f.adminStage(2, 1, "/lock"), nil); status != http.StatusOK || out["status"] != "accepted" {
+	f.env.Do("PUT", f.adminSegment(2, 1, ""), counts(12, 0))
+	if status, out := f.env.Do("POST", f.adminSegment(2, 1, "/lock"), nil); status != http.StatusOK || out["status"] != "accepted" {
 		t.Fatalf("admin lock: %d %v", status, out)
 	}
-	if status, out := f.env.Do("POST", f.adminStage(2, 1, "/unlock"), nil); status != http.StatusOK || out["status"] != "open" {
+	if status, out := f.env.Do("POST", f.adminSegment(2, 1, "/unlock"), nil); status != http.StatusOK || out["status"] != "open" {
 		t.Fatalf("unlock: %d %v", status, out)
 	}
-	if got := f.stageStatus(t, 2, 1); got != "open" {
+	if got := f.segmentStatus(t, 2, 1); got != "open" {
 		t.Fatalf("status %q", got)
 	}
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == 2 {
-			if st := m["stages"].([]any)[0].(map[string]any); st["shots_entered"] != float64(12) {
+			if st := m["segments"].([]any)[0].(map[string]any); st["shots_entered"] != float64(24) {
 				t.Fatalf("hits lost: %v", st)
 			}
 		}
@@ -119,27 +119,27 @@ func TestAdminLockAcceptsDirectlyAndUnlockReopensKeepingHits(t *testing.T) {
 func TestAdminUnlockFromAwaitingAcceptanceAndOverwriteEndsAccepted(t *testing.T) {
 	f := newScoringFixture(t, 1, 2, 3)
 	f.deviceLock(t, 1, 1)
-	if status, _ := f.env.Do("POST", f.adminStage(2, 1, "/unlock"), nil); status != http.StatusOK {
+	if status, _ := f.env.Do("POST", f.adminSegment(2, 1, "/unlock"), nil); status != http.StatusOK {
 		t.Fatalf("unlock awaiting: %d", status)
 	}
-	if status, _ := f.env.Do("POST", f.adminStage(2, 1, "/unlock"), nil); status != http.StatusConflict {
+	if status, _ := f.env.Do("POST", f.adminSegment(2, 1, "/unlock"), nil); status != http.StatusConflict {
 		t.Fatalf("unlock open: %d", status)
 	}
 
 	f.deviceLock(t, 2, 1)
-	if status, _ := f.env.Do("PUT", f.adminStage(3, 1, ""), counts(11, 1)); status != http.StatusOK {
+	if status, _ := f.env.Do("PUT", f.adminSegment(3, 1, ""), counts(11, 1)); status != http.StatusOK {
 		t.Fatalf("overwrite: %d", status)
 	}
-	if got := f.stageStatus(t, 3, 1); got != "accepted" {
-		t.Fatalf("overwrite of awaiting stage: %q", got)
+	if got := f.segmentStatus(t, 3, 1); got != "accepted" {
+		t.Fatalf("overwrite of awaiting segment: %q", got)
 	}
 }
 
-func TestStatusChangesWriteStageStatusLinesAndAuditActions(t *testing.T) {
+func TestStatusChangesWriteSegmentStatusLinesAndAuditActions(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
 	line := lastScoreLine(t, f.env)
-	if line["event"] != "stage_status" || line["msg"] != "stage_status" || line["schema_version"] != float64(3) ||
+	if line["event"] != "segment_status" || line["msg"] != "segment_status" || line["schema_version"] != float64(4) ||
 		line["status"] != "awaiting_acceptance" || line["locked_by"] != float64(1) {
 		t.Fatalf("lock line: %v", line)
 	}
@@ -147,13 +147,13 @@ func TestStatusChangesWriteStageStatusLinesAndAuditActions(t *testing.T) {
 		t.Fatalf("accepted_by on awaiting line: %v", line)
 	}
 
-	f.env.Do("POST", f.adminStage(2, 1, "/accept"), nil)
+	f.env.Do("POST", f.adminSegment(2, 1, "/accept"), nil)
 	line = lastScoreLine(t, f.env)
 	if line["status"] != "accepted" || line["accepted_by"] != apitest.AdminUsername || line["accepted_at"] == "" {
 		t.Fatalf("accept line: %v", line)
 	}
 
-	f.env.Do("POST", f.adminStage(2, 1, "/unlock"), nil)
+	f.env.Do("POST", f.adminSegment(2, 1, "/unlock"), nil)
 	line = lastScoreLine(t, f.env)
 	if line["status"] != "open" || line["ring_counts"].([]any)[0] != float64(10) {
 		t.Fatalf("unlock line: %v", line)
@@ -163,20 +163,20 @@ func TestStatusChangesWriteStageStatusLinesAndAuditActions(t *testing.T) {
 	for _, a := range f.env.AuditLines() {
 		actions[fmt.Sprint(a["action"])] = true
 	}
-	for _, want := range []string{"stage.lock", "stage.accept", "stage.unlock"} {
+	for _, want := range []string{"segment.lock", "segment.accept", "segment.unlock"} {
 		if !actions[want] {
 			t.Fatalf("audit lacks %s: %v", want, actions)
 		}
 	}
 }
 
-func TestStageEventsRecordEveryStatusChange(t *testing.T) {
+func TestSegmentEventsRecordEveryStatusChange(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
-	f.env.Do("POST", f.adminStage(2, 1, "/accept"), nil)
-	f.env.Do("POST", f.adminStage(2, 1, "/unlock"), nil)
+	f.env.Do("POST", f.adminSegment(2, 1, "/accept"), nil)
+	f.env.Do("POST", f.adminSegment(2, 1, "/unlock"), nil)
 
-	events := f.env.StageEvents(f.comp)
+	events := f.env.SegmentEvents(f.comp)
 	var got []string
 	for _, e := range events {
 		got = append(got, string(e.Event)+":"+e.ActorName)
@@ -190,16 +190,16 @@ func TestStageEventsRecordEveryStatusChange(t *testing.T) {
 	}
 }
 
-func TestReportAndCSVCountOnlyAcceptedStages(t *testing.T) {
+func TestReportAndCSVCountOnlyAcceptedSegments(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
 	_, _, body := f.env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", f.comp))
 	if strings.Contains(string(body), ",120,") {
-		t.Fatalf("awaiting stage in csv: %s", body)
+		t.Fatalf("awaiting segment in csv: %s", body)
 	}
-	f.env.Do("POST", f.adminStage(2, 1, "/accept"), nil)
+	f.env.Do("POST", f.adminSegment(2, 1, "/accept"), nil)
 	_, _, body = f.env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", f.comp))
 	if !strings.Contains(string(body), ",120,") {
-		t.Fatalf("accepted stage missing from csv: %s", body)
+		t.Fatalf("accepted segment missing from csv: %s", body)
 	}
 }

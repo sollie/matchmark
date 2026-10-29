@@ -2,6 +2,7 @@ import {
   addEntry,
   createMatch,
   createShooter,
+  defaultCourse,
   expect,
   row,
   setCounts,
@@ -16,6 +17,8 @@ test.describe("results", () => {
     page,
     admin,
   }) => {
+    const course = await defaultCourse(admin);
+    const shots = course.segmentOneShots;
     const match = await createMatch(admin, { name: uniqueName("Results") });
     const known = await createShooter(admin, {
       waid: String(Math.floor(Math.random() * 9e6) + 1e6),
@@ -25,8 +28,8 @@ test.describe("results", () => {
     const second = await addEntry(admin, match.id, fresh.id, 2);
     await setVisibility(admin, match.id, {});
     await setStatus(admin, match.id, "active");
-    await setCounts(admin, match.id, first, 1, { x: 2, "10": 10 }, true);
-    await setCounts(admin, match.id, second, 1, { x: 12 }, true);
+    await setCounts(admin, match.id, first, 1, { x: 2, "10": shots - 2 }, true);
+    await setCounts(admin, match.id, second, 1, { x: shots }, true);
     await setStatus(admin, match.id, "finished");
 
     await page.goto("/");
@@ -40,6 +43,9 @@ test.describe("results", () => {
     await expect(row(page, known.last_name).first().getByRole("cell").first()).toHaveText("2");
     await expect(row(page, fresh.last_name).first().getByRole("cell").first()).toHaveText("1");
     await expect(page.getByRole("cell", { name: known.waid })).toBeVisible();
+    await expect(
+      page.getByRole("table", { name: `Score card for ${fresh.first_name} ${fresh.last_name}` }),
+    ).toBeVisible();
 
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("link", { name: "Download PDF" }).click();
