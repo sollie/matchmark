@@ -189,6 +189,10 @@ _Avoid_: Event bus, notifier, hook
 A spectator display that has opted in to being remote controlled and been approved by an admin. It has a name the admin chose and is shown as online or offline.
 _Avoid_: Display, monitor, kiosk, client
 
+**Screen lifecycle**:
+A Screen is _pending_ after it registers and shows its code, until an admin approves and names it; it is then _approved_ and unassigned (showing the most recently started Match), and _assigned_ once an admin gives it a Match. The screen stream reports `approved` alongside `state` (`waiting` or `match`), so a pending Screen and an approved but unassigned Screen waiting for a Match can be told apart.
+_Avoid_: Accepted (reserved for stages)
+
 **Unmanaged screen**:
 A spectator display that has not opted in. It shows the most recently started Match until the viewer picks another.
 _Avoid_: Free screen, standalone screen

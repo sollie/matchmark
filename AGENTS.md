@@ -34,6 +34,8 @@ Specification and decisions:
   one item, run all required checks, and commit it before starting the next item.
 - Work in a dedicated worktree (`git worktree add ../mm-<branch> -b <branch> origin/main`) and run `npm ci` in `source/web` inside it; the shared checkout can be switched by another session.
 - To inspect a failed CI run, use `scripts/ci-failures.sh <run-id>`; it prints only the failing Go and Playwright test lines from `gh run view --log-failed`.
+- Stage files by explicit path (`git add <path>`) so only intended changes are committed.
+- Run `scripts/install-hooks.sh` once per clone to enable the pre-commit (untracked files) and pre-push (web verify and e2e) hooks.
 - Never add comments to code (enforced by `scripts/check-no-comments.sh`).
 - Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
 - Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
@@ -119,3 +121,5 @@ Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, 
 ### Domain docs
 
 Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+The remote-controlled screen lifecycle (pending, approved, assigned) is defined under "Screen lifecycle" in `GLOSSARY.md` and in the spec's "Remote-controlled screens" section.
