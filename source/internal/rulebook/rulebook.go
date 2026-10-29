@@ -11,11 +11,19 @@ type Stage struct {
 	Part          string
 }
 
+type Segment struct {
+	Number int
+	Name   string
+	Stages []int
+	Shots  int
+}
+
 type Course struct {
 	Label      string
 	Discipline string
 	TotalShots int
 	Stages     []Stage
+	Segments   []Segment
 }
 
 var course1500 = Course{
@@ -33,6 +41,14 @@ var course1500 = Course{
 		{8, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade", "Match 5"},
 		{9, "50 yd", 24, 165, "6 sitting + 6 prone + 6 L-barricade + 6 R-barricade", "Match 5"},
 		{10, "25 yd", 6, 12, "Standing without support", "Match 5"},
+	},
+	Segments: []Segment{
+		{1, "Match 1", []int{1, 2}, 24},
+		{2, "Match 2", []int{3}, 18},
+		{3, "Match 3", []int{4}, 24},
+		{4, "Match 4", []int{5, 6}, 24},
+		{5, "Match 5 · Stage 1+2", []int{7, 8}, 30},
+		{6, "Match 5 · Stage 3+4", []int{9, 10}, 30},
 	},
 }
 
@@ -53,6 +69,10 @@ var course60 = Course{
 		{3, "50 yd", 24, 165, "6 sitting + 6 prone + 6 L-barricade + 6 R-barricade", ""},
 		{4, "25 yd", 6, 12, "Standing without support", ""},
 	},
+	Segments: []Segment{
+		{1, "Stage 1+2", []int{1, 2}, 30},
+		{2, "Stage 3+4", []int{3, 4}, 30},
+	},
 }
 
 var course48 = Course{
@@ -65,6 +85,10 @@ var course48 = Course{
 		{3, "15 yd", 12, 20, "Standing without support", ""},
 		{4, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade", ""},
 	},
+	Segments: []Segment{
+		{1, "Stage 1+2", []int{1, 2}, 18},
+		{2, "Stage 3+4", []int{3, 4}, 30},
+	},
 }
 
 var course48FiveShot = Course{
@@ -76,6 +100,10 @@ var course48FiveShot = Course{
 		{2, "7 yd", 10, 20, "Standing without support", ""},
 		{3, "15 yd", 10, 20, "Standing without support", ""},
 		{4, "25 yd", 15, 90, "5 kneeling + 5 L-barricade + 5 R-barricade", ""},
+	},
+	Segments: []Segment{
+		{1, "Stage 1+2", []int{1, 2}, 15},
+		{2, "Stage 3+4", []int{3, 4}, 25},
 	},
 }
 

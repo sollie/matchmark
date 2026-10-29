@@ -2775,7 +2775,7 @@ components:
             $ref: '#/components/schemas/RulebookRing'
     RulebookCourse:
       type: object
-      required: [key, label, discipline, total_shots, categories, stages]
+      required: [key, label, discipline, total_shots, categories, stages, segments]
       properties:
         key:
           type: string
@@ -2794,6 +2794,27 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RulebookStage'
+        segments:
+          type: array
+          description: Scoring segments in order; one set of ring counts is recorded per segment.
+          items:
+            $ref: '#/components/schemas/RulebookSegment'
+    RulebookSegment:
+      type: object
+      required: [number, name, stages, shots]
+      properties:
+        number:
+          type: integer
+        name:
+          type: string
+          description: Name printed on the score card, for example "Match 5 · Stage 1+2".
+        stages:
+          type: array
+          description: Stage numbers the segment covers.
+          items:
+            type: integer
+        shots:
+          type: integer
     RulebookStage:
       type: object
       required: [stage_number, distance, expected_shots, time_seconds, position]

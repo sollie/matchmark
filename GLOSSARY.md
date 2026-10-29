@@ -21,7 +21,7 @@ The admin action that returns an active Match to draft, only while no hit counts
 _Avoid_: Reset, restart, reopen
 
 **Part**:
-One of the rulebook's "Match 1" to "Match 5" groups of stages within the 150 course. Stages are numbered internally; the Part is a label shown in the UI and on reports.
+One of the rulebook's "Match 1" to "Match 5" groups of stages within the 150 course, as the PDFs name them. A Part can span several Scoring segments (Match 5 has two). Segment names carry the Part name in the UI and on reports.
 _Avoid_: Match (for a group of stages)
 
 **Shooter**:
@@ -81,7 +81,7 @@ The shooter who records the hits of another shooter. Every scorer is a shooter, 
 _Avoid_: Marker, judge
 
 **Score lane**:
-The next manned lane after the scorer's own lane, wrapping around, whose shooter the scorer scores.
+The next manned lane after the scorer's own lane, wrapping around, whose shooter the scorer scores. When an entry is withdrawn between segments, the scorers who scored it are rerouted to the next manned, non-withdrawn lane from the following segment on; accepted segments keep their original scorer.
 _Avoid_: Target lane, neighbour lane
 
 **Discipline**:
@@ -93,53 +93,57 @@ The complete set of stages a Match is shot over, with a fixed total number of sh
 _Avoid_: Course of fire (as a noun for the whole set), program
 
 **Stage**:
-One course-of-fire segment shot by a shooter, with a fixed number of shots.
+One distance-and-position block of a course, numbered in the rulebook. A descriptive rulebook term only: nothing is recorded, locked or accepted per Stage, and the scorer screen does not show stage distances.
 _Avoid_: String, round
+
+**Scoring segment**:
+A run of Stages between two "Score the target" lines on the score card, with one set of seven ring counts that must sum to the segment's shots. The 150 course has six (Match 1, Match 2, Match 3, Match 4, Match 5 · Stage 1+2, Match 5 · Stage 3+4); the 48, 60 and 40 courses have two (Stage 1+2, Stage 3+4). Names, stage lists and shots live in `internal/rulebook` and are served by `GET /api/rulebook`. Where the score cards ("St. 1+2") and the cheat sheet (Match 1/Match 2) differ, the score-card names win.
+_Avoid_: Stage (for what is scored), section
 
 **Ring value**:
 What a hit is worth for its ring: X and 10 are worth ten, 9 nine, 8 eight, 7 seven, and 0 and M nothing.
 _Avoid_: Points, ring score
 
-**Stage score**:
-The sum of the ring values of a stage's hits. An entry's total is the sum of its stage scores.
+**Segment score**:
+The sum of the ring values of a Scoring segment's hits. An entry's total is the sum of its segment scores.
 _Avoid_: Points
 
-**Stage state**:
-What a spectator sees for one shooter's stage: not started, in progress, awaiting acceptance or accepted. A disputed stage reopens and shows as in progress. Only an accepted stage shows its score.
-_Avoid_: Stage status
+**Segment state**:
+What a spectator sees for one shooter's Scoring segment: not started, in progress, awaiting acceptance or accepted. A disputed segment reopens and shows as in progress. Only an accepted segment shows its score.
+_Avoid_: Segment status, stage state
 
 **Hit**:
 The recorded ring value of one shot.
 _Avoid_: Shot result
 
 **X count**:
-The number of inner-ten (X) hits across an entry's stages. It breaks ties in the ranking and is the spectator column the visibility setting of the same name shows or hides.
+The number of inner-ten (X) hits across an entry's segments. It breaks ties in the ranking and is the spectator column the visibility setting of the same name shows or hides.
 
 **Lock**:
-The scorer's confirmation that a stage's hits are complete, which puts the stage awaiting acceptance. It is not final until the shooter accepts.
+The scorer's confirmation that a segment's hits are complete, which puts the segment awaiting acceptance. It is not final until the shooter accepts.
 _Avoid_: Submit, sign-off
 
 **Awaiting acceptance**:
-The state of a locked stage whose shooter has not yet accepted or disputed it. Its hits are frozen.
+The state of a locked segment whose shooter has not yet accepted or disputed it. Its hits are frozen.
 _Avoid_: Pending, submitted
 
 **Accepted**:
-The final state of a stage: the shooter accepted the scorer's lock, or an admin accepted it or locked it directly. Only accepted stages count in standings, progress and reports.
+The final state of a segment: the shooter accepted the scorer's lock, or an admin accepted it or locked it directly. Only accepted segments count in standings, progress and reports.
 _Avoid_: Approved, confirmed, locked (for the final state)
 
 **Dispute**:
-The shooter's refusal of a locked stage. The stage reopens with its hits kept, and the scorer re-scores it, usually with the shooter and a range officer. A shooter can dispute any stage, without a reason.
+The shooter's refusal of a locked segment. The segment reopens with its hits kept, and the scorer re-scores it, usually with the shooter and a range officer. A shooter can dispute any segment, without a reason.
 _Avoid_: Reject, appeal
 
-**Current stage**:
-The one stage every device scores at a given time. The admin starts the next stage once every manned, non-withdrawn lane has accepted the current one (the gate); accepting the last stage finishes the match. Stored as `current_stage`.
-_Avoid_: Active stage, round
+**Current segment**:
+The one Scoring segment every device scores at a given time. The admin starts the next segment once every manned, non-withdrawn lane has accepted the current one (the gate); accepting the last segment finishes the match. Stored as `current_segment`.
+_Avoid_: Active stage, current stage, round
 
 **Dispute history**:
-The admin table of a match's stage events (locks, acceptances, disputes, accept-all and unlocks, with actor and time), filterable by scorer, shooter and stage, with lock and dispute counts per scorer.
+The admin table of a match's segment events (locks, acceptances, disputes, accept-all and unlocks, with actor and time), filterable by scorer, shooter and segment, with lock and dispute counts per scorer.
 
 **Control room**:
-The admin view of an active match's current stage, with one row per manned lane (scorer, shooter, status, disputes, paired and a best-effort connected indicator) and the Start next stage, Accept all, Accept and Unlock actions. Connected means an open scorer stream and is never stored.
+The admin view of an active match's current segment, with one row per manned lane (scorer, shooter, status, disputes, paired and a best-effort connected indicator) and the Start next segment, Accept all, Accept and Unlock actions. Connected means an open scorer stream and is never stored.
 
 **Results report**:
 The workbook, one sheet per category, that a club emails to the country representative. It lists a total score per shooter, plus the new shooters.
@@ -150,7 +154,7 @@ The record of one entry's hits per ring for each match, with the scorer's and sh
 _Avoid_: Score sheet
 
 **Scorecard copy**:
-The Scorecard of one entry rendered as an image on demand once its match is finished, for the shooter to keep. It shows each stage's ring counts with that stage's scorer (the range admin for admin-scored stages) and counts only accepted stages. It is public, ignores spectator visibility flags, is addressed by match and lane, is never stored and answers 404 for an unfinished match, a withdrawn entry or an empty lane.
+The Scorecard of one entry rendered as an image on demand once its match is finished, for the shooter to keep. It shows each segment's ring counts with that segment's scorer (the range admin for admin-scored segments) and counts only accepted segments. It is public, ignores spectator visibility flags, is addressed by match and lane, is never stored and answers 404 for an unfinished match, a withdrawn entry or an empty lane.
 _Avoid_: Receipt, printout
 
 **Results view**:
@@ -174,11 +178,11 @@ Copying the club's data to a separate host so it can be snapshotted and restored
 _Avoid_: Sync, backup
 
 **Score log**:
-The JSON `stage_status` lines the server writes to stdout whenever a stage changes status. Each line is self-contained, so a match's scored results, including stages awaiting acceptance, can be rebuilt by taking the latest line per stage.
+The JSON `segment_status` lines the server writes to stdout whenever a segment changes status. Each line is self-contained, so a match's scored results, including segments awaiting acceptance, can be rebuilt by taking the latest line per segment.
 _Avoid_: Scoring log
 
 **Restore**:
-Rebuilding matches, entries and scored stages in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
+Rebuilding matches, entries and scored segments in an empty database from the Score log with `matchmark restore --apply`. Unscored entries, devices and pairings are not restored.
 _Avoid_: Backup, replication
 
 **Live update**:
@@ -195,7 +199,7 @@ _Avoid_: Display, monitor, kiosk, client
 
 **Screen lifecycle**:
 A Screen is _pending_ after it registers and shows its code, until an admin approves and names it; it is then _approved_ and unassigned (showing the most recently started Match), and _assigned_ once an admin gives it a Match. The screen stream reports `approved` alongside `state` (`waiting` or `match`), so a pending Screen and an approved but unassigned Screen waiting for a Match can be told apart.
-_Avoid_: Accepted (reserved for stages)
+_Avoid_: Accepted (reserved for segments)
 
 **Unmanaged screen**:
 A spectator display that has not opted in. It shows the most recently started Match until the viewer picks another.
@@ -231,5 +235,5 @@ _Avoid_: Export, dump
 The module that decides whether a login attempt is allowed: it limits failures per client, slows repeated failures against one username, and deduplicates failed-login Audit log entries. It never sleeps; it returns the delay to apply.
 
 **Audit log**:
-The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records stage status changes, and from the Dispute history.
+The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records segment status changes, and from the Dispute history.
 _Avoid_: Activity log, history

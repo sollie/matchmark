@@ -1434,6 +1434,16 @@ export interface components {
             /** @description Categories an entry may have in this course. */
             categories: string[];
             stages: components["schemas"]["RulebookStage"][];
+            /** @description Scoring segments in order; one set of ring counts is recorded per segment. */
+            segments: components["schemas"]["RulebookSegment"][];
+        };
+        RulebookSegment: {
+            number: number;
+            /** @description Name printed on the score card, for example "Match 5 · Stage 1+2". */
+            name: string;
+            /** @description Stage numbers the segment covers. */
+            stages: number[];
+            shots: number;
         };
         RulebookStage: {
             stage_number: number;
