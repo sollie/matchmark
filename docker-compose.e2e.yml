@@ -1,3 +1,5 @@
+name: matchmark-e2e
+
 services:
   matchmark:
     build: .
