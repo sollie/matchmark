@@ -1,4 +1,15 @@
-import { expect, newApi, row, signInViaUi, test, uniqueLastName, uniqueName } from "./helpers";
+import {
+  expect,
+  newApi,
+  openAccountLink,
+  openAccountMenu,
+  row,
+  signInViaUi,
+  signOutViaMenu,
+  test,
+  uniqueLastName,
+  uniqueName,
+} from "./helpers";
 
 const temporaryPassword = "e2e-temporary-password-1";
 const chosenPassword = "e2e-chosen-password-5678";
@@ -12,7 +23,7 @@ test.describe("user management", () => {
     adminPage: page,
   }) => {
     const username = newUsername();
-    await page.getByRole("link", { name: "Users" }).click();
+    await openAccountLink(page, "Users");
     await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
 
     await page.getByLabel("New username").fill(username);
@@ -32,7 +43,7 @@ test.describe("user management", () => {
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(row(page, "bad name")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await signOutViaMenu(page);
     await signInViaUi(page, temporaryPassword, username);
 
     await expect(page.getByRole("heading", { name: "Change password" })).toBeVisible();
@@ -49,6 +60,7 @@ test.describe("user management", () => {
 
     await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Shooters" })).toBeVisible();
+    await openAccountMenu(page);
     await expect(page.getByRole("link", { name: "Users" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Backup" })).toHaveCount(0);
     expect((await page.request.get("/api/shooters")).status()).toBe(200);
@@ -63,29 +75,31 @@ test.describe("user management", () => {
     baseURL,
   }) => {
     const username = newUsername();
-    await page.getByRole("link", { name: "Users" }).click();
+    await openAccountLink(page, "Users");
     await page.getByLabel("New username").fill(username);
     await page.getByLabel("Role").selectOption("admin");
     await page.getByLabel("Temporary password").fill(temporaryPassword);
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(row(page, username)).toContainText("Not allowed");
 
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await signOutViaMenu(page);
     await signInViaUi(page, temporaryPassword, username);
     await page.getByLabel("Current password").fill(temporaryPassword);
     await page.getByLabel("New password", { exact: true }).fill(chosenPassword);
     await page.getByLabel("Confirm new password").fill(chosenPassword);
     await page.getByRole("button", { name: "Change password" }).click();
     await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
+    await openAccountMenu(page);
     await expect(page.getByRole("link", { name: "Backup" })).toHaveCount(0);
     expect((await page.request.get("/api/admin/backup")).status()).toBe(403);
 
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await signOutViaMenu(page);
     await signInViaUi(page);
-    await page.getByRole("link", { name: "Users" }).click();
+    await openAccountLink(page, "Users");
     await row(page, username).getByRole("button", { name: "Allow backup" }).click();
     await expect(row(page, username)).toContainText("Allowed");
     await expect(row(page, username).getByRole("button", { name: "Forbid backup" })).toBeVisible();
+    await openAccountMenu(page);
     await expect(page.getByRole("link", { name: "Backup" })).toBeVisible();
     await row(page, username).getByRole("button", { name: "Forbid backup" }).click();
     await expect(row(page, username)).toContainText("Not allowed");
@@ -132,7 +146,7 @@ test.describe("user lifecycle", () => {
     baseURL,
   }) => {
     const username = newUsername();
-    await page.getByRole("link", { name: "Users" }).click();
+    await openAccountLink(page, "Users");
     await page.getByLabel("New username").fill(username);
     await page.getByLabel("Role").selectOption("admin");
     await page.getByLabel("Temporary password").fill(temporaryPassword);

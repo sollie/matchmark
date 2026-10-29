@@ -289,6 +289,22 @@ export async function signInViaUi(page: Page, password = adminPassword, username
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
+export async function openAccountMenu(page: Page) {
+  const trigger = page.getByRole("button", { name: "Account menu" });
+  if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+}
+
+export async function openAccountLink(page: Page, name: string) {
+  await openAccountMenu(page);
+  await page.getByRole("link", { name, exact: true }).click();
+}
+
+export async function signOutViaMenu(page: Page) {
+  await openAccountMenu(page);
+  await page.getByRole("button", { name: "Sign out" }).click();
+}
+
 export function row(page: Page | Locator, text: string | RegExp): Locator {
   return page.getByRole("row").filter({ hasText: text });
 }

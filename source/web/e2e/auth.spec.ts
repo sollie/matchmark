@@ -1,4 +1,12 @@
-import { adminPassword, adminUsername, expect, newApi, signInViaUi, test } from "./helpers";
+import {
+  adminPassword,
+  adminUsername,
+  expect,
+  newApi,
+  signInViaUi,
+  signOutViaMenu,
+  test,
+} from "./helpers";
 
 test.describe("auth", () => {
   test("a wrong password shows an error and a correct one signs in", async ({ page }) => {
@@ -48,8 +56,8 @@ test.describe("auth", () => {
   }) => {
     expect((await page.request.get("/api/shooters")).status()).toBe(200);
 
-    await page.getByRole("button", { name: "Sign out" }).click();
-    await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
+    await signOutViaMenu(page);
+    await expect(page).toHaveURL(/\/$/);
 
     await page.goto("/admin/shooters");
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
