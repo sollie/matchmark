@@ -1,6 +1,7 @@
 package report
 
 import (
+	_ "embed"
 	"strconv"
 	"time"
 
@@ -29,6 +30,9 @@ const (
 	pdfRowHeight  = 6.5
 	pdfLogoHeight = 18.0
 )
+
+//go:embed matchmark-icon.png
+var matchMarkIcon []byte
 
 var (
 	pdfHeaderFill = &props.Color{Red: 238, Green: 238, Blue: 238}
@@ -260,13 +264,15 @@ func derefInt(n *int) string {
 func headerRows(d ResultsPDFData, grid int) []core.Row {
 	logoCols := 0
 	var cols []core.Col
+	logoCols = max(grid/6, 1)
+	logo, logoExt := matchMarkIcon, extension.Png
 	if ext, ok := logoExtension(d.LogoType); ok && len(d.Logo) > 0 {
-		logoCols = max(grid/6, 1)
-		cols = append(cols, image.NewFromBytesCol(logoCols, d.Logo, ext, props.Rect{Center: true, Percent: 100}))
+		logo, logoExt = d.Logo, ext
 	}
+	cols = append(cols, image.NewFromBytesCol(logoCols, logo, logoExt, props.Rect{Center: true, Percent: 100}))
 	title := d.ClubName
 	if title == "" {
-		title = "Results"
+		title = "MatchMark"
 	}
 	info := d.Name + "  ·  " + d.Date + "  ·  " + d.CourseLabel
 	textCol := col.New(grid-logoCols).Add(
@@ -281,10 +287,17 @@ func headerRows(d ResultsPDFData, grid int) []core.Row {
 }
 
 func footerRow(d ResultsPDFData, grid int) core.Row {
-	return row.New(8).Add(col.New(grid).Add(text.New(
-		"Generated "+d.Generated.UTC().Format("2006-01-02 15:04")+" UTC",
-		props.Text{Size: 8, Align: align.Right, Top: 3, Color: pdfMuted},
-	)))
+	iconCols := max(grid/16, 1)
+	textCols := max(grid/4, 1)
+	rest := max(grid-iconCols-textCols, 1)
+	muted := props.Text{Size: 8, Top: 3, Color: pdfMuted}
+	right := muted
+	right.Align = align.Right
+	return row.New(8).Add(
+		image.NewFromBytesCol(iconCols, matchMarkIcon, extension.Png, props.Rect{Center: true, Percent: 80}),
+		col.New(textCols).Add(text.New("Made with MatchMark", muted)),
+		col.New(rest).Add(text.New("Generated "+d.Generated.UTC().Format("2006-01-02 15:04")+" UTC", right)),
+	)
 }
 
 func logoExtension(contentType string) (extension.Type, bool) {

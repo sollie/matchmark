@@ -111,3 +111,15 @@ func TestResultsPDFWithoutCategories(t *testing.T) {
 		t.Fatalf("pages = %d", got)
 	}
 }
+
+func TestResultsPDFWithoutClubSettings(t *testing.T) {
+	d := sampleResults()
+	d.ClubName, d.Logo, d.LogoType = "", nil, ""
+	out, err := ResultsPDF(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := pageCount(out); got != 3 {
+		t.Fatalf("pages = %d", got)
+	}
+}
