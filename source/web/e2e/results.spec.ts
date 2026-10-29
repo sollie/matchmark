@@ -43,6 +43,9 @@ test.describe("results", () => {
     await expect(row(page, known.last_name).first().getByRole("cell").first()).toHaveText("2");
     await expect(row(page, fresh.last_name).first().getByRole("cell").first()).toHaveText("1");
     await expect(page.getByRole("cell", { name: known.waid })).toBeVisible();
+    await expect(
+      page.getByRole("table", { name: `Score card for ${fresh.first_name} ${fresh.last_name}` }),
+    ).toBeVisible();
 
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("link", { name: "Download PDF" }).click();
