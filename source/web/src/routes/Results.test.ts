@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/svelte";
+import { render, screen, within } from "@testing-library/svelte";
 import Results from "./Results.svelte";
 import { stubFetch } from "../test/fetch";
 import { navigate } from "../lib/router.svelte";
@@ -87,6 +87,54 @@ describe("Results", () => {
     expect(await screen.findByRole("columnheader", { name: "Match 1" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Match 2" })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "S1" })).toBeNull();
+  });
+
+  it("shows a score card per shooter with ring counts per segment", async () => {
+    navigate("/results/7");
+    const counts = (x: number) => ({ x, "10": 1, "9": 2, "8": 3, "7": 4, "0": 5, miss: 6 });
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150 Course",
+          },
+          segments: [1, 2],
+          categories: [
+            {
+              category: "Revolver",
+              rows: [
+                {
+                  rank: 1,
+                  last_name: "Berg",
+                  first_name: "Ola",
+                  segments: [{ segment: 1, score: 110, ring_counts: counts(7) }, { segment: 2 }],
+                  total: 110,
+                },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    const card = await screen.findByRole("table", { name: "Score card for Ola Berg" });
+    const rows = within(card).getAllByRole("row");
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringContaining("Total"),
+      "X77",
+      "1011",
+      "922",
+      "833",
+      "744",
+      "055",
+      "M66",
+    ]);
   });
 
   it("offers only finished matches", async () => {

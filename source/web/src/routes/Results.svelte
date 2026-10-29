@@ -7,6 +7,29 @@
 
   type Match = components["schemas"]["Match"];
   type Results = components["schemas"]["Results"];
+  type Row = components["schemas"]["ResultsRow"];
+
+  const rings = [
+    ["X", "x"],
+    ["10", "10"],
+    ["9", "9"],
+    ["8", "8"],
+    ["7", "7"],
+    ["0", "0"],
+    ["M", "miss"],
+  ] as const;
+
+  function hasCounts(row: Row): boolean {
+    return row.segments.some((s) => s.ring_counts !== undefined);
+  }
+
+  function ringTotal(row: Row, key: (typeof rings)[number][1]): number {
+    return row.segments.reduce((sum, s) => sum + (s.ring_counts?.[key] ?? 0), 0);
+  }
+
+  function cardTitle(row: Row): string {
+    return row.last_name === undefined ? `#${row.rank}` : `${row.first_name} ${row.last_name}`;
+  }
 
   let matches = $state<Match[]>([]);
   let loaded = $state(false);
@@ -133,6 +156,32 @@
               </tbody>
             </table>
           </div>
+          {#each category.rows.filter(hasCounts) as row (row.rank + cardTitle(row))}
+            <div class="scroll score-card">
+              <table aria-label={`Score card for ${cardTitle(row)}`}>
+                <thead>
+                  <tr>
+                    <th>{cardTitle(row)}</th>
+                    {#each results.segments as n (n)}<th class="num"
+                        >{segmentLabel(results.match.course, n)}</th
+                      >{/each}
+                    <th class="num">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each rings as [label, key] (key)}
+                    <tr>
+                      <th scope="row">{label}</th>
+                      {#each row.segments as st (st.segment)}<td class="num"
+                          >{st.ring_counts?.[key] ?? ""}</td
+                        >{/each}
+                      <td class="num total">{ringTotal(row, key)}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/each}
         </section>
       {/each}
 
@@ -220,6 +269,10 @@
   }
   .total {
     font-weight: 700;
+  }
+  .score-card {
+    margin: var(--space-4) 0;
+    break-inside: avoid;
   }
   @media print {
     :global(.site-header),
