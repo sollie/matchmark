@@ -117,7 +117,7 @@
       {#if summary.scorers.length > 0}
         <ul class="scorers">
           {#each summary.scorers as item (item.segment)}
-            <li>Segment {item.segment} scored by {item.scorer}</li>
+            <li>{item.segment_name} scored by {item.scorer}</li>
           {/each}
         </ul>
       {/if}

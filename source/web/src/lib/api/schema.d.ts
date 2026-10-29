@@ -1699,6 +1699,7 @@ export interface components {
             /** @description One item per accepted segment; Range admin when the admin scored the segment */
             scorers: {
                 segment: number;
+                segment_name: string;
                 scorer: string;
             }[];
         };
