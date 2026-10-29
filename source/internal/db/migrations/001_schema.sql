@@ -4,7 +4,8 @@ CREATE TABLE shooters (
     first_name TEXT NOT NULL,
     country    TEXT NOT NULL,
     club       TEXT NOT NULL,
-    waid       TEXT
+    waid       TEXT,
+    archived   INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE UNIQUE INDEX idx_shooters_waid ON shooters (waid) WHERE waid IS NOT NULL;
@@ -27,9 +28,10 @@ CREATE TABLE matches (
     show_names        INTEGER NOT NULL DEFAULT 1 CHECK (show_names IN (0, 1)),
     show_clubs        INTEGER NOT NULL DEFAULT 1 CHECK (show_clubs IN (0, 1)),
     show_countries    INTEGER NOT NULL DEFAULT 1 CHECK (show_countries IN (0, 1)),
-    show_stage_scores INTEGER NOT NULL DEFAULT 1 CHECK (show_stage_scores IN (0, 1)),
+    show_segment_scores INTEGER NOT NULL DEFAULT 1 CHECK (show_segment_scores IN (0, 1)),
     show_ring_counts  INTEGER NOT NULL DEFAULT 0 CHECK (show_ring_counts IN (0, 1)),
-    current_stage     INTEGER NOT NULL DEFAULT 1 CHECK (current_stage >= 1)
+    current_segment     INTEGER NOT NULL DEFAULT 1 CHECK (current_segment >= 1),
+    activated_at        TEXT
 );
 
 CREATE INDEX idx_matches_competition ON matches (competition_id);
@@ -46,10 +48,10 @@ CREATE TABLE entries (
 
 CREATE UNIQUE INDEX idx_entries_manned_lane ON entries (match_id, lane) WHERE withdrawn = 0;
 
-CREATE TABLE stages (
+CREATE TABLE segments (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     entry_id       INTEGER NOT NULL REFERENCES entries (id) ON DELETE CASCADE,
-    stage_number   INTEGER NOT NULL CHECK (stage_number >= 1),
+    segment_number   INTEGER NOT NULL CHECK (segment_number >= 1),
     expected_shots INTEGER NOT NULL CHECK (expected_shots >= 1),
     x              INTEGER NOT NULL DEFAULT 0 CHECK (x >= 0 AND x <= expected_shots),
     ten            INTEGER NOT NULL DEFAULT 0 CHECK (ten >= 0 AND ten <= expected_shots),
@@ -66,14 +68,14 @@ CREATE TABLE stages (
     accepted_at    TEXT,
     disputed_at    TEXT,
     started        INTEGER NOT NULL DEFAULT 0 CHECK (started IN (0, 1)),
-    UNIQUE (entry_id, stage_number)
+    UNIQUE (entry_id, segment_number)
 );
 
-CREATE TABLE stage_events (
+CREATE TABLE segment_events (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id     INTEGER NOT NULL REFERENCES matches (id) ON DELETE CASCADE,
     entry_id     INTEGER NOT NULL REFERENCES entries (id) ON DELETE CASCADE,
-    stage_number INTEGER NOT NULL CHECK (stage_number >= 1),
+    segment_number INTEGER NOT NULL CHECK (segment_number >= 1),
     event        TEXT NOT NULL CHECK (event IN ('locked', 'accepted', 'disputed', 'accepted_all', 'unlocked')),
     actor_type   TEXT NOT NULL CHECK (actor_type IN ('device', 'user')),
     actor_name   TEXT NOT NULL,
@@ -82,7 +84,7 @@ CREATE TABLE stage_events (
     created_at   TEXT NOT NULL
 );
 
-CREATE INDEX stage_events_match ON stage_events (match_id, id);
+CREATE INDEX segment_events_match ON segment_events (match_id, id);
 
 CREATE TABLE device_pairings (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,3 +150,16 @@ CREATE TABLE club_settings (
 );
 
 INSERT INTO club_settings (id) VALUES (1);
+
+CREATE TABLE screens (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash   TEXT NOT NULL UNIQUE,
+    code         TEXT NOT NULL UNIQUE,
+    name         TEXT NOT NULL DEFAULT '',
+    approved_at  TEXT,
+    match_id     INTEGER REFERENCES matches (id) ON DELETE SET NULL,
+    created_at   TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_screens_match ON screens (match_id);

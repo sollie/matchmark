@@ -38,7 +38,7 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		Name:        view.Match.Name,
 		Date:        view.Match.Date,
 		CourseLabel: view.Match.CourseLabel,
-		Stages:      view.Stages,
+		Segments:    view.Segments,
 	}
 	var logo ClubLogo
 	var err error
@@ -53,8 +53,8 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 				Rank: r.Rank, LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
 				Club: r.Club, Country: r.Country, Total: r.Total, XCount: r.XCount,
 			}
-			for _, st := range r.Stages {
-				row.Stages = append(row.Stages, report.ResultsPDFStage{Stage: st.Stage, Score: st.Score})
+			for _, st := range r.Segments {
+				row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
 			}
 			cat.Rows = append(cat.Rows, row)
 		}

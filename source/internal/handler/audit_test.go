@@ -68,17 +68,17 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	doomed := env.ID("POST", "/api/matches", map[string]any{"name": "Doomed", "date": "2026-05-01", "course": "150"})
 	env.Do("DELETE", fmt.Sprintf("/api/matches/%d", doomed), nil)
 	env.Do("POST", fmt.Sprintf("/api/matches/%d/status", comp), map[string]any{"status": "active"})
-	stage := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", comp, e3)
-	env.Do("PUT", stage, counts(10, 2))
+	segment := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", comp, e3)
+	env.Do("PUT", segment, counts(10, 2))
 	token := f.pair(t, 1)
-	if status, out := env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(10, 2)); status != http.StatusOK {
+	if status, out := env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(10, 2)); status != http.StatusOK {
 		t.Fatalf("device counts: %d %v", status, out)
 	}
-	if status, out := env.DoToken(token, "POST", "/api/scorer/stages/1/lock", nil); status != http.StatusOK {
+	if status, out := env.DoToken(token, "POST", "/api/scorer/segments/1/lock", nil); status != http.StatusOK {
 		t.Fatalf("device lock: %d %v", status, out)
 	}
-	env.Do("POST", stage+"/unlock", nil)
-	env.Do("POST", stage+"/lock", nil)
+	env.Do("POST", segment+"/unlock", nil)
+	env.Do("POST", segment+"/lock", nil)
 	_, pairings := env.Do("GET", fmt.Sprintf("/api/matches/%d/pairings", comp), nil)
 	pairingID := int(pairings["pairings"].([]any)[0].(map[string]any)["id"].(float64))
 	env.Do("DELETE", fmt.Sprintf("/api/matches/%d/pairings/%d", comp, pairingID), nil)
@@ -113,7 +113,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 		"match.visibility": apitest.AdminUsername,
 		"entry.add":        apitest.AdminUsername, "entry.update": apitest.AdminUsername,
 		"entry.withdraw": apitest.AdminUsername, "entry.delete": apitest.AdminUsername,
-		"stage.set_counts": "", "stage.lock": "", "stage.unlock": apitest.AdminUsername,
+		"segment.set_counts": "", "segment.lock": "", "segment.unlock": apitest.AdminUsername,
 		"device.pair": apitest.AdminUsername, "device.revoke": apitest.AdminUsername,
 		"report.download": apitest.AdminUsername, "backup.download": apitest.AdminUsername,
 		"user.create": apitest.AdminUsername, "user.reset_password": apitest.AdminUsername,
@@ -144,7 +144,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 
 	var deviceLocks int
 	for _, r := range rows {
-		if r["action"] == "stage.lock" && r["username"] == "device" {
+		if r["action"] == "segment.lock" && r["username"] == "device" {
 			deviceLocks++
 			if r["user_id"] != nil || r["details"] != fmt.Sprintf("lane 1 match %d", comp) {
 				t.Errorf("device lock row: %v", r)
@@ -156,7 +156,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	}
 	var deviceCounts int
 	for _, r := range rows {
-		if r["action"] == "stage.set_counts" && r["username"] == "device" {
+		if r["action"] == "segment.set_counts" && r["username"] == "device" {
 			deviceCounts++
 			if r["user_id"] != nil {
 				t.Errorf("device counts row: %v", r)
@@ -167,7 +167,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 		t.Errorf("device counts = %d", deviceCounts)
 	}
 	for _, l := range lines {
-		if l["action"] == "stage.lock" && l["username"] == "device" && l["details"] != fmt.Sprintf("lane 1 match %d", comp) {
+		if l["action"] == "segment.lock" && l["username"] == "device" && l["details"] != fmt.Sprintf("lane 1 match %d", comp) {
 			t.Errorf("device lock line: %v", l)
 		}
 	}

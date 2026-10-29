@@ -17,13 +17,13 @@ var (
 	ErrGone               = errors.New("gone")
 	ErrLaneNotManned      = errors.New("lane is not manned")
 	ErrAdminScoringNeeded = errors.New("admin scoring required")
-	ErrStageLocked        = errors.New("stage is locked")
+	ErrSegmentLocked      = errors.New("segment is locked")
 
-	ErrStageNotAwaitingAcceptance = errors.New("stage is not awaiting acceptance")
-	ErrStageNotLocked             = errors.New("stage is not locked")
-	ErrNotCurrentStage            = errors.New("not the current stage")
-	ErrLanesOpen                  = errors.New("a lane is still open")
-	ErrStageGateNotMet            = errors.New("every manned lane must accept the current stage first")
+	ErrSegmentNotAwaitingAcceptance = errors.New("segment is not awaiting acceptance")
+	ErrSegmentNotLocked             = errors.New("segment is not locked")
+	ErrNotCurrentSegment            = errors.New("not the current segment")
+	ErrLanesOpen                    = errors.New("a lane is still open")
+	ErrSegmentGateNotMet            = errors.New("every manned lane must accept the current segment first")
 )
 
 type Service struct {

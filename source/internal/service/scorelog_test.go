@@ -51,10 +51,10 @@ type logLine struct {
 			Club      string `json:"club"`
 		} `json:"shooter"`
 	} `json:"entry"`
-	Stage struct {
+	Segment struct {
 		Number        int `json:"number"`
 		ExpectedShots int `json:"expected_shots"`
-	} `json:"stage"`
+	} `json:"segment"`
 	RingCounts []int  `json:"ring_counts"`
 	LockedBy   any    `json:"locked_by"`
 	ScorerName string `json:"scorer_name"`
@@ -82,11 +82,11 @@ func newScoreFixture(t *testing.T) *scoreFixture {
 	return buildFixture(t, repo, buf, newLogger(buf))
 }
 
-func TestStageLockedLines(t *testing.T) {
+func TestSegmentLockedLines(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
-	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
+	f.fillSegment(t, f.entry2, 1)
+	if _, err := f.svc.DeviceLockSegment(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
@@ -94,7 +94,7 @@ func TestStageLockedLines(t *testing.T) {
 		t.Fatalf("lines = %d", len(lines))
 	}
 	l := lines[0]
-	if l.Msg != "stage_status" || l.Event != "stage_status" || l.Status != "awaiting_acceptance" || l.Level != "INFO" || l.SchemaVersion != 3 {
+	if l.Msg != "segment_status" || l.Event != "segment_status" || l.Status != "awaiting_acceptance" || l.Level != "INFO" || l.SchemaVersion != 4 {
 		t.Fatalf("header = %+v", l)
 	}
 	if !emittedAtPattern.MatchString(l.EmittedAt) {
@@ -111,10 +111,10 @@ func TestStageLockedLines(t *testing.T) {
 		l.Entry.Shooter.WAID != "W2" || l.Entry.Shooter.FirstName != "Bo" || l.Entry.Shooter.LastName != "BERG" || l.Entry.Shooter.Club != "Club B" {
 		t.Fatalf("entry = %+v", l.Entry)
 	}
-	if l.Stage.Number != 1 || l.Stage.ExpectedShots != 12 {
-		t.Fatalf("stage = %+v", l.Stage)
+	if l.Segment.Number != 1 || l.Segment.ExpectedShots != 24 {
+		t.Fatalf("segment = %+v", l.Segment)
 	}
-	if len(l.RingCounts) != 7 || l.RingCounts[0] != 2 || l.RingCounts[1] != 4 || l.RingCounts[2] != 6 {
+	if len(l.RingCounts) != 7 || l.RingCounts[0] != 4 || l.RingCounts[1] != 8 || l.RingCounts[2] != 12 {
 		t.Fatalf("ring_counts = %v", l.RingCounts)
 	}
 	if l.LockedBy != float64(1) || l.ScorerName != "Al ALM" {
@@ -127,15 +127,15 @@ func TestStageLockedLines(t *testing.T) {
 
 func TestAdminLockLine(t *testing.T) {
 	f := newScoreFixture(t)
-	f.fillStage(t, f.entry1, 2)
-	if _, err := f.svc.AdminLockStage(service.WithActor(context.Background(), service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 2); err != nil {
+	f.fillSegment(t, f.entry1, 2)
+	if _, err := f.svc.AdminLockSegment(service.WithActor(context.Background(), service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry1, 2); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
 	if len(lines) != 1 {
 		t.Fatalf("lines = %d", len(lines))
 	}
-	if lines[0].LockedBy != "carol" || lines[0].ScorerName != "carol" || lines[0].Stage.Number != 2 || lines[0].Entry.ID != f.entry1 {
+	if lines[0].LockedBy != "carol" || lines[0].ScorerName != "carol" || lines[0].Segment.Number != 2 || lines[0].Entry.ID != f.entry1 {
 		t.Fatalf("line = %+v", lines[0])
 	}
 }
@@ -144,20 +144,20 @@ func TestNoLineOnFailedLock(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	dev := service.Device{MatchID: f.compID, Lane: 1}
-	if _, err := f.svc.DeviceLockStage(ctx, dev, 1); !errors.Is(err, service.ErrInvalid) {
+	if _, err := f.svc.DeviceLockSegment(ctx, dev, 1); !errors.Is(err, service.ErrInvalid) {
 		t.Fatalf("err = %v", err)
 	}
-	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); !errors.Is(err, service.ErrInvalid) {
+	if _, err := f.svc.AdminLockSegment(ctx, f.compID, f.entry2, 1); !errors.Is(err, service.ErrInvalid) {
 		t.Fatalf("err = %v", err)
 	}
-	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, dev, 1); err != nil {
+	f.fillSegment(t, f.entry2, 1)
+	if _, err := f.svc.DeviceLockSegment(ctx, dev, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.DeviceLockStage(ctx, dev, 1); !errors.Is(err, service.ErrStageLocked) {
+	if _, err := f.svc.DeviceLockSegment(ctx, dev, 1); !errors.Is(err, service.ErrSegmentLocked) {
 		t.Fatalf("err = %v", err)
 	}
-	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); !errors.Is(err, service.ErrStageLocked) {
+	if _, err := f.svc.AdminLockSegment(ctx, f.compID, f.entry2, 1); !errors.Is(err, service.ErrSegmentLocked) {
 		t.Fatalf("err = %v", err)
 	}
 	if n := len(f.lines(t)); n != 1 {
@@ -176,16 +176,16 @@ func TestLockSucceedsWhenLogWriterFails(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	f := buildFixture(t, repository.New(conn), &bytes.Buffer{}, newLogger(failingWriter{}))
-	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(context.Background(), service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
+	f.fillSegment(t, f.entry2, 1)
+	if _, err := f.svc.DeviceLockSegment(context.Background(), service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 	entries, err := f.repo.ListEntries(context.Background(), f.compID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entries[1].Stages[0].Status != repository.StatusAwaitingAcceptance {
-		t.Fatal("stage not locked")
+	if entries[1].Segments[0].Status != repository.StatusAwaitingAcceptance {
+		t.Fatal("segment not locked")
 	}
 }
 
@@ -193,22 +193,22 @@ func TestReplayMatchesDatabase(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
 	for _, n := range []int{1, 2} {
-		f.fillStage(t, f.entry2, n)
+		f.fillSegment(t, f.entry2, n)
 	}
-	f.fillStage(t, f.entry1, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
+	f.fillSegment(t, f.entry1, 1)
+	if _, err := f.svc.DeviceLockSegment(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.AdminLockSegment(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.AdminAcceptStage(ctx, f.compID, f.entry2, 1); err != nil {
+	if _, err := f.svc.AdminAcceptSegment(ctx, f.compID, f.entry2, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.StartNextStage(ctx, f.compID); err != nil {
+	if _, err := f.svc.StartNextSegment(ctx, f.compID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 2); err != nil {
+	if _, err := f.svc.DeviceLockSegment(ctx, service.Device{MatchID: f.compID, Lane: 1}, 2); err != nil {
 		t.Fatal(err)
 	}
 	folded := replayScoreLog(t, f.buf.String())
@@ -218,18 +218,18 @@ func TestReplayMatchesDatabase(t *testing.T) {
 	}
 	locked := 0
 	for _, e := range entries {
-		for _, st := range e.Stages {
+		for _, st := range e.Segments {
 			if st.Status == repository.StatusOpen {
 				continue
 			}
 			locked++
-			got, ok := folded[stageKey{f.compID, e.ID, st.Number}]
+			got, ok := folded[segmentKey{f.compID, e.ID, st.Number}]
 			if !ok {
 				t.Fatalf("missing %d/%d", e.ID, st.Number)
 			}
 			c := st.Counts
 			want := []int{c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss}
-			if !equalInts(got.RingCounts, want) || got.Stage.ExpectedShots != st.ExpectedShots ||
+			if !equalInts(got.RingCounts, want) || got.Segment.ExpectedShots != st.ExpectedShots ||
 				got.Entry.Lane != e.Lane || got.Entry.Category != e.Category {
 				t.Fatalf("mismatch %d/%d: %+v vs %+v", e.ID, st.Number, got, st)
 			}
@@ -249,14 +249,14 @@ func newerOrEqual(a, b logLine) bool {
 	return a.Seq >= b.Seq
 }
 
-type stageKey struct {
+type segmentKey struct {
 	comp, entry int64
-	stage       int
+	segment     int
 }
 
-func replayScoreLog(t *testing.T, raw string) map[stageKey]logLine {
+func replayScoreLog(t *testing.T, raw string) map[segmentKey]logLine {
 	t.Helper()
-	out := map[stageKey]logLine{}
+	out := map[segmentKey]logLine{}
 	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
 		if line == "" {
 			continue
@@ -268,7 +268,7 @@ func replayScoreLog(t *testing.T, raw string) map[stageKey]logLine {
 		if l.Event == "" {
 			continue
 		}
-		k := stageKey{l.Match.ID, l.Entry.ID, l.Stage.Number}
+		k := segmentKey{l.Match.ID, l.Entry.ID, l.Segment.Number}
 		if prev, ok := out[k]; ok && !newerOrEqual(l, prev) {
 			continue
 		}
@@ -340,9 +340,14 @@ func buildDraftFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buf
 	return &scoreFixture{svc: svc, repo: repo, buf: buf, compID: compID, entry1: e1, entry2: e2}
 }
 
-func (f *scoreFixture) fillStage(t *testing.T, entryID int64, stage int) {
+func (f *scoreFixture) fillSegment(t *testing.T, entryID int64, segment int) {
 	t.Helper()
-	err := f.svc.SetRingCounts(context.Background(), f.compID, entryID, stage, repository.RingCounts{X: 2, Ten: 4, Nine: 6})
+	seg, err := f.repo.GetSegment(context.Background(), f.compID, entryID, segment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shots := seg.ExpectedShots
+	err = f.svc.SetRingCounts(context.Background(), f.compID, entryID, segment, repository.RingCounts{X: shots / 6, Ten: shots / 3, Nine: shots - shots/6 - shots/3})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,11 +372,11 @@ func (f *scoreFixture) lines(t *testing.T) []logLine {
 func TestUnlockLine(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
-	f.fillStage(t, f.entry1, 1)
-	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	f.fillSegment(t, f.entry1, 1)
+	if _, err := f.svc.AdminLockSegment(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.UnlockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	if _, err := f.svc.UnlockSegment(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
@@ -379,18 +384,18 @@ func TestUnlockLine(t *testing.T) {
 		t.Fatalf("lines = %d", len(lines))
 	}
 	l := lines[1]
-	if l.Event != "stage_status" || l.Status != "open" || l.LockedBy != nil || l.Level != "INFO" || l.Entry.Shooter.WAID != "W1" ||
-		l.Match.Name != "Spring Match" || l.Stage.Number != 1 || !equalInts(l.RingCounts, []int{2, 4, 6, 0, 0, 0, 0}) {
+	if l.Event != "segment_status" || l.Status != "open" || l.LockedBy != nil || l.Level != "INFO" || l.Entry.Shooter.WAID != "W1" ||
+		l.Match.Name != "Spring Match" || l.Segment.Number != 1 || !equalInts(l.RingCounts, []int{4, 8, 12, 0, 0, 0, 0}) {
 		t.Fatalf("line = %+v", l)
 	}
-	if got := replayScoreLog(t, f.buf.String())[stageKey{f.compID, f.entry1, 1}]; got.Status != "open" {
+	if got := replayScoreLog(t, f.buf.String())[segmentKey{f.compID, f.entry1, 1}]; got.Status != "open" {
 		t.Fatalf("replay = %+v", got)
 	}
 }
 
-func TestNoUnlockLineOnMissingStage(t *testing.T) {
+func TestNoUnlockLineOnMissingSegment(t *testing.T) {
 	f := newScoreFixture(t)
-	if _, err := f.svc.UnlockStage(context.Background(), f.compID, f.entry1, 99); err == nil {
+	if _, err := f.svc.UnlockSegment(context.Background(), f.compID, f.entry1, 99); err == nil {
 		t.Fatal("expected error")
 	}
 	if n := len(f.lines(t)); n != 0 {
@@ -398,14 +403,14 @@ func TestNoUnlockLineOnMissingStage(t *testing.T) {
 	}
 }
 
-func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
+func TestAdminEditOfLockedSegmentReEmitsLock(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
-	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
+	f.fillSegment(t, f.entry2, 1)
+	if _, err := f.svc.DeviceLockSegment(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
-	edit := repository.RingCounts{X: 1, Ten: 1, Nine: 10}
+	edit := repository.RingCounts{X: 2, Ten: 2, Nine: 20}
 	if err := f.svc.AdminSetRingCounts(service.WithActor(ctx, service.Actor{UserID: 1, Username: "carol"}), f.compID, f.entry2, 1, edit); err != nil {
 		t.Fatal(err)
 	}
@@ -414,22 +419,22 @@ func TestAdminEditOfLockedStageReEmitsLock(t *testing.T) {
 		t.Fatalf("lines = %d", len(lines))
 	}
 	first, second := lines[0], lines[1]
-	if second.Event != "stage_status" || second.Status != "accepted" || second.LockedBy != "carol" || second.ScorerName != "carol" ||
-		!equalInts(second.RingCounts, []int{1, 1, 10, 0, 0, 0, 0}) {
+	if second.Event != "segment_status" || second.Status != "accepted" || second.LockedBy != "carol" || second.ScorerName != "carol" ||
+		!equalInts(second.RingCounts, []int{2, 2, 20, 0, 0, 0, 0}) {
 		t.Fatalf("line = %+v", second)
 	}
 	if second.Seq <= first.Seq || second.LockedAt != first.LockedAt {
 		t.Fatalf("emitted %q/%q locked %q/%q", first.EmittedAt, second.EmittedAt, first.LockedAt, second.LockedAt)
 	}
-	got := replayScoreLog(t, f.buf.String())[stageKey{f.compID, f.entry2, 1}]
-	if !equalInts(got.RingCounts, []int{1, 1, 10, 0, 0, 0, 0}) {
+	got := replayScoreLog(t, f.buf.String())[segmentKey{f.compID, f.entry2, 1}]
+	if !equalInts(got.RingCounts, []int{2, 2, 20, 0, 0, 0, 0}) {
 		t.Fatalf("replay = %+v", got)
 	}
 }
 
-func TestAdminEditOfUnlockedStageEmitsNothing(t *testing.T) {
+func TestAdminEditOfUnlockedSegmentEmitsNothing(t *testing.T) {
 	f := newScoreFixture(t)
-	if err := f.svc.AdminSetRingCounts(context.Background(), f.compID, f.entry1, 1, repository.RingCounts{X: 12}); err != nil {
+	if err := f.svc.AdminSetRingCounts(context.Background(), f.compID, f.entry1, 1, repository.RingCounts{X: 24}); err != nil {
 		t.Fatal(err)
 	}
 	if n := len(f.lines(t)); n != 0 {
@@ -437,18 +442,18 @@ func TestAdminEditOfUnlockedStageEmitsNothing(t *testing.T) {
 	}
 }
 
-func (f *scoreFixture) lockedAt(t *testing.T) map[stageKey]logLine {
+func (f *scoreFixture) lockedAt(t *testing.T) map[segmentKey]logLine {
 	t.Helper()
 	return replayScoreLog(t, f.buf.String())
 }
 
-func TestEntryEditReemitsLockedStages(t *testing.T) {
+func TestEntryEditReemitsLockedSegments(t *testing.T) {
 	f := newDraftScoreFixture(t)
 	ctx := context.Background()
 	for _, e := range []int64{f.entry1, f.entry2} {
 		for _, n := range []int{1, 2} {
-			f.fillStage(t, e, n)
-			if _, err := f.svc.AdminLockStage(ctx, f.compID, e, n); err != nil {
+			f.fillSegment(t, e, n)
+			if _, err := f.svc.AdminLockSegment(ctx, f.compID, e, n); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -487,8 +492,8 @@ func TestEntryEditReemitsLockedStages(t *testing.T) {
 func TestShooterEditReemitsAcrossMatches(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
-	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry2, 1); err != nil {
+	f.fillSegment(t, f.entry2, 1)
+	if _, err := f.svc.AdminLockSegment(ctx, f.compID, f.entry2, 1); err != nil {
 		t.Fatal(err)
 	}
 	n := len(f.lines(t))
@@ -508,13 +513,13 @@ func TestShooterEditReemitsAcrossMatches(t *testing.T) {
 	if got := len(f.lines(t)) - n; got != 1 {
 		t.Fatalf("new lines = %d", got)
 	}
-	l := f.lockedAt(t)[stageKey{f.compID, f.entry2, 1}]
+	l := f.lockedAt(t)[segmentKey{f.compID, f.entry2, 1}]
 	if l.Entry.Shooter.Club != "Club Z" || l.Entry.Shooter.FirstName != "Bob" {
 		t.Fatalf("shooter = %+v", l.Entry.Shooter)
 	}
 }
 
-func TestMatchEditReemitsLockedStages(t *testing.T) {
+func TestMatchEditReemitsLockedSegments(t *testing.T) {
 	conn, err := db.Open(":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -536,10 +541,10 @@ func TestMatchEditReemitsLockedStages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.SetRingCounts(ctx, compID, e1, 1, repository.RingCounts{X: 2, Ten: 4, Nine: 6}); err != nil {
+	if err := svc.SetRingCounts(ctx, compID, e1, 1, repository.RingCounts{X: 4, Ten: 8, Nine: 12}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.AdminLockStage(ctx, compID, e1, 1); err != nil {
+	if _, err := svc.AdminLockSegment(ctx, compID, e1, 1); err != nil {
 		t.Fatal(err)
 	}
 	n := strings.Count(buf.String(), "\n")
@@ -549,7 +554,7 @@ func TestMatchEditReemitsLockedStages(t *testing.T) {
 	if got := strings.Count(buf.String(), "\n") - n; got != 1 {
 		t.Fatalf("new lines = %d", got)
 	}
-	l := replayScoreLog(t, buf.String())[stageKey{compID, e1, 1}]
+	l := replayScoreLog(t, buf.String())[segmentKey{compID, e1, 1}]
 	if l.Match.Name != "Autumn Match" || l.Match.Date != "2026-11-01" {
 		t.Fatalf("match = %+v", l.Match)
 	}
@@ -558,12 +563,12 @@ func TestMatchEditReemitsLockedStages(t *testing.T) {
 func TestSeqStrictlyIncreasesAndReplayIgnoresEqualTimestamps(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
-	f.fillStage(t, f.entry1, 1)
-	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	f.fillSegment(t, f.entry1, 1)
+	if _, err := f.svc.AdminLockSegment(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 5; i++ {
-		if err := f.svc.AdminSetRingCounts(ctx, f.compID, f.entry1, 1, repository.RingCounts{X: i, Ten: 12 - i}); err != nil {
+		if err := f.svc.AdminSetRingCounts(ctx, f.compID, f.entry1, 1, repository.RingCounts{X: i, Ten: 24 - i}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -573,8 +578,8 @@ func TestSeqStrictlyIncreasesAndReplayIgnoresEqualTimestamps(t *testing.T) {
 			t.Fatalf("seq %d after %d", lines[i].Seq, lines[i-1].Seq)
 		}
 	}
-	got := replayScoreLog(t, f.buf.String())[stageKey{f.compID, f.entry1, 1}]
-	if !equalInts(got.RingCounts, []int{4, 8, 0, 0, 0, 0, 0}) {
+	got := replayScoreLog(t, f.buf.String())[segmentKey{f.compID, f.entry1, 1}]
+	if !equalInts(got.RingCounts, []int{4, 20, 0, 0, 0, 0, 0}) {
 		t.Fatalf("replay = %+v", got)
 	}
 }
@@ -582,11 +587,11 @@ func TestSeqStrictlyIncreasesAndReplayIgnoresEqualTimestamps(t *testing.T) {
 func TestUnlockLineKeepsPreUnlockProvenance(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
-	f.fillStage(t, f.entry2, 1)
-	if _, err := f.svc.DeviceLockStage(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
+	f.fillSegment(t, f.entry2, 1)
+	if _, err := f.svc.DeviceLockSegment(ctx, service.Device{MatchID: f.compID, Lane: 1}, 1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.UnlockStage(ctx, f.compID, f.entry2, 1); err != nil {
+	if _, err := f.svc.UnlockSegment(ctx, f.compID, f.entry2, 1); err != nil {
 		t.Fatal(err)
 	}
 	lines := f.lines(t)
@@ -596,11 +601,11 @@ func TestUnlockLineKeepsPreUnlockProvenance(t *testing.T) {
 	}
 }
 
-func TestCourseChangeRejectedWhenLockedStagesExist(t *testing.T) {
+func TestCourseChangeRejectedWhenLockedSegmentsExist(t *testing.T) {
 	f := newScoreFixture(t)
 	ctx := context.Background()
-	f.fillStage(t, f.entry1, 1)
-	if _, err := f.svc.AdminLockStage(ctx, f.compID, f.entry1, 1); err != nil {
+	f.fillSegment(t, f.entry1, 1)
+	if _, err := f.svc.AdminLockSegment(ctx, f.compID, f.entry1, 1); err != nil {
 		t.Fatal(err)
 	}
 	n := len(f.lines(t))
@@ -611,7 +616,7 @@ func TestCourseChangeRejectedWhenLockedStagesExist(t *testing.T) {
 	if got := len(f.lines(t)); got != n {
 		t.Fatalf("lines = %d", got)
 	}
-	if l := f.lockedAt(t)[stageKey{f.compID, f.entry1, 1}]; l.Stage.ExpectedShots != 12 || l.Match.CourseOfFire.Key != "150" {
+	if l := f.lockedAt(t)[segmentKey{f.compID, f.entry1, 1}]; l.Segment.ExpectedShots != 24 || l.Match.CourseOfFire.Key != "150" {
 		t.Fatalf("line = %+v", l)
 	}
 }

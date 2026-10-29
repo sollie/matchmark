@@ -70,11 +70,11 @@ func (e *Env) ScoreLogLines() []map[string]any {
 	return out
 }
 
-func (e *Env) StageEvents(matchID int) []repository.StageEvent {
+func (e *Env) SegmentEvents(matchID int) []repository.SegmentEvent {
 	e.t.Helper()
-	events, err := e.repo.ListStageEvents(context.Background(), int64(matchID))
+	events, err := e.repo.ListSegmentEvents(context.Background(), int64(matchID))
 	if err != nil {
-		e.t.Fatalf("list stage events: %v", err)
+		e.t.Fatalf("list segment events: %v", err)
 	}
 	return events
 }

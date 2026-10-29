@@ -16,55 +16,55 @@ type RingCountsView struct {
 	Miss  int `json:"miss"`
 }
 
-type StageScoreView struct {
-	Stage    int             `json:"stage"`
+type SegmentScoreView struct {
+	Segment  int             `json:"segment"`
 	Score    *int            `json:"score,omitempty"`
 	Accepted bool            `json:"accepted"`
-	State    StageState      `json:"state"`
+	State    SegmentState    `json:"state"`
 	Counts   *RingCountsView `json:"ring_counts,omitempty"`
 }
 
-type StageState string
+type SegmentState string
 
 const (
-	StageNotStarted         StageState = "not_started"
-	StageInProgress         StageState = "in_progress"
-	StageAwaitingAcceptance StageState = "awaiting_acceptance"
-	StageAccepted           StageState = "accepted"
+	SegmentNotStarted         SegmentState = "not_started"
+	SegmentInProgress         SegmentState = "in_progress"
+	SegmentAwaitingAcceptance SegmentState = "awaiting_acceptance"
+	SegmentAccepted           SegmentState = "accepted"
 )
 
-func stageState(st repository.StageStatus, number, currentStage int) StageState {
+func segmentState(st repository.SegmentStatus, number, currentSegment int) SegmentState {
 	switch st {
 	case repository.StatusAccepted:
-		return StageAccepted
+		return SegmentAccepted
 	case repository.StatusAwaitingAcceptance:
-		return StageAwaitingAcceptance
+		return SegmentAwaitingAcceptance
 	}
-	if number > currentStage {
-		return StageNotStarted
+	if number > currentSegment {
+		return SegmentNotStarted
 	}
-	return StageInProgress
+	return SegmentInProgress
 }
 
 type StandingView struct {
-	Lane       int              `json:"lane"`
-	Category   string           `json:"category"`
-	Withdrawn  bool             `json:"withdrawn"`
-	Total      int              `json:"total"`
-	LastName   *string          `json:"last_name,omitempty"`
-	FirstName  *string          `json:"first_name,omitempty"`
-	Club       *string          `json:"club,omitempty"`
-	Country    *string          `json:"country,omitempty"`
-	XCount     *int             `json:"x_count,omitempty"`
-	RingCounts *RingCountsView  `json:"ring_counts,omitempty"`
-	Stages     []StageScoreView `json:"stages,omitempty"`
+	Lane       int                `json:"lane"`
+	Category   string             `json:"category"`
+	Withdrawn  bool               `json:"withdrawn"`
+	Total      int                `json:"total"`
+	LastName   *string            `json:"last_name,omitempty"`
+	FirstName  *string            `json:"first_name,omitempty"`
+	Club       *string            `json:"club,omitempty"`
+	Country    *string            `json:"country,omitempty"`
+	XCount     *int               `json:"x_count,omitempty"`
+	RingCounts *RingCountsView    `json:"ring_counts,omitempty"`
+	Segments   []SegmentScoreView `json:"segments,omitempty"`
 }
 
 func ringCountsView(c repository.RingCounts) RingCountsView {
 	return RingCountsView{X: c.X, Ten: c.Ten, Nine: c.Nine, Eight: c.Eight, Seven: c.Seven, Zero: c.Zero, Miss: c.Miss}
 }
 
-func projectStandings(currentStage int, vis repository.Visibility, entries []repository.SpectatorEntry) []StandingView {
+func projectStandings(currentSegment int, vis repository.Visibility, entries []repository.SpectatorEntry) []StandingView {
 	type ranked struct {
 		view StandingView
 		x    int
@@ -73,7 +73,7 @@ func projectStandings(currentStage int, vis repository.Visibility, entries []rep
 	for _, e := range entries {
 		var total repository.RingCounts
 		v := StandingView{Lane: e.Lane, Category: e.Category, Withdrawn: e.Withdrawn}
-		for _, st := range e.Stages {
+		for _, st := range e.Segments {
 			accepted := st.Status == repository.StatusAccepted
 			if !accepted {
 				st.Counts = repository.RingCounts{}
@@ -86,8 +86,8 @@ func projectStandings(currentStage int, vis repository.Visibility, entries []rep
 			total.Seven += st.Counts.Seven
 			total.Zero += st.Counts.Zero
 			total.Miss += st.Counts.Miss
-			sv := StageScoreView{Stage: st.Number, Accepted: accepted, State: stageState(st.Status, st.Number, currentStage)}
-			if vis.StageScores && accepted {
+			sv := SegmentScoreView{Segment: st.Number, Accepted: accepted, State: segmentState(st.Status, st.Number, currentSegment)}
+			if vis.SegmentScores && accepted {
 				score := st.Counts.Score()
 				sv.Score = &score
 				if vis.RingCounts {
@@ -95,7 +95,7 @@ func projectStandings(currentStage int, vis repository.Visibility, entries []rep
 					sv.Counts = &c
 				}
 			}
-			v.Stages = append(v.Stages, sv)
+			v.Segments = append(v.Segments, sv)
 		}
 		if vis.Names {
 			v.LastName, v.FirstName = &e.LastName, &e.FirstName

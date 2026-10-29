@@ -15,11 +15,11 @@ func (f *scoringFixture) session(t *testing.T, token string) map[string]any {
 	return out
 }
 
-func (f *scoringFixture) deviceAction(token string, stage int, action string) (int, map[string]any) {
-	return f.env.DoToken(token, "POST", fmt.Sprintf("/api/scorer/stages/%d/%s", stage, action), nil)
+func (f *scoringFixture) deviceAction(token string, segment int, action string) (int, map[string]any) {
+	return f.env.DoToken(token, "POST", fmt.Sprintf("/api/scorer/segments/%d/%s", segment, action), nil)
 }
 
-func TestShooterAcceptsOwnLockedStage(t *testing.T) {
+func TestShooterAcceptsOwnLockedSegment(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
 
@@ -27,18 +27,18 @@ func TestShooterAcceptsOwnLockedStage(t *testing.T) {
 	if status != http.StatusOK || out["status"] != "accepted" {
 		t.Fatalf("accept: %d %v", status, out)
 	}
-	if got := f.stageStatus(t, 2, 1); got != "accepted" {
+	if got := f.segmentStatus(t, 2, 1); got != "accepted" {
 		t.Fatalf("status %q", got)
 	}
 	if totals := f.standingTotals(t); totals[0] != 120 {
-		t.Fatalf("accepted stage not counted: %v", totals)
+		t.Fatalf("accepted segment not counted: %v", totals)
 	}
 	if status, _ := f.deviceAction(f.pair(t, 2), 1, "accept"); status != http.StatusConflict {
 		t.Fatalf("second accept: %d", status)
 	}
 }
 
-func TestDisputeReopensStageKeepingHitsAndNoticePersistsUntilRelock(t *testing.T) {
+func TestDisputeReopensSegmentKeepingHitsAndNoticePersistsUntilRelock(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.deviceLock(t, 1, 1)
 	shooter, scorer := f.pair(t, 2), f.pair(t, 1)
@@ -47,28 +47,28 @@ func TestDisputeReopensStageKeepingHitsAndNoticePersistsUntilRelock(t *testing.T
 		t.Fatalf("dispute: %d %v", status, out)
 	}
 	sess := f.session(t, scorer)
-	st := sess["stages"].([]any)[0].(map[string]any)
+	st := sess["segments"].([]any)[0].(map[string]any)
 	if st["status"] != "open" || st["disputed"] != true || st["10"] != float64(2) || st["x"] != float64(10) {
-		t.Fatalf("disputed stage: %v", st)
+		t.Fatalf("disputed segment: %v", st)
 	}
 	if sess["phase"] != "scoring" {
 		t.Fatalf("phase %v", sess["phase"])
 	}
-	if status, _ := f.env.DoToken(scorer, "PUT", "/api/scorer/stages/1", counts(9, 3)); status != http.StatusOK {
+	if status, _ := f.env.DoToken(scorer, "PUT", "/api/scorer/segments/1", counts(9, 3)); status != http.StatusOK {
 		t.Fatalf("rescore: %d", status)
 	}
-	if st := f.session(t, scorer)["stages"].([]any)[0].(map[string]any); st["disputed"] != true {
+	if st := f.session(t, scorer)["segments"].([]any)[0].(map[string]any); st["disputed"] != true {
 		t.Fatalf("notice lost on edit: %v", st)
 	}
-	if status, _ := f.env.DoToken(scorer, "POST", "/api/scorer/stages/1/lock", nil); status != http.StatusOK {
+	if status, _ := f.env.DoToken(scorer, "POST", "/api/scorer/segments/1/lock", nil); status != http.StatusOK {
 		t.Fatalf("relock: %d", status)
 	}
-	if st := f.session(t, scorer)["stages"].([]any)[0].(map[string]any); st["disputed"] != false {
+	if st := f.session(t, scorer)["segments"].([]any)[0].(map[string]any); st["disputed"] != false {
 		t.Fatalf("notice not cleared by lock: %v", st)
 	}
 }
 
-func TestDeviceCannotActOnAnotherLanesStage(t *testing.T) {
+func TestDeviceCannotActOnAnotherLanesSegment(t *testing.T) {
 	f := newScoringFixture(t, 1, 2, 3)
 	f.deviceLock(t, 1, 1)
 
@@ -80,14 +80,14 @@ func TestDeviceCannotActOnAnotherLanesStage(t *testing.T) {
 			t.Fatalf("other lane %s: %d", action, status)
 		}
 	}
-	if got := f.stageStatus(t, 2, 1); got != "awaiting_acceptance" {
+	if got := f.segmentStatus(t, 2, 1); got != "awaiting_acceptance" {
 		t.Fatalf("status %q", got)
 	}
 }
 
 func (f *scoringFixture) lockOnDevice(t *testing.T, token string) {
 	t.Helper()
-	f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(10, 2))
+	f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(10, 2))
 	if status, out := f.deviceAction(token, 1, "lock"); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
@@ -114,7 +114,7 @@ func TestPhaseFollowsLockAndAcceptanceAndSurvivesReload(t *testing.T) {
 	}
 	sess := f.session(t, lane2)
 	acc := sess["acceptance"].(map[string]any)
-	if acc["stage_number"] != float64(1) || acc["x"] != float64(10) || acc["10"] != float64(2) || acc["total"] != float64(12) ||
+	if acc["segment_number"] != float64(1) || acc["x"] != float64(10) || acc["10"] != float64(2) || acc["total"] != float64(24) ||
 		acc["scorer_name"] != "A SHOOTER1" {
 		t.Fatalf("acceptance: %v", acc)
 	}
@@ -125,7 +125,7 @@ func TestPhaseFollowsLockAndAcceptanceAndSurvivesReload(t *testing.T) {
 	}
 	f.deviceAction(lane1, 1, "accept")
 	if got := f.session(t, lane1)["phase"]; got != "waiting" {
-		t.Fatalf("lane 1 waits at the gate once both stages are accepted: %v", got)
+		t.Fatalf("lane 1 waits at the gate once both segments are accepted: %v", got)
 	}
 }
 
@@ -151,7 +151,7 @@ func TestAcceptAndDisputeWriteEventsLogLinesAndAuditActions(t *testing.T) {
 	if line["status"] != "open" || line["disputed_at"] == "" || line["ring_counts"].([]any)[0] != float64(10) {
 		t.Fatalf("dispute line: %v", line)
 	}
-	f.env.DoToken(f.pair(t, 1), "POST", "/api/scorer/stages/1/lock", nil)
+	f.env.DoToken(f.pair(t, 1), "POST", "/api/scorer/segments/1/lock", nil)
 	f.deviceAction(shooter, 1, "accept")
 	line = lastScoreLine(t, f.env)
 	if line["status"] != "accepted" || line["accepted_by"] != "2" || line["accepted_at"] == "" || line["disputed_at"] != "" {
@@ -159,7 +159,7 @@ func TestAcceptAndDisputeWriteEventsLogLinesAndAuditActions(t *testing.T) {
 	}
 
 	var got []string
-	for _, e := range f.env.StageEvents(f.comp) {
+	for _, e := range f.env.SegmentEvents(f.comp) {
 		got = append(got, string(e.Event)+":"+e.ActorName)
 	}
 	want := []string{"locked:device", "disputed:device", "locked:device", "accepted:device"}
@@ -170,7 +170,7 @@ func TestAcceptAndDisputeWriteEventsLogLinesAndAuditActions(t *testing.T) {
 	for _, a := range f.env.AuditLines() {
 		actions[fmt.Sprint(a["action"])] = true
 	}
-	for _, w := range []string{"stage.accept", "stage.dispute"} {
+	for _, w := range []string{"segment.accept", "segment.dispute"} {
 		if !actions[w] {
 			t.Fatalf("audit lacks %s: %v", w, actions)
 		}

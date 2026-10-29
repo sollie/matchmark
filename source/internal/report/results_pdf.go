@@ -39,9 +39,9 @@ var (
 	pdfMuted      = &props.Color{Red: 92, Green: 92, Blue: 92}
 )
 
-type ResultsPDFStage struct {
-	Stage int
-	Score *int
+type ResultsPDFSegment struct {
+	Segment int
+	Score   *int
 }
 
 type ResultsPDFRow struct {
@@ -51,7 +51,7 @@ type ResultsPDFRow struct {
 	WAID      *string
 	Club      *string
 	Country   *string
-	Stages    []ResultsPDFStage
+	Segments  []ResultsPDFSegment
 	Total     int
 	XCount    *int
 }
@@ -79,7 +79,7 @@ type ResultsPDFData struct {
 	Name        string
 	Date        string
 	CourseLabel string
-	Stages      []int
+	Segments    []int
 	Categories  []ResultsPDFCategory
 	NewShooters []ResultsPDFNewShooter
 }
@@ -170,7 +170,7 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	showNames := found && first.LastName != nil
 	showClubs := found && first.Club != nil
 	showCountries := found && first.Country != nil
-	showStages := found && len(first.Stages) > 0 && first.Stages[0].Score != nil
+	showSegments := found && len(first.Segments) > 0 && first.Segments[0].Score != nil
 	showX := found && first.XCount != nil
 
 	columns := []pdfColumn{{"#", 2, true}}
@@ -183,8 +183,8 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	if showCountries {
 		columns = append(columns, pdfColumn{"Country", 3, false})
 	}
-	if showStages {
-		for _, n := range d.Stages {
+	if showSegments {
+		for _, n := range d.Segments {
 			columns = append(columns, pdfColumn{"S" + strconv.Itoa(n), 2, true})
 		}
 	}
@@ -203,8 +203,8 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 		if showCountries {
 			cells = append(cells, derefString(r.Country))
 		}
-		if showStages {
-			for _, s := range r.Stages {
+		if showSegments {
+			for _, s := range r.Segments {
 				cells = append(cells, derefInt(s.Score))
 			}
 		}

@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-type StageInfo struct {
+type SegmentInfo struct {
 	Number        int
 	ExpectedShots int
-	Status        StageStatus
+	Status        SegmentStatus
 	ScorerLane    *int
 	ScorerName    *string
 	Counts        RingCounts
@@ -18,9 +18,9 @@ type StageInfo struct {
 	Started       bool
 }
 
-type EntryWithStages struct {
+type EntryWithSegments struct {
 	Entry
-	Stages []StageInfo
+	Segments []SegmentInfo
 }
 
 const shooterColumns = `id, last_name, first_name, country, club, COALESCE(waid, ''), archived`
@@ -92,7 +92,7 @@ func (r *Repository) ShooterEntryCounts(ctx context.Context) (map[int64]int, err
 
 func (r *Repository) ShooterMatches(ctx context.Context, shooterID int64) ([]Match, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT m.id, m.competition_id, m.name, m.date, m.course, m.status, m.current_stage, COALESCE(m.activated_at, '')
+		`SELECT m.id, m.competition_id, m.name, m.date, m.course, m.status, m.current_segment, COALESCE(m.activated_at, '')
 		 FROM matches m JOIN entries e ON e.match_id = m.id
 		 WHERE e.shooter_id = ? ORDER BY m.date DESC, m.id DESC`, shooterID)
 	if err != nil {
@@ -102,7 +102,7 @@ func (r *Repository) ShooterMatches(ctx context.Context, shooterID int64) ([]Mat
 	matches := []Match{}
 	for rows.Next() {
 		var m Match
-		if err := rows.Scan(&m.ID, &m.CompetitionID, &m.Name, &m.Date, &m.Course, &m.Status, &m.CurrentStage, &m.ActivatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.CompetitionID, &m.Name, &m.Date, &m.Course, &m.Status, &m.CurrentSegment, &m.ActivatedAt); err != nil {
 			return nil, err
 		}
 		matches = append(matches, m)
@@ -141,7 +141,7 @@ func (r *Repository) DeleteShooter(ctx context.Context, id int64) error {
 
 func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_stage, COALESCE(activated_at, '') FROM matches ORDER BY date DESC, id DESC`)
+		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, '') FROM matches ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	comps := []Match{}
 	for rows.Next() {
 		var c Match
-		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage, &c.ActivatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt); err != nil {
 			return nil, err
 		}
 		comps = append(comps, c)
@@ -198,7 +198,7 @@ func (r *Repository) BackToDraft(ctx context.Context, id int64) error {
 	res, err := tx.ExecContext(ctx,
 		`UPDATE matches SET status = 'draft' WHERE id = ? AND status = 'active'
 		 AND NOT EXISTS (
-		   SELECT 1 FROM stages s JOIN entries e ON e.id = s.entry_id
+		   SELECT 1 FROM segments s JOIN entries e ON e.id = s.entry_id
 		   WHERE e.match_id = matches.id
 		   AND (s.x + s.ten + s.nine + s.eight + s.seven + s.zero + s.miss) > 0)`, id)
 	if err := conflictIfNone(res, err); err != nil {
@@ -207,19 +207,19 @@ func (r *Repository) BackToDraft(ctx context.Context, id int64) error {
 	return tx.Commit()
 }
 
-func (r *Repository) AdvanceStage(ctx context.Context, id int64, from int) error {
+func (r *Repository) AdvanceSegment(ctx context.Context, id int64, from int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE matches SET current_stage = current_stage + 1 WHERE id = ? AND status = 'active' AND current_stage = ?`, id, from)
+		`UPDATE matches SET current_segment = current_segment + 1 WHERE id = ? AND status = 'active' AND current_segment = ?`, id, from)
 	if err := conflictIfNone(res, err); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx,
-		`UPDATE stages SET started = 1 WHERE stage_number = ? AND status = 'open'
+		`UPDATE segments SET started = 1 WHERE segment_number = ? AND status = 'open'
 		 AND entry_id IN (SELECT id FROM entries WHERE match_id = ?)`, from+1, id); err != nil {
 		return err
 	}
@@ -258,22 +258,22 @@ func (r *Repository) DeleteEntry(ctx context.Context, matchID, entryID int64) er
 	return affected(res, err)
 }
 
-func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWithStages, error) {
+func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWithSegments, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, match_id, shooter_id, category, lane, withdrawn FROM entries WHERE match_id = ? ORDER BY lane, id`,
 		matchID)
 	if err != nil {
 		return nil, err
 	}
-	entries := []EntryWithStages{}
+	entries := []EntryWithSegments{}
 	index := map[int64]int{}
 	for rows.Next() {
-		var e EntryWithStages
+		var e EntryWithSegments
 		if err := rows.Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
-		e.Stages = []StageInfo{}
+		e.Segments = []SegmentInfo{}
 		index[e.ID] = len(entries)
 		entries = append(entries, e)
 	}
@@ -284,9 +284,9 @@ func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWit
 	_ = rows.Close()
 
 	srows, err := r.db.QueryContext(ctx,
-		`SELECT s.entry_id, s.stage_number, s.expected_shots, s.status, s.scorer_lane, s.scorer_name,
-		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, COALESCE(s.disputed_at, ''), s.started FROM stages s
-		 JOIN entries e ON e.id = s.entry_id WHERE e.match_id = ? ORDER BY s.entry_id, s.stage_number`,
+		`SELECT s.entry_id, s.segment_number, s.expected_shots, s.status, s.scorer_lane, s.scorer_name,
+		        s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, COALESCE(s.disputed_at, ''), s.started FROM segments s
+		 JOIN entries e ON e.id = s.entry_id WHERE e.match_id = ? ORDER BY s.entry_id, s.segment_number`,
 		matchID)
 	if err != nil {
 		return nil, err
@@ -294,13 +294,13 @@ func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWit
 	defer func() { _ = srows.Close() }()
 	for srows.Next() {
 		var entryID int64
-		var si StageInfo
+		var si SegmentInfo
 		if err := srows.Scan(&entryID, &si.Number, &si.ExpectedShots, &si.Status, &si.ScorerLane, &si.ScorerName,
 			&si.Counts.X, &si.Counts.Ten, &si.Counts.Nine, &si.Counts.Eight, &si.Counts.Seven, &si.Counts.Zero, &si.Counts.Miss, &si.DisputedAt, &si.Started); err != nil {
 			return nil, err
 		}
 		i := index[entryID]
-		entries[i].Stages = append(entries[i].Stages, si)
+		entries[i].Segments = append(entries[i].Segments, si)
 	}
 	return entries, srows.Err()
 }

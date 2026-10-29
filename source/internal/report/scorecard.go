@@ -92,7 +92,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	columns := []cardColumn{{"Stage", 170, true}, {"Distance", 110, true}, {"Shots", 90, false}}
+	columns := []cardColumn{{"Segment", 300, true}, {"Shots", 90, false}}
 	for _, ring := range rulebook.RingValues() {
 		columns = append(columns, cardColumn{ring, 70, false})
 	}
@@ -107,7 +107,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	headerBottom := cardMargin + logoHeight + 24
 	infoTop := headerBottom + 20
 	tableTop := infoTop + infoRows*40 + 24
-	height := tableTop + (len(d.Course.Stages)+2)*rowHeight + 36 + cardMargin
+	height := tableTop + (len(d.Course.Segments)+2)*rowHeight + 36 + cardMargin
 	img := image.NewRGBA(image.Rect(0, 0, cardWidth, height))
 	draw.Draw(img, img.Bounds(), image.White, image.Point{}, draw.Src)
 
@@ -146,17 +146,17 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	y := tableTop
 	fillRect(img, image.Rect(cardMargin, y, cardWidth-cardMargin, y+rowHeight), colorHeader)
 	drawRow(img, fonts.bold, colorInk, columns, y, headerCells(columns))
-	byNumber := map[int]repository.ReportStage{}
-	for _, s := range d.Entry.Stages {
+	byNumber := map[int]repository.ReportSegment{}
+	for _, s := range d.Entry.Segments {
 		byNumber[s.Number] = s
 	}
 	var totals repository.RingCounts
 	totalScore, totalShots := 0, 0
-	for _, stage := range d.Course.Stages {
+	for _, segment := range d.Course.Segments {
 		y += rowHeight
 		hline(img, cardMargin, cardWidth-cardMargin, y)
-		cells := []string{stageCell(stage), stage.Distance, strconv.Itoa(stage.ExpectedShots)}
-		st, ok := byNumber[stage.StageNumber]
+		cells := []string{segment.Name, strconv.Itoa(segment.Shots)}
+		st, ok := byNumber[segment.Number]
 		if ok && st.Status == repository.StatusAccepted {
 			for _, n := range ringCounts(st.Counts) {
 				cells = append(cells, strconv.Itoa(n))
@@ -164,7 +164,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 			cells = append(cells, strconv.Itoa(st.Counts.Score()), ScorerLabel(st))
 			totals = addCounts(totals, st.Counts)
 			totalScore += st.Counts.Score()
-			totalShots += stage.ExpectedShots
+			totalShots += segment.Shots
 		} else {
 			for len(cells) < len(columns) {
 				cells = append(cells, "")
@@ -174,13 +174,13 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	}
 	y += rowHeight
 	hline(img, cardMargin, cardWidth-cardMargin, y)
-	cells := []string{"Total", "", strconv.Itoa(totalShots)}
+	cells := []string{"Total", strconv.Itoa(totalShots)}
 	for _, n := range ringCounts(totals) {
 		cells = append(cells, strconv.Itoa(n))
 	}
 	cells = append(cells, strconv.Itoa(totalScore), "")
 	drawRow(img, fonts.bold, colorInk, columns, y, cells)
-	drawText(img, fonts.small, colorMuted, cardMargin, y+rowHeight+36, "Only accepted stages are counted.")
+	drawText(img, fonts.small, colorMuted, cardMargin, y+rowHeight+36, "Only accepted segments are counted.")
 
 	var buf bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestCompression}
@@ -190,7 +190,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func ScorerLabel(s repository.ReportStage) string {
+func ScorerLabel(s repository.ReportSegment) string {
 	if s.ScorerLane == nil {
 		return adminScorer
 	}
@@ -282,11 +282,4 @@ func hline(img *image.RGBA, x0, x1, y int) {
 
 func fillRect(img *image.RGBA, r image.Rectangle, c color.Color) {
 	draw.Draw(img, r, image.NewUniform(c), image.Point{}, draw.Src)
-}
-
-func stageCell(s rulebook.Stage) string {
-	if s.Part == "" {
-		return strconv.Itoa(s.StageNumber)
-	}
-	return strconv.Itoa(s.StageNumber) + " · " + s.Part
 }

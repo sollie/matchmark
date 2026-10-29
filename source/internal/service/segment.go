@@ -22,98 +22,98 @@ func ValidateRingCounts(c repository.RingCounts, expectedShots int) error {
 	return nil
 }
 
-func (s *Service) validatedStage(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts, requireUnlocked bool) (repository.Stage, error) {
-	stage, err := s.repo.GetStage(ctx, matchID, entryID, stageNumber)
+func (s *Service) validatedSegment(ctx context.Context, matchID, entryID int64, segmentNumber int, c repository.RingCounts, requireUnlocked bool) (repository.Segment, error) {
+	segment, err := s.repo.GetSegment(ctx, matchID, entryID, segmentNumber)
 	if err != nil {
-		return repository.Stage{}, mapRepoErr(err)
+		return repository.Segment{}, mapRepoErr(err)
 	}
-	if requireUnlocked && stage.Status != repository.StatusOpen {
-		return repository.Stage{}, ErrStageLocked
+	if requireUnlocked && segment.Status != repository.StatusOpen {
+		return repository.Segment{}, ErrSegmentLocked
 	}
-	if err := ValidateRingCounts(c, stage.ExpectedShots); err != nil {
-		return repository.Stage{}, err
+	if err := ValidateRingCounts(c, segment.ExpectedShots); err != nil {
+		return repository.Segment{}, err
 	}
-	return stage, nil
+	return segment, nil
 }
 
-func (s *Service) SetRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts) error {
-	if err := s.writeRingCounts(ctx, matchID, entryID, stageNumber, c, false); err != nil {
+func (s *Service) SetRingCounts(ctx context.Context, matchID, entryID int64, segmentNumber int, c repository.RingCounts) error {
+	if err := s.writeRingCounts(ctx, matchID, entryID, segmentNumber, c, false); err != nil {
 		return err
 	}
 	s.changes.Record(ctx, Change{MatchID: matchID, Live: LiveMatch})
 	return nil
 }
 
-func (s *Service) writeRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts, activeOnly bool) error {
-	stage, err := s.validatedStage(ctx, matchID, entryID, stageNumber, c, true)
+func (s *Service) writeRingCounts(ctx context.Context, matchID, entryID int64, segmentNumber int, c repository.RingCounts, activeOnly bool) error {
+	segment, err := s.validatedSegment(ctx, matchID, entryID, segmentNumber, c, true)
 	if err != nil {
 		return err
 	}
-	if err := s.repo.SetRingCounts(ctx, stage.ID, c, activeOnly); err != nil {
+	if err := s.repo.SetRingCounts(ctx, segment.ID, c, activeOnly); err != nil {
 		if err == repository.ErrConflict {
 			if m, gerr := s.repo.GetMatch(ctx, matchID); gerr == nil && MatchStatus(m.Status) != StatusActive {
 				return ErrConflict
 			}
-			return ErrStageLocked
+			return ErrSegmentLocked
 		}
 		return mapRepoErr(err)
 	}
 	return nil
 }
 
-func (s *Service) AdminSetRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts) error {
-	stage, err := s.validatedStage(ctx, matchID, entryID, stageNumber, c, false)
+func (s *Service) AdminSetRingCounts(ctx context.Context, matchID, entryID int64, segmentNumber int, c repository.RingCounts) error {
+	segment, err := s.validatedSegment(ctx, matchID, entryID, segmentNumber, c, false)
 	if err != nil {
 		return err
 	}
 	username := ActorFrom(ctx).Username
-	ev, err := s.userStageEvent(ctx, repository.EventAccepted, username, matchID, entryID, stage)
+	ev, err := s.userSegmentEvent(ctx, repository.EventAccepted, username, matchID, entryID, segment)
 	if err != nil {
 		return err
 	}
-	if err := s.repo.OverwriteRingCounts(ctx, stage, c, username, ev); err != nil {
-		return mapStageWriteErr(err)
+	if err := s.repo.OverwriteRingCounts(ctx, segment, c, username, ev); err != nil {
+		return mapSegmentWriteErr(err)
 	}
 	change := Change{
-		Audit:   AuditEvent{Action: "stage.set_counts", Target: stageTarget(matchID, entryID, stageNumber)},
+		Audit:   AuditEvent{Action: "segment.set_counts", Target: segmentTarget(matchID, entryID, segmentNumber)},
 		MatchID: matchID,
 		Live:    LiveMatch,
 	}
-	if stage.Status != repository.StatusOpen {
-		change.Stage = &StageEvent{MatchID: matchID, EntryID: entryID, StageNumber: stageNumber}
+	if segment.Status != repository.StatusOpen {
+		change.Segment = &SegmentEvent{MatchID: matchID, EntryID: entryID, SegmentNumber: segmentNumber}
 	}
 	s.changes.Record(ctx, change)
-	if stage.Status != repository.StatusOpen {
+	if segment.Status != repository.StatusOpen {
 		s.finishIfComplete(ctx, matchID, nil)
 	}
 	return nil
 }
 
-func mapStageWriteErr(err error) error {
+func mapSegmentWriteErr(err error) error {
 	if errors.Is(err, repository.ErrConflict) {
-		return ErrStageLocked
+		return ErrSegmentLocked
 	}
 	return mapRepoErr(err)
 }
 
-func (s *Service) userStageEvent(ctx context.Context, kind repository.StageEventKind, username string, matchID, entryID int64, stage repository.Stage) (repository.StageEvent, error) {
+func (s *Service) userSegmentEvent(ctx context.Context, kind repository.SegmentEventKind, username string, matchID, entryID int64, segment repository.Segment) (repository.SegmentEvent, error) {
 	entry, err := s.repo.GetEntry(ctx, matchID, entryID)
 	if err != nil {
-		return repository.StageEvent{}, mapRepoErr(err)
+		return repository.SegmentEvent{}, mapRepoErr(err)
 	}
 	shooter, err := s.repo.GetShooter(ctx, entry.ShooterID)
 	if err != nil {
-		return repository.StageEvent{}, mapRepoErr(err)
+		return repository.SegmentEvent{}, mapRepoErr(err)
 	}
-	return repository.StageEvent{
-		MatchID: matchID, EntryID: entryID, StageNumber: stage.Number, Event: kind,
-		ActorType: "user", ActorName: username, ScorerName: deviceScorerName(stage), ShooterName: shooterName(shooter),
+	return repository.SegmentEvent{
+		MatchID: matchID, EntryID: entryID, SegmentNumber: segment.Number, Event: kind,
+		ActorType: "user", ActorName: username, ScorerName: deviceScorerName(segment), ShooterName: shooterName(shooter),
 	}, nil
 }
 
-func deviceScorerName(stage repository.Stage) string {
-	if stage.ScorerLane == nil {
+func deviceScorerName(segment repository.Segment) string {
+	if segment.ScorerLane == nil {
 		return ""
 	}
-	return stage.ScorerName
+	return segment.ScorerName
 }

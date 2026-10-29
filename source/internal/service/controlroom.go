@@ -15,7 +15,7 @@ type LaneStatus struct {
 	EntryID     int64
 	ShooterName string
 	ScorerName  string
-	Status      repository.StageStatus
+	Status      repository.SegmentStatus
 	Disputed    bool
 	Disputes    int
 	Paired      bool
@@ -23,10 +23,10 @@ type LaneStatus struct {
 }
 
 type ControlRoom struct {
-	CurrentStage int
-	CanStartNext bool
-	CanAcceptAll bool
-	Lanes        []LaneStatus
+	CurrentSegment int
+	CanStartNext   bool
+	CanAcceptAll   bool
+	Lanes          []LaneStatus
 }
 
 func (s *Service) ControlRoom(ctx context.Context, matchID int64) (ControlRoom, error) {
@@ -45,7 +45,7 @@ func (s *Service) ControlRoom(ctx context.Context, matchID int64) (ControlRoom, 
 	if err != nil {
 		return ControlRoom{}, err
 	}
-	events, err := s.repo.ListStageEvents(ctx, matchID)
+	events, err := s.repo.ListSegmentEvents(ctx, matchID)
 	if err != nil {
 		return ControlRoom{}, err
 	}
@@ -62,13 +62,13 @@ func (s *Service) ControlRoom(ctx context.Context, matchID int64) (ControlRoom, 
 		}
 	}
 
-	manned := make([]repository.EntryWithStages, 0, len(entries))
+	manned := make([]repository.EntryWithSegments, 0, len(entries))
 	for _, e := range entries {
 		if !e.Withdrawn {
 			manned = append(manned, e)
 		}
 	}
-	slices.SortFunc(manned, func(a, b repository.EntryWithStages) int { return a.Lane - b.Lane })
+	slices.SortFunc(manned, func(a, b repository.EntryWithSegments) int { return a.Lane - b.Lane })
 	names := make(map[int]string, len(manned))
 	for _, e := range manned {
 		sh, err := s.repo.GetShooter(ctx, e.ShooterID)
@@ -78,10 +78,10 @@ func (s *Service) ControlRoom(ctx context.Context, matchID int64) (ControlRoom, 
 		names[e.Lane] = shooterName(sh)
 	}
 
-	room := ControlRoom{CurrentStage: comp.CurrentStage, Lanes: make([]LaneStatus, 0, len(manned))}
+	room := ControlRoom{CurrentSegment: comp.CurrentSegment, Lanes: make([]LaneStatus, 0, len(manned))}
 	open, awaiting := false, false
 	for i, e := range manned {
-		st, _ := stageOf(e, comp.CurrentStage)
+		st, _ := segmentOf(e, comp.CurrentSegment)
 		scorer := ""
 		switch {
 		case st.ScorerName != nil:
@@ -98,11 +98,11 @@ func (s *Service) ControlRoom(ctx context.Context, matchID int64) (ControlRoom, 
 		})
 	}
 	active := MatchStatus(comp.Status) == StatusActive
-	last, err := lastStage(comp.Course)
+	last, err := lastSegment(comp.Course)
 	if err != nil {
 		return ControlRoom{}, err
 	}
-	room.CanStartNext = active && comp.CurrentStage < last && stageAccepted(entries, comp.CurrentStage)
+	room.CanStartNext = active && comp.CurrentSegment < last && segmentAccepted(entries, comp.CurrentSegment)
 	room.CanAcceptAll = active && !open && awaiting
 	return room, nil
 }
@@ -120,12 +120,12 @@ func (s *Service) AcceptAll(ctx context.Context, matchID int64) (int, error) {
 		return 0, err
 	}
 	username := ActorFrom(ctx).Username
-	var items []repository.StageAcceptance
+	var items []repository.SegmentAcceptance
 	for _, e := range entries {
 		if e.Withdrawn {
 			continue
 		}
-		st, ok := stageOf(e, comp.CurrentStage)
+		st, ok := segmentOf(e, comp.CurrentSegment)
 		if !ok {
 			continue
 		}
@@ -135,22 +135,22 @@ func (s *Service) AcceptAll(ctx context.Context, matchID int64) (int, error) {
 		if st.Status != repository.StatusAwaitingAcceptance {
 			continue
 		}
-		stage, err := s.repo.GetStage(ctx, matchID, e.ID, comp.CurrentStage)
+		segment, err := s.repo.GetSegment(ctx, matchID, e.ID, comp.CurrentSegment)
 		if err != nil {
 			return 0, mapRepoErr(err)
 		}
-		ev, err := s.userStageEvent(ctx, repository.EventAcceptedAll, username, matchID, e.ID, stage)
+		ev, err := s.userSegmentEvent(ctx, repository.EventAcceptedAll, username, matchID, e.ID, segment)
 		if err != nil {
 			return 0, err
 		}
-		items = append(items, repository.StageAcceptance{StageID: stage.ID, Event: ev})
+		items = append(items, repository.SegmentAcceptance{SegmentID: segment.ID, Event: ev})
 	}
 	if len(items) == 0 {
 		return 0, nil
 	}
-	if err := s.repo.AcceptStages(ctx, username, items); err != nil {
+	if err := s.repo.AcceptSegments(ctx, username, items); err != nil {
 		if errors.Is(err, repository.ErrConflict) {
-			return 0, ErrStageNotAwaitingAcceptance
+			return 0, ErrSegmentNotAwaitingAcceptance
 		}
 		return 0, mapRepoErr(err)
 	}
@@ -158,13 +158,13 @@ func (s *Service) AcceptAll(ctx context.Context, matchID int64) (int, error) {
 		c := Change{
 			MatchID: matchID,
 			Live:    LiveMatch,
-			Stage:   &StageEvent{MatchID: matchID, EntryID: it.Event.EntryID, StageNumber: comp.CurrentStage},
+			Segment: &SegmentEvent{MatchID: matchID, EntryID: it.Event.EntryID, SegmentNumber: comp.CurrentSegment},
 		}
 		if i == 0 {
 			c.Audit = AuditEvent{
 				Action:  "match.accept_all",
 				Target:  idTarget("match", matchID),
-				Details: "stage " + strconv.Itoa(comp.CurrentStage) + ", " + strconv.Itoa(len(items)) + " lanes",
+				Details: "segment " + strconv.Itoa(comp.CurrentSegment) + ", " + strconv.Itoa(len(items)) + " lanes",
 			}
 		}
 		s.changes.Record(ctx, c)
@@ -173,10 +173,10 @@ func (s *Service) AcceptAll(ctx context.Context, matchID int64) (int, error) {
 	return len(items), nil
 }
 
-type StageHistoryFilter struct {
+type SegmentHistoryFilter struct {
 	Scorer  string
 	Shooter string
-	Stage   int
+	Segment int
 }
 
 type ScorerDisputes struct {
@@ -185,25 +185,25 @@ type ScorerDisputes struct {
 	Disputes   int
 }
 
-type StageHistory struct {
-	Events  []repository.StageEvent
+type SegmentHistory struct {
+	Events  []repository.SegmentEvent
 	Scorers []ScorerDisputes
 }
 
-func (s *Service) StageHistory(ctx context.Context, matchID int64, f StageHistoryFilter) (StageHistory, error) {
+func (s *Service) SegmentHistory(ctx context.Context, matchID int64, f SegmentHistoryFilter) (SegmentHistory, error) {
 	if _, err := s.repo.GetMatch(ctx, matchID); err != nil {
-		return StageHistory{}, mapRepoErr(err)
+		return SegmentHistory{}, mapRepoErr(err)
 	}
-	all, err := s.repo.ListStageEvents(ctx, matchID)
+	all, err := s.repo.ListSegmentEvents(ctx, matchID)
 	if err != nil {
-		return StageHistory{}, err
+		return SegmentHistory{}, err
 	}
-	history := StageHistory{Events: []repository.StageEvent{}, Scorers: []ScorerDisputes{}}
+	history := SegmentHistory{Events: []repository.SegmentEvent{}, Scorers: []ScorerDisputes{}}
 	counts := map[string]*ScorerDisputes{}
 	for _, ev := range all {
 		if (f.Scorer != "" && ev.ScorerName != f.Scorer) ||
 			(f.Shooter != "" && ev.ShooterName != f.Shooter) ||
-			(f.Stage != 0 && ev.StageNumber != f.Stage) {
+			(f.Segment != 0 && ev.SegmentNumber != f.Segment) {
 			continue
 		}
 		history.Events = append(history.Events, ev)

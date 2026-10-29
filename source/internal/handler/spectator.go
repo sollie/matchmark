@@ -23,15 +23,15 @@ func (h *Handler) visibilityRoutes(r chi.Router) {
 }
 
 type visibilityBody struct {
-	ShowNames       bool `json:"show_names"`
-	ShowClubs       bool `json:"show_clubs"`
-	ShowCountries   bool `json:"show_countries"`
-	ShowStageScores bool `json:"show_stage_scores"`
-	ShowRingCounts  bool `json:"show_ring_counts"`
+	ShowNames         bool `json:"show_names"`
+	ShowClubs         bool `json:"show_clubs"`
+	ShowCountries     bool `json:"show_countries"`
+	ShowSegmentScores bool `json:"show_segment_scores"`
+	ShowRingCounts    bool `json:"show_ring_counts"`
 }
 
 func visibilityJSON(v repository.Visibility) visibilityBody {
-	return visibilityBody{v.Names, v.Clubs, v.Countries, v.StageScores, v.RingCounts}
+	return visibilityBody{v.Names, v.Clubs, v.Countries, v.SegmentScores, v.RingCounts}
 }
 
 func (h *Handler) getVisibility(r *http.Request) (int, any, error) {
@@ -55,7 +55,7 @@ func (h *Handler) setVisibility(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	v := repository.Visibility{Names: body.ShowNames, Clubs: body.ShowClubs, Countries: body.ShowCountries, StageScores: body.ShowStageScores, RingCounts: body.ShowRingCounts}
+	v := repository.Visibility{Names: body.ShowNames, Clubs: body.ShowClubs, Countries: body.ShowCountries, SegmentScores: body.ShowSegmentScores, RingCounts: body.ShowRingCounts}
 	if err := h.svc.SetVisibility(r.Context(), id, v); err != nil {
 		return fail(err)
 	}

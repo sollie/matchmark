@@ -129,7 +129,7 @@ func (r *Repository) PurgeScreensSeenBefore(ctx context.Context, cutoff time.Tim
 
 func (r *Repository) ListAssignableMatches(ctx context.Context) ([]Match, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_stage, COALESCE(activated_at, '')
+		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, '')
 		 FROM matches WHERE status != 'finished' ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (r *Repository) ListAssignableMatches(ctx context.Context) ([]Match, error)
 	out := []Match{}
 	for rows.Next() {
 		var c Match
-		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage, &c.ActivatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

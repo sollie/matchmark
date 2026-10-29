@@ -28,13 +28,13 @@ func TestBackToDraftRefusedWhenAnyEntryHasHits(t *testing.T) {
 		setup func(t *testing.T, f *scoringFixture)
 	}{
 		{"unlocked hits", func(t *testing.T, f *scoringFixture) {
-			f.score(t, f.entries[1], 1, map[string]any{"x": 12})
+			f.score(t, f.entries[1], 1, map[string]any{"x": 24})
 		}},
 		{"locked hits", func(t *testing.T, f *scoringFixture) {
-			f.scoreAccepted(t, f.entries[1], 1, map[string]any{"x": 12})
+			f.scoreAccepted(t, f.entries[1], 1, map[string]any{"x": 24})
 		}},
 		{"withdrawn entry with hits", func(t *testing.T, f *scoringFixture) {
-			f.score(t, f.entries[1], 1, map[string]any{"x": 12})
+			f.score(t, f.entries[1], 1, map[string]any{"x": 24})
 			f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", f.comp, f.entries[1]), nil)
 		}},
 	}
@@ -85,7 +85,7 @@ func TestBackToDraftBehavesLikeDraft(t *testing.T) {
 	if status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil); status != http.StatusOK || out["phase"] != "not_started" {
 		t.Fatalf("scorer session: %d %v", status, out)
 	}
-	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0)); status != http.StatusConflict {
+	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(12, 0)); status != http.StatusConflict {
 		t.Fatalf("scorer hits status %d", status)
 	}
 	if _, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/pairings", f.comp), nil); len(out["pairings"].([]any)) != 1 {
@@ -155,7 +155,7 @@ func TestBackToDraftRaceWithScorerHit(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			hit, _ = f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0))
+			hit, _ = f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(12, 0))
 		}()
 		go func() {
 			defer wg.Done()

@@ -18,16 +18,16 @@ type Device struct {
 }
 
 type ScorerSession struct {
-	MatchID      int64
-	Lane         int
-	CurrentStage int
-	ScoreLane    int
-	EntryID      int64
-	ShooterName  string
-	Stages       []repository.StageInfo
-	Parts        map[int]string
-	Phase        Phase
-	Acceptance   *Acceptance
+	MatchID        int64
+	Lane           int
+	CurrentSegment int
+	ScoreLane      int
+	EntryID        int64
+	ShooterName    string
+	Segments       []repository.SegmentInfo
+	Names          map[int]string
+	Phase          Phase
+	Acceptance     *Acceptance
 }
 
 type Phase string
@@ -36,42 +36,42 @@ const (
 	PhaseScoring         Phase = "scoring"
 	PhaseWaiting         Phase = "waiting"
 	PhaseNeedsAcceptance Phase = "needs_acceptance"
-	PhaseNextStage       Phase = "next_stage"
+	PhaseNextSegment     Phase = "next_segment"
 	PhaseFinished        Phase = "finished"
 	PhaseNotStarted      Phase = "not_started"
 )
 
 type Acceptance struct {
-	StageNumber int
-	Counts      repository.RingCounts
-	Total       int
-	ScorerName  string
+	SegmentNumber int
+	Counts        repository.RingCounts
+	Total         int
+	ScorerName    string
 }
 
-func stageOf(e repository.EntryWithStages, number int) (repository.StageInfo, bool) {
-	for _, st := range e.Stages {
+func segmentOf(e repository.EntryWithSegments, number int) (repository.SegmentInfo, bool) {
+	for _, st := range e.Segments {
 		if st.Number == number {
 			return st, true
 		}
 	}
-	return repository.StageInfo{}, false
+	return repository.SegmentInfo{}, false
 }
 
 func derivePhase(t ScoreTarget) (Phase, *Acceptance) {
-	if st, ok := stageOf(t.Entry, t.CurrentStage); ok && st.Status == repository.StatusOpen {
+	if st, ok := segmentOf(t.Entry, t.CurrentSegment); ok && st.Status == repository.StatusOpen {
 		if st.Started {
-			return PhaseNextStage, nil
+			return PhaseNextSegment, nil
 		}
 		return PhaseScoring, nil
 	}
-	if st, ok := stageOf(t.Own, t.CurrentStage); ok && st.Status == repository.StatusAwaitingAcceptance {
+	if st, ok := segmentOf(t.Own, t.CurrentSegment); ok && st.Status == repository.StatusAwaitingAcceptance {
 		c := st.Counts
 		name := ""
 		if st.ScorerName != nil {
 			name = *st.ScorerName
 		}
 		return PhaseNeedsAcceptance, &Acceptance{
-			StageNumber: st.Number, Counts: c, ScorerName: name,
+			SegmentNumber: st.Number, Counts: c, ScorerName: name,
 			Total: c.X + c.Ten + c.Nine + c.Eight + c.Seven + c.Zero + c.Miss,
 		}
 	}
@@ -156,38 +156,36 @@ func (s *Service) DeviceSession(ctx context.Context, d Device) (ScorerSession, e
 		return ScorerSession{}, err
 	}
 	phase, acceptance := derivePhase(t)
-	return ScorerSession{MatchID: d.MatchID, Lane: d.Lane, CurrentStage: t.CurrentStage, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Stages: t.Entry.Stages, Parts: stageParts(comp.Course), Phase: phase, Acceptance: acceptance}, nil
+	return ScorerSession{MatchID: d.MatchID, Lane: d.Lane, CurrentSegment: t.CurrentSegment, ScoreLane: t.ScoreLane, EntryID: t.Entry.ID, ShooterName: t.ShooterName, Segments: t.Entry.Segments, Names: segmentNames(comp.Course), Phase: phase, Acceptance: acceptance}, nil
 }
 
-func stageParts(courseKey string) map[int]string {
+func segmentNames(courseKey string) map[int]string {
 	course, err := rulebook.CourseByKey(courseKey)
 	if err != nil {
 		return nil
 	}
-	parts := map[int]string{}
-	for _, st := range course.Stages {
-		if st.Part != "" {
-			parts[st.StageNumber] = st.Part
-		}
+	names := map[int]string{}
+	for _, st := range course.Segments {
+		names[st.Number] = st.Name
 	}
-	return parts
+	return names
 }
 
-func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber int, c repository.RingCounts) error {
+func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, segmentNumber int, c repository.RingCounts) error {
 	t, err := s.ScoreTarget(ctx, d)
 	if err != nil {
 		return err
 	}
-	if stageNumber != t.CurrentStage {
-		return ErrNotCurrentStage
+	if segmentNumber != t.CurrentSegment {
+		return ErrNotCurrentSegment
 	}
-	if err := s.writeRingCounts(ctx, d.MatchID, t.Entry.ID, stageNumber, c, true); err != nil {
+	if err := s.writeRingCounts(ctx, d.MatchID, t.Entry.ID, segmentNumber, c, true); err != nil {
 		return err
 	}
 	s.changes.Record(ctx, Change{
 		Audit: AuditEvent{
-			Action:  "stage.set_counts",
-			Target:  stageTarget(d.MatchID, t.Entry.ID, stageNumber),
+			Action:  "segment.set_counts",
+			Target:  segmentTarget(d.MatchID, t.Entry.ID, segmentNumber),
 			Details: "lane " + strconv.Itoa(d.Lane) + " match " + strconv.FormatInt(d.MatchID, 10),
 		},
 		Actor:   &Actor{Username: DeviceActor, IP: ActorFrom(ctx).IP},
@@ -199,7 +197,7 @@ func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber
 
 func mapAcceptanceErr(err error) error {
 	if errors.Is(err, repository.ErrConflict) {
-		return ErrStageNotAwaitingAcceptance
+		return ErrSegmentNotAwaitingAcceptance
 	}
 	return mapRepoErr(err)
 }

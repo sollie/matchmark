@@ -155,9 +155,9 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if err != nil {
 		return 0, err
 	}
-	seeds := make([]repository.StageSeed, 0, len(course.Stages))
-	for _, st := range course.Stages {
-		seeds = append(seeds, repository.StageSeed{Number: st.StageNumber, ExpectedShots: st.ExpectedShots})
+	seeds := make([]repository.SegmentSeed, 0, len(course.Segments))
+	for _, st := range course.Segments {
+		seeds = append(seeds, repository.SegmentSeed{Number: st.Number, ExpectedShots: st.Shots})
 	}
 	id, err := s.repo.CreateEntry(ctx, e, seeds)
 	if err != nil {
@@ -186,6 +186,6 @@ func entryTarget(matchID, entryID int64) string {
 	return "match:" + strconv.FormatInt(matchID, 10) + "/entry:" + strconv.FormatInt(entryID, 10)
 }
 
-func stageTarget(matchID, entryID int64, stage int) string {
-	return entryTarget(matchID, entryID) + "/stage:" + strconv.Itoa(stage)
+func segmentTarget(matchID, entryID int64, segment int) string {
+	return entryTarget(matchID, entryID) + "/segment:" + strconv.Itoa(segment)
 }

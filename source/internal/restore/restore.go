@@ -14,14 +14,14 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-const SchemaVersion = 3
+const SchemaVersion = 4
 
 const emittedAtLayout = "2006-01-02T15:04:05.000Z"
 
 const (
-	eventStageStatus   = "stage_status"
-	eventStageLocked   = "stage_locked"
-	eventStageUnlocked = "stage_unlocked"
+	eventSegmentStatus   = "segment_status"
+	eventSegmentLocked   = "segment_locked"
+	eventSegmentUnlocked = "segment_unlocked"
 )
 
 const (
@@ -62,7 +62,7 @@ type Entry struct {
 	Shooter  Shooter `json:"shooter"`
 }
 
-type Stage struct {
+type Segment struct {
 	Number        int `json:"number"`
 	ExpectedShots int `json:"expected_shots"`
 }
@@ -75,7 +75,7 @@ type Event struct {
 	Competition   Competition     `json:"competition"`
 	Match         Match           `json:"match"`
 	Entry         Entry           `json:"entry"`
-	Stage         Stage           `json:"stage"`
+	Segment       Segment         `json:"segment"`
 	RingCounts    []int           `json:"ring_counts"`
 	Status        string          `json:"status"`
 	LockedBy      json.RawMessage `json:"locked_by"`
@@ -93,7 +93,7 @@ type Stats struct {
 	Malformed int
 }
 
-type ScoredStage struct {
+type ScoredSegment struct {
 	Number        int
 	ExpectedShots int
 	RingCounts    [7]int
@@ -112,7 +112,7 @@ type RestoredEntry struct {
 	Lane     int
 	Category string
 	Shooter  Shooter
-	Stages   []ScoredStage
+	Segments []ScoredSegment
 }
 
 type RestoredMatch struct {
@@ -175,10 +175,10 @@ func parseLine(raw []byte) (Event, lineKind, error) {
 	if err := json.Unmarshal(raw, &ev); err != nil {
 		return Event{}, kindMalformed, nil
 	}
-	if ev.Event != eventStageStatus && ev.Event != eventStageLocked && ev.Event != eventStageUnlocked {
+	if ev.Event != eventSegmentStatus && ev.Event != eventSegmentLocked && ev.Event != eventSegmentUnlocked {
 		return Event{}, kindNonScore, nil
 	}
-	if ev.Event != eventStageStatus || ev.SchemaVersion != SchemaVersion {
+	if ev.Event != eventSegmentStatus || ev.SchemaVersion != SchemaVersion {
 		return Event{}, kindVersion, fmt.Errorf("unsupported schema_version %d (supported: %d)", ev.SchemaVersion, SchemaVersion)
 	}
 	if !valid(ev) {
@@ -207,7 +207,7 @@ func valid(ev Event) bool {
 		ev.Competition.ID != 0 &&
 		ev.Match.ID != 0 &&
 		ev.Entry.ID != 0 &&
-		ev.Stage.Number > 0
+		ev.Segment.Number > 0
 }
 
 func parseLockedBy(raw json.RawMessage) (string, int, bool) {
@@ -228,10 +228,10 @@ func ringCountsFromSlice(s []int) [7]int {
 	return counts
 }
 
-type stageKey struct {
-	match int64
-	entry int64
-	stage int
+type segmentKey struct {
+	match   int64
+	entry   int64
+	segment int
 }
 
 func Fold(events []Event) Plan {
@@ -247,22 +247,22 @@ func Fold(events []Event) Plan {
 	comps := map[int64]Match{}
 	containers := map[int64]Competition{}
 	entries := map[[2]int64]Entry{}
-	stages := map[stageKey]Event{}
+	segments := map[segmentKey]Event{}
 	for _, ev := range ordered {
 		comps[ev.Match.ID] = ev.Match
 		containers[ev.Match.ID] = ev.Competition
 		entries[[2]int64{ev.Match.ID, ev.Entry.ID}] = ev.Entry
-		k := stageKey{ev.Match.ID, ev.Entry.ID, ev.Stage.Number}
-		stages[k] = ev
+		k := segmentKey{ev.Match.ID, ev.Entry.ID, ev.Segment.Number}
+		segments[k] = ev
 	}
 
-	byEntry := map[[2]int64][]ScoredStage{}
-	for k, ev := range stages {
+	byEntry := map[[2]int64][]ScoredSegment{}
+	for k, ev := range segments {
 		lockedBy, lane, _ := parseLockedBy(ev.LockedBy)
 		ek := [2]int64{k.match, k.entry}
-		byEntry[ek] = append(byEntry[ek], ScoredStage{
-			Number:        k.stage,
-			ExpectedShots: ev.Stage.ExpectedShots,
+		byEntry[ek] = append(byEntry[ek], ScoredSegment{
+			Number:        k.segment,
+			ExpectedShots: ev.Segment.ExpectedShots,
 			RingCounts:    ringCountsFromSlice(ev.RingCounts),
 			Status:        ev.Status,
 			LockedBy:      lockedBy,
@@ -280,7 +280,7 @@ func Fold(events []Event) Plan {
 		sort.Slice(ss, func(i, j int) bool { return ss[i].Number < ss[j].Number })
 		e := entries[ek]
 		byComp[ek[0]] = append(byComp[ek[0]], RestoredEntry{
-			ID: e.ID, Lane: e.Lane, Category: e.Category, Shooter: e.Shooter, Stages: ss,
+			ID: e.ID, Lane: e.Lane, Category: e.Category, Shooter: e.Shooter, Segments: ss,
 		})
 	}
 

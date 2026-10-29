@@ -51,7 +51,7 @@ func (s *Service) RestoreScoreLog(ctx context.Context, plan restore.Plan, merge 
 	s.changes.Record(ctx, Change{Live: LiveAll, Screens: true})
 	total.Matches = counts.Matches
 	total.Entries = counts.Entries
-	total.Stages = counts.Stages
+	total.Segments = counts.Segments
 	return total, nil
 }
 
@@ -65,8 +65,8 @@ func buildRestoreMatch(c restore.RestoredMatch) (repository.RestoreMatch, error)
 		return repository.RestoreMatch{}, fmt.Errorf("match %d: %w", c.ID, err)
 	}
 	expected := map[int]int{}
-	for _, st := range course.Stages {
-		expected[st.StageNumber] = st.ExpectedShots
+	for _, st := range course.Segments {
+		expected[st.Number] = st.Shots
 	}
 	rc := repository.RestoreMatch{CompetitionID: c.Competition.ID, CompetitionName: c.Competition.Name, Match: repository.Match{
 		ID: c.ID, Name: c.Name, Date: c.Date, Course: c.CourseOfFire.Key,
@@ -80,18 +80,18 @@ func buildRestoreMatch(c restore.RestoredMatch) (repository.RestoreMatch, error)
 				Club: e.Shooter.Club,
 			},
 		}
-		scored := map[int]restore.ScoredStage{}
-		for _, st := range e.Stages {
+		scored := map[int]restore.ScoredSegment{}
+		for _, st := range e.Segments {
 			if _, ok := expected[st.Number]; !ok {
-				return repository.RestoreMatch{}, fmt.Errorf("match %d entry %d: unknown stage %d", c.ID, e.ID, st.Number)
+				return repository.RestoreMatch{}, fmt.Errorf("match %d entry %d: unknown segment %d", c.ID, e.ID, st.Number)
 			}
 			scored[st.Number] = st
 		}
-		for _, cs := range course.Stages {
-			rs := repository.RestoreStage{Number: cs.StageNumber, Expected: cs.ExpectedShots}
-			if st, ok := scored[cs.StageNumber]; ok {
+		for _, cs := range course.Segments {
+			rs := repository.RestoreSegment{Number: cs.Number, Expected: cs.Shots}
+			if st, ok := scored[cs.Number]; ok {
 				rs.Scored = true
-				rs.Status = repository.StageStatus(st.Status)
+				rs.Status = repository.SegmentStatus(st.Status)
 				rs.Counts = ringCounts(st.RingCounts)
 				rs.ScorerName = st.ScorerName
 				rs.LockedAt = st.LockedAt
@@ -106,22 +106,22 @@ func buildRestoreMatch(c restore.RestoredMatch) (repository.RestoreMatch, error)
 			if rs.Status != repository.StatusAccepted {
 				allAccepted = false
 			}
-			re.Stages = append(re.Stages, rs)
+			re.Segments = append(re.Segments, rs)
 		}
 		rc.Entries = append(rc.Entries, re)
 	}
 	rc.Match.Status = string(StatusActive)
-	rc.Match.CurrentStage = restoredCurrentStage(rc.Entries)
+	rc.Match.CurrentSegment = restoredCurrentSegment(rc.Entries)
 	if allAccepted {
 		rc.Match.Status = string(StatusFinished)
 	}
 	return rc, nil
 }
 
-func restoredCurrentStage(entries []repository.RestoreEntry) int {
+func restoredCurrentSegment(entries []repository.RestoreEntry) int {
 	lowest, last := 0, 1
 	for _, e := range entries {
-		for _, st := range e.Stages {
+		for _, st := range e.Segments {
 			last = max(last, st.Number)
 			if st.Status != repository.StatusAccepted && (lowest == 0 || st.Number < lowest) {
 				lowest = st.Number
@@ -159,12 +159,12 @@ func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreMatch)
 			conflicts = append(conflicts, conflict)
 			continue
 		}
-		e.Stages = append([]repository.RestoreStage(nil), e.Stages...)
-		for i, st := range e.Stages {
+		e.Segments = append([]repository.RestoreSegment(nil), e.Segments...)
+		for i, st := range e.Segments {
 			if !st.Scored {
 				continue
 			}
-			cur, err := s.repo.GetStage(ctx, id, e.ID, st.Number)
+			cur, err := s.repo.GetSegment(ctx, id, e.ID, st.Number)
 			if errors.Is(err, repository.ErrNotFound) {
 				continue
 			}
@@ -172,10 +172,10 @@ func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreMatch)
 				return rc, nil, err
 			}
 			if cur.Status != repository.StatusOpen && !sameLock(cur, st) {
-				conflicts = append(conflicts, fmt.Sprintf("match %d entry %d stage %d: database has %+v locked by %s at %s, log has %+v locked by %s at %s",
+				conflicts = append(conflicts, fmt.Sprintf("match %d entry %d segment %d: database has %+v locked by %s at %s, log has %+v locked by %s at %s",
 					id, e.ID, st.Number, cur.Counts, lockOwner(cur.ScorerLane, cur.ScorerName), cur.LockedAt,
 					st.Counts, lockOwner(st.ScorerLane, st.ScorerName), st.LockedAt))
-				e.Stages[i].Scored = false
+				e.Segments[i].Scored = false
 			}
 		}
 		kept.Entries = append(kept.Entries, e)
@@ -183,7 +183,7 @@ func (s *Service) dropConflicts(ctx context.Context, rc repository.RestoreMatch)
 	return kept, conflicts, nil
 }
 
-func sameLock(cur repository.Stage, st repository.RestoreStage) bool {
+func sameLock(cur repository.Segment, st repository.RestoreSegment) bool {
 	sameLane := (cur.ScorerLane == nil) == (st.ScorerLane == nil) &&
 		(cur.ScorerLane == nil || *cur.ScorerLane == *st.ScorerLane)
 	return cur.Counts == st.Counts && sameLane && cur.Status == st.Status && cur.ScorerName == st.ScorerName &&
