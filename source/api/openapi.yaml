@@ -17,6 +17,7 @@ tags:
   - name: pairings
   - name: scorer
   - name: spectator
+  - name: screens
   - name: reports
 paths:
   /api/admin/login:
@@ -2155,6 +2156,238 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Rulebook'
+  /api/spectator/screens:
+    post:
+      operationId: registerScreen
+      tags: [screens]
+      summary: Register this display for remote control
+      description: >
+        Opt-in registration of a spectator display. Returns a 128-bit random token,
+        stored hashed server-side, and a 6-character code to show on the screen. The
+        screen appears in the admin list only after an admin approves the code.
+        Registration is capped at 50 screens and rate limited per client IP.
+      responses:
+        '201':
+          description: The one-time token and the code to show on the screen
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, code]
+                properties:
+                  token:
+                    type: string
+                  code:
+                    type: string
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          description: Too many registrations from this address
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/spectator/screens/self:
+    delete:
+      operationId: leaveScreen
+      tags: [screens]
+      summary: Delete this screen's registration and revert to unmanaged
+      security:
+        - screenBearer: []
+      responses:
+        '204':
+          description: Registration deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/screens:
+    get:
+      operationId: listScreens
+      tags: [screens]
+      summary: Approved screens
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Approved screens
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [screens]
+                properties:
+                  screens:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Screen'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/screens/approve:
+    post:
+      operationId: approveScreen
+      tags: [screens]
+      summary: Approve a pending screen by the code it shows
+      description: The name defaults to "Screen N" when omitted or empty.
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                  maxLength: 60
+      responses:
+        '200':
+          description: The approved screen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Screen'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/screens/assignment:
+    put:
+      operationId: assignAllScreens
+      tags: [screens]
+      summary: Apply one match to all approved screens
+      description: A one-time bulk write, not a persistent setting; screens approved later start unassigned.
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_id]
+              properties:
+                match_id:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          description: Number of screens assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assigned]
+                properties:
+                  assigned:
+                    type: integer
+                    format: int64
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/screens/assignable-matches:
+    get:
+      operationId: listAssignableMatches
+      tags: [screens]
+      summary: Matches that can be assigned to a screen (draft or active)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Non-finished matches
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [matches]
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, date, course, status]
+                      properties:
+                        id:
+                          type: integer
+                          format: int64
+                        name:
+                          type: string
+                        date:
+                          type: string
+                        course:
+                          type: string
+                        status:
+                          $ref: '#/components/schemas/MatchStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/screens/{screenID}:
+    parameters:
+      - name: screenID
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    put:
+      operationId: updateScreen
+      tags: [screens]
+      summary: Rename a screen and assign or clear its match
+      description: Omitted fields are left unchanged; `match_id` null clears the assignment.
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 60
+                match_id:
+                  type: integer
+                  format: int64
+                  nullable: true
+      responses:
+        '200':
+          description: The updated screen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Screen'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: removeScreen
+      tags: [screens]
+      summary: Remove a screen
+      security:
+        - adminCookie: []
+      responses:
+        '204':
+          description: Screen removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/spectator/matches:
     get:
       operationId: listSpectatorMatches
@@ -2267,6 +2500,9 @@ components:
     deviceBearer:
       type: http
       scheme: bearer
+    screenBearer:
+      type: http
+      scheme: bearer
   parameters:
     MatchID:
       name: matchID
@@ -2369,6 +2605,26 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    Screen:
+      type: object
+      required: [id, name, match_id, online, last_seen_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        match_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: The assigned match; null while unassigned
+        online:
+          type: boolean
+          description: Seen within the last 2 minutes
+        last_seen_at:
+          type: string
+          format: date-time
     Club:
       type: object
       required: [name, has_logo, version]
