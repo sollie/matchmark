@@ -117,3 +117,5 @@ Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, 
 ### Domain docs
 
 Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+The remote-controlled screen lifecycle (pending, approved, assigned) is defined under "Screen lifecycle" in `GLOSSARY.md` and in the spec's "Remote-controlled screens" section.
