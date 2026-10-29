@@ -42,6 +42,10 @@ ADMIN_USERNAME='admin' ADMIN_PASSWORD='at-least-16-characters' CGO_ENABLED=0 go 
 
 For frontend development run `npm run dev` in `source/web`; it proxies `/api` to `localhost:8080`. Run the frontend tests with `npm test` (Vitest, jsdom and Testing Library; dev-only).
 
+## Git hooks
+
+Run `scripts/install-hooks.sh` once per clone. The pre-commit hook rejects commits while untracked, non-ignored files exist. The pre-push hook runs `scripts/verify-web.sh`, which runs `npm run verify` in `source/web` when `source/web` or `source/api` changed relative to `origin/main`, and the full e2e suite when `source/web/src` changed. Set `SKIP_E2E=1` to skip e2e.
+
 ## End-to-end tests
 
 Playwright drives the real binary with the embedded SPA in Chromium, Firefox and WebKit (ADR 0008). Each run starts a fresh server with a temporary database.
