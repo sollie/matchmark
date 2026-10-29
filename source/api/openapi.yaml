@@ -3313,10 +3313,12 @@ components:
           description: One item per accepted segment; Range admin when the admin scored the segment
           items:
             type: object
-            required: [segment, scorer]
+            required: [segment, segment_name, scorer]
             properties:
               segment:
                 type: integer
+              segment_name:
+                type: string
               scorer:
                 type: string
     ScorerSession:

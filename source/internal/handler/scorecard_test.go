@@ -202,7 +202,7 @@ func TestScorecardSummaryNamesShooterAndScorers(t *testing.T) {
 	if ct := header.Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("content type %q", ct)
 	}
-	want := `{"lane":3,"scorers":[{"scorer":"Range admin","segment":1}],"shooter":"A HANSEN"}`
+	want := `{"lane":3,"scorers":[{"scorer":"Range admin","segment":1,"segment_name":"Match 1"}],"shooter":"A HANSEN"}`
 	var got map[string]any
 	if err := json.Unmarshal(body, &got); err != nil {
 		t.Fatal(err)
