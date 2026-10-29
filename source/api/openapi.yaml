@@ -2265,6 +2265,36 @@ paths:
                       $ref: '#/components/schemas/Screen'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/screens/stream:
+    get:
+      operationId: streamScreensAdmin
+      tags: [screens]
+      summary: Admin change pings for the screen registry, as server-sent events
+      description: |
+        Sends a `changed` event on connect and whenever a screen is approved,
+        updated, assigned, removed, leaves or is purged, and when a match change
+        affects screens. The client refetches `/api/screens`.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Event stream of `changed` events
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Too many open streams
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/screens/approve:
     post:
       operationId: approveScreen
