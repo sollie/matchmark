@@ -2,6 +2,7 @@
   import { api } from "../lib/api/client";
   import { club, clubLogoUrl } from "../lib/club.svelte";
   import { matchRoute, navigate, router } from "../lib/router.svelte";
+  import { loadRulebook, segmentLabel } from "../lib/rulebook.svelte";
   import type { components } from "../lib/api/schema";
 
   type Match = components["schemas"]["Match"];
@@ -32,6 +33,7 @@
   );
 
   $effect(() => {
+    void loadRulebook();
     void (async () => {
       const { data } = await api.GET("/api/spectator/matches");
       matches = (data?.matches ?? []).filter((c) => c.status === "finished");
@@ -106,7 +108,8 @@
                   {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
                   {#if showClubs}<th>Club</th>{/if}
                   {#if showCountries}<th>Country</th>{/if}
-                  {#if showSegments}{#each results.segments as n (n)}<th class="num">S{n}</th
+                  {#if showSegments}{#each results.segments as n (n)}<th class="num"
+                        >{segmentLabel(results.match.course, n)}</th
                       >{/each}{/if}
                   <th class="num">Total</th>
                   {#if showX}<th class="num">X</th>{/if}

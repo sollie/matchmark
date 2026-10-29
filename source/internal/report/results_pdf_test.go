@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/png"
 	"regexp"
+	"slices"
 	"testing"
 	"time"
 )
@@ -121,5 +122,23 @@ func TestResultsPDFWithoutClubSettings(t *testing.T) {
 	}
 	if got := pageCount(out); got != 3 {
 		t.Fatalf("pages = %d", got)
+	}
+}
+
+func TestResultsColumnsUseSegmentNames(t *testing.T) {
+	d := sampleResults()
+	d.SegmentNames = []string{"Match 1", "Match 2"}
+	columns, _ := resultsColumns(d)
+	var titles []string
+	for _, c := range columns {
+		titles = append(titles, c.title)
+	}
+	for _, want := range d.SegmentNames {
+		if !slices.Contains(titles, want) {
+			t.Fatalf("titles %q lack %q", titles, want)
+		}
+	}
+	if slices.Contains(titles, "S1") {
+		t.Fatalf("titles %q still numbered", titles)
 	}
 }
