@@ -1368,6 +1368,7 @@ export interface components {
         ScreenState: {
             /** @enum {string} */
             state: "waiting" | "match";
+            approved: boolean;
             /** Format: int64 */
             match_id: number | null;
         };
