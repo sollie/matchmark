@@ -16,6 +16,10 @@ _Avoid_: Tournament, event
 One course shot by the shooters of a Competition, on one date inside the Competition's range. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name, date and course can be edited while it is a draft; the course is fixed once it has entries. A shooter has at most one entry per Match.
 _Avoid_: Competition (for a single course), event
 
+**Back to draft**:
+The admin action that returns an active Match to draft, only while no hit counts are stored for any entry (including unlocked and withdrawn ones). It does not restart the Match: pairings, Screen assignments, lanes and the current stage are kept, devices show "not started" and spectators do not see the Match until it is started again, which sets a new start time.
+_Avoid_: Reset, restart, reopen
+
 **Part**:
 One of the rulebook's "Match 1" to "Match 5" groups of stages within the 150 course. Stages are numbered internally; the Part is a label shown in the UI and on reports.
 _Avoid_: Match (for a group of stages)
