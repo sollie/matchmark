@@ -18,11 +18,32 @@ let send: ((data: unknown) => void) | null;
 function install(status: string, extra?: Parameters<typeof stubFetch>[0]) {
   const calls = stubFetch(
     (call) =>
-      extra?.(call) ?? {
-        body: {
-          matches: [{ id: 7, name: "Club Match", date: "2026-05-01", course: "150", status }],
-        },
-      },
+      extra?.(call) ??
+      (call.path === "/api/rulebook"
+        ? {
+            body: {
+              courses: [
+                {
+                  key: "150",
+                  label: "150",
+                  discipline: "1500",
+                  total_shots: 150,
+                  categories: [],
+                  stages: [],
+                  segments: [
+                    { number: 1, name: "Match 1", stages: [1, 2], shots: 24 },
+                    { number: 2, name: "Match 5 · Stage 1+2", stages: [7, 8], shots: 30 },
+                  ],
+                },
+              ],
+              rings: [],
+            },
+          }
+        : {
+            body: {
+              matches: [{ id: 7, name: "Club Match", date: "2026-05-01", course: "150", status }],
+            },
+          }),
   );
   const previous = globalThis.fetch;
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
@@ -72,6 +93,20 @@ describe("Spectator status row", () => {
     expect(within(row).getByText("Live")).toBeTruthy();
     expect(screen.queryByText("Segment progress")).toBeNull();
     expect(container.querySelector("progress")).toBeNull();
+  });
+
+  it("heads each segment column with its short score-card name", async () => {
+    install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    send!({
+      current_segment: 1,
+      total_segments: 2,
+      standings: [standing(1, ["in_progress", "not_started"])],
+    });
+    expect(await screen.findByRole("columnheader", { name: "M1" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Stage 1+2" })).toBeTruthy();
   });
 
   it("shows Finished instead of the segment position", async () => {

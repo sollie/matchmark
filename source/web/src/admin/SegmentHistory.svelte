@@ -2,10 +2,11 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
+  import { segmentLabel } from "../lib/rulebook.svelte";
 
   type History = components["schemas"]["SegmentHistory"];
 
-  let { matchId, version }: { matchId: number; version: number } = $props();
+  let { matchId, version, course }: { matchId: number; version: number; course: string } = $props();
 
   let history = $state<History | null>(null);
   let error = $state("");
@@ -90,7 +91,8 @@
       Segment
       <select aria-label="Filter by segment" bind:value={segment}>
         <option value="">All segments</option>
-        {#each segmentOptions as n (n)}<option value={String(n)}>Segment {n}</option>{/each}
+        {#each segmentOptions as n (n)}<option value={String(n)}>{segmentLabel(course, n)}</option
+          >{/each}
       </select>
     </label>
   </div>
@@ -122,7 +124,7 @@
           {#each history.events as e (e.id)}
             <tr>
               <td>{new Date(e.time).toLocaleString()}</td>
-              <td>{e.segment}</td>
+              <td>{segmentLabel(course, e.segment)}</td>
               <td>{labels[e.event]}</td>
               <td>{e.shooter_name}</td>
               <td>{e.scorer_name || "Admin"}</td>

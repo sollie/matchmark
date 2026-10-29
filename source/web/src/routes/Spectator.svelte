@@ -2,6 +2,7 @@
   import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
   import SegmentCell from "../lib/SegmentCell.svelte";
+  import { loadRulebook, segmentColumn, segmentLabel } from "../lib/rulebook.svelte";
   import { openStream, type StreamState } from "../lib/sse";
   import { ScreenControl } from "../lib/screenControl.svelte";
   import type { components } from "../lib/api/schema";
@@ -56,6 +57,7 @@
   }
 
   $effect(() => {
+    void loadRulebook();
     void loadMatches();
   });
 
@@ -176,7 +178,11 @@
               {#if showClubs}<th class="optional">Club</th>{/if}
               {#if showCountries}<th class="optional">Country</th>{/if}
               <th class="optional">Category</th>
-              {#each segmentNumbers as n (n)}<th class="num">S{n}</th>{/each}
+              {#each segmentNumbers as n (n)}<th
+                  class="num"
+                  title={segmentLabel(current?.course ?? "", n)}
+                  >{segmentColumn(current?.course ?? "", n)}</th
+                >{/each}
               <th class="num">Total</th>
               {#if showX}<th class="num">X</th>{/if}
               {#if finished}<th>Scorecard</th>{/if}

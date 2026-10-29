@@ -95,8 +95,8 @@ describe("Entries", () => {
 
   it("titles segment columns with the rulebook segment name", () => {
     setup([entry()], "150");
-    expect(screen.getByRole("columnheader", { name: "S1" }).getAttribute("title")).toBe("Match 1");
-    expect(screen.getByRole("columnheader", { name: "S2" }).getAttribute("title")).toBe(
+    expect(screen.getByRole("columnheader", { name: "M1" }).getAttribute("title")).toBe("Match 1");
+    expect(screen.getByRole("columnheader", { name: "Segment 2" }).getAttribute("title")).toBe(
       "Segment 2",
     );
   });

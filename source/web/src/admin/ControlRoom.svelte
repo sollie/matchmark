@@ -2,15 +2,17 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
+  import { segmentLabel } from "../lib/rulebook.svelte";
 
   type ControlRoom = components["schemas"]["ControlRoom"];
   type Lane = components["schemas"]["ControlRoomLane"];
 
   let {
     matchId,
+    course,
     version,
     changed,
-  }: { matchId: number; version: number; changed: () => Promise<void> } = $props();
+  }: { matchId: number; course: string; version: number; changed: () => Promise<void> } = $props();
 
   let room = $state<ControlRoom | null>(null);
   let error = $state("");
@@ -82,7 +84,7 @@
 <section class="card">
   <h2>Control room</h2>
   {#if room}
-    <p>Current segment: <strong>{room.current_segment}</strong></p>
+    <p>Current segment: <strong>{segmentLabel(course, room.current_segment)}</strong></p>
     <div class="row">
       <button class="primary" disabled={!room.can_start_next} onclick={startNext}
         >Start next segment</button
