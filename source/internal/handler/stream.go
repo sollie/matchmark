@@ -52,6 +52,7 @@ type streamEvent struct {
 	Name  string
 	Data  any
 	Final bool
+	Skip  bool
 }
 
 type streamSnapshot func(ctx context.Context) (streamEvent, error)
@@ -104,7 +105,7 @@ func (h *Handler) serveStream(w http.ResponseWriter, r *http.Request, role strea
 			}
 		case <-sub.C:
 			ev, err := snapshot(r.Context())
-			if err != nil || !writeEvent(w, rc, ev) || ev.Final {
+			if err != nil || (!ev.Skip && !writeEvent(w, rc, ev)) || ev.Final {
 				return
 			}
 		}

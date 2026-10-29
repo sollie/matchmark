@@ -171,7 +171,7 @@ func (s *Service) changeStatus(ctx context.Context, id int64, from, status Match
 	if err := s.repo.SetMatchStatus(ctx, id, string(from), string(status)); err != nil {
 		return mapRepoErr(err)
 	}
-	record := Change{Audit: AuditEvent{Action: "match.status", Target: idTarget("match", id), Details: string(status)}, Actor: actor, MatchID: id, Live: LiveMatch}
+	record := Change{Audit: AuditEvent{Action: "match.status", Target: idTarget("match", id), Details: string(status)}, Actor: actor, MatchID: id, Live: LiveMatch, Screens: true}
 	if status != StatusFinished {
 		s.changes.Record(ctx, record)
 		return nil
@@ -183,7 +183,7 @@ func (s *Service) changeStatus(ctx context.Context, id int64, from, status Match
 	if s.replicator != nil {
 		s.replicator.Request()
 	}
-	s.changes.Record(ctx, Change{MatchID: id, Live: LiveMatch})
+	s.changes.Record(ctx, Change{MatchID: id, Live: LiveMatch, Screens: true})
 	return nil
 }
 
@@ -191,7 +191,7 @@ func (s *Service) DeleteMatch(ctx context.Context, id int64) error {
 	if err := s.repo.DeleteMatch(ctx, id); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.delete", Target: idTarget("match", id)}, MatchID: id, Live: LiveMatch})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.delete", Target: idTarget("match", id)}, MatchID: id, Live: LiveMatch, Screens: true})
 	return nil
 }
 

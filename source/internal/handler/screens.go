@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 func (h *Handler) screenPublicRoutes(r chi.Router) {
 	r.Post("/spectator/screens", h.registerScreen)
+	r.Get("/spectator/screens/stream", h.screenStream)
 	r.Delete("/spectator/screens/self", h.leaveScreen)
 }
 
@@ -38,6 +40,31 @@ func (h *Handler) registerScreen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"token": reg.Token, "code": reg.Code})
+}
+
+func (h *Handler) screenStream(w http.ResponseWriter, r *http.Request) {
+	sc, err := h.svc.AuthenticateScreen(r.Context(), bearerToken(r))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	defer h.svc.ScreenConnected(sc.ID)()
+	var last any
+	h.serveStream(w, r, roleSpectator, nil, h.svc.SubscribeScreens, func(ctx context.Context) (streamEvent, error) {
+		st, err := h.svc.ScreenState(ctx, sc)
+		if err != nil {
+			return streamEvent{}, err
+		}
+		var data map[string]any
+		if st.State == "match" {
+			data = map[string]any{"state": st.State, "match_id": st.MatchID}
+		} else {
+			data = map[string]any{"state": st.State, "match_id": nil}
+		}
+		skip := last != nil && last.(map[string]any)["state"] == data["state"] && last.(map[string]any)["match_id"] == data["match_id"]
+		last = data
+		return streamEvent{Name: "snapshot", Data: data, Skip: skip}, nil
+	})
 }
 
 func (h *Handler) leaveScreen(w http.ResponseWriter, r *http.Request) {

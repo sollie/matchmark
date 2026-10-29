@@ -57,8 +57,8 @@ func newScreenCode() (string, error) {
 	return string(code), nil
 }
 
-func toScreen(s repository.Screen, now time.Time) Screen {
-	return Screen{ID: s.ID, Name: s.Name, MatchID: s.MatchID, Online: now.Sub(s.LastSeenAt) < ScreenOnlineAfter, LastSeenAt: s.LastSeenAt}
+func (s *Service) toScreen(r repository.Screen, now time.Time) Screen {
+	return Screen{ID: r.ID, Name: r.Name, MatchID: r.MatchID, Online: s.screenConnected(r.ID) || now.Sub(r.LastSeenAt) < ScreenOnlineAfter, LastSeenAt: r.LastSeenAt}
 }
 
 func (s *Service) RegisterScreen(ctx context.Context, client string) (ScreenRegistration, error) {
@@ -123,7 +123,7 @@ func (s *Service) ListScreens(ctx context.Context) ([]Screen, error) {
 	now := time.Now()
 	out := make([]Screen, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, toScreen(r, now))
+		out = append(out, s.toScreen(r, now))
 	}
 	return out, nil
 }
@@ -141,8 +141,8 @@ func (s *Service) ApproveScreen(ctx context.Context, code, name string) (Screen,
 	if err != nil {
 		return Screen{}, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "screen.approve", Target: idTarget("screen", id)}})
-	return toScreen(sc, time.Now()), nil
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "screen.approve", Target: idTarget("screen", id)}, Screens: true})
+	return s.toScreen(sc, time.Now()), nil
 }
 
 func (s *Service) UpdateScreen(ctx context.Context, id int64, u ScreenUpdate) (Screen, error) {
@@ -175,8 +175,8 @@ func (s *Service) UpdateScreen(ctx context.Context, id int64, u ScreenUpdate) (S
 	if err != nil {
 		return Screen{}, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "screen.update", Target: idTarget("screen", id)}})
-	return toScreen(sc, time.Now()), nil
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "screen.update", Target: idTarget("screen", id)}, Screens: true})
+	return s.toScreen(sc, time.Now()), nil
 }
 
 func (s *Service) checkAssignable(ctx context.Context, matchID int64) error {
@@ -198,7 +198,7 @@ func (s *Service) AssignAllScreens(ctx context.Context, matchID int64) (int64, e
 	if err != nil {
 		return 0, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "screen.assign_all", Target: idTarget("match", matchID)}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "screen.assign_all", Target: idTarget("match", matchID)}, Screens: true})
 	return n, nil
 }
 
@@ -206,7 +206,7 @@ func (s *Service) RemoveScreen(ctx context.Context, id int64) error {
 	if err := s.repo.DeleteScreen(ctx, id); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "screen.remove", Target: idTarget("screen", id)}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "screen.remove", Target: idTarget("screen", id)}, Screens: true})
 	return nil
 }
 
@@ -229,4 +229,65 @@ func (s *Service) RunScreenSweep(ctx context.Context) {
 		case <-ticker.C:
 		}
 	}
+}
+
+const screenTopic int64 = -1
+
+type ScreenState struct {
+	State   string
+	MatchID int64
+}
+
+func (s *Service) screenConnected(id int64) bool {
+	s.screenMu.Lock()
+	defer s.screenMu.Unlock()
+	return s.screenConns[id] > 0
+}
+
+func (s *Service) ScreenConnected(id int64) func() {
+	s.screenMu.Lock()
+	s.screenConns[id]++
+	s.screenMu.Unlock()
+	return func() {
+		s.screenMu.Lock()
+		s.screenConns[id]--
+		if s.screenConns[id] <= 0 {
+			delete(s.screenConns, id)
+		}
+		s.screenMu.Unlock()
+		_ = s.repo.TouchScreen(context.Background(), id, time.Now())
+	}
+}
+
+func (s *Service) SubscribeScreens() *Subscription {
+	return s.bus.Subscribe(screenTopic)
+}
+
+func (s *Service) ScreenState(ctx context.Context, sc repository.Screen) (ScreenState, error) {
+	cur, err := s.repo.GetScreen(ctx, sc.ID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ScreenState{}, ErrUnauthenticated
+		}
+		return ScreenState{}, err
+	}
+	if cur.MatchID != nil {
+		m, err := s.repo.GetMatch(ctx, *cur.MatchID)
+		switch {
+		case err == nil && MatchStatus(m.Status) == StatusDraft:
+			return ScreenState{State: "waiting"}, nil
+		case err == nil:
+			return ScreenState{State: "match", MatchID: m.ID}, nil
+		case !errors.Is(err, repository.ErrNotFound):
+			return ScreenState{}, err
+		}
+	}
+	id, err := s.repo.DefaultMatchID(ctx)
+	if errors.Is(err, repository.ErrNotFound) {
+		return ScreenState{State: "waiting"}, nil
+	}
+	if err != nil {
+		return ScreenState{}, err
+	}
+	return ScreenState{State: "match", MatchID: id}, nil
 }

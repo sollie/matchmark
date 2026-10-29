@@ -1125,6 +1125,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/spectator/screens/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What this screen should show, as server-sent events
+         * @description Sends a `snapshot` event on connect and whenever the resolved state changes. The state is `match` with the match id to follow on the per-match spectator stream, or `waiting` with a null match id. An assigned draft match resolves to `waiting` and no draft data is sent. An unassigned screen, or one whose match was deleted, shows the most recently started active match, or `waiting` when there is none. A finished match stays shown. A `: heartbeat` comment is sent every 25 seconds and the server closes the stream after 30 minutes. A token that is unknown or was removed gets 401. While connected the screen counts as online.
+         */
+        get: operations["streamScreenAssignment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/spectator/screens/self": {
         parameters: {
             query?: never;
@@ -1323,6 +1343,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ScreenState: {
+            /** @enum {string} */
+            state: "waiting" | "match";
+            /** Format: int64 */
+            match_id: number | null;
+        };
         Screen: {
             /** Format: int64 */
             id: number;
@@ -4150,6 +4176,37 @@ export interface operations {
             409: components["responses"]["Conflict"];
             /** @description Too many registrations from this address */
             429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    streamScreenAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event stream; each `snapshot` event carries a ScreenState as JSON data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Too many open streams */
+            503: {
                 headers: {
                     "Retry-After"?: number;
                     [name: string]: unknown;
