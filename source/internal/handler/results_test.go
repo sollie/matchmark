@@ -103,6 +103,13 @@ func TestResultsRankingAndGrouping(t *testing.T) {
 	if segments[0].(map[string]any)["score"].(float64) != 236 {
 		t.Fatalf("segments %v", segments)
 	}
+	counts := segments[0].(map[string]any)["ring_counts"].(map[string]any)
+	if counts["x"].(float64) != 6 || counts["10"].(float64) != 14 || counts["9"].(float64) != 4 {
+		t.Fatalf("ring counts %v", counts)
+	}
+	if _, ok := segments[1].(map[string]any)["ring_counts"]; ok {
+		t.Fatalf("ring counts for unaccepted segment: %v", segments[1])
+	}
 	fresh := out["new_shooters"].([]any)
 	if len(fresh) != 1 || fresh[0].(map[string]any)["last_name"] != "CHARLIE" || fresh[0].(map[string]any)["category"] != "Revolver" {
 		t.Fatalf("new shooters %v", fresh)
@@ -141,6 +148,9 @@ func TestResultsHonoursVisibilityFlags(t *testing.T) {
 	for _, st := range row["segments"].([]any) {
 		if _, ok := st.(map[string]any)["score"]; ok {
 			t.Fatalf("segment score present: %v", st)
+		}
+		if _, ok := st.(map[string]any)["ring_counts"]; ok {
+			t.Fatalf("ring counts present: %v", st)
 		}
 	}
 	if row["total"] == nil || row["rank"] == nil {

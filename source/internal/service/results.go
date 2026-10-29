@@ -17,8 +17,9 @@ type ResultsMatch struct {
 }
 
 type ResultsSegment struct {
-	Segment int  `json:"segment"`
-	Score   *int `json:"score,omitempty"`
+	Segment    int             `json:"segment"`
+	Score      *int            `json:"score,omitempty"`
+	RingCounts *RingCountsView `json:"ring_counts,omitempty"`
 }
 
 type ResultsRow struct {
@@ -119,6 +120,10 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 				r.x += st.Counts.X
 				if vis.SegmentScores {
 					rs.Score = &score
+				}
+				if vis.RingCounts {
+					counts := ringCountsView(st.Counts)
+					rs.RingCounts = &counts
 				}
 			}
 			r.view = append(r.view, rs)

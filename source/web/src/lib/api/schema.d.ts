@@ -1846,6 +1846,7 @@ export interface components {
                 segment: number;
                 /** @description Present for accepted segments when segment scores are visible */
                 score?: number;
+                ring_counts?: components["schemas"]["RingCounts"];
             }[];
             total: number;
             x_count?: number;
