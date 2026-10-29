@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+stray=$(git ls-files --others --exclude-standard)
+if [ -n "$stray" ]; then
+  echo "Untracked files present; stage them by name or ignore them:" >&2
+  echo "$stray" >&2
+  exit 1
+fi
