@@ -11,7 +11,7 @@ const matches = [
     date: "2026-05-01",
     course: "150",
     status: "finished",
-    current_stage: 10,
+    current_segment: 10,
   },
   {
     id: 8,
@@ -19,7 +19,7 @@ const matches = [
     date: "2026-06-01",
     course: "150",
     status: "active",
-    current_stage: 2,
+    current_segment: 2,
   },
 ];
 
@@ -54,7 +54,7 @@ describe("Results", () => {
                 course: "150",
                 course_label: "150 Course",
               },
-              stages: [1, 2],
+              segments: [1, 2],
               categories: [
                 {
                   category: "Revolver",
@@ -64,7 +64,7 @@ describe("Results", () => {
                       last_name: "Berg",
                       first_name: "Ola",
                       waid: "1001",
-                      stages: [{ stage: 1 }, { stage: 2 }],
+                      segments: [{ segment: 1 }, { segment: 2 }],
                       total: 230,
                     },
                   ],

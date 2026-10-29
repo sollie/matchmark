@@ -12,7 +12,7 @@
     ["show_names", "Names"],
     ["show_clubs", "Clubs"],
     ["show_countries", "Countries"],
-    ["show_stage_scores", "Stage scores"],
+    ["show_segment_scores", "Segment scores"],
     ["show_ring_counts", "X count"],
   ];
 

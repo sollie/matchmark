@@ -34,31 +34,31 @@
     {:else}
       <h1>Scoring lane {scorer.session.score_lane}: {scorer.session.shooter_name}</h1>
       <p class="muted">
-        This device is paired to lane {scorer.session.lane}. {scorer.stageLabel(
-          scorer.session.current_stage,
+        This device is paired to lane {scorer.session.lane}. {scorer.segmentLabel(
+          scorer.session.current_segment,
         )}.
       </p>
 
-      {#if scorer.session.phase === "next_stage" && !scorer.started}
-        <section class="card next-stage" aria-label="Next stage">
-          <h2>{scorer.stageLabel(scorer.session.current_stage)} has started</h2>
+      {#if scorer.session.phase === "next_segment" && !scorer.started}
+        <section class="card next-segment" aria-label="Next segment">
+          <h2>{scorer.segmentLabel(scorer.session.current_segment)} has started</h2>
           <p class="banner">
-            The next stage has started. Get ready to score lane {scorer.session.score_lane}.
+            The next segment has started. Get ready to score lane {scorer.session.score_lane}.
           </p>
           <button class="primary" onclick={() => scorer.continueToScoring()}>Continue</button>
         </section>
-      {:else if scorer.session.phase === "scoring" || scorer.session.phase === "next_stage"}
+      {:else if scorer.session.phase === "scoring" || scorer.session.phase === "next_segment"}
         {#if scorer.current?.status === "open" && scorer.current.disputed}
           <p class="card banner disputed">
-            Disputed: the shooter disputed {scorer.stageLabel(scorer.current.stage_number)}. Correct
-            the ring counts and lock it again.
+            Disputed: the shooter disputed {scorer.segmentLabel(scorer.current.segment_number)}.
+            Correct the ring counts and lock it again.
           </p>
         {/if}
 
         {#if scorer.current}
           {#if scorer.current.status !== "open"}
             <p class="card locked banner">
-              🔒 {scorer.stageLabel(scorer.current.stage_number)} is locked.
+              🔒 {scorer.segmentLabel(scorer.current.segment_number)} is locked.
             </p>
           {:else}
             <div class="layout">
@@ -105,9 +105,9 @@
                     >
                   {/if}
                 </p>
-                {#if scorer.stageFull}
+                {#if scorer.segmentFull}
                   <p class="save-status unsaved" role="status">
-                    Stage is full: all {scorer.current.expected_shots} shots are entered.
+                    Segment is full: all {scorer.current.expected_shots} shots are entered.
                   </p>
                 {/if}
                 <div class="actions">
@@ -123,7 +123,7 @@
                     disabled={scorer.busy || !scorer.canLock}
                     aria-describedby={scorer.canLock ? undefined : "save-status"}
                     title={scorer.canLock ? undefined : scorer.saveStatus}
-                    onclick={() => scorer.lock()}>Lock stage</button
+                    onclick={() => scorer.lock()}>Lock segment</button
                   >
                 </div>
                 <p
@@ -142,9 +142,9 @@
         <section class="card result" aria-label="Your result">
           <div class="hero">
             <span class="chip"
-              >Stage {scorer.acceptance.stage_number} of {scorer.session.stages.length}</span
+              >Segment {scorer.acceptance.segment_number} of {scorer.session.segments.length}</span
             >
-            <h2>Your result for {scorer.stageLabel(scorer.acceptance.stage_number)}</h2>
+            <h2>Your result for {scorer.segmentLabel(scorer.acceptance.segment_number)}</h2>
             <p class="total">{scorer.acceptance.total} hits, {scorer.acceptance.x} X</p>
             <p class="muted">Scored by {scorer.acceptance.scorer_name}</p>
           </div>
@@ -163,7 +163,7 @@
           <div class="action-bar">
             {#if scorer.confirmingDispute}
               <p class="confirm-text" role="alert">
-                Dispute this result? The scorer will re-score the stage.
+                Dispute this result? The scorer will re-score the segment.
               </p>
               <div class="actions">
                 <button disabled={scorer.busy} onclick={() => scorer.cancelDispute()}>Cancel</button
@@ -189,22 +189,22 @@
       {:else}
         <section class="card waiting" aria-label="Waiting">
           <h2>Waiting</h2>
-          {#if scorer.waitingStage}
+          {#if scorer.waitingSegment}
             <p class="banner">
-              🔒 {scorer.stageLabel(scorer.waitingStage.stage_number)} is locked. Waiting for {scorer
+              🔒 {scorer.segmentLabel(scorer.waitingSegment.segment_number)} is locked. Waiting for {scorer
                 .session.shooter_name} to accept.
             </p>
           {:else}
             <p class="banner">
-              🔒 {scorer.stageLabel(scorer.session.current_stage)} is locked. Waiting for the other lanes
-              and the admin.
+              🔒 {scorer.segmentLabel(scorer.session.current_segment)} is locked. Waiting for the other
+              lanes and the admin.
             </p>
           {/if}
           {#if scorer.acceptance}
             <div class="attention" role="group" aria-label="Action needed">
               <span class="attention-icon" aria-hidden="true">!</span>
               <p class="banner needs-acceptance">
-                Your result for {scorer.stageLabel(scorer.acceptance.stage_number)} awaits your acceptance.
+                Your result for {scorer.segmentLabel(scorer.acceptance.segment_number)} awaits your acceptance.
               </p>
               <button class="primary" onclick={() => scorer.startReview()}>Review result</button>
             </div>

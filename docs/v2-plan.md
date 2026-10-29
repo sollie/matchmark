@@ -51,6 +51,6 @@ Delivered as one stack of PRs that merge together (#345). Until step 28 lands, t
 - [ ] 31. Part labels from `internal/rulebook` in the UI and reports (#350).
 - [x] 32. Competition-level zip downloads (#351).
 - [x] 33. Scoring segments: ADR 0021, glossary, rulebook segments served by `GET /api/rulebook` (#423).
-- [ ] 34. Segment backend state and services: storage, status, lockstep and Score log (#424).
+- [x] 34. Segment backend state and services: storage, status, lockstep and Score log (#424).
 - [ ] 35. Scorer, admin and spectator UI per segment (#425).
 - [ ] 36. Scorecard copy, results and reports with one column per segment (#426).

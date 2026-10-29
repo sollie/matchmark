@@ -18,24 +18,24 @@ const failed = (status: number, error = `Request failed (${status})`): Outcome =
 
 const snapshot = (
   overrides: Record<string, unknown> = {},
-  stageOverrides: Record<string, unknown> = {},
+  segmentOverrides: Record<string, unknown> = {},
 ): Session =>
   ({
     lane: 1,
     score_lane: 2,
-    current_stage: 1,
+    current_segment: 1,
     match_id: 9,
     entry_id: 4,
     shooter_name: "Rick Roe",
     phase: "scoring",
-    stages: [
+    segments: [
       {
         ...zero,
-        stage_number: 1,
+        segment_number: 1,
         expected_shots: 30,
         status: "open",
         disputed: false,
-        ...stageOverrides,
+        ...segmentOverrides,
       },
     ],
     ...overrides,
@@ -74,7 +74,7 @@ describe("snapshot reconciliation", () => {
     );
   });
 
-  it("keeps unsaved counts across snapshots for the same stage", () => {
+  it("keeps unsaved counts across snapshots for the same segment", () => {
     const { scorer } = setup();
     scorer.apply(snapshot());
     scorer.setCount("x", 5);
@@ -83,7 +83,7 @@ describe("snapshot reconciliation", () => {
     expect(scorer.unsaved).toBe(true);
   });
 
-  it("replaces counts when the stage is newly disputed", () => {
+  it("replaces counts when the segment is newly disputed", () => {
     const { scorer } = setup();
     scorer.apply(snapshot());
     scorer.setCount("x", 5);
@@ -103,13 +103,13 @@ describe("snapshot reconciliation", () => {
 });
 
 describe("validation", () => {
-  it("caps counts at the expected shots and reports a full stage", () => {
+  it("caps counts at the expected shots and reports a full segment", () => {
     const { scorer } = setup();
     scorer.apply(snapshot());
     expect(scorer.setCount("x", 20)).toBe(false);
     expect(scorer.setCount("10", 15)).toBe(true);
     expect(scorer.counts["10"]).toBe(10);
-    expect(scorer.stageFull).toBe(true);
+    expect(scorer.segmentFull).toBe(true);
     expect(scorer.atCap).toBe(true);
   });
 
@@ -131,12 +131,12 @@ describe("validation", () => {
     expect(scorer.error).toBe("Ring counts must add up to 30 shots (entered 10).");
     vi.mocked(api.lock).mockResolvedValueOnce(failed(422));
     await scorer.lock();
-    expect(scorer.error).toBe("Save valid ring counts before locking the stage.");
+    expect(scorer.error).toBe("Save valid ring counts before locking the segment.");
   });
 });
 
 describe("save, lock and respond", () => {
-  it("marks counts saved and locks the stage", async () => {
+  it("marks counts saved and locks the segment", async () => {
     const { scorer, api } = setup();
     scorer.apply(snapshot());
     scorer.setCount("x", 30);
@@ -145,7 +145,7 @@ describe("save, lock and respond", () => {
     expect(scorer.unsaved).toBe(false);
     await scorer.lock();
     expect(api.lock).toHaveBeenCalledWith("tok", 1);
-    expect(scorer.message).toBe("Stage locked");
+    expect(scorer.message).toBe("Segment locked");
     expect(scorer.busy).toBe(false);
   });
 
@@ -154,7 +154,7 @@ describe("save, lock and respond", () => {
     scorer.apply(
       snapshot({
         phase: "needs_acceptance",
-        acceptance: { ...zero, stage_number: 1, total: 0, scorer_name: "A" },
+        acceptance: { ...zero, segment_number: 1, total: 0, scorer_name: "A" },
       }),
     );
     scorer.startReview();
@@ -169,14 +169,14 @@ describe("save, lock and respond", () => {
     scorer.apply(
       snapshot({
         phase: "needs_acceptance",
-        acceptance: { ...zero, stage_number: 1, total: 0, scorer_name: "A" },
+        acceptance: { ...zero, segment_number: 1, total: 0, scorer_name: "A" },
       }),
     );
     scorer.startReview();
     scorer.askDispute();
-    vi.mocked(api.respond).mockResolvedValueOnce(failed(409, "Stage already accepted"));
+    vi.mocked(api.respond).mockResolvedValueOnce(failed(409, "Segment already accepted"));
     await scorer.respond("dispute");
-    expect(scorer.error).toBe("Stage already accepted");
+    expect(scorer.error).toBe("Segment already accepted");
     expect(scorer.reviewing).toBe(true);
     expect(scorer.confirmingDispute).toBe(false);
   });

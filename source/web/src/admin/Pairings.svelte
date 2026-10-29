@@ -6,14 +6,19 @@
   import type { components } from "../lib/api/schema";
 
   type Pairing = components["schemas"]["Pairing"];
-  type EntryWithStages = components["schemas"]["EntryWithStages"];
+  type EntryWithSegments = components["schemas"]["EntryWithSegments"];
 
   let {
     matchId,
     entries,
     finished,
     draft = false,
-  }: { matchId: number; entries: EntryWithStages[]; finished: boolean; draft?: boolean } = $props();
+  }: {
+    matchId: number;
+    entries: EntryWithSegments[];
+    finished: boolean;
+    draft?: boolean;
+  } = $props();
 
   let pairings = $state<Pairing[]>([]);
   let lane = $state<number | null>(null);

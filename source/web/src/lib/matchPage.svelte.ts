@@ -7,7 +7,7 @@ import type { components } from "./api/schema";
 
 type Match = components["schemas"]["Match"];
 type Shooter = components["schemas"]["Shooter"];
-type EntryWithStages = components["schemas"]["EntryWithStages"];
+type EntryWithSegments = components["schemas"]["EntryWithSegments"];
 
 export type MatchPageDeps = {
   openStream(options: StreamOptions): StreamHandle;
@@ -19,7 +19,7 @@ const browserDeps: MatchPageDeps = { openStream, navigate };
 export class MatchPage {
   match = $state<Match | null>(null);
   shooters = $state<Shooter[]>([]);
-  entries = $state<EntryWithStages[]>([]);
+  entries = $state<EntryWithSegments[]>([]);
   error = $state("");
   version = $state(0);
 
@@ -27,7 +27,7 @@ export class MatchPage {
 
   canBackToDraft = $derived(
     this.match?.status === "active" &&
-      !this.entries.some((entry) => entry.stages.some((stage) => stage.shots_entered > 0)),
+      !this.entries.some((entry) => entry.segments.some((segment) => segment.shots_entered > 0)),
   );
 
   #id: number;
