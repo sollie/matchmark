@@ -2191,6 +2191,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/spectator/screens/stream:
+    get:
+      operationId: streamScreenAssignment
+      tags: [screens]
+      summary: What this screen should show, as server-sent events
+      description: >
+        Sends a `snapshot` event on connect and whenever the resolved state
+        changes. The state is `match` with the match id to follow on the
+        per-match spectator stream, or `waiting` with a null match id. An
+        assigned draft match resolves to `waiting` and no draft data is sent.
+        An unassigned screen, or one whose match was deleted, shows the most
+        recently started active match, or `waiting` when there is none. A
+        finished match stays shown. A `: heartbeat` comment is sent every 25
+        seconds and the server closes the stream after 30 minutes. A token that
+        is unknown or was removed gets 401. While connected the screen counts
+        as online.
+      security:
+        - screenBearer: []
+      responses:
+        '200':
+          description: Event stream; each `snapshot` event carries a ScreenState as JSON data
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              x-event-schemas:
+                snapshot:
+                  $ref: '#/components/schemas/ScreenState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Too many open streams
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/spectator/screens/self:
     delete:
       operationId: leaveScreen
@@ -2605,6 +2645,16 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    ScreenState:
+      type: object
+      required: [state, match_id]
+      properties:
+        state:
+          type: string
+          enum: [waiting, match]
+        match_id:
+          type: [integer, 'null']
+          format: int64
     Screen:
       type: object
       required: [id, name, match_id, online, last_seen_at]

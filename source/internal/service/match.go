@@ -129,7 +129,7 @@ func (s *Service) DeleteCompetition(ctx context.Context, id int64) error {
 	if err := s.repo.DeleteCompetition(ctx, id); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.delete", Target: idTarget("competition", id)}, Live: LiveAll})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.delete", Target: idTarget("competition", id)}, Live: LiveAll, Screens: true})
 	return nil
 }
 

@@ -48,7 +48,7 @@ func (s *Service) RestoreScoreLog(ctx context.Context, plan restore.Plan, merge 
 	if err != nil {
 		return restore.Applied{}, fmt.Errorf("restore score log: %w", mapRepoErr(err))
 	}
-	s.changes.Record(ctx, Change{Live: LiveAll})
+	s.changes.Record(ctx, Change{Live: LiveAll, Screens: true})
 	total.Matches = counts.Matches
 	total.Entries = counts.Entries
 	total.Stages = counts.Stages
