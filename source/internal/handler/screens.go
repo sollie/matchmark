@@ -58,11 +58,11 @@ func (h *Handler) screenStream(w http.ResponseWriter, r *http.Request) {
 		}
 		var data map[string]any
 		if st.State == "match" {
-			data = map[string]any{"state": st.State, "match_id": st.MatchID}
+			data = map[string]any{"state": st.State, "match_id": st.MatchID, "approved": st.Approved}
 		} else {
-			data = map[string]any{"state": st.State, "match_id": nil}
+			data = map[string]any{"state": st.State, "match_id": nil, "approved": st.Approved}
 		}
-		skip := last != nil && last.(map[string]any)["state"] == data["state"] && last.(map[string]any)["match_id"] == data["match_id"]
+		skip := last != nil && last.(map[string]any)["state"] == data["state"] && last.(map[string]any)["match_id"] == data["match_id"] && last.(map[string]any)["approved"] == data["approved"]
 		last = data
 		return streamEvent{Name: "snapshot", Data: data, Skip: skip}, nil
 	})

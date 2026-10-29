@@ -2677,11 +2677,13 @@ components:
   schemas:
     ScreenState:
       type: object
-      required: [state, match_id]
+      required: [state, match_id, approved]
       properties:
         state:
           type: string
           enum: [waiting, match]
+        approved:
+          type: boolean
         match_id:
           type: [integer, 'null']
           format: int64
