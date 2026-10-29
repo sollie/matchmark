@@ -20,7 +20,7 @@ test.describe("scorecard", () => {
     const entry = await addEntry(admin, match.id, shooter.id, 1);
     await setVisibility(admin, match.id, {});
     await setStatus(admin, match.id, "active");
-    await setCounts(admin, match.id, entry, 1, { x: 2, "10": 10 }, true);
+    await setCounts(admin, match.id, entry, 1, { x: 4, "10": 20 }, true);
 
     await page.goto("/");
     await page.getByLabel("Match").selectOption(String(match.id));
