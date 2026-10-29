@@ -15,13 +15,21 @@ type rulebookStageBody struct {
 	Part          string `json:"part,omitempty"`
 }
 
+type rulebookSegmentBody struct {
+	Number int    `json:"number"`
+	Name   string `json:"name"`
+	Stages []int  `json:"stages"`
+	Shots  int    `json:"shots"`
+}
+
 type rulebookCourseBody struct {
-	Key        string              `json:"key"`
-	Label      string              `json:"label"`
-	Discipline string              `json:"discipline"`
-	TotalShots int                 `json:"total_shots"`
-	Categories []string            `json:"categories"`
-	Stages     []rulebookStageBody `json:"stages"`
+	Key        string                `json:"key"`
+	Label      string                `json:"label"`
+	Discipline string                `json:"discipline"`
+	TotalShots int                   `json:"total_shots"`
+	Categories []string              `json:"categories"`
+	Stages     []rulebookStageBody   `json:"stages"`
+	Segments   []rulebookSegmentBody `json:"segments"`
 }
 
 type rulebookRingBody struct {
@@ -60,6 +68,10 @@ func (h *Handler) getRulebook(w http.ResponseWriter, _ *http.Request) {
 		course := rulebookCourseBody{Key: c.Key, Label: c.Label, Discipline: c.Discipline, TotalShots: c.TotalShots, Categories: c.Categories, Stages: make([]rulebookStageBody, 0, len(c.Stages))}
 		for _, st := range c.Stages {
 			course.Stages = append(course.Stages, rulebookStageBody(st))
+		}
+		course.Segments = make([]rulebookSegmentBody, 0, len(c.Segments))
+		for _, sg := range c.Segments {
+			course.Segments = append(course.Segments, rulebookSegmentBody(sg))
 		}
 		body.Courses = append(body.Courses, course)
 	}
