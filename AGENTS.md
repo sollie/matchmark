@@ -32,6 +32,8 @@ Specification and decisions:
   asks; leave it for review.
 - When working through a list of items (e.g. a code review or security review), complete
   one item, run all required checks, and commit it before starting the next item.
+- Stage files by explicit path (`git add <path>`) so only intended changes are committed.
+- Run `scripts/install-hooks.sh` once per clone to enable the pre-commit (untracked files) and pre-push (web verify and e2e) hooks.
 - Never add comments to code (enforced by `scripts/check-no-comments.sh`).
 - Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
 - Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
