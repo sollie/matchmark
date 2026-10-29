@@ -37,7 +37,7 @@
     <a href="/admin/shooters" aria-current={activeSection === "shooters" ? "page" : undefined}
       >Shooters</a
     >
-    <a href="/">Spectator view</a>
+    <a class="external" href="/" target="_blank" rel="noopener">Spectator view ↗</a>
   </nav>
   <main>
     {#if router.path === "/admin" || router.path === "/admin/matches"}
