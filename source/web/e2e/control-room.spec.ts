@@ -34,7 +34,7 @@ test.describe("control room", () => {
     await openMatch(page, match.id);
 
     const room = section(page, "Control room");
-    await expect(room.getByText("Current stage:")).toContainText("1");
+    await expect(room.getByText("Current segment:")).toContainText("1");
     const lane1 = laneRow(room, 1);
     const lane2 = laneRow(room, 2);
     await expect(lane1.getByText("Paired", { exact: true })).toBeVisible();
@@ -46,12 +46,12 @@ test.describe("control room", () => {
     await openDevice(token);
     await expect(lane1.getByText("Connected", { exact: true })).toBeVisible();
 
-    await deviceLock(baseURL!, token, 1, { "10": course.stageOneShots });
+    await deviceLock(baseURL!, token, 1, { "10": course.segmentOneShots });
     await expect(lane2.getByText("Awaiting acceptance")).toBeVisible();
     await expect(lane2.getByText("Open", { exact: true })).toHaveCount(0);
   });
 
-  test("accept all is enabled only when no lane is open and accepts every awaiting stage, then the next stage can start", async ({
+  test("accept all is enabled only when no lane is open and accepts every awaiting segment, then the next segment can start", async ({
     adminPage: page,
     admin,
     course,
@@ -66,14 +66,14 @@ test.describe("control room", () => {
     await openMatch(page, match.id);
     const room = section(page, "Control room");
     const acceptAll = room.getByRole("button", { name: "Accept all" });
-    const startNext = room.getByRole("button", { name: "Start next stage" });
+    const startNext = room.getByRole("button", { name: "Start next segment" });
 
     await expect(acceptAll).toBeDisabled();
     await expect(startNext).toBeDisabled();
-    await deviceLock(baseURL!, lane1, 1, { "10": course.stageOneShots });
+    await deviceLock(baseURL!, lane1, 1, { "10": course.segmentOneShots });
     await expect(room.getByText("Awaiting acceptance")).toBeVisible();
     await expect(acceptAll).toBeDisabled();
-    await deviceLock(baseURL!, lane2, 1, { "10": course.stageOneShots });
+    await deviceLock(baseURL!, lane2, 1, { "10": course.segmentOneShots });
     await expect(acceptAll).toBeEnabled();
     await expect(startNext).toBeDisabled();
 
@@ -82,7 +82,7 @@ test.describe("control room", () => {
     await expect(acceptAll).toBeDisabled();
     await expect(startNext).toBeEnabled();
     await startNext.click();
-    await expect(room.getByText("Current stage:")).toContainText("2");
+    await expect(room.getByText("Current segment:")).toContainText("2");
     await expect(startNext).toBeDisabled();
   });
 
@@ -97,8 +97,8 @@ test.describe("control room", () => {
     const second = await seedEntry(admin, match.id, 2);
     await setStatus(admin, match.id, "active");
     const lane1 = (await createPairing(admin, match.id, 1)).token;
-    await deviceLock(baseURL!, lane1, 1, { "10": course.stageOneShots });
-    await setCounts(admin, match.id, first.entryId, 1, { "10": course.stageOneShots }, true);
+    await deviceLock(baseURL!, lane1, 1, { "10": course.segmentOneShots });
+    await setCounts(admin, match.id, first.entryId, 1, { "10": course.segmentOneShots }, true);
     await openMatch(page, match.id);
     const room = section(page, "Control room");
     const awaiting = laneRow(room, 2);
@@ -106,10 +106,10 @@ test.describe("control room", () => {
 
     await awaiting.getByRole("button", { name: "Control room lane 2: Accept" }).click();
     await expect(awaiting.getByText("Accepted", { exact: true })).toBeVisible();
-    await expect(room.getByRole("button", { name: "Start next stage" })).toBeEnabled();
+    await expect(room.getByRole("button", { name: "Start next segment" })).toBeEnabled();
 
     await laneRow(room, 1).getByRole("button", { name: "Control room lane 1: Unlock" }).click();
     await expect(laneRow(room, 1).getByText("Open", { exact: true })).toBeVisible();
-    await expect(room.getByRole("button", { name: "Start next stage" })).toBeDisabled();
+    await expect(room.getByRole("button", { name: "Start next segment" })).toBeDisabled();
   });
 });

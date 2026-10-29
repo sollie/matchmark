@@ -10,7 +10,7 @@ const match = (status = "draft") => ({
   course: "150",
   status,
 });
-const entry = { id: 1, shooter_id: 7, lane: 1, stages: [] };
+const entry = { id: 1, shooter_id: 7, lane: 1, segments: [] };
 const shooter = { id: 7, first_name: "Jane", last_name: "Doe" };
 
 function setup(

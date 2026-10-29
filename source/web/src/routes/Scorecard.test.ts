@@ -8,8 +8,8 @@ const summary = {
   shooter: "Ola Nordmann",
   lane: 3,
   scorers: [
-    { stage: 1, scorer: "Kari Berg" },
-    { stage: 2, scorer: "Range admin" },
+    { segment: 1, scorer: "Kari Berg" },
+    { segment: 2, scorer: "Range admin" },
   ],
 };
 

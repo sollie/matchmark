@@ -22,9 +22,9 @@
   const showCountries = $derived(
     results?.categories.some((c) => c.rows.some((r) => r.country !== undefined)) ?? false,
   );
-  const showStages = $derived(
+  const showSegments = $derived(
     results?.categories.some((c) =>
-      c.rows.some((r) => r.stages.some((s) => s.score !== undefined)),
+      c.rows.some((r) => r.segments.some((s) => s.score !== undefined)),
     ) ?? false,
   );
   const showX = $derived(
@@ -106,7 +106,7 @@
                   {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
                   {#if showClubs}<th>Club</th>{/if}
                   {#if showCountries}<th>Country</th>{/if}
-                  {#if showStages}{#each results.stages as n (n)}<th class="num">S{n}</th
+                  {#if showSegments}{#each results.segments as n (n)}<th class="num">S{n}</th
                       >{/each}{/if}
                   <th class="num">Total</th>
                   {#if showX}<th class="num">X</th>{/if}
@@ -120,7 +120,7 @@
                       >{/if}
                     {#if showClubs}<td>{row.club}</td>{/if}
                     {#if showCountries}<td>{row.country}</td>{/if}
-                    {#if showStages}{#each row.stages as st (st.stage)}<td class="num"
+                    {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
                           >{st.score ?? ""}</td
                         >{/each}{/if}
                     <td class="num total">{row.total}</td>

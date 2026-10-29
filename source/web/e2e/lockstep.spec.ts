@@ -11,8 +11,8 @@ import {
   test,
 } from "./helpers";
 
-test.describe("lockstep stages", () => {
-  test("the admin starts the next stage only after every lane accepted, then devices announce it", async ({
+test.describe("lockstep segments", () => {
+  test("the admin starts the next segment only after every lane accepted, then devices announce it", async ({
     adminPage: page,
     admin,
     openDevice,
@@ -25,14 +25,14 @@ test.describe("lockstep stages", () => {
     const lane2 = await openDevice((await createPairing(admin, match.id, 2)).token);
 
     await openMatch(page, match.id);
-    await expect(page.getByText("· Stage 1")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Start next stage" })).toBeDisabled();
+    await expect(page.getByText("· Segment 1")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start next segment" })).toBeDisabled();
 
     for (const device of [lane1, lane2]) {
       await device.getByLabel("10 count", { exact: true }).fill("12");
       await device.getByRole("button", { name: "Save", exact: true }).click();
       await expect(device.locator("#save-status")).toHaveText("Saved ✓");
-      await device.getByRole("button", { name: "Lock stage", exact: true }).click();
+      await device.getByRole("button", { name: "Lock segment", exact: true }).click();
     }
     for (const device of [lane1, lane2]) {
       await device.getByRole("button", { name: "Review result" }).click();
@@ -46,12 +46,12 @@ test.describe("lockstep stages", () => {
       row(page, second.shooter.last_name).getByText("Accepted", { exact: true }).first(),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: "Start next stage" }).click();
-    await expect(page.getByText("· Stage 2")).toBeVisible();
+    await page.getByRole("button", { name: "Start next segment" }).click();
+    await expect(page.getByText("· Segment 2")).toBeVisible();
     for (const device of [lane1, lane2]) {
-      await expect(device.getByText("The next stage has started")).toBeVisible();
+      await expect(device.getByText("The next segment has started")).toBeVisible();
       await device.getByRole("button", { name: "Continue" }).click();
-      await expect(device.getByText(/Stage 2 · Match 1\./)).toBeVisible();
+      await expect(device.getByText(/Segment 2 · Match 1\./)).toBeVisible();
       await expect(device.getByRole("tab")).toHaveCount(0);
     }
   });
@@ -68,9 +68,9 @@ test.describe("lockstep stages", () => {
     await setStatus(admin, match.id, "active");
     const lane1 = await openDevice((await createPairing(admin, match.id, 1)).token);
 
-    for (let stage = 1; stage <= course.stages; stage++) {
-      if (stage > 1) {
-        const response = await admin.post(`/api/matches/${match.id}/next-stage`);
+    for (let segment = 1; segment <= course.segments; segment++) {
+      if (segment > 1) {
+        const response = await admin.post(`/api/matches/${match.id}/next-segment`);
         expect(response.ok()).toBe(true);
       }
       for (const entry of [first, second]) {
@@ -78,8 +78,8 @@ test.describe("lockstep stages", () => {
           admin,
           match.id,
           entry.entryId,
-          stage,
-          { "10": course.stageShots[stage - 1] },
+          segment,
+          { "10": course.segmentShots[segment - 1] },
           true,
         );
       }
@@ -90,6 +90,6 @@ test.describe("lockstep stages", () => {
     expect(await lane1.evaluate(() => localStorage.getItem("mm_device_token"))).toBeNull();
     await openMatch(page, match.id);
     await expect(page.getByText("finished", { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Start next stage" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Start next segment" })).toHaveCount(0);
   });
 });

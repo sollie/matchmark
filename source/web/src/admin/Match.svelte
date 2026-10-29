@@ -5,7 +5,7 @@
   import { courseLabel, loadRulebook } from "../lib/rulebook.svelte";
   import Visibility from "./Visibility.svelte";
   import ControlRoom from "./ControlRoom.svelte";
-  import StageHistory from "./StageHistory.svelte";
+  import SegmentHistory from "./SegmentHistory.svelte";
   import Entries from "./Entries.svelte";
   import Pairings from "./Pairings.svelte";
   import MatchEdit from "./MatchEdit.svelte";
@@ -25,7 +25,7 @@
     const message =
       next === "finished"
         ? "Finish this match? All pairings are revoked."
-        : "Start this match? Entries are then frozen and devices score one stage at a time.";
+        : "Start this match? Entries are then frozen and devices score one segment at a time.";
     if (!confirm(message)) return;
     await page.advance();
   }
@@ -50,7 +50,7 @@
   <p>
     {match.date} · {courseLabel(match.course)} ·
     <span class="badge {statusTone[match.status]}">{match.status}</span>
-    {#if match.status === "active"}· Stage {match.current_stage}{/if}
+    {#if match.status === "active"}· Segment {match.current_segment}{/if}
   </p>
   <div class="row">
     {#if nextStatus[match.status]}
@@ -84,7 +84,7 @@
   {/if}
 
   {#if match.status !== "draft"}
-    <StageHistory matchId={id} version={page.version} />
+    <SegmentHistory matchId={id} version={page.version} />
   {/if}
 
   <Entries
