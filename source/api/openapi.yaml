@@ -1088,6 +1088,34 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/matches/{matchID}/back-to-draft:
+    parameters:
+      - $ref: '#/components/parameters/MatchID'
+    post:
+      operationId: backToDraft
+      tags: [matches]
+      summary: Return an active match to draft while no hit counts are stored (admin only)
+      description: |
+        Answers 409 when the match is not active or any entry, including unlocked and withdrawn ones, has stored hits. Pairings and screen assignments are kept; the next start sets a new start time.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The new status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    $ref: '#/components/schemas/MatchStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/matches/{matchID}/next-stage:
     parameters:
       - $ref: '#/components/parameters/MatchID'

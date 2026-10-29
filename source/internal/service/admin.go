@@ -167,6 +167,19 @@ func (s *Service) SetMatchStatus(ctx context.Context, id int64, status MatchStat
 	return s.changeStatus(ctx, id, MatchStatus(current.Status), status, nil)
 }
 
+func (s *Service) BackToDraft(ctx context.Context, id int64) error {
+	if err := s.repo.BackToDraft(ctx, id); err != nil {
+		if errors.Is(err, repository.ErrConflict) {
+			if _, gerr := s.repo.GetMatch(ctx, id); gerr != nil {
+				return mapRepoErr(gerr)
+			}
+		}
+		return mapRepoErr(err)
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.back_to_draft", Target: idTarget("match", id)}, MatchID: id, Live: LiveMatch, Screens: true})
+	return nil
+}
+
 func (s *Service) changeStatus(ctx context.Context, id int64, from, status MatchStatus, actor *Actor) error {
 	if err := s.repo.SetMatchStatus(ctx, id, string(from), string(status)); err != nil {
 		return mapRepoErr(err)

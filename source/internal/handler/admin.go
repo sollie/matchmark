@@ -33,6 +33,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Put("/matches/{matchID}", serve(h.updateMatch))
 	r.Delete("/matches/{matchID}", serve(h.deleteMatch))
 	r.Post("/matches/{matchID}/status", serve(h.setMatchStatus))
+	r.Post("/matches/{matchID}/back-to-draft", serve(h.backToDraft))
 	r.Post("/matches/{matchID}/next-stage", serve(h.startNextStage))
 	r.Get("/matches/{matchID}/control-room", serve(h.controlRoom))
 	r.Post("/matches/{matchID}/accept-all", serve(h.acceptAll))
@@ -268,6 +269,18 @@ func (h *Handler) setMatchStatus(r *http.Request) (int, any, error) {
 		return fail(err)
 	}
 	return okJSON(map[string]string{"status": body.Status})
+}
+
+func (h *Handler) backToDraft(r *http.Request) (int, any, error) {
+	req := in(r)
+	id := req.path("matchID")
+	if req.err != nil {
+		return fail(req.err)
+	}
+	if err := h.svc.BackToDraft(r.Context(), id); err != nil {
+		return fail(err)
+	}
+	return okJSON(map[string]string{"status": string(service.StatusDraft)})
 }
 
 func (h *Handler) startNextStage(r *http.Request) (int, any, error) {
