@@ -94,3 +94,49 @@ func TestMatchRequiresMatch(t *testing.T) {
 		t.Fatalf("inverted match range inserted")
 	}
 }
+
+func TestActivatedAtBackfill(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mm.db")
+	conn, err := db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO competitions (name, start_date, end_date) VALUES ('C', '2026-10-19', '2026-10-19')`,
+		`INSERT INTO matches (competition_id, name, date, course, status) VALUES (1, 'D', '2026-10-19', '150', 'draft')`,
+		`INSERT INTO matches (competition_id, name, date, course, status) VALUES (1, 'A', '2026-10-18', '150', 'active')`,
+		`INSERT INTO matches (competition_id, name, date, course, status) VALUES (1, 'F', '2026-10-17', '150', 'finished')`,
+		`ALTER TABLE matches DROP COLUMN activated_at`,
+		`DELETE FROM schema_migrations WHERE version = 3`,
+	} {
+		if _, err := conn.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	_ = conn.Close()
+	conn, err = db.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	got := map[string]*string{}
+	rows, err := conn.Query(`SELECT name, activated_at FROM matches`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var name string
+		var at *string
+		if err := rows.Scan(&name, &at); err != nil {
+			t.Fatal(err)
+		}
+		got[name] = at
+	}
+	if got["D"] != nil {
+		t.Errorf("draft activated_at = %v", *got["D"])
+	}
+	if got["A"] == nil || *got["A"] != "2026-10-18" || got["F"] == nil || *got["F"] != "2026-10-17" {
+		t.Errorf("backfill = %v", got)
+	}
+}

@@ -185,6 +185,22 @@ _Avoid_: Poll, refresh, push notification
 The module that every state-changing operation reports to. Given one change (action, target, affected match, and any stages beyond open whose Score log lines must be re-emitted), it writes the Audit log entry, re-emits the Score log lines, then publishes a Live update, in that fixed order. Failures in these steps are logged and never fail the request. Replication stays with the operation that needs it.
 _Avoid_: Event bus, notifier, hook
 
+**Screen**:
+A spectator display that has opted in to being remote controlled and been approved by an admin. It has a name the admin chose and is shown as online or offline.
+_Avoid_: Display, monitor, kiosk, client
+
+**Unmanaged screen**:
+A spectator display that has not opted in. It shows the most recently started Match until the viewer picks another.
+_Avoid_: Free screen, standalone screen
+
+**Screen assignment**:
+The Match an admin chose for one Screen, or for all Screens at once. Only Matches that are not finished can be assigned. A Screen with no assignment shows the most recently started Match.
+_Avoid_: Routing, pinning, push
+
+**Waiting screen**:
+What a Screen shows while its assigned Match is still a draft: only a waiting message, with no name, date, course or participants. It switches to the Match when the Match starts.
+_Avoid_: Placeholder, blank screen
+
 ## Accounts
 
 **User**:
