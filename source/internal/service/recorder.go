@@ -25,6 +25,7 @@ type Change struct {
 	Actor   *Actor
 	MatchID int64
 	Live    LiveScope
+	Screens bool
 	Reemit  *repository.LockedStageFilter
 	Stage   *StageEvent
 }
@@ -52,6 +53,9 @@ func (r *ChangeRecorder) Record(ctx context.Context, c Change) {
 	}
 	if e := c.Stage; e != nil {
 		r.scoreLog.EmitStage(ctx, e.MatchID, e.EntryID, e.StageNumber)
+	}
+	if c.Screens {
+		r.bus.Publish(screenTopic)
 	}
 	switch c.Live {
 	case LiveMatch:

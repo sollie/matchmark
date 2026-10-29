@@ -35,12 +35,14 @@ type Service struct {
 	changes        *ChangeRecorder
 	presence       presence
 	screenThrottle *LoginThrottle
+	screenMu       sync.Mutex
+	screenConns    map[int64]int
 	snapMu         sync.Mutex
 	snaps          map[int64]*snapSlot
 }
 
 func New(repo *repository.Repository, opts ...Option) *Service {
-	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]*snapSlot{}, screenThrottle: NewLoginThrottle()}
+	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]*snapSlot{}, screenThrottle: NewLoginThrottle(), screenConns: map[int64]int{}}
 	for _, opt := range opts {
 		opt(s)
 	}

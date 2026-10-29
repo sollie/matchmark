@@ -1,9 +1,11 @@
 package handler_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/sollie/matchmark/internal/apitest"
 )
@@ -105,4 +107,110 @@ func TestScreenAdminEndpointsRequireLogin(t *testing.T) {
 			t.Fatalf("%s %s: %d", c[0], c[1], status)
 		}
 	}
+}
+
+func openScreenStream(env *apitest.Env, token string) *apitest.Stream {
+	return env.OpenStream("/api/spectator/screens/stream", http.Header{"Authorization": {"Bearer " + token}})
+}
+
+func nextScreenState(t *testing.T, s *apitest.Stream) (string, any, string) {
+	t.Helper()
+	for {
+		ev, ok := s.Next(3 * time.Second)
+		if !ok {
+			t.Fatal("no screen event received")
+		}
+		if ev.Name != "snapshot" {
+			continue
+		}
+		var body map[string]any
+		if err := json.Unmarshal([]byte(ev.Data), &body); err != nil {
+			t.Fatal(err)
+		}
+		return body["state"].(string), body["match_id"], ev.Data
+	}
+}
+
+func TestScreenStreamRejectsUnknownToken(t *testing.T) {
+	env := apitest.New(t)
+	if s := openScreenStream(env, "nope"); s.Status != http.StatusUnauthorized {
+		t.Fatalf("status %d", s.Status)
+	}
+	if s := env.OpenStream("/api/spectator/screens/stream", nil); s.Status != http.StatusUnauthorized {
+		t.Fatalf("no token: %d", s.Status)
+	}
+}
+
+func TestScreenStreamResolvesAssignmentAndNeverLeaksDraft(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	token, code := registerScreen(t, env)
+	_, screen := env.Do("POST", "/api/screens/approve", map[string]any{"code": code})
+	id := strconv.Itoa(int(screen["id"].(float64)))
+
+	s := openScreenStream(env, token)
+	if s.Status != http.StatusOK {
+		t.Fatalf("status %d", s.Status)
+	}
+	if state, mid, _ := nextScreenState(t, s); state != "waiting" || mid != nil {
+		t.Fatalf("empty: %s %v", state, mid)
+	}
+
+	draft := env.ID("POST", "/api/matches", map[string]any{"name": "Secret Draft Cup", "date": env.Today(), "course": "40"})
+	env.Do("PUT", "/api/screens/"+id, map[string]any{"match_id": draft})
+	if ev, ok := s.Next(time.Second); ok {
+		t.Fatalf("draft assignment changed the screen: %+v", ev)
+	}
+
+	if status, _ := env.Do("POST", "/api/matches/"+strconv.Itoa(draft)+"/status", map[string]any{"status": "active"}); status != http.StatusOK {
+		t.Fatalf("activate: %d", status)
+	}
+	if state, mid, _ := nextScreenState(t, s); state != "match" || mid != float64(draft) {
+		t.Fatalf("started: %s %v", state, mid)
+	}
+
+	env.Do("POST", "/api/matches/"+strconv.Itoa(draft)+"/status", map[string]any{"status": "finished"})
+	if ev, ok := s.Next(time.Second); ok {
+		t.Fatalf("finish changed the screen: %+v", ev)
+	}
+	if state, mid, _ := openAndRead(t, env, token); state != "match" || mid != float64(draft) {
+		t.Fatalf("finished: %s %v", state, mid)
+	}
+
+	if status, _ := env.Do("DELETE", "/api/matches/"+strconv.Itoa(draft), nil); status != http.StatusOK {
+		t.Fatalf("delete: %d", status)
+	}
+	if state, mid, _ := nextScreenState(t, s); state != "waiting" || mid != nil {
+		t.Fatalf("deleted: %s %v", state, mid)
+	}
+}
+
+func TestUnmanagedScreenFollowsNewestActiveMatch(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	token, _ := registerScreen(t, env)
+	draft := env.ID("POST", "/api/matches", map[string]any{"name": "Draft", "date": env.Today(), "course": "40"})
+	s := openScreenStream(env, token)
+	if state, _, _ := nextScreenState(t, s); state != "waiting" {
+		t.Fatalf("draft default: %s", state)
+	}
+	env.Do("POST", "/api/matches/"+strconv.Itoa(draft)+"/status", map[string]any{"status": "active"})
+	if state, mid, _ := nextScreenState(t, s); state != "match" || mid != float64(draft) {
+		t.Fatalf("active: %s %v", state, mid)
+	}
+}
+
+func TestScreenStreamMarksScreenOnline(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	token, code := registerScreen(t, env)
+	env.Do("POST", "/api/screens/approve", map[string]any{"code": code})
+	s := openScreenStream(env, token)
+	nextScreenState(t, s)
+	_, list := env.Do("GET", "/api/screens", nil)
+	if list["screens"].([]any)[0].(map[string]any)["online"] != true {
+		t.Fatalf("offline: %v", list)
+	}
+}
+
+func openAndRead(t *testing.T, env *apitest.Env, token string) (string, any, string) {
+	t.Helper()
+	return nextScreenState(t, openScreenStream(env, token))
 }
