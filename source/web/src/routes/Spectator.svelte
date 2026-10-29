@@ -190,7 +190,6 @@
       {/if}
     {/if}
   {/if}
-  <p><a href="/admin">Admin</a></p>
 </main>
 
 <style>

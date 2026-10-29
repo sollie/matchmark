@@ -4,6 +4,7 @@ import {
   createMatch,
   expect,
   newApi,
+  openAccountLink,
   openMatch,
   seedEntry,
   setCounts,
@@ -112,7 +113,7 @@ test.describe("reports and backup", () => {
 
   test("a database backup downloads and is not empty", async ({ adminPage: page }) => {
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Backup" }).click();
+    await openAccountLink(page, "Backup");
     const download = await downloadPromise;
 
     const bytes = await readFile(await download.path());

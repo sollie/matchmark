@@ -1,4 +1,4 @@
-import { adminPassword, adminUsername, expect, newApi, test } from "./helpers";
+import { adminPassword, adminUsername, expect, newApi, openAccountLink, test } from "./helpers";
 
 const changedPassword = "e2e-changed-password-5678";
 
@@ -17,7 +17,7 @@ test.describe("change password", () => {
     ).toBe(204);
     expect((await other.get("/api/shooters")).status()).toBe(200);
 
-    await page.getByRole("link", { name: "Change password" }).click();
+    await openAccountLink(page, "Change password");
     await page.getByLabel("Current password").fill("not-the-current-password");
     await page.getByLabel("New password", { exact: true }).fill(changedPassword);
     await page.getByLabel("Confirm new password").fill(changedPassword);

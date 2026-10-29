@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { errorMessage } from "../lib/api/util";
+  import { navigate } from "../lib/router.svelte";
   import { refreshAdminSession } from "../lib/session.svelte";
 
   let username = $state("");
@@ -18,6 +19,7 @@
     busy = false;
     if (response.ok) {
       password = "";
+      navigate("/admin");
       await refreshAdminSession();
     } else {
       error =

@@ -1,4 +1,13 @@
-import { createMatch, expect, row, test, uniqueName } from "./helpers";
+import {
+  createMatch,
+  expect,
+  openAccountLink,
+  openAccountMenu,
+  row,
+  signOutViaMenu,
+  test,
+  uniqueName,
+} from "./helpers";
 
 test.describe("audit log", () => {
   test("an admin finds who did what, filtered by user and action, and pages through it", async ({
@@ -7,7 +16,7 @@ test.describe("audit log", () => {
   }) => {
     const { name } = await createMatch(admin, { name: uniqueName("Audited") });
 
-    await page.getByRole("link", { name: "Audit log" }).click();
+    await openAccountLink(page, "Audit log");
     await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
     await expect(row(page, "match.create").filter({ hasText: name }).first()).toContainText(
       "e2e-admin",
@@ -39,7 +48,8 @@ test.describe("audit log", () => {
     const temporary = "e2e-temporary-password-1";
     const chosen = "e2e-chosen-password-5678";
     await admin.post("/api/users", { data: { username, role: "user", password: temporary } });
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await signOutViaMenu(page);
+    await page.getByRole("link", { name: "Sign in" }).click();
     await page.getByLabel("Username").fill(username);
     await page.getByLabel("Password").fill(temporary);
     await page.getByRole("button", { name: "Sign in" }).click();
@@ -48,6 +58,7 @@ test.describe("audit log", () => {
     await page.getByLabel("Confirm new password").fill(chosen);
     await page.getByRole("button", { name: "Change password" }).click();
     await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
+    await openAccountMenu(page);
     await expect(page.getByRole("link", { name: "Audit log" })).toHaveCount(0);
     await page.goto("/admin/audit");
     await expect(page.getByText("Only admins can read the audit log.")).toBeVisible();
