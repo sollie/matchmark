@@ -313,6 +313,11 @@ nav a {
 nav a:hover {
   background: var(--surface-alt);
 }
+nav a.external {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
 nav a[aria-current="page"] {
   font-weight: 700;
   color: var(--brand);

@@ -15,6 +15,14 @@ import {
 } from "./helpers";
 
 test.describe("matches", () => {
+  test("the spectator link in the admin nav opens in a new tab", async ({ adminPage: page }) => {
+    await page.goto("/admin");
+    const link = page.getByRole("navigation").getByRole("link", { name: /Spectator view/ });
+    await expect(link).toHaveAttribute("href", "/");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", /noopener/);
+  });
+
   function stageHeaders(page: Page) {
     return section(page, "Entries and progress").getByRole("columnheader", { name: /^S\d+$/ });
   }
