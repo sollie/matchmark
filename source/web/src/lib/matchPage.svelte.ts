@@ -25,6 +25,11 @@ export class MatchPage {
 
   next = $derived(this.match ? nextStatus[this.match.status] : null);
 
+  canBackToDraft = $derived(
+    this.match?.status === "active" &&
+      !this.entries.some((entry) => entry.stages.some((stage) => stage.shots_entered > 0)),
+  );
+
   #id: number;
   #deps: MatchPageDeps;
 
@@ -90,6 +95,15 @@ export class MatchPage {
     const result = await settle(
       api.POST("/api/matches/{matchID}/status", { ...this.#path(), body: { status: next } }),
     );
+    if (result.ok) this.match = { ...current, status: result.data.status };
+    else this.error = result.error;
+  }
+
+  async backToDraft() {
+    const current = this.match;
+    if (!current) return;
+    this.error = "";
+    const result = await settle(api.POST("/api/matches/{matchID}/back-to-draft", this.#path()));
     if (result.ok) this.match = { ...current, status: result.data.status };
     else this.error = result.error;
   }
