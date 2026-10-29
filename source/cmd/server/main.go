@@ -74,7 +74,9 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	svcOpts = append(svcOpts, service.WithScoreLog(logger), service.WithAudit(audit))
-	api := handler.NewRouter(service.New(repo, svcOpts...), repo,
+	svc := service.New(repo, svcOpts...)
+	go svc.RunScreenSweep(ctx)
+	api := handler.NewRouter(svc, repo,
 		handler.WithAuth(auth, cfg.BaseURL),
 		handler.WithVersion(version),
 		handler.WithTLS(cfg.TLSMode != TLSPlain),

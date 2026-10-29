@@ -57,6 +57,7 @@ func NewRouter(svc *service.Service, repo *repository.Repository, opts ...Option
 		h.clubPublicRoutes(r)
 		h.rulebookRoutes(r)
 		h.spectatorRoutes(r)
+		h.screenPublicRoutes(r)
 		h.scorecardRoutes(r)
 		h.resultsPDFRoutes(r)
 		r.Group(func(r chi.Router) {
@@ -68,6 +69,7 @@ func NewRouter(svc *service.Service, repo *repository.Repository, opts ...Option
 			h.adminRoutes(r)
 			h.wa1500Routes(r)
 			h.visibilityRoutes(r)
+			h.screenAdminRoutes(r)
 		})
 	})
 	return r
