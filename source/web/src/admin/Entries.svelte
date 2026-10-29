@@ -141,6 +141,11 @@
     run(commands.accept(entry.id, segment));
   const lock = (entry: EntryWithSegments, segment: number) => run(commands.lock(entry.id, segment));
 
+  function reveal(node: HTMLElement) {
+    node.scrollIntoView({ block: "center" });
+    node.querySelector("input")?.focus({ preventScroll: true });
+  }
+
   async function saveCounts(andLock = false) {
     if (!scoring) return;
     const { entry, segment, counts } = scoring;
@@ -355,7 +360,7 @@
       scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
       0}
     {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
-    <div class="card counts">
+    <div class="card counts" use:reveal>
       <h3>
         {shooterName(scoring.entry.shooter_id)}, segment {scoring.segment}: overwrite ring counts
       </h3>
