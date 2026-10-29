@@ -302,16 +302,21 @@ func headerRows(d ResultsPDFData, grid int) []core.Row {
 	}
 }
 
+const RepoURL = "https://github.com/sollie/matchmark"
+
 func footerRow(d ResultsPDFData, grid int) core.Row {
 	iconCols := max(grid/16, 1)
-	textCols := max(grid/4, 1)
+	textCols := max(grid/2, 1)
 	rest := max(grid-iconCols-textCols, 1)
 	muted := props.Text{Size: 8, Top: 3, Color: pdfMuted}
+	link := muted
+	repoURL := RepoURL
+	link.Hyperlink = &repoURL
 	right := muted
 	right.Align = align.Right
 	return row.New(8).Add(
 		image.NewFromBytesCol(iconCols, matchMarkIcon, extension.Png, props.Rect{Center: true, Percent: 80}),
-		col.New(textCols).Add(text.New("Made with MatchMark", muted)),
+		col.New(textCols).Add(text.New("Scored with MatchMark · "+RepoURL, link)),
 		col.New(rest).Add(text.New("Generated "+d.Generated.UTC().Format("2006-01-02 15:04")+" UTC", right)),
 	)
 }
