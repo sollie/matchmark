@@ -30,6 +30,13 @@
     await page.advance();
   }
 
+  async function backToDraft() {
+    const message =
+      "Return this match to draft? Devices will show 'not started' and spectators won't see the match until you start it again. Only possible while no hits are entered.";
+    if (!confirm(message)) return;
+    await page.backToDraft();
+  }
+
   async function remove() {
     if (!page.match || !confirm(`Delete match "${page.match.name}" and all its results?`)) return;
     await page.remove();
@@ -50,6 +57,9 @@
       <button class="primary" onclick={advance}>
         {match.status === "draft" ? "Start match" : "Finish match"}
       </button>
+    {/if}
+    {#if page.canBackToDraft}
+      <button onclick={backToDraft}>Back to draft</button>
     {/if}
     {#if match.status === "draft" && !editing}
       <button onclick={() => (editing = true)}>Edit match</button>

@@ -499,6 +499,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/matches/{matchID}/back-to-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchID: components["parameters"]["MatchID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Return an active match to draft while no hit counts are stored (admin only)
+         * @description Answers 409 when the match is not active or any entry, including unlocked and withdrawn ones, has stored hits. Pairings and screen assignments are kept; the next start sets a new start time.
+         */
+        post: operations["backToDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matches/{matchID}/next-stage": {
         parameters: {
             query?: never;
@@ -3096,6 +3118,33 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Invalid"];
+        };
+    };
+    backToDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchID: components["parameters"]["MatchID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status: components["schemas"]["MatchStatus"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     startNextStage: {

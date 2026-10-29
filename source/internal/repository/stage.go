@@ -86,10 +86,12 @@ func (r *Repository) GetStage(ctx context.Context, matchID, entryID int64, numbe
 	return s, mapErr(err)
 }
 
-func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCounts) error {
-	res, err := r.db.ExecContext(ctx,
-		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, started = 0 WHERE id = ? AND status = 'open'`,
-		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
+func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCounts, activeOnly bool) error {
+	query := `UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, started = 0 WHERE id = ? AND status = 'open'`
+	if activeOnly {
+		query += ` AND EXISTS (SELECT 1 FROM entries e JOIN matches m ON m.id = e.match_id WHERE e.id = stages.entry_id AND m.status = 'active')`
+	}
+	res, err := r.db.ExecContext(ctx, query, c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
 	if err != nil {
 		return mapErr(err)
 	}
