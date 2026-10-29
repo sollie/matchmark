@@ -7,6 +7,7 @@
   import Shooters from "./Shooters.svelte";
   import Matches from "./Matches.svelte";
   import Match from "./Match.svelte";
+  import Screens from "./Screens.svelte";
   import Users from "./Users.svelte";
   import AuditLog from "./AuditLog.svelte";
   import ClubSettings from "./ClubSettings.svelte";
@@ -49,6 +50,13 @@
       {:else}
         <h1>Not allowed</h1>
         <p>Only admins can manage users.</p>
+      {/if}
+    {:else if router.path === "/admin/screens"}
+      {#if admin.isAdmin}
+        <Screens />
+      {:else}
+        <h1>Not allowed</h1>
+        <p>Only admins can manage screens.</p>
       {/if}
     {:else if router.path === "/admin/club"}
       {#if admin.isAdmin}

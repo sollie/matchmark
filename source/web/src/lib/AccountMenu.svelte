@@ -8,7 +8,7 @@
   let trigger: HTMLButtonElement | undefined = $state();
 
   const ownsPage = $derived(
-    ["/admin/users", "/admin/club", "/admin/audit", "/admin/password"].some(
+    ["/admin/users", "/admin/screens", "/admin/club", "/admin/audit", "/admin/password"].some(
       (p) => router.path === p || router.path.startsWith(p + "/"),
     ),
   );
@@ -61,6 +61,7 @@
       {#if admin.isAdmin}
         <h2>Administration</h2>
         <a href="/admin/users">Users</a>
+        <a href="/admin/screens">Screens</a>
         <a href="/admin/club">Club</a>
         <a href="/admin/audit">Audit log</a>
         {#if admin.canDownloadBackup}<a href="/api/admin/backup" download>Backup</a>{/if}
