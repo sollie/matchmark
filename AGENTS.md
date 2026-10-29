@@ -32,6 +32,8 @@ Specification and decisions:
   asks; leave it for review.
 - When working through a list of items (e.g. a code review or security review), complete
   one item, run all required checks, and commit it before starting the next item.
+- Work in a dedicated worktree (`git worktree add ../mm-<branch> -b <branch> origin/main`) and run `npm ci` in `source/web` inside it; the shared checkout can be switched by another session.
+- To inspect a failed CI run, use `scripts/ci-failures.sh <run-id>`; it prints only the failing Go and Playwright test lines from `gh run view --log-failed`.
 - Never add comments to code (enforced by `scripts/check-no-comments.sh`).
 - Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
 - Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
