@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
+  import { brand } from "../lib/brand";
   import { club, clubLogoUrl } from "../lib/club.svelte";
   import { matchRoute, navigate, router } from "../lib/router.svelte";
   import { loadRulebook, segmentLabel } from "../lib/rulebook.svelte";
@@ -223,6 +224,9 @@
     </article>
   {/if}
   <p class="no-print"><a href="/">Live standings</a></p>
+  <p class="print-credit">
+    Scored with MatchMark · <a href={brand.repoUrl}>{brand.repoUrl}</a>
+  </p>
 </main>
 
 <style>
@@ -274,7 +278,15 @@
     margin: var(--space-4) 0;
     break-inside: avoid;
   }
+  .print-credit {
+    display: none;
+  }
   @media print {
+    .print-credit {
+      display: block;
+      margin-top: var(--space-4);
+      font-size: 9pt;
+    }
     :global(.site-header),
     :global(.site-footer),
     .no-print {
