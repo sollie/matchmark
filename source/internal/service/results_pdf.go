@@ -46,6 +46,10 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		return Download{}, err
 	}
 	data.Logo, data.LogoType = logo.Data, logo.ContentType
+	names := segmentNames(view.Match.Course)
+	for _, n := range view.Segments {
+		data.SegmentNames = append(data.SegmentNames, names[n])
+	}
 	for _, c := range view.Categories {
 		cat := report.ResultsPDFCategory{Category: c.Category}
 		for _, r := range c.Rows {

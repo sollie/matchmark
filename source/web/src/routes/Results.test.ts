@@ -33,6 +33,62 @@ afterEach(() => {
 });
 
 describe("Results", () => {
+  it("heads the segment columns with the rulebook segment names", async () => {
+    navigate("/results/7");
+    stubFetch((call) => {
+      if (call.path === "/api/rulebook") {
+        return {
+          body: {
+            courses: [
+              {
+                key: "150",
+                label: "150 Course",
+                categories: [],
+                segments: [
+                  { number: 1, name: "Match 1", stages: [1, 2], shots: 24 },
+                  { number: 2, name: "Match 2", stages: [3], shots: 18 },
+                ],
+              },
+            ],
+          },
+        };
+      }
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150 Course",
+          },
+          segments: [1, 2],
+          categories: [
+            {
+              category: "Revolver",
+              rows: [
+                {
+                  rank: 1,
+                  segments: [
+                    { segment: 1, score: 110 },
+                    { segment: 2, score: 120 },
+                  ],
+                  total: 230,
+                },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    expect(await screen.findByRole("columnheader", { name: "Match 1" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Match 2" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "S1" })).toBeNull();
+  });
+
   it("offers only finished matches", async () => {
     navigate("/results");
     stubFetch(() => ({ body: { matches } }));

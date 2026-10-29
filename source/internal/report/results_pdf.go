@@ -25,10 +25,11 @@ import (
 )
 
 const (
-	pdfFamily     = "go"
-	pdfFontSize   = 9.0
-	pdfRowHeight  = 6.5
-	pdfLogoHeight = 18.0
+	pdfFamily       = "go"
+	pdfFontSize     = 9.0
+	pdfRowHeight    = 6.5
+	pdfHeaderHeight = 13.0
+	pdfLogoHeight   = 18.0
 )
 
 //go:embed matchmark-icon.png
@@ -72,16 +73,17 @@ type ResultsPDFNewShooter struct {
 }
 
 type ResultsPDFData struct {
-	ClubName    string
-	Logo        []byte
-	LogoType    string
-	Generated   time.Time
-	Name        string
-	Date        string
-	CourseLabel string
-	Segments    []int
-	Categories  []ResultsPDFCategory
-	NewShooters []ResultsPDFNewShooter
+	ClubName     string
+	Logo         []byte
+	LogoType     string
+	Generated    time.Time
+	Name         string
+	Date         string
+	CourseLabel  string
+	Segments     []int
+	SegmentNames []string
+	Categories   []ResultsPDFCategory
+	NewShooters  []ResultsPDFNewShooter
 }
 
 type pdfColumn struct {
@@ -184,8 +186,12 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 		columns = append(columns, pdfColumn{"Country", 3, false})
 	}
 	if showSegments {
-		for _, n := range d.Segments {
-			columns = append(columns, pdfColumn{"S" + strconv.Itoa(n), 2, true})
+		for i, n := range d.Segments {
+			title := "S" + strconv.Itoa(n)
+			if i < len(d.SegmentNames) {
+				title = d.SegmentNames[i]
+			}
+			columns = append(columns, pdfColumn{title, 4, true})
 		}
 	}
 	columns = append(columns, pdfColumn{"Total", 3, true})
@@ -342,7 +348,11 @@ func tableRow(columns []pdfColumn, cells []string, grid int, header bool) core.R
 	if used < grid {
 		cols = append(cols, col.New(grid-used))
 	}
-	r := row.New(pdfRowHeight).Add(cols...)
+	height := pdfRowHeight
+	if header {
+		height = pdfHeaderHeight
+	}
+	r := row.New(height).Add(cols...)
 	if header {
 		r.WithStyle(&props.Cell{BackgroundColor: pdfHeaderFill})
 	}
