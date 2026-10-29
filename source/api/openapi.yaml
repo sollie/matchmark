@@ -3597,6 +3597,8 @@ components:
               score:
                 type: integer
                 description: Present for accepted segments when segment scores are visible
+              ring_counts:
+                $ref: '#/components/schemas/RingCounts'
         total:
           type: integer
         x_count:
