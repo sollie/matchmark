@@ -23,9 +23,7 @@ Specification and decisions:
 
 ## General Rules
 
-- Commit messages carry no AI attribution trailers (no `Co-authored-by: Copilot`); this overrides any default trailer instruction.
-- Git write operations (branch, commit, push, tag, etc.) are allowed. Use Conventional
-  Commits messages. Never force-push or rewrite history on `main`.
+- Git write operations are allowed. Use Conventional Commits messages. Never force-push or rewrite history on `main`.
 - Never commit or push directly to `main`. Do every change on a new branch (e.g.
   `feat/...`, `fix/...`, `test/...`, `docs/...`) and open a pull request with `gh pr create`.
   Reference the issue it closes (`Closes #N`). Do not merge your own PR unless the user
@@ -39,8 +37,6 @@ Specification and decisions:
 - Never add comments to code (enforced by `scripts/check-no-comments.sh`).
 - Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
 - Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
-- Write idiomatic code that follows the conventions and best practices of the language and ecosystem in use.
-- Always verify that changes do not break existing functionality (run tests, type checks, linters as appropriate).
 - All strings (UI labels, report labels, API field names, log messages) must be in **English**.
   No Swedish or other languages anywhere in the codebase.
 - Do not commit generated or local artifacts (`codeql-db-*`, `results-*`, `.env`, `*.db`).
@@ -49,7 +45,6 @@ Specification and decisions:
 
 - Always use the latest stable version of dependencies unless there is a documented reason not to.
 - Before pinning any package or image version, check the upstream source (registry, GitHub releases, etc.) to confirm it is the current stable release.
-- Do not leave stale, unused, or redundant dependencies in the project.
 
 ## Language-Specific Rules
 
@@ -61,7 +56,6 @@ Specification and decisions:
 - Schema evolves through ordered migrations in `internal/db/migrations/`; never edit an applied migration.
 - HTTP router: `github.com/go-chi/chi/v5`. Reports via `excelize`. Passwords compared and hashed with `golang.org/x/crypto`.
 - After every change, run `scripts/verify-go.sh` (build, test, golangci-lint, trivy, comment check). Single test: `CGO_ENABLED=0 go test ./internal/service -run TestName -v`.
-- Fix all findings before considering the task done.
 
 ### TypeScript / Svelte (`source/web/`)
 
@@ -78,18 +72,13 @@ Specification and decisions:
 
 ## Security Constraints
 
-- `ADMIN_USERNAME` and `ADMIN_PASSWORD` are required only while there are no users and seed the first admin; users authenticate with username and password and a per-user cookie session, and login is rate limited.
 - Scorers are paired devices, not accounts (ADR 0001). A device may only submit hits for its computed score lane; the lane is derived server-side from the pairing and current entries, never trusted from the client.
-- Admins bypass lock checks and can unlock and overwrite any stage.
 - All SQL queries use `?` placeholders via `database/sql` — no string concatenation (the only exception is `VACUUM INTO`, which needs a literal path).
 - Client IPs come from forwarded headers only when the peer is in `TRUSTED_PROXY`.
 
 ## Rulebook Constants
 
-Never hard-code shot counts outside of `source/internal/rulebook/`.
-That package is the single source of truth for:
-- Course-of-fire definitions (stages, shot counts, distances, times)
-- The 40-shot 5-shot revolver course, keyed `40`
+Never hard-code shot counts or courses of fire outside of `source/internal/rulebook/`, the single source of truth (the 40-shot 5-shot revolver course is keyed `40`).
 
 ## Docker and Deployment
 
@@ -104,7 +93,6 @@ That package is the single source of truth for:
 - After any change that affects how to run, build, or deploy the project locally or in
   production, update `README.md` in the same task.
 - Tick completed steps in `docs/v2-plan.md` in the commit that completes them.
-- Never leave the docs describing a state that no longer matches the codebase.
 
 ## Agent skills
 
