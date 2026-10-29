@@ -20,6 +20,7 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/core"
 	"github.com/johnfercher/maroto/v2/pkg/fontrepository"
 	"github.com/johnfercher/maroto/v2/pkg/props"
+	"github.com/sollie/matchmark/internal/rulebook"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"
 )
@@ -43,6 +44,7 @@ var (
 type ResultsPDFSegment struct {
 	Segment int
 	Score   *int
+	Counts  []int
 }
 
 type ResultsPDFRow struct {
@@ -102,10 +104,8 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	}
 	columns, cells := resultsColumns(d)
 	newColumns, newCells := newShooterColumns(d)
-	grid := columnGrid(columns)
-	if g := columnGrid(newColumns); g > grid {
-		grid = g
-	}
+	cardColumns := scoreCardColumns(d)
+	grid := max(columnGrid(columns), columnGrid(newColumns), columnGrid(cardColumns))
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
 		WithOrientation(orientation.Vertical).
@@ -130,6 +130,16 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 		p.Add(sectionRow(c.Category, grid), tableHeader(columns, grid))
 		for _, r := range c.Rows {
 			p.Add(tableRow(columns, cells(r), grid, false))
+		}
+		for _, r := range c.Rows {
+			card := scoreCardCells(r)
+			if card == nil {
+				continue
+			}
+			p.Add(row.New(3), sectionRow(scoreCardTitle(r), grid), tableHeader(cardColumns, grid))
+			for _, cells := range card {
+				p.Add(tableRow(cardColumns, cells, grid, false))
+			}
 		}
 		m.AddPages(p)
 	}
@@ -357,4 +367,55 @@ func tableRow(columns []pdfColumn, cells []string, grid int, header bool) core.R
 		r.WithStyle(&props.Cell{BackgroundColor: pdfHeaderFill})
 	}
 	return r
+}
+
+func scoreCardColumns(d ResultsPDFData) []pdfColumn {
+	columns := []pdfColumn{{"", 4, false}}
+	for i, n := range d.Segments {
+		title := "S" + strconv.Itoa(n)
+		if i < len(d.SegmentNames) {
+			title = d.SegmentNames[i]
+		}
+		columns = append(columns, pdfColumn{title, 5, true})
+	}
+	return append(columns, pdfColumn{"Total", 5, true})
+}
+
+func scoreCardTitle(r ResultsPDFRow) string {
+	if r.LastName == nil {
+		return "#" + strconv.Itoa(r.Rank)
+	}
+	return "#" + strconv.Itoa(r.Rank) + " " + derefString(r.FirstName) + " " + derefString(r.LastName)
+}
+
+func scoreCardCells(r ResultsPDFRow) [][]string {
+	hasCounts := false
+	for _, s := range r.Segments {
+		if s.Counts != nil {
+			hasCounts = true
+		}
+	}
+	if !hasCounts {
+		return nil
+	}
+	rings := rulebook.RingValues()
+	rows := make([][]string, len(rings))
+	totals := make([]int, len(rings))
+	for i, ring := range rings {
+		rows[i] = []string{ring}
+	}
+	for _, s := range r.Segments {
+		for i := range rings {
+			if s.Counts == nil {
+				rows[i] = append(rows[i], "")
+				continue
+			}
+			rows[i] = append(rows[i], strconv.Itoa(s.Counts[i]))
+			totals[i] += s.Counts[i]
+		}
+	}
+	for i := range rings {
+		rows[i] = append(rows[i], strconv.Itoa(totals[i]))
+	}
+	return rows
 }
