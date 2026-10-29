@@ -142,3 +142,33 @@ func TestResultsColumnsUseSegmentNames(t *testing.T) {
 		t.Fatalf("titles %q still numbered", titles)
 	}
 }
+
+func TestScoreCardCellsListRingsPerSegmentWithTotals(t *testing.T) {
+	r := ResultsPDFRow{Segments: []ResultsPDFSegment{
+		{Segment: 1, Counts: []int{1, 2, 3, 4, 5, 6, 7}},
+		{Segment: 2},
+		{Segment: 3, Counts: []int{1, 1, 1, 1, 1, 1, 1}},
+	}}
+	got := scoreCardCells(r)
+	if len(got) != 7 || !slices.Equal(got[0], []string{"X", "1", "", "1", "2"}) || !slices.Equal(got[6], []string{"M", "7", "", "1", "8"}) {
+		t.Fatalf("cells %q", got)
+	}
+	if scoreCardCells(ResultsPDFRow{Segments: []ResultsPDFSegment{{Segment: 1}}}) != nil {
+		t.Fatal("card without counts")
+	}
+}
+
+func TestResultsPDFWithScoreCards(t *testing.T) {
+	d := sampleResults()
+	for i := range d.Categories {
+		for j := range d.Categories[i].Rows {
+			for k := range d.Categories[i].Rows[j].Segments {
+				d.Categories[i].Rows[j].Segments[k].Counts = []int{1, 2, 3, 4, 5, 6, 7}
+			}
+		}
+	}
+	out, err := ResultsPDF(d)
+	if err != nil || !bytes.HasPrefix(out, []byte("%PDF-")) {
+		t.Fatalf("pdf: %v", err)
+	}
+}
