@@ -190,12 +190,12 @@ describe("Spectator remote control", () => {
     installManaged();
     render(Spectator);
     await waitFor(() => expect(screenSend).not.toBeNull());
-    screenSend!({ state: "match", match_id: 7 });
+    screenSend!({ state: "match", match_id: 7, approved: true });
     await waitFor(() => expect(send).not.toBeNull());
     send!({ current_stage: 1, total_stages: 4, standings: [standing(1, ["accepted"])] });
     expect(await screen.findByText("Stage 1 of 4")).toBeTruthy();
     expect(screen.queryByRole("combobox")).toBeNull();
-    screenSend!({ state: "waiting", match_id: null });
+    screenSend!({ state: "waiting", match_id: null, approved: true });
     expect(await screen.findByText("Waiting for a match")).toBeTruthy();
     expect(screen.queryByText("Stage 1 of 4")).toBeNull();
   });
@@ -205,7 +205,7 @@ describe("Spectator remote control", () => {
     installManaged("finished");
     render(Spectator);
     await waitFor(() => expect(screenSend).not.toBeNull());
-    screenSend!({ state: "match", match_id: 7 });
+    screenSend!({ state: "match", match_id: 7, approved: true });
     await waitFor(() => expect(send).not.toBeNull());
     send!({
       status: "finished",
@@ -214,6 +214,20 @@ describe("Spectator remote control", () => {
       standings: [standing(1, ["accepted"])],
     });
     expect(await screen.findByText("Finished")).toBeTruthy();
+  });
+
+  it("shows the code until approved, then offers leave below the standings", async () => {
+    localStorage.setItem(key, JSON.stringify({ token: "tok", code: "ABC234" }));
+    installManaged();
+    render(Spectator);
+    await waitFor(() => expect(screenSend).not.toBeNull());
+    screenSend!({ state: "waiting", match_id: null, approved: false });
+    expect(await screen.findByRole("region", { name: "Remote control" })).toBeTruthy();
+    screenSend!({ state: "waiting", match_id: null, approved: true });
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Remote control" })).toBeNull(),
+    );
+    expect(screen.getByRole("button", { name: "Leave remote control" })).toBeTruthy();
   });
 
   it("leaves remote control and reverts to the match picker", async () => {
