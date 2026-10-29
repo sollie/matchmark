@@ -1414,6 +1414,8 @@ export interface components {
             status: components["schemas"]["MatchStatus"];
             /** @description Stage the match is on. Stage 1 at activation; moved only by starting the next stage */
             current_stage: number;
+            /** @description UTC time the match left draft, backfilled with the match date for matches activated before this field existed. Null for drafts. Admin responses only */
+            activated_at?: string | null;
         } & components["schemas"]["MatchInput"];
         Visibility: {
             show_names: boolean;

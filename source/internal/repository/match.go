@@ -23,6 +23,7 @@ type Match struct {
 	Course        string
 	Status        string
 	CurrentStage  int
+	ActivatedAt   string
 }
 
 type DateRange struct {
@@ -137,8 +138,8 @@ func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRa
 func (r *Repository) GetMatch(ctx context.Context, id int64) (Match, error) {
 	var c Match
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches WHERE id = ?`, id).
-		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage)
+		`SELECT id, competition_id, name, date, course, status, current_stage, COALESCE(activated_at, '') FROM matches WHERE id = ?`, id).
+		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage, &c.ActivatedAt)
 	return c, mapErr(err)
 }
 
@@ -182,4 +183,11 @@ func (r *Repository) WithdrawEntry(ctx context.Context, matchID, entryID int64) 
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (r *Repository) DefaultMatchID(ctx context.Context) (int64, error) {
+	var id int64
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id FROM matches WHERE status = 'active' ORDER BY activated_at DESC, id DESC LIMIT 1`).Scan(&id)
+	return id, mapErr(err)
 }

@@ -87,8 +87,9 @@ func restoreMatch(ctx context.Context, tx *sql.Tx, rc RestoreMatch, counts *Rest
 			return err
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO matches (id, competition_id, name, date, course, status, current_stage) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			rc.Match.ID, containerID, rc.Match.Name, rc.Match.Date, rc.Match.Course, rc.Match.Status, rc.Match.CurrentStage); err != nil {
+			`INSERT INTO matches (id, competition_id, name, date, course, status, current_stage, activated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'draft' THEN NULL ELSE ? END)`,
+			rc.Match.ID, containerID, rc.Match.Name, rc.Match.Date, rc.Match.Course, rc.Match.Status, rc.Match.CurrentStage, rc.Match.Status, rc.Match.Date); err != nil {
 			return mapErr(err)
 		}
 		counts.Matches++
