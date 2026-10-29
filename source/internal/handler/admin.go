@@ -92,7 +92,14 @@ func shooterJSON(s repository.Shooter) map[string]any {
 }
 
 func matchJSON(c repository.Match) map[string]any {
-	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_stage": c.CurrentStage}
+	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_stage": c.CurrentStage, "activated_at": nullable(c.ActivatedAt)}
+}
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 func entryJSON(e repository.Entry) map[string]any {
