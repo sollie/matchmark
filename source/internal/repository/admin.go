@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 )
 
 type StageInfo struct {
@@ -91,7 +92,7 @@ func (r *Repository) ShooterEntryCounts(ctx context.Context) (map[int64]int, err
 
 func (r *Repository) ShooterMatches(ctx context.Context, shooterID int64) ([]Match, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT m.id, m.competition_id, m.name, m.date, m.course, m.status, m.current_stage
+		`SELECT m.id, m.competition_id, m.name, m.date, m.course, m.status, m.current_stage, COALESCE(m.activated_at, '')
 		 FROM matches m JOIN entries e ON e.match_id = m.id
 		 WHERE e.shooter_id = ? ORDER BY m.date DESC, m.id DESC`, shooterID)
 	if err != nil {
@@ -101,7 +102,7 @@ func (r *Repository) ShooterMatches(ctx context.Context, shooterID int64) ([]Mat
 	matches := []Match{}
 	for rows.Next() {
 		var m Match
-		if err := rows.Scan(&m.ID, &m.CompetitionID, &m.Name, &m.Date, &m.Course, &m.Status, &m.CurrentStage); err != nil {
+		if err := rows.Scan(&m.ID, &m.CompetitionID, &m.Name, &m.Date, &m.Course, &m.Status, &m.CurrentStage, &m.ActivatedAt); err != nil {
 			return nil, err
 		}
 		matches = append(matches, m)
@@ -140,7 +141,7 @@ func (r *Repository) DeleteShooter(ctx context.Context, id int64) error {
 
 func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_stage FROM matches ORDER BY date DESC, id DESC`)
+		`SELECT id, competition_id, name, date, course, status, current_stage, COALESCE(activated_at, '') FROM matches ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +149,7 @@ func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	comps := []Match{}
 	for rows.Next() {
 		var c Match
-		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage); err != nil {
+		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentStage, &c.ActivatedAt); err != nil {
 			return nil, err
 		}
 		comps = append(comps, c)
@@ -178,7 +179,13 @@ func (r *Repository) UpdateMatch(ctx context.Context, c Match) error {
 }
 
 func (r *Repository) SetMatchStatus(ctx context.Context, id int64, from, to string) error {
-	res, err := r.db.ExecContext(ctx, `UPDATE matches SET status = ? WHERE id = ? AND status = ?`, to, id, from)
+	var activatedAt any
+	if to == "active" {
+		activatedAt = time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	}
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE matches SET status = ?, activated_at = COALESCE(?, activated_at) WHERE id = ? AND status = ?`,
+		to, activatedAt, id, from)
 	return conflictIfNone(res, err)
 }
 

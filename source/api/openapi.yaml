@@ -2807,6 +2807,10 @@ components:
             current_stage:
               type: integer
               description: Stage the match is on. Stage 1 at activation; moved only by starting the next stage
+            activated_at:
+              type: string
+              nullable: true
+              description: UTC time the match left draft, backfilled with the match date for matches activated before this field existed. Null for drafts. Admin responses only
         - $ref: '#/components/schemas/MatchInput'
     Visibility:
       type: object

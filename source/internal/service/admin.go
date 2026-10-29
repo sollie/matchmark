@@ -388,3 +388,11 @@ func (s *Service) DeleteEntry(ctx context.Context, matchID, entryID int64) error
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.delete", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch})
 	return nil
 }
+
+func (s *Service) DefaultMatchID(ctx context.Context) (int64, bool, error) {
+	id, err := s.repo.DefaultMatchID(ctx)
+	if errors.Is(err, repository.ErrNotFound) {
+		return 0, false, nil
+	}
+	return id, err == nil, err
+}
