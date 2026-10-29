@@ -22,7 +22,7 @@ func sampleResults() ResultsPDFData {
 	row := func(rank int, last string) ResultsPDFRow {
 		return ResultsPDFRow{
 			Rank: rank, LastName: ptr(last), FirstName: ptr("Åse"), WAID: ptr("1001"), Club: ptr("Łódź SK"), Country: ptr("NOR"),
-			Stages: []ResultsPDFStage{{Stage: 1, Score: ptr(90)}, {Stage: 2, Score: ptr(88)}}, Total: 178, XCount: ptr(9),
+			Segments: []ResultsPDFSegment{{Segment: 1, Score: ptr(90)}, {Segment: 2, Score: ptr(88)}}, Total: 178, XCount: ptr(9),
 		}
 	}
 	return ResultsPDFData{
@@ -31,7 +31,7 @@ func sampleResults() ResultsPDFData {
 		Name:        "Autumn Match",
 		Date:        "2026-10-24",
 		CourseLabel: "WA1500 150",
-		Stages:      []int{1, 2},
+		Segments:    []int{1, 2},
 		Categories: []ResultsPDFCategory{
 			{Category: "Revolver", Rows: []ResultsPDFRow{row(1, "Ørn"), row(2, "Berg")}},
 			{Category: "Pistol", Rows: []ResultsPDFRow{row(1, "Dahl")}},
@@ -59,8 +59,8 @@ func TestResultsPDFWithHiddenColumnsAndLogo(t *testing.T) {
 		for j := range d.Categories[i].Rows {
 			r := &d.Categories[i].Rows[j]
 			r.LastName, r.FirstName, r.WAID, r.Club, r.Country, r.XCount = nil, nil, nil, nil, nil, nil
-			for k := range r.Stages {
-				r.Stages[k].Score = nil
+			for k := range r.Segments {
+				r.Segments[k].Score = nil
 			}
 		}
 	}

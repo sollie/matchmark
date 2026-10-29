@@ -102,7 +102,7 @@ func (s *Service) MergeShooters(ctx context.Context, sourceID, targetID int64) (
 	s.changes.Record(ctx, Change{
 		Audit:  AuditEvent{Action: "shooter.merge", Target: idTarget("shooter", sourceID), Details: details},
 		Live:   LiveAll,
-		Reemit: &repository.LockedStageFilter{ShooterID: targetID},
+		Reemit: &repository.LockedSegmentFilter{ShooterID: targetID},
 	})
 	return preview, nil
 }

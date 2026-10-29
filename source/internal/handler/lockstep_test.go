@@ -7,69 +7,69 @@ import (
 )
 
 func (f *scoringFixture) startNext(comp int) (int, map[string]any) {
-	return f.env.Do("POST", fmt.Sprintf("/api/matches/%d/next-stage", comp), nil)
+	return f.env.Do("POST", fmt.Sprintf("/api/matches/%d/next-segment", comp), nil)
 }
 
-func (f *scoringFixture) fullStage(t *testing.T, lane, stage int) map[string]any {
+func (f *scoringFixture) fullSegment(t *testing.T, lane, segment int) map[string]any {
 	t.Helper()
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == lane {
-			return map[string]any{"x": m["stages"].([]any)[stage-1].(map[string]any)["expected_shots"]}
+			return map[string]any{"x": m["segments"].([]any)[segment-1].(map[string]any)["expected_shots"]}
 		}
 	}
 	t.Fatalf("lane %d not found", lane)
 	return nil
 }
 
-func (f *scoringFixture) acceptAll(t *testing.T, stage int, lanes ...int) {
+func (f *scoringFixture) acceptAll(t *testing.T, segment int, lanes ...int) {
 	t.Helper()
 	for _, l := range lanes {
-		f.env.Do("PUT", f.adminStage(l, stage, ""), f.fullStage(t, l, stage))
-		if status, out := f.env.Do("POST", f.adminStage(l, stage, "/lock"), nil); status != http.StatusOK {
-			t.Fatalf("accept lane %d stage %d: %d %v", l, stage, status, out)
+		f.env.Do("PUT", f.adminSegment(l, segment, ""), f.fullSegment(t, l, segment))
+		if status, out := f.env.Do("POST", f.adminSegment(l, segment, "/lock"), nil); status != http.StatusOK {
+			t.Fatalf("accept lane %d segment %d: %d %v", l, segment, status, out)
 		}
 	}
 }
 
-func (f *scoringFixture) scoreAndLock(t *testing.T, token string, lane, stage int) {
+func (f *scoringFixture) scoreAndLock(t *testing.T, token string, lane, segment int) {
 	t.Helper()
-	if status, out := f.env.DoToken(token, "PUT", fmt.Sprintf("/api/scorer/stages/%d", stage), f.fullStage(t, lane, stage)); status != http.StatusOK {
+	if status, out := f.env.DoToken(token, "PUT", fmt.Sprintf("/api/scorer/segments/%d", segment), f.fullSegment(t, lane, segment)); status != http.StatusOK {
 		t.Fatalf("set counts: %d %v", status, out)
 	}
-	if status, out := f.deviceAction(token, stage, "lock"); status != http.StatusOK {
+	if status, out := f.deviceAction(token, segment, "lock"); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
 }
 
-func (f *scoringFixture) currentStage(t *testing.T) int {
+func (f *scoringFixture) currentSegment(t *testing.T) int {
 	t.Helper()
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d", f.comp), nil)
-	return int(out["current_stage"].(float64))
+	return int(out["current_segment"].(float64))
 }
 
-func TestActivationStartsAtStageOneAndDevicesScoreOnlyTheCurrentStage(t *testing.T) {
+func TestActivationStartsAtSegmentOneAndDevicesScoreOnlyTheCurrentSegment(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	if got := f.currentStage(t); got != 1 {
-		t.Fatalf("current stage %d", got)
+	if got := f.currentSegment(t); got != 1 {
+		t.Fatalf("current segment %d", got)
 	}
 	token := f.pair(t, 1)
-	if got := f.session(t, token)["current_stage"]; got != float64(1) {
-		t.Fatalf("session current stage %v", got)
+	if got := f.session(t, token)["current_segment"]; got != float64(1) {
+		t.Fatalf("session current segment %v", got)
 	}
-	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/2", counts(10, 2)); status != http.StatusConflict {
-		t.Fatalf("set counts on a later stage: %d", status)
+	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/segments/2", counts(10, 2)); status != http.StatusConflict {
+		t.Fatalf("set counts on a later segment: %d", status)
 	}
 	if status, _ := f.deviceAction(token, 2, "lock"); status != http.StatusConflict {
-		t.Fatalf("lock a later stage: %d", status)
+		t.Fatalf("lock a later segment: %d", status)
 	}
-	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(10, 2)); status != http.StatusOK {
-		t.Fatalf("set counts on current stage: %d", status)
+	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(10, 2)); status != http.StatusOK {
+		t.Fatalf("set counts on current segment: %d", status)
 	}
 }
 
-func TestStartNextStageIsRejectedUntilEveryMannedLaneHasAccepted(t *testing.T) {
+func TestStartNextSegmentIsRejectedUntilEveryMannedLaneHasAccepted(t *testing.T) {
 	f := newScoringFixture(t, 1, 2, 3)
 	if status, _ := f.startNext(f.comp); status != http.StatusConflict {
 		t.Fatalf("nothing accepted: %d", status)
@@ -84,11 +84,11 @@ func TestStartNextStageIsRejectedUntilEveryMannedLaneHasAccepted(t *testing.T) {
 	}
 	f.deviceAction(f.pair(t, 3), 1, "accept")
 	status, out := f.startNext(f.comp)
-	if status != http.StatusOK || out["current_stage"] != float64(2) {
+	if status != http.StatusOK || out["current_segment"] != float64(2) {
 		t.Fatalf("start next: %d %v", status, out)
 	}
-	if got := f.currentStage(t); got != 2 {
-		t.Fatalf("current stage %d", got)
+	if got := f.currentSegment(t); got != 2 {
+		t.Fatalf("current segment %d", got)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestWithdrawnLaneDoesNotBlockTheGate(t *testing.T) {
 	if status, _ := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", f.comp, f.entries[3]), nil); status != http.StatusOK && status != http.StatusNoContent {
 		t.Fatalf("withdraw at the gate: %d", status)
 	}
-	f.env.Do("POST", f.adminStage(3, 1, "/unlock"), nil)
+	f.env.Do("POST", f.adminSegment(3, 1, "/unlock"), nil)
 	if status, out := f.startNext(f.comp); status != http.StatusOK {
 		t.Fatalf("start next: %d %v", status, out)
 	}
@@ -117,25 +117,25 @@ func TestPhasesAcrossTheGate(t *testing.T) {
 	if status, out := f.startNext(f.comp); status != http.StatusOK {
 		t.Fatalf("start next: %d %v", status, out)
 	}
-	if got := f.session(t, lane1)["phase"]; got != "next_stage" {
-		t.Fatalf("phase after next stage started: %v", got)
+	if got := f.session(t, lane1)["phase"]; got != "next_segment" {
+		t.Fatalf("phase after next segment started: %v", got)
 	}
-	if status, _ := f.env.DoToken(lane1, "PUT", "/api/scorer/stages/2", f.fullStage(t, 2, 2)); status != http.StatusOK {
-		t.Fatalf("score stage 2: %d", status)
+	if status, _ := f.env.DoToken(lane1, "PUT", "/api/scorer/segments/2", f.fullSegment(t, 2, 2)); status != http.StatusOK {
+		t.Fatalf("score segment 2: %d", status)
 	}
 	if got := f.session(t, lane1)["phase"]; got != "scoring" {
 		t.Fatalf("phase once scoring: %v", got)
 	}
 }
 
-func TestNextStageBannerClearsOnceTheScorerSaves(t *testing.T) {
+func TestNextSegmentBannerClearsOnceTheScorerSaves(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	lane1, lane2 := f.pair(t, 1), f.pair(t, 2)
 	f.acceptAll(t, 1, 1, 2)
 	if status, out := f.startNext(f.comp); status != http.StatusOK {
 		t.Fatalf("start next: %d %v", status, out)
 	}
-	if status, _ := f.env.DoToken(lane1, "PUT", "/api/scorer/stages/2", f.fullStage(t, 2, 2)); status != http.StatusOK {
+	if status, _ := f.env.DoToken(lane1, "PUT", "/api/scorer/segments/2", f.fullSegment(t, 2, 2)); status != http.StatusOK {
 		t.Fatalf("save hits: %d", status)
 	}
 	if got := f.session(t, lane1)["phase"]; got != "scoring" {
@@ -144,7 +144,7 @@ func TestNextStageBannerClearsOnceTheScorerSaves(t *testing.T) {
 	if got := f.session(t, f.pair(t, 1))["phase"]; got != "scoring" {
 		t.Fatalf("phase after re-pairing: %v", got)
 	}
-	if got := f.session(t, lane2)["phase"]; got != "next_stage" {
+	if got := f.session(t, lane2)["phase"]; got != "next_segment" {
 		t.Fatalf("other lane phase: %v", got)
 	}
 }
@@ -152,27 +152,27 @@ func TestNextStageBannerClearsOnceTheScorerSaves(t *testing.T) {
 func TestLastAcceptanceFinishesTheMatchAndRevokesPairings(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	lane1, lane2 := f.pair(t, 1), f.pair(t, 2)
-	for stage := 1; stage <= 10; stage++ {
-		if stage > 1 {
+	for segment := 1; segment <= 6; segment++ {
+		if segment > 1 {
 			if status, out := f.startNext(f.comp); status != http.StatusOK {
-				t.Fatalf("start stage %d: %d %v", stage, status, out)
+				t.Fatalf("start segment %d: %d %v", segment, status, out)
 			}
 		}
 		for _, l := range []int{1, 2} {
-			f.scoreAndLock(t, map[int]string{1: lane1, 2: lane2}[l], 3-l, stage)
+			f.scoreAndLock(t, map[int]string{1: lane1, 2: lane2}[l], 3-l, segment)
 		}
-		f.deviceAction(lane1, stage, "accept")
-		if stage < 10 {
-			f.deviceAction(lane2, stage, "accept")
+		f.deviceAction(lane1, segment, "accept")
+		if segment < 6 {
+			f.deviceAction(lane2, segment, "accept")
 		}
 	}
 	if status, _ := f.startNext(f.comp); status != http.StatusConflict {
-		t.Fatalf("start next while last stage is incomplete: %d", status)
+		t.Fatalf("start next while last segment is incomplete: %d", status)
 	}
 	if _, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d", f.comp), nil); out["status"] != "active" {
 		t.Fatalf("finished too early: %v", out["status"])
 	}
-	if st, o := f.deviceAction(lane2, 10, "accept"); st != 200 {
+	if st, o := f.deviceAction(lane2, 6, "accept"); st != 200 {
 		t.Fatalf("final accept %d %v", st, o)
 	}
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d", f.comp), nil)
@@ -188,7 +188,7 @@ func TestLastAcceptanceFinishesTheMatchAndRevokesPairings(t *testing.T) {
 	if status != http.StatusOK || sess["phase"] != "finished" {
 		t.Fatalf("finished session: %d %v", status, sess)
 	}
-	if stages, _ := sess["stages"].([]any); len(stages) != 0 || sess["shooter_name"] != "" {
+	if segments, _ := sess["segments"].([]any); len(segments) != 0 || sess["shooter_name"] != "" {
 		t.Fatalf("finished session leaks scores: %v", sess)
 	}
 	if status, _ := f.env.DoToken(lane1, "GET", "/api/scorer/stream", nil); status != http.StatusGone {
@@ -222,7 +222,7 @@ func TestEntryChangesAreFrozenOnceActiveAndWithdrawalOnlyAtTheGate(t *testing.T)
 	}
 	withdraw := fmt.Sprintf("%s/entries/%d/withdraw", base, f.entries[3])
 	if status, _ := f.env.Do("POST", withdraw, nil); status != http.StatusConflict {
-		t.Fatalf("withdraw mid stage: %d", status)
+		t.Fatalf("withdraw mid segment: %d", status)
 	}
 	f.acceptAll(t, 1, 1, 2, 3)
 	if status, _ := f.env.Do("POST", withdraw, nil); status != http.StatusOK && status != http.StatusNoContent {
@@ -232,7 +232,7 @@ func TestEntryChangesAreFrozenOnceActiveAndWithdrawalOnlyAtTheGate(t *testing.T)
 		t.Fatalf("start next after withdrawal: %d %v", status, out)
 	}
 	if status, _ := f.env.Do("POST", fmt.Sprintf("%s/entries/%d/withdraw", base, f.entries[2]), nil); status != http.StatusConflict {
-		t.Fatalf("withdraw after next stage started: %d", status)
+		t.Fatalf("withdraw after next segment started: %d", status)
 	}
 	if got := f.session(t, f.pair(t, 1))["score_lane"]; got != float64(2) {
 		t.Fatalf("score lane %v", got)
@@ -246,8 +246,8 @@ func TestActiveMatchesKeepIndependentPointers(t *testing.T) {
 	if status, _ := a.startNext(a.comp); status != http.StatusOK {
 		t.Fatalf("start next: %d", status)
 	}
-	if a.currentStage(t) != 2 || b.currentStage(t) != 1 {
-		t.Fatalf("pointers %d %d", a.currentStage(t), b.currentStage(t))
+	if a.currentSegment(t) != 2 || b.currentSegment(t) != 1 {
+		t.Fatalf("pointers %d %d", a.currentSegment(t), b.currentSegment(t))
 	}
 }
 
@@ -257,22 +257,22 @@ func TestCorrectionsAfterThePointerMovedOnAreAdminOnlyAndDoNotMoveThePointer(t *
 	f.startNext(f.comp)
 	lane1 := f.pair(t, 1)
 
-	if status, out := f.env.Do("POST", f.adminStage(2, 1, "/unlock"), nil); status != http.StatusOK {
+	if status, out := f.env.Do("POST", f.adminSegment(2, 1, "/unlock"), nil); status != http.StatusOK {
 		t.Fatalf("unlock: %d %v", status, out)
 	}
-	if status, _ := f.env.DoToken(lane1, "PUT", "/api/scorer/stages/1", counts(9, 3)); status != http.StatusConflict {
-		t.Fatalf("device edit of an earlier stage: %d", status)
+	if status, _ := f.env.DoToken(lane1, "PUT", "/api/scorer/segments/1", counts(9, 3)); status != http.StatusConflict {
+		t.Fatalf("device edit of an earlier segment: %d", status)
 	}
 	if status, _ := f.deviceAction(lane1, 1, "lock"); status != http.StatusConflict {
-		t.Fatalf("device lock of an earlier stage: %d", status)
+		t.Fatalf("device lock of an earlier segment: %d", status)
 	}
-	if status, _ := f.env.Do("PUT", f.adminStage(2, 1, ""), counts(9, 3)); status != http.StatusOK {
+	if status, _ := f.env.Do("PUT", f.adminSegment(2, 1, ""), counts(9, 3)); status != http.StatusOK {
 		t.Fatalf("admin edit: %d", status)
 	}
-	if status, out := f.env.Do("POST", f.adminStage(2, 1, "/lock"), nil); status != http.StatusOK || out["status"] != "accepted" {
+	if status, out := f.env.Do("POST", f.adminSegment(2, 1, "/lock"), nil); status != http.StatusOK || out["status"] != "accepted" {
 		t.Fatalf("admin relock: %d %v", status, out)
 	}
-	if got := f.currentStage(t); got != 2 {
+	if got := f.currentSegment(t); got != 2 {
 		t.Fatalf("pointer moved to %d", got)
 	}
 }
@@ -281,24 +281,24 @@ func TestUnlockOnAFinishedMatchLeavesItFinished(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "finished"})
 	f.acceptAll(t, 1, 1, 2)
-	if status, out := f.env.Do("POST", f.adminStage(1, 1, "/unlock"), nil); status != http.StatusOK {
+	if status, out := f.env.Do("POST", f.adminSegment(1, 1, "/unlock"), nil); status != http.StatusOK {
 		t.Fatalf("unlock: %d %v", status, out)
 	}
 	if _, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d", f.comp), nil); out["status"] != "finished" {
 		t.Fatalf("status %v", out["status"])
 	}
-	if got := f.stageStatus(t, 1, 1); got != "open" {
-		t.Fatalf("stage %q", got)
+	if got := f.segmentStatus(t, 1, 1); got != "open" {
+		t.Fatalf("segment %q", got)
 	}
 }
 
-func TestAdminAcceptanceOfTheLastStageFinishesTheMatch(t *testing.T) {
+func TestAdminAcceptanceOfTheLastSegmentFinishesTheMatch(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	for stage := 1; stage <= 10; stage++ {
-		if stage > 1 {
+	for segment := 1; segment <= 6; segment++ {
+		if segment > 1 {
 			f.startNext(f.comp)
 		}
-		f.acceptAll(t, stage, 1, 2)
+		f.acceptAll(t, segment, 1, 2)
 	}
 	if _, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d", f.comp), nil); out["status"] != "finished" {
 		t.Fatalf("status %v", out["status"])

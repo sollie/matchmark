@@ -93,13 +93,13 @@ func (h *Handler) scoreLane(r *http.Request) (int, any, error) {
 
 func (h *Handler) setRingCounts(r *http.Request) (int, any, error) {
 	req := in(r)
-	compID, entryID, stage := req.path("matchID"), req.path("entryID"), req.path("stage")
+	compID, entryID, segment := req.path("matchID"), req.path("entryID"), req.path("segment")
 	var body ringCountsBody
 	req.body(&body)
 	if req.err != nil {
 		return fail(req.err)
 	}
-	if err := h.svc.AdminSetRingCounts(r.Context(), compID, entryID, int(stage), body.counts()); err != nil {
+	if err := h.svc.AdminSetRingCounts(r.Context(), compID, entryID, int(segment), body.counts()); err != nil {
 		return fail(err)
 	}
 	return okJSON(body)

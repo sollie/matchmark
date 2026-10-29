@@ -8,35 +8,35 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-type StageStatus string
+type SegmentStatus string
 
 const (
-	StatusOpen               StageStatus = "open"
-	StatusAwaitingAcceptance StageStatus = "awaiting_acceptance"
-	StatusAccepted           StageStatus = "accepted"
+	StatusOpen               SegmentStatus = "open"
+	StatusAwaitingAcceptance SegmentStatus = "awaiting_acceptance"
+	StatusAccepted           SegmentStatus = "accepted"
 )
 
-type StageEventKind string
+type SegmentEventKind string
 
 const (
-	EventLocked      StageEventKind = "locked"
-	EventAccepted    StageEventKind = "accepted"
-	EventDisputed    StageEventKind = "disputed"
-	EventAcceptedAll StageEventKind = "accepted_all"
-	EventUnlocked    StageEventKind = "unlocked"
+	EventLocked      SegmentEventKind = "locked"
+	EventAccepted    SegmentEventKind = "accepted"
+	EventDisputed    SegmentEventKind = "disputed"
+	EventAcceptedAll SegmentEventKind = "accepted_all"
+	EventUnlocked    SegmentEventKind = "unlocked"
 )
 
-type StageEvent struct {
-	ID          int64
-	MatchID     int64
-	EntryID     int64
-	StageNumber int
-	Event       StageEventKind
-	ActorType   string
-	ActorName   string
-	ScorerName  string
-	ShooterName string
-	CreatedAt   string
+type SegmentEvent struct {
+	ID            int64
+	MatchID       int64
+	EntryID       int64
+	SegmentNumber int
+	Event         SegmentEventKind
+	ActorType     string
+	ActorName     string
+	ScorerName    string
+	ShooterName   string
+	CreatedAt     string
 }
 
 type RingCounts struct {
@@ -56,13 +56,13 @@ func (c RingCounts) Score() int {
 		rulebook.SevenRingValue*c.Seven
 }
 
-type Stage struct {
+type Segment struct {
 	ID            int64
 	EntryID       int64
 	Number        int
 	ExpectedShots int
 	Counts        RingCounts
-	Status        StageStatus
+	Status        SegmentStatus
 	ScorerLane    *int
 	ScorerName    string
 	LockedAt      string
@@ -71,14 +71,14 @@ type Stage struct {
 	DisputedAt    string
 }
 
-func (r *Repository) GetStage(ctx context.Context, matchID, entryID int64, number int) (Stage, error) {
-	var s Stage
+func (r *Repository) GetSegment(ctx context.Context, matchID, entryID int64, number int) (Segment, error) {
+	var s Segment
 	err := r.db.QueryRowContext(ctx,
-		`SELECT s.id, s.entry_id, s.stage_number, s.expected_shots, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.status,
+		`SELECT s.id, s.entry_id, s.segment_number, s.expected_shots, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.status,
 		        s.scorer_lane, COALESCE(s.scorer_name, ''), COALESCE(s.locked_at, ''),
 		        COALESCE(s.accepted_by, ''), COALESCE(s.accepted_at, ''), COALESCE(s.disputed_at, '')
-		 FROM stages s JOIN entries e ON e.id = s.entry_id
-		 WHERE e.match_id = ? AND e.id = ? AND s.stage_number = ?`,
+		 FROM segments s JOIN entries e ON e.id = s.entry_id
+		 WHERE e.match_id = ? AND e.id = ? AND s.segment_number = ?`,
 		matchID, entryID, number).
 		Scan(&s.ID, &s.EntryID, &s.Number, &s.ExpectedShots,
 			&s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &s.Status,
@@ -86,12 +86,12 @@ func (r *Repository) GetStage(ctx context.Context, matchID, entryID int64, numbe
 	return s, mapErr(err)
 }
 
-func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCounts, activeOnly bool) error {
-	query := `UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, started = 0 WHERE id = ? AND status = 'open'`
+func (r *Repository) SetRingCounts(ctx context.Context, segmentID int64, c RingCounts, activeOnly bool) error {
+	query := `UPDATE segments SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, started = 0 WHERE id = ? AND status = 'open'`
 	if activeOnly {
-		query += ` AND EXISTS (SELECT 1 FROM entries e JOIN matches m ON m.id = e.match_id WHERE e.id = stages.entry_id AND m.status = 'active')`
+		query += ` AND EXISTS (SELECT 1 FROM entries e JOIN matches m ON m.id = e.match_id WHERE e.id = segments.entry_id AND m.status = 'active')`
 	}
-	res, err := r.db.ExecContext(ctx, query, c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stageID)
+	res, err := r.db.ExecContext(ctx, query, c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, segmentID)
 	if err != nil {
 		return mapErr(err)
 	}
@@ -101,21 +101,21 @@ func (r *Repository) SetRingCounts(ctx context.Context, stageID int64, c RingCou
 	return nil
 }
 
-func (r *Repository) OverwriteRingCounts(ctx context.Context, stage Stage, c RingCounts, username string, ev StageEvent) error {
-	if stage.Status == StatusOpen {
+func (r *Repository) OverwriteRingCounts(ctx context.Context, segment Segment, c RingCounts, username string, ev SegmentEvent) error {
+	if segment.Status == StatusOpen {
 		res, err := r.db.ExecContext(ctx,
-			`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, started = 0 WHERE id = ? AND status = 'open'`,
-			c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, stage.ID)
+			`UPDATE segments SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?, started = 0 WHERE id = ? AND status = 'open'`,
+			c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, segment.ID)
 		return conflictIfNone(res, err)
 	}
-	return r.transition(ctx, stage.Status == StatusAwaitingAcceptance, ev,
-		`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?,
+	return r.transition(ctx, segment.Status == StatusAwaitingAcceptance, ev,
+		`UPDATE segments SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?,
 		        status = 'accepted', scorer_lane = NULL, scorer_name = ?, accepted_by = ?, accepted_at = ?, disputed_at = NULL, started = 0
 		 WHERE id = ? AND status = ?`,
-		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, username, username, lockTimestamp(), stage.ID, stage.Status)
+		c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss, username, username, lockTimestamp(), segment.ID, segment.Status)
 }
 
-func (r *Repository) transition(ctx context.Context, record bool, ev StageEvent, query string, args ...any) error {
+func (r *Repository) transition(ctx context.Context, record bool, ev SegmentEvent, query string, args ...any) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -126,27 +126,27 @@ func (r *Repository) transition(ctx context.Context, record bool, ev StageEvent,
 		return err
 	}
 	if record {
-		if err := insertStageEvent(ctx, tx, ev); err != nil {
+		if err := insertSegmentEvent(ctx, tx, ev); err != nil {
 			return err
 		}
 	}
 	return tx.Commit()
 }
 
-func insertStageEvent(ctx context.Context, tx *sql.Tx, ev StageEvent) error {
+func insertSegmentEvent(ctx context.Context, tx *sql.Tx, ev SegmentEvent) error {
 	_, err := tx.ExecContext(ctx,
-		`INSERT INTO stage_events (match_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at)
+		`INSERT INTO segment_events (match_id, entry_id, segment_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		ev.MatchID, ev.EntryID, ev.StageNumber, ev.Event, ev.ActorType, ev.ActorName, ev.ScorerName, ev.ShooterName, lockTimestamp())
+		ev.MatchID, ev.EntryID, ev.SegmentNumber, ev.Event, ev.ActorType, ev.ActorName, ev.ScorerName, ev.ShooterName, lockTimestamp())
 	return mapErr(err)
 }
 
-type StageAcceptance struct {
-	StageID int64
-	Event   StageEvent
+type SegmentAcceptance struct {
+	SegmentID int64
+	Event     SegmentEvent
 }
 
-func (r *Repository) AcceptStages(ctx context.Context, acceptedBy string, items []StageAcceptance) error {
+func (r *Repository) AcceptSegments(ctx context.Context, acceptedBy string, items []SegmentAcceptance) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -155,13 +155,13 @@ func (r *Repository) AcceptStages(ctx context.Context, acceptedBy string, items 
 	now := lockTimestamp()
 	for _, it := range items {
 		res, err := tx.ExecContext(ctx,
-			`UPDATE stages SET status = 'accepted', accepted_by = ?, accepted_at = ?
+			`UPDATE segments SET status = 'accepted', accepted_by = ?, accepted_at = ?
 			 WHERE id = ? AND status = 'awaiting_acceptance'`,
-			acceptedBy, now, it.StageID)
+			acceptedBy, now, it.SegmentID)
 		if err := conflictIfNone(res, err); err != nil {
 			return err
 		}
-		if err := insertStageEvent(ctx, tx, it.Event); err != nil {
+		if err := insertSegmentEvent(ctx, tx, it.Event); err != nil {
 			return err
 		}
 	}
@@ -178,18 +178,18 @@ func conflictIfNone(res sql.Result, err error) error {
 	return nil
 }
 
-func (r *Repository) ListStageEvents(ctx context.Context, matchID int64) ([]StageEvent, error) {
+func (r *Repository) ListSegmentEvents(ctx context.Context, matchID int64) ([]SegmentEvent, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, match_id, entry_id, stage_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at
-		 FROM stage_events WHERE match_id = ? ORDER BY id`, matchID)
+		`SELECT id, match_id, entry_id, segment_number, event, actor_type, actor_name, scorer_name, shooter_name, created_at
+		 FROM segment_events WHERE match_id = ? ORDER BY id`, matchID)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var events []StageEvent
+	var events []SegmentEvent
 	for rows.Next() {
-		var e StageEvent
-		if err := rows.Scan(&e.ID, &e.MatchID, &e.EntryID, &e.StageNumber, &e.Event, &e.ActorType, &e.ActorName, &e.ScorerName, &e.ShooterName, &e.CreatedAt); err != nil {
+		var e SegmentEvent
+		if err := rows.Scan(&e.ID, &e.MatchID, &e.EntryID, &e.SegmentNumber, &e.Event, &e.ActorType, &e.ActorName, &e.ScorerName, &e.ShooterName, &e.CreatedAt); err != nil {
 			return nil, err
 		}
 		events = append(events, e)
@@ -197,35 +197,35 @@ func (r *Repository) ListStageEvents(ctx context.Context, matchID int64) ([]Stag
 	return events, rows.Err()
 }
 
-type LockedStageRef struct {
+type LockedSegmentRef struct {
 	MatchID int64
 	EntryID int64
 	Number  int
 }
 
-type LockedStageFilter struct {
+type LockedSegmentFilter struct {
 	MatchID   int64
 	EntryID   int64
 	ShooterID int64
 }
 
-func (r *Repository) ListLockedStages(ctx context.Context, f LockedStageFilter) ([]LockedStageRef, error) {
+func (r *Repository) ListLockedSegments(ctx context.Context, f LockedSegmentFilter) ([]LockedSegmentRef, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT e.match_id, s.entry_id, s.stage_number FROM stages s
+		`SELECT e.match_id, s.entry_id, s.segment_number FROM segments s
 		 JOIN entries e ON e.id = s.entry_id
 		 WHERE s.status <> 'open'
 		   AND (? = 0 OR e.match_id = ?)
 		   AND (? = 0 OR s.entry_id = ?)
 		   AND (? = 0 OR e.shooter_id = ?)
-		 ORDER BY e.match_id, s.entry_id, s.stage_number`,
+		 ORDER BY e.match_id, s.entry_id, s.segment_number`,
 		f.MatchID, f.MatchID, f.EntryID, f.EntryID, f.ShooterID, f.ShooterID)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var refs []LockedStageRef
+	var refs []LockedSegmentRef
 	for rows.Next() {
-		var ref LockedStageRef
+		var ref LockedSegmentRef
 		if err := rows.Scan(&ref.MatchID, &ref.EntryID, &ref.Number); err != nil {
 			return nil, err
 		}

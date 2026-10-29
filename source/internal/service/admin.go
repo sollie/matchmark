@@ -10,7 +10,7 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-var ErrNotBetweenStages = errors.New("entries can only change between stages")
+var ErrNotBetweenSegments = errors.New("entries can only change between segments")
 
 type MatchStatus string
 
@@ -81,7 +81,7 @@ func (s *Service) UpdateShooter(ctx context.Context, sh repository.Shooter) erro
 	if err := s.repo.UpdateShooter(ctx, sh); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "shooter.update", Target: idTarget("shooter", sh.ID)}, Live: LiveAll, Reemit: &repository.LockedStageFilter{ShooterID: sh.ID}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "shooter.update", Target: idTarget("shooter", sh.ID)}, Live: LiveAll, Reemit: &repository.LockedSegmentFilter{ShooterID: sh.ID}})
 	return nil
 }
 
@@ -149,7 +149,7 @@ func (s *Service) UpdateMatch(ctx context.Context, c repository.Match) error {
 	if err := s.repo.UpdateMatch(ctx, c); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: c.Name}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedStageFilter{MatchID: c.ID}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: c.Name}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: c.ID}})
 	return nil
 }
 
@@ -208,15 +208,15 @@ func (s *Service) DeleteMatch(ctx context.Context, id int64) error {
 	return nil
 }
 
-type StageScoring struct {
-	repository.StageInfo
+type SegmentScoring struct {
+	repository.SegmentInfo
 	Score        int
 	ShotsEntered int
 }
 
 type EntryScoring struct {
 	repository.Entry
-	Stages []StageScoring
+	Segments []SegmentScoring
 }
 
 func (s *Service) ListEntries(ctx context.Context, matchID int64) ([]EntryScoring, error) {
@@ -229,11 +229,11 @@ func (s *Service) ListEntries(ctx context.Context, matchID int64) ([]EntryScorin
 	}
 	out := make([]EntryScoring, 0, len(entries))
 	for _, e := range entries {
-		p := EntryScoring{Entry: e.Entry, Stages: make([]StageScoring, 0, len(e.Stages))}
-		for _, st := range e.Stages {
+		p := EntryScoring{Entry: e.Entry, Segments: make([]SegmentScoring, 0, len(e.Segments))}
+		for _, st := range e.Segments {
 			c := st.Counts
-			p.Stages = append(p.Stages, StageScoring{
-				StageInfo:    st,
+			p.Segments = append(p.Segments, SegmentScoring{
+				SegmentInfo:  st,
 				Score:        c.Score(),
 				ShotsEntered: c.X + c.Ten + c.Nine + c.Eight + c.Seven + c.Zero + c.Miss,
 			})
@@ -269,20 +269,20 @@ func (s *Service) requireWithdrawalAllowed(ctx context.Context, matchID int64) e
 	if err != nil {
 		return err
 	}
-	if !stageAccepted(entries, comp.CurrentStage) {
-		return ErrNotBetweenStages
+	if !segmentAccepted(entries, comp.CurrentSegment) {
+		return ErrNotBetweenSegments
 	}
 	return nil
 }
 
-func stageAccepted(entries []repository.EntryWithStages, stageNumber int) bool {
+func segmentAccepted(entries []repository.EntryWithSegments, segmentNumber int) bool {
 	for _, e := range entries {
 		if e.Withdrawn {
 			continue
 		}
 		accepted := false
-		for _, st := range e.Stages {
-			if st.Number == stageNumber && st.Status == repository.StatusAccepted {
+		for _, st := range e.Segments {
+			if st.Number == segmentNumber && st.Status == repository.StatusAccepted {
 				accepted = true
 			}
 		}
@@ -293,7 +293,7 @@ func stageAccepted(entries []repository.EntryWithStages, stageNumber int) bool {
 	return true
 }
 
-func (s *Service) StartNextStage(ctx context.Context, matchID int64) (int, error) {
+func (s *Service) StartNextSegment(ctx context.Context, matchID int64) (int, error) {
 	comp, err := s.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return 0, mapRepoErr(err)
@@ -301,40 +301,40 @@ func (s *Service) StartNextStage(ctx context.Context, matchID int64) (int, error
 	if MatchStatus(comp.Status) != StatusActive {
 		return 0, ErrConflict
 	}
-	last, err := lastStage(comp.Course)
+	last, err := lastSegment(comp.Course)
 	if err != nil {
 		return 0, err
 	}
-	if comp.CurrentStage >= last {
+	if comp.CurrentSegment >= last {
 		return 0, ErrConflict
 	}
 	entries, err := s.repo.ListEntries(ctx, matchID)
 	if err != nil {
 		return 0, err
 	}
-	if !stageAccepted(entries, comp.CurrentStage) {
-		return 0, ErrStageGateNotMet
+	if !segmentAccepted(entries, comp.CurrentSegment) {
+		return 0, ErrSegmentGateNotMet
 	}
-	if err := s.repo.AdvanceStage(ctx, matchID, comp.CurrentStage); err != nil {
+	if err := s.repo.AdvanceSegment(ctx, matchID, comp.CurrentSegment); err != nil {
 		return 0, mapRepoErr(err)
 	}
-	next := comp.CurrentStage + 1
+	next := comp.CurrentSegment + 1
 	s.changes.Record(ctx, Change{
-		Audit:   AuditEvent{Action: "match.next_stage", Target: idTarget("match", matchID), Details: "stage " + strconv.Itoa(next)},
+		Audit:   AuditEvent{Action: "match.next_segment", Target: idTarget("match", matchID), Details: "segment " + strconv.Itoa(next)},
 		MatchID: matchID,
 		Live:    LiveMatch,
 	})
 	return next, nil
 }
 
-func lastStage(course string) (int, error) {
+func lastSegment(course string) (int, error) {
 	c, err := rulebook.CourseByKey(course)
 	if err != nil {
 		return 0, err
 	}
 	last := 0
-	for _, st := range c.Stages {
-		last = max(last, st.StageNumber)
+	for _, st := range c.Segments {
+		last = max(last, st.Number)
 	}
 	return last, nil
 }
@@ -344,12 +344,12 @@ func (s *Service) finishIfComplete(ctx context.Context, matchID int64, actor *Ac
 	if err != nil || MatchStatus(comp.Status) != StatusActive {
 		return
 	}
-	last, err := lastStage(comp.Course)
-	if err != nil || comp.CurrentStage != last {
+	last, err := lastSegment(comp.Course)
+	if err != nil || comp.CurrentSegment != last {
 		return
 	}
 	entries, err := s.repo.ListEntries(ctx, matchID)
-	if err != nil || !stageAccepted(entries, last) {
+	if err != nil || !segmentAccepted(entries, last) {
 		return
 	}
 	_ = s.changeStatus(ctx, matchID, StatusActive, StatusFinished, actor)
@@ -382,7 +382,7 @@ func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, categ
 	if err := s.repo.UpdateEntry(ctx, matchID, entryID, category, lane); err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch, Reemit: &repository.LockedStageFilter{MatchID: matchID, EntryID: entryID}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: matchID, EntryID: entryID}})
 	e, err := s.repo.GetEntry(ctx, matchID, entryID)
 	return e, mapRepoErr(err)
 }

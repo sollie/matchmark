@@ -14,10 +14,10 @@ const (
 	LiveAll
 )
 
-type StageEvent struct {
-	MatchID     int64
-	EntryID     int64
-	StageNumber int
+type SegmentEvent struct {
+	MatchID       int64
+	EntryID       int64
+	SegmentNumber int
 }
 
 type Change struct {
@@ -26,8 +26,8 @@ type Change struct {
 	MatchID int64
 	Live    LiveScope
 	Screens bool
-	Reemit  *repository.LockedStageFilter
-	Stage   *StageEvent
+	Reemit  *repository.LockedSegmentFilter
+	Segment *SegmentEvent
 }
 
 type ChangeRecorder struct {
@@ -51,8 +51,8 @@ func (r *ChangeRecorder) Record(ctx context.Context, c Change) {
 	if c.Reemit != nil {
 		r.scoreLog.Reemit(ctx, *c.Reemit)
 	}
-	if e := c.Stage; e != nil {
-		r.scoreLog.EmitStage(ctx, e.MatchID, e.EntryID, e.StageNumber)
+	if e := c.Segment; e != nil {
+		r.scoreLog.EmitSegment(ctx, e.MatchID, e.EntryID, e.SegmentNumber)
 	}
 	if c.Screens {
 		r.bus.Publish(screenTopic)

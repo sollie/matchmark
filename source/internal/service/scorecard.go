@@ -10,8 +10,8 @@ import (
 )
 
 type ScorecardScorer struct {
-	Stage  int    `json:"stage"`
-	Scorer string `json:"scorer"`
+	Segment int    `json:"segment"`
+	Scorer  string `json:"scorer"`
 }
 
 type ScorecardSummary struct {
@@ -53,9 +53,9 @@ func (s *Service) ScorecardSummary(ctx context.Context, matchID int64, lane int)
 	}
 	shooter := card.Entry.Shooter
 	summary := ScorecardSummary{Shooter: shooter.FirstName + " " + shooter.LastName, Lane: lane, Scorers: []ScorecardScorer{}}
-	for _, st := range card.Entry.Stages {
+	for _, st := range card.Entry.Segments {
 		if st.Status == repository.StatusAccepted {
-			summary.Scorers = append(summary.Scorers, ScorecardScorer{Stage: st.Number, Scorer: report.ScorerLabel(st)})
+			summary.Scorers = append(summary.Scorers, ScorecardScorer{Segment: st.Number, Scorer: report.ScorerLabel(st)})
 		}
 	}
 	return summary, nil

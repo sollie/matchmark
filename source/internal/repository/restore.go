@@ -5,11 +5,11 @@ import (
 	"database/sql"
 )
 
-type RestoreStage struct {
+type RestoreSegment struct {
 	Number     int
 	Expected   int
 	Scored     bool
-	Status     StageStatus
+	Status     SegmentStatus
 	Counts     RingCounts
 	ScorerLane *int
 	ScorerName string
@@ -24,7 +24,7 @@ type RestoreEntry struct {
 	Category string
 	Lane     int
 	Shooter  Shooter
-	Stages   []RestoreStage
+	Segments []RestoreSegment
 }
 
 type RestoreMatch struct {
@@ -35,9 +35,9 @@ type RestoreMatch struct {
 }
 
 type RestoreCounts struct {
-	Matches int
-	Entries int
-	Stages  int
+	Matches  int
+	Entries  int
+	Segments int
 }
 
 func (r *Repository) CountMatches(ctx context.Context) (int, error) {
@@ -87,9 +87,9 @@ func restoreMatch(ctx context.Context, tx *sql.Tx, rc RestoreMatch, counts *Rest
 			return err
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO matches (id, competition_id, name, date, course, status, current_stage, activated_at)
+			`INSERT INTO matches (id, competition_id, name, date, course, status, current_segment, activated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'draft' THEN NULL ELSE ? END)`,
-			rc.Match.ID, containerID, rc.Match.Name, rc.Match.Date, rc.Match.Course, rc.Match.Status, rc.Match.CurrentStage, rc.Match.Status, rc.Match.Date); err != nil {
+			rc.Match.ID, containerID, rc.Match.Name, rc.Match.Date, rc.Match.Course, rc.Match.Status, rc.Match.CurrentSegment, rc.Match.Status, rc.Match.Date); err != nil {
 			return mapErr(err)
 		}
 		counts.Matches++
@@ -111,9 +111,9 @@ func restoreMatch(ctx context.Context, tx *sql.Tx, rc RestoreMatch, counts *Rest
 			}
 			counts.Entries++
 		}
-		for _, s := range e.Stages {
+		for _, s := range e.Segments {
 			if _, err := tx.ExecContext(ctx,
-				`INSERT OR IGNORE INTO stages (entry_id, stage_number, expected_shots) VALUES (?, ?, ?)`,
+				`INSERT OR IGNORE INTO segments (entry_id, segment_number, expected_shots) VALUES (?, ?, ?)`,
 				e.ID, s.Number, s.Expected); err != nil {
 				return mapErr(err)
 			}
@@ -121,9 +121,9 @@ func restoreMatch(ctx context.Context, tx *sql.Tx, rc RestoreMatch, counts *Rest
 				continue
 			}
 			res, err := tx.ExecContext(ctx,
-				`UPDATE stages SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?,
+				`UPDATE segments SET x = ?, ten = ?, nine = ?, eight = ?, seven = ?, zero = ?, miss = ?,
 				        status = ?, scorer_lane = ?, scorer_name = ?, locked_at = ?, accepted_by = ?, accepted_at = ?, disputed_at = ?
-				 WHERE entry_id = ? AND stage_number = ? AND status = 'open'`,
+				 WHERE entry_id = ? AND segment_number = ? AND status = 'open'`,
 				s.Counts.X, s.Counts.Ten, s.Counts.Nine, s.Counts.Eight, s.Counts.Seven, s.Counts.Zero, s.Counts.Miss,
 				s.Status, s.ScorerLane, nullIfEmpty(s.ScorerName), nullIfEmpty(s.LockedAt), nullIfEmpty(s.AcceptedBy),
 				nullIfEmpty(s.AcceptedAt), nullIfEmpty(s.DisputedAt), e.ID, s.Number)
@@ -131,7 +131,7 @@ func restoreMatch(ctx context.Context, tx *sql.Tx, rc RestoreMatch, counts *Rest
 				return mapErr(err)
 			}
 			if n, _ := res.RowsAffected(); n > 0 {
-				counts.Stages++
+				counts.Segments++
 			}
 		}
 	}

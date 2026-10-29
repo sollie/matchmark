@@ -20,18 +20,18 @@ func publicGet(t *testing.T, f *fixture, path string) (int, map[string]any) {
 	return resp.StatusCode, out
 }
 
-func (f *fixture) score(t *testing.T, entry, stage int, counts map[string]any) {
+func (f *fixture) score(t *testing.T, entry, segment int, counts map[string]any) {
 	t.Helper()
-	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/%d", f.comp, entry, stage)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/segments/%d", f.comp, entry, segment)
 	if status, out := f.env.Do("PUT", path, counts); status != http.StatusOK {
 		t.Fatalf("score: %d %v", status, out)
 	}
 }
 
-func (f *fixture) scoreAccepted(t *testing.T, entry, stage int, counts map[string]any) {
+func (f *fixture) scoreAccepted(t *testing.T, entry, segment int, counts map[string]any) {
 	t.Helper()
-	f.score(t, entry, stage, counts)
-	path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/%d/lock", f.comp, entry, stage)
+	f.score(t, entry, segment, counts)
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/segments/%d/lock", f.comp, entry, segment)
 	if status, out := f.env.Do("POST", path, nil); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
@@ -48,8 +48,8 @@ func spectatorFixture(t *testing.T) *fixture {
 	f := newFixture(t, "150")
 	one := f.addEntry(t, "HANSEN", 1)
 	two := f.addEntry(t, "BERG", 2)
-	f.scoreAccepted(t, one, 1, map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 1})
-	f.scoreAccepted(t, two, 1, map[string]any{"x": 12})
+	f.scoreAccepted(t, one, 1, map[string]any{"x": 6, "10": 8, "9": 6, "8": 2, "7": 2})
+	f.scoreAccepted(t, two, 1, map[string]any{"x": 24})
 	f.activate(t)
 	return f
 }
@@ -69,11 +69,11 @@ func TestSpectatorStandings(t *testing.T) {
 		t.Fatalf("rows %v", rows)
 	}
 	first := rows[0].(map[string]any)
-	if first["last_name"] != "BERG" || first["total"].(float64) != 120 {
+	if first["last_name"] != "BERG" || first["total"].(float64) != 240 {
 		t.Fatalf("first %v", first)
 	}
 	second := rows[1].(map[string]any)
-	if second["last_name"] != "HANSEN" || second["total"].(float64) != 112 {
+	if second["last_name"] != "HANSEN" || second["total"].(float64) != 224 {
 		t.Fatalf("second %v", second)
 	}
 }
@@ -105,7 +105,7 @@ func TestSpectatorVisibilityFlags(t *testing.T) {
 	t.Run("hidden fields are omitted", func(t *testing.T) {
 		body := map[string]any{
 			"show_names": false, "show_clubs": false, "show_countries": false,
-			"show_stage_scores": false, "show_ring_counts": false,
+			"show_segment_scores": false, "show_ring_counts": false,
 		}
 		if status, out := f.env.Do("PUT", visPath, body); status != http.StatusOK {
 			t.Fatalf("put %d %v", status, out)
@@ -117,14 +117,14 @@ func TestSpectatorVisibilityFlags(t *testing.T) {
 				t.Fatalf("%s present: %v", k, row)
 			}
 		}
-		stages := row["stages"].([]any)
-		if len(stages) != 10 {
-			t.Fatalf("stages %v", stages)
+		segments := row["segments"].([]any)
+		if len(segments) != 6 {
+			t.Fatalf("segments %v", segments)
 		}
-		for _, st := range stages {
+		for _, st := range segments {
 			m := st.(map[string]any)
 			if _, ok := m["score"]; ok || m["state"] == nil {
-				t.Fatalf("stage %v", m)
+				t.Fatalf("segment %v", m)
 			}
 		}
 		if row["lane"] == nil || row["total"] == nil || row["category"] == nil {
@@ -134,24 +134,24 @@ func TestSpectatorVisibilityFlags(t *testing.T) {
 	t.Run("enabled fields appear", func(t *testing.T) {
 		body := map[string]any{
 			"show_names": true, "show_clubs": true, "show_countries": true,
-			"show_stage_scores": true, "show_ring_counts": true,
+			"show_segment_scores": true, "show_ring_counts": true,
 		}
 		if status, out := f.env.Do("PUT", visPath, body); status != http.StatusOK {
 			t.Fatalf("put %d %v", status, out)
 		}
 		_, out := publicGet(t, f, standingsPath(f))
 		row := out["standings"].([]any)[0].(map[string]any)
-		for _, k := range []string{"last_name", "first_name", "club", "country", "stages", "ring_counts"} {
+		for _, k := range []string{"last_name", "first_name", "club", "country", "segments", "ring_counts"} {
 			if _, ok := row[k]; !ok {
 				t.Fatalf("%s missing: %v", k, row)
 			}
 		}
-		stages := row["stages"].([]any)
-		if len(stages) != 10 || stages[0].(map[string]any)["score"].(float64) != 120 {
-			t.Fatalf("stages %v", stages)
+		segments := row["segments"].([]any)
+		if len(segments) != 6 || segments[0].(map[string]any)["score"].(float64) != 240 {
+			t.Fatalf("segments %v", segments)
 		}
-		if _, ok := stages[1].(map[string]any)["score"]; ok {
-			t.Fatalf("unaccepted stage has score: %v", stages[1])
+		if _, ok := segments[1].(map[string]any)["score"]; ok {
+			t.Fatalf("unaccepted segment has score: %v", segments[1])
 		}
 	})
 	t.Run("visibility requires admin", func(t *testing.T) {
@@ -213,6 +213,13 @@ func TestRulebookIsPublic(t *testing.T) {
 		}
 		if sum != shots[i] {
 			t.Errorf("course %s stage shots = %v, want %v", keys[i], sum, shots[i])
+		}
+		segmentSum := 0.0
+		for _, sg := range course["segments"].([]any) {
+			segmentSum += sg.(map[string]any)["shots"].(float64)
+		}
+		if segmentSum != shots[i] {
+			t.Errorf("course %s segment shots = %v, want %v", keys[i], segmentSum, shots[i])
 		}
 	}
 	wantCats := map[string]int{"150": 5, "60": 4, "48": 2, "40": 1}

@@ -30,13 +30,13 @@ func (f *scoringFixture) pair(t *testing.T, lane int) string {
 	return out["token"].(string)
 }
 
-func (f *scoringFixture) stageLocked(t *testing.T, lane, stage int) bool {
+func (f *scoringFixture) segmentLocked(t *testing.T, lane, segment int) bool {
 	t.Helper()
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == lane {
-			return m["stages"].([]any)[stage-1].(map[string]any)["status"].(string) != "open"
+			return m["segments"].([]any)[segment-1].(map[string]any)["status"].(string) != "open"
 		}
 	}
 	t.Fatalf("lane %d not found", lane)
@@ -44,7 +44,7 @@ func (f *scoringFixture) stageLocked(t *testing.T, lane, stage int) bool {
 }
 
 func counts(x, ten int) map[string]any {
-	return map[string]any{"x": x, "10": ten}
+	return map[string]any{"x": x, "10": ten, "miss": 24 - x - ten}
 }
 
 func TestDeviceScoresOnlyScoreLane(t *testing.T) {
@@ -59,26 +59,26 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 		t.Fatalf("shooter_name: %v", out["shooter_name"])
 	}
 
-	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(10, 2)); status != http.StatusOK {
+	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(10, 2)); status != http.StatusOK {
 		t.Fatalf("set counts: %d %v", status, out)
 	}
-	if status, out := f.env.DoToken(token, "POST", "/api/scorer/stages/1/lock", nil); status != http.StatusOK {
+	if status, out := f.env.DoToken(token, "POST", "/api/scorer/segments/1/lock", nil); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
-	if !f.stageLocked(t, 3, 1) {
-		t.Fatal("score lane stage should be locked")
+	if !f.segmentLocked(t, 3, 1) {
+		t.Fatal("score lane segment should be locked")
 	}
-	if f.stageLocked(t, 1, 1) || f.stageLocked(t, 5, 1) {
+	if f.segmentLocked(t, 1, 1) || f.segmentLocked(t, 5, 1) {
 		t.Fatal("other lanes must stay untouched")
 	}
 
-	t.Run("locked stage rejects further writes", func(t *testing.T) {
-		if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0)); status != http.StatusConflict {
+	t.Run("locked segment rejects further writes", func(t *testing.T) {
+		if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(12, 0)); status != http.StatusConflict {
 			t.Fatalf("status %d", status)
 		}
 	})
 	t.Run("counts must sum to expected shots", func(t *testing.T) {
-		if status, _ := f.env.DoToken(f.pair(t, 3), "PUT", "/api/scorer/stages/1", counts(5, 0)); status != http.StatusUnprocessableEntity {
+		if status, _ := f.env.DoToken(f.pair(t, 3), "PUT", "/api/scorer/segments/1", map[string]any{"x": 5}); status != http.StatusUnprocessableEntity {
 			t.Fatalf("status %d", status)
 		}
 	})
@@ -89,34 +89,32 @@ func TestDeviceScoresOnlyScoreLane(t *testing.T) {
 	})
 }
 
-func sessionParts(t *testing.T, f *scoringFixture, token string) []any {
+func sessionNames(t *testing.T, f *scoringFixture, token string) []any {
 	t.Helper()
 	status, out := f.env.DoToken(token, "GET", "/api/scorer/session", nil)
 	if status != http.StatusOK {
 		t.Fatalf("session: %d %v", status, out)
 	}
-	parts := []any{}
-	for _, st := range out["stages"].([]any) {
-		parts = append(parts, st.(map[string]any)["part"])
+	names := []any{}
+	for _, st := range out["segments"].([]any) {
+		names = append(names, st.(map[string]any)["name"])
 	}
-	return parts
+	return names
 }
 
-func TestSessionCarriesPartsOnlyForGroupedCourses(t *testing.T) {
+func TestSessionCarriesSegmentNames(t *testing.T) {
 	f := newScoringFixture(t, 1, 3)
-	parts := sessionParts(t, f, f.pair(t, 1))
-	if parts[0] != "Match 1" || parts[3] != "Match 3" || parts[9] != "Match 5" {
-		t.Fatalf("150 parts: %v", parts)
+	names := sessionNames(t, f, f.pair(t, 1))
+	if len(names) != 6 || names[0] != "Match 1" || names[3] != "Match 4" || names[5] != "Match 5 · Stage 3+4" {
+		t.Fatalf("150 names: %v", names)
 	}
 
 	plain := &scoringFixture{fixture: newFixture(t, "60"), entries: map[int]int{}}
 	plain.entries[1] = plain.addEntry(t, "SHOOTER1", 1)
 	plain.entries[3] = plain.addEntry(t, "SHOOTER3", 3)
 	plain.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", plain.comp), map[string]any{"status": "active"})
-	for i, part := range sessionParts(t, plain, plain.pair(t, 1)) {
-		if part != nil {
-			t.Fatalf("60 stage %d has part %v", i+1, part)
-		}
+	if names := sessionNames(t, plain, plain.pair(t, 1)); len(names) != 2 || names[0] != "Stage 1+2" || names[1] != "Stage 3+4" {
+		t.Fatalf("60 names: %v", names)
 	}
 }
 
@@ -129,7 +127,7 @@ func TestDevicePairedInDraftWaitsForStart(t *testing.T) {
 	if status != http.StatusOK || out["phase"] != "not_started" || out["shooter_name"] != "" {
 		t.Fatalf("draft session: %d %v", status, out)
 	}
-	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(5, 0)); status != http.StatusConflict {
+	if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(5, 0)); status != http.StatusConflict {
 		t.Fatalf("draft scoring status %d", status)
 	}
 	f.env.Do("POST", fmt.Sprintf("/api/matches/%d/status", f.comp), map[string]any{"status": "active"})
@@ -154,9 +152,9 @@ func TestSessionFollowsLaneChanges(t *testing.T) {
 
 }
 
-func TestAdminLocksCompleteStage(t *testing.T) {
+func TestAdminLocksCompleteSegment(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
-	p := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[2])
+	p := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", f.comp, f.entries[2])
 	if status, _ := f.env.Do("POST", p+"/lock", nil); status != http.StatusUnprocessableEntity {
 		t.Fatalf("lock incomplete: %d", status)
 	}
@@ -164,7 +162,7 @@ func TestAdminLocksCompleteStage(t *testing.T) {
 	if status, out := f.env.Do("POST", p+"/lock", nil); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
-	if !f.stageLocked(t, 2, 1) {
+	if !f.segmentLocked(t, 2, 1) {
 		t.Fatal("not locked")
 	}
 	if status, _ := f.env.Do("POST", p+"/lock", nil); status != http.StatusConflict {
@@ -175,35 +173,35 @@ func TestAdminLocksCompleteStage(t *testing.T) {
 func TestLockRecordsScorerAndAdminUnlock(t *testing.T) {
 	f := newScoringFixture(t, 1, 2)
 	token := f.pair(t, 1)
-	f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0))
-	f.env.DoToken(token, "POST", "/api/scorer/stages/1/lock", nil)
+	f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(12, 0))
+	f.env.DoToken(token, "POST", "/api/scorer/segments/1/lock", nil)
 
 	_, out := f.env.Do("GET", fmt.Sprintf("/api/matches/%d/entries", f.comp), nil)
-	var stage map[string]any
+	var segment map[string]any
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == 2 {
-			stage = m["stages"].([]any)[0].(map[string]any)
+			segment = m["segments"].([]any)[0].(map[string]any)
 		}
 	}
-	if stage["scorer_lane"] != float64(1) || stage["scorer_name"] != "A SHOOTER1" {
-		t.Fatalf("lock record: %v", stage)
+	if segment["scorer_lane"] != float64(1) || segment["scorer_name"] != "A SHOOTER1" {
+		t.Fatalf("lock record: %v", segment)
 	}
 
-	p := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[2])
-	if status, _ := f.env.DoToken(token, "POST", "/api/scorer/stages/1/unlock", nil); status == http.StatusOK {
+	p := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", f.comp, f.entries[2])
+	if status, _ := f.env.DoToken(token, "POST", "/api/scorer/segments/1/unlock", nil); status == http.StatusOK {
 		t.Fatal("device must not unlock")
 	}
 	if status, _ := f.env.Do("PUT", p, counts(11, 1)); status != http.StatusOK {
 		t.Fatalf("admin edit while locked: %d", status)
 	}
-	if !f.stageLocked(t, 2, 1) {
-		t.Fatal("admin edit must keep the stage locked")
+	if !f.segmentLocked(t, 2, 1) {
+		t.Fatal("admin edit must keep the segment locked")
 	}
 	if status, out := f.env.Do("POST", p+"/unlock", nil); status != http.StatusOK {
 		t.Fatalf("unlock: %d %v", status, out)
 	}
-	if f.stageLocked(t, 2, 1) {
+	if f.segmentLocked(t, 2, 1) {
 		t.Fatal("still locked")
 	}
 	if status, out := f.env.Do("PUT", p, counts(11, 1)); status != http.StatusOK {
@@ -259,7 +257,7 @@ func TestPairingLifecycle(t *testing.T) {
 		if out["match_id"] != float64(f.comp) || out["lane"] != float64(2) {
 			t.Fatalf("finished session must identify the scorecard: %v", out)
 		}
-		if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0)); status != http.StatusConflict {
+		if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(12, 0)); status != http.StatusConflict {
 			t.Fatalf("write after finish: %d", status)
 		}
 	})
@@ -268,11 +266,11 @@ func TestPairingLifecycle(t *testing.T) {
 func TestSingleLaneRequiresAdminScoring(t *testing.T) {
 	f := newScoringFixture(t, 4)
 	token := f.pair(t, 4)
-	status, out := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(12, 0))
+	status, out := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(12, 0))
 	if status != http.StatusForbidden || out["error"] != "admin scoring required" {
 		t.Fatalf("got %d %v", status, out)
 	}
-	p := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[4])
+	p := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", f.comp, f.entries[4])
 	if status, _ := f.env.Do("PUT", p, counts(12, 0)); status != http.StatusOK {
 		t.Fatalf("admin scoring status %d", status)
 	}
@@ -289,12 +287,12 @@ func TestPairingRequiresAdmin(t *testing.T) {
 func TestOutOfRangeHitsAreRejected(t *testing.T) {
 	f := newScoringFixture(t, 1, 3)
 	token := f.pair(t, 1)
-	adminPath := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entries[3])
+	adminPath := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", f.comp, f.entries[3])
 	const maxInt = 9223372036854775807
 
 	oversized := map[string]any{"x": 13, "10": -1}
 	wrapping := map[string]any{"x": maxInt, "10": maxInt, "9": 14}
-	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(7, 5)); status != http.StatusOK {
+	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(7, 5)); status != http.StatusOK {
 		t.Fatalf("seed: %d %v", status, out)
 	}
 
@@ -304,7 +302,7 @@ func TestOutOfRangeHitsAreRejected(t *testing.T) {
 		"wrapping":  wrapping,
 	} {
 		t.Run(name, func(t *testing.T) {
-			if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", body); status != http.StatusUnprocessableEntity {
+			if status, _ := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", body); status != http.StatusUnprocessableEntity {
 				t.Fatalf("device status %d", status)
 			}
 			if status, _ := f.env.Do("PUT", adminPath, body); status != http.StatusUnprocessableEntity {
@@ -317,7 +315,7 @@ func TestOutOfRangeHitsAreRejected(t *testing.T) {
 	for _, e := range out["entries"].([]any) {
 		m := e.(map[string]any)
 		if int(m["lane"].(float64)) == 3 {
-			s := m["stages"].([]any)[0].(map[string]any)
+			s := m["segments"].([]any)[0].(map[string]any)
 			if s["score"].(float64) != 120 {
 				t.Fatalf("stored hits changed: %v", s)
 			}

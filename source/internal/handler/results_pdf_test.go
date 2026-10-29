@@ -53,7 +53,7 @@ func TestPublicResultsPDFOnlyForFinishedMatches(t *testing.T) {
 func TestPublicResultsPDFHonoursVisibility(t *testing.T) {
 	f := resultsFixture(t)
 	_, _, shown := anonymousGet(t, f.env, publicPDFPath(f, ""))
-	off := map[string]any{"show_names": false, "show_clubs": false, "show_countries": false, "show_stage_scores": false, "show_ring_counts": false}
+	off := map[string]any{"show_names": false, "show_clubs": false, "show_countries": false, "show_segment_scores": false, "show_ring_counts": false}
 	if status, out := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", f.comp), off); status != http.StatusOK {
 		t.Fatalf("visibility: %d %v", status, out)
 	}
