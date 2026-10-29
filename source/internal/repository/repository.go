@@ -9,6 +9,7 @@ import (
 var (
 	ErrNotFound = errors.New("not found")
 	ErrConflict = errors.New("conflict")
+	ErrLimit    = errors.New("limit reached")
 )
 
 type Repository struct {
