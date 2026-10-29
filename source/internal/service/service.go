@@ -27,19 +27,20 @@ var (
 )
 
 type Service struct {
-	repo        *repository.Repository
-	replicator  ReplicationRequester
-	scoreLogger *slog.Logger
-	audit       *Audit
-	bus         *Broadcaster
-	changes     *ChangeRecorder
-	presence    presence
-	snapMu      sync.Mutex
-	snaps       map[int64]*snapSlot
+	repo           *repository.Repository
+	replicator     ReplicationRequester
+	scoreLogger    *slog.Logger
+	audit          *Audit
+	bus            *Broadcaster
+	changes        *ChangeRecorder
+	presence       presence
+	screenThrottle *LoginThrottle
+	snapMu         sync.Mutex
+	snaps          map[int64]*snapSlot
 }
 
 func New(repo *repository.Repository, opts ...Option) *Service {
-	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]*snapSlot{}}
+	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]*snapSlot{}, screenThrottle: NewLoginThrottle()}
 	for _, opt := range opts {
 		opt(s)
 	}

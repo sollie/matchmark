@@ -93,6 +93,8 @@ var errorRules = []errorRule{
 	{service.ErrUnauthenticated, http.StatusUnauthorized, "unauthorized"},
 	{wa1500.ErrUpstream, http.StatusServiceUnavailable, "wa1500 unavailable"},
 	{service.ErrRateLimited, http.StatusTooManyRequests, "too many searches, try again shortly"},
+	{service.ErrTooManyRegistrations, http.StatusTooManyRequests, "too many registrations, try again later"},
+	{service.ErrScreenLimit, http.StatusConflict, "too many screens registered"},
 	{errTooManyStreams, http.StatusServiceUnavailable, "too many streams"},
 	{service.ErrAdminScoringNeeded, http.StatusForbidden, "admin scoring required"},
 }
