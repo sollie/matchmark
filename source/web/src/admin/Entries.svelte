@@ -142,7 +142,7 @@
   const lock = (entry: EntryWithSegments, segment: number) => run(commands.lock(entry.id, segment));
 
   function reveal(node: HTMLElement) {
-    node.scrollIntoView({ block: "center" });
+    node.scrollIntoView?.({ block: "center" });
     node.querySelector("input")?.focus({ preventScroll: true });
   }
 
