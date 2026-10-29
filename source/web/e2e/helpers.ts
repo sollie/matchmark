@@ -82,7 +82,7 @@ export function uniqueLastName(prefix: string): string {
   return uniqueName(prefix).toUpperCase();
 }
 
-function uniqueClientIp(): string {
+export function uniqueClientIp(): string {
   const [a, b] = randomBytes(2);
   return `198.18.${a}.${b}`;
 }
