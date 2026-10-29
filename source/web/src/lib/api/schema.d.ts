@@ -1179,6 +1179,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/screens/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin change pings for the screen registry, as server-sent events
+         * @description Sends a `changed` event on connect and whenever a screen is approved,
+         *     updated, assigned, removed, leaves or is purged, and when a match change
+         *     affects screens. The client refetches `/api/screens`.
+         */
+        get: operations["streamScreensAdmin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/screens/approve": {
         parameters: {
             query?: never;
@@ -4257,6 +4279,37 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    streamScreensAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event stream of `changed` events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Too many open streams */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     approveScreen: {

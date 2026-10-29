@@ -112,7 +112,11 @@ func (s *Service) LeaveScreen(ctx context.Context, token string) error {
 	if err != nil {
 		return err
 	}
-	return mapRepoErr(s.repo.DeleteScreen(ctx, sc.ID))
+	if err := s.repo.DeleteScreen(ctx, sc.ID); err != nil {
+		return mapRepoErr(err)
+	}
+	s.changes.Record(ctx, Change{Screens: true})
+	return nil
 }
 
 func (s *Service) ListScreens(ctx context.Context) ([]Screen, error) {
@@ -215,7 +219,11 @@ func (s *Service) AssignableMatches(ctx context.Context) ([]repository.Match, er
 }
 
 func (s *Service) PurgeStaleScreens(ctx context.Context, now time.Time) (int64, error) {
-	return s.repo.PurgeScreensSeenBefore(ctx, now.Add(-ScreenStaleAfter))
+	n, err := s.repo.PurgeScreensSeenBefore(ctx, now.Add(-ScreenStaleAfter))
+	if err == nil && n > 0 {
+		s.changes.Record(ctx, Change{Screens: true})
+	}
+	return n, err
 }
 
 func (s *Service) RunScreenSweep(ctx context.Context) {
