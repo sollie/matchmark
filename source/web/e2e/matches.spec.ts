@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import {
+  addEntry,
   createMatch,
   createPairing,
   createShooter,
@@ -8,6 +9,7 @@ import {
   row,
   section,
   seedEntry,
+  setCounts,
   setStatus,
   test,
   todayIso,
@@ -168,6 +170,54 @@ test.describe("matches", () => {
       expect.stringContaining("Finish this match?"),
       expect.stringContaining("Finish this match?"),
     ]);
+  });
+
+  test("an active match without hits returns to draft, takes a late entry and restarts", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    await seedEntry(admin, match.id, 1);
+    await seedEntry(admin, match.id, 2);
+    await setStatus(admin, match.id, "active");
+    await openMatch(page, match.id);
+
+    const messages: string[] = [];
+    page.once("dialog", (dialog) => {
+      messages.push(dialog.message());
+      void dialog.accept();
+    });
+    await page.getByRole("button", { name: "Back to draft" }).click();
+    await expect(page.getByText("draft", { exact: true })).toBeVisible();
+    expect(messages).toEqual([
+      "Return this match to draft? Devices will show 'not started' and spectators won't see the match until you start it again. Only possible while no hits are entered.",
+    ]);
+    await expect(page.getByRole("button", { name: "Back to draft" })).toHaveCount(0);
+
+    const late = await createShooter(admin);
+    await addEntry(admin, match.id, late.id, 3);
+    await page.reload();
+    await expect(row(page, late.last_name)).toBeVisible();
+
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Start match" }).click();
+    await expect(page.getByText("active", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Back to draft" })).toBeVisible();
+  });
+
+  test("back to draft is hidden once hits are entered", async ({
+    course,
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const { entryId } = await seedEntry(admin, match.id, 1);
+    await seedEntry(admin, match.id, 2);
+    await setStatus(admin, match.id, "active");
+    await setCounts(admin, match.id, entryId, 1, { "10": course.stageOneShots });
+    await openMatch(page, match.id);
+    await expect(page.getByRole("button", { name: "Finish match" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Back to draft" })).toHaveCount(0);
   });
 
   test("a finished match shows revoked pairings and refuses new entries", async ({

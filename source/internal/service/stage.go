@@ -37,20 +37,23 @@ func (s *Service) validatedStage(ctx context.Context, matchID, entryID int64, st
 }
 
 func (s *Service) SetRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts) error {
-	if err := s.writeRingCounts(ctx, matchID, entryID, stageNumber, c); err != nil {
+	if err := s.writeRingCounts(ctx, matchID, entryID, stageNumber, c, false); err != nil {
 		return err
 	}
 	s.changes.Record(ctx, Change{MatchID: matchID, Live: LiveMatch})
 	return nil
 }
 
-func (s *Service) writeRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts) error {
+func (s *Service) writeRingCounts(ctx context.Context, matchID, entryID int64, stageNumber int, c repository.RingCounts, activeOnly bool) error {
 	stage, err := s.validatedStage(ctx, matchID, entryID, stageNumber, c, true)
 	if err != nil {
 		return err
 	}
-	if err := s.repo.SetRingCounts(ctx, stage.ID, c); err != nil {
+	if err := s.repo.SetRingCounts(ctx, stage.ID, c, activeOnly); err != nil {
 		if err == repository.ErrConflict {
+			if m, gerr := s.repo.GetMatch(ctx, matchID); gerr == nil && MatchStatus(m.Status) != StatusActive {
+				return ErrConflict
+			}
 			return ErrStageLocked
 		}
 		return mapRepoErr(err)

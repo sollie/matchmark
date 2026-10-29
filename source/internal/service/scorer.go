@@ -181,7 +181,7 @@ func (s *Service) DeviceSetRingCounts(ctx context.Context, d Device, stageNumber
 	if stageNumber != t.CurrentStage {
 		return ErrNotCurrentStage
 	}
-	if err := s.writeRingCounts(ctx, d.MatchID, t.Entry.ID, stageNumber, c); err != nil {
+	if err := s.writeRingCounts(ctx, d.MatchID, t.Entry.ID, stageNumber, c, true); err != nil {
 		return err
 	}
 	s.changes.Record(ctx, Change{

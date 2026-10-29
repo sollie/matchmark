@@ -189,6 +189,24 @@ func (r *Repository) SetMatchStatus(ctx context.Context, id int64, from, to stri
 	return conflictIfNone(res, err)
 }
 
+func (r *Repository) BackToDraft(ctx context.Context, id int64) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
+		`UPDATE matches SET status = 'draft' WHERE id = ? AND status = 'active'
+		 AND NOT EXISTS (
+		   SELECT 1 FROM stages s JOIN entries e ON e.id = s.entry_id
+		   WHERE e.match_id = matches.id
+		   AND (s.x + s.ten + s.nine + s.eight + s.seven + s.zero + s.miss) > 0)`, id)
+	if err := conflictIfNone(res, err); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (r *Repository) AdvanceStage(ctx context.Context, id int64, from int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
