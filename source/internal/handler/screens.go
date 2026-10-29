@@ -19,6 +19,7 @@ func (h *Handler) screenPublicRoutes(r chi.Router) {
 
 func (h *Handler) screenAdminRoutes(r chi.Router) {
 	r.Get("/screens", h.listScreens)
+	r.Get("/screens/stream", h.screensAdminStream)
 	r.Post("/screens/approve", h.approveScreen)
 	r.Put("/screens/assignment", h.assignAllScreens)
 	r.Get("/screens/assignable-matches", h.assignableMatches)
@@ -175,4 +176,10 @@ func (h *Handler) assignableMatches(w http.ResponseWriter, r *http.Request) {
 		out = append(out, map[string]any{"id": m.ID, "name": m.Name, "date": m.Date, "course": m.Course, "status": m.Status})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"matches": out})
+}
+
+func (h *Handler) screensAdminStream(w http.ResponseWriter, r *http.Request) {
+	h.serveStream(w, r, roleAdmin, nil, h.svc.SubscribeScreens, func(context.Context) (streamEvent, error) {
+		return streamEvent{Name: "changed", Data: struct{}{}}, nil
+	})
 }

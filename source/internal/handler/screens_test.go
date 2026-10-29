@@ -102,7 +102,7 @@ func TestScreenRegistrationIsRateLimited(t *testing.T) {
 
 func TestScreenAdminEndpointsRequireLogin(t *testing.T) {
 	env := apitest.New(t)
-	for _, c := range [][2]string{{"GET", "/api/screens"}, {"POST", "/api/screens/approve"}, {"PUT", "/api/screens/assignment"}, {"GET", "/api/screens/assignable-matches"}, {"PUT", "/api/screens/1"}, {"DELETE", "/api/screens/1"}} {
+	for _, c := range [][2]string{{"GET", "/api/screens"}, {"GET", "/api/screens/stream"}, {"POST", "/api/screens/approve"}, {"PUT", "/api/screens/assignment"}, {"GET", "/api/screens/assignable-matches"}, {"PUT", "/api/screens/1"}, {"DELETE", "/api/screens/1"}} {
 		if status, _ := env.Do(c[0], c[1], nil); status != http.StatusUnauthorized {
 			t.Fatalf("%s %s: %d", c[0], c[1], status)
 		}
@@ -213,4 +213,33 @@ func TestScreenStreamMarksScreenOnline(t *testing.T) {
 func openAndRead(t *testing.T, env *apitest.Env, token string) (string, any, string) {
 	t.Helper()
 	return nextScreenState(t, openScreenStream(env, token))
+}
+
+func awaitScreensChanged(t *testing.T, s *apitest.Stream) {
+	t.Helper()
+	for {
+		ev, ok := s.Next(3 * time.Second)
+		if !ok {
+			t.Fatal("no changed event received")
+		}
+		if ev.Name == "changed" {
+			return
+		}
+	}
+}
+
+func TestAdminScreensStreamPingsOnRegistryChanges(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	token, code := registerScreen(t, env)
+	s := env.OpenStream("/api/screens/stream", nil)
+	if s.Status != http.StatusOK {
+		t.Fatalf("status %d", s.Status)
+	}
+	awaitScreensChanged(t, s)
+	env.Do("POST", "/api/screens/approve", map[string]any{"code": code})
+	awaitScreensChanged(t, s)
+	if status, _ := env.DoToken(token, "DELETE", "/api/spectator/screens/self", nil); status != http.StatusNoContent {
+		t.Fatalf("leave: %d", status)
+	}
+	awaitScreensChanged(t, s)
 }
