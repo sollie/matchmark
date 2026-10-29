@@ -114,6 +114,21 @@ test.describe("entries layout", () => {
 });
 
 test.describe("admin ring counts", () => {
+  test("opening Edit on a long entries table brings the counts dialog into view", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    for (let lane = 2; lane <= 14; lane++) await seedEntry(admin, match.id, lane);
+    await setStatus(admin, match.id, "active");
+    await page.setViewportSize({ width: 1024, height: 600 });
+    await openMatch(page, match.id);
+
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
+    await expect(page.locator(".counts")).toBeInViewport();
+  });
+
   test("a live shot total flags a wrong total and the save is rejected", async ({
     course,
     adminPage: page,
