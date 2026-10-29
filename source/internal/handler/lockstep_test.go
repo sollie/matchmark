@@ -315,3 +315,23 @@ func TestCategoryCanBeEditedOnceActiveButTheLaneStaysFrozen(t *testing.T) {
 		t.Fatalf("lane change: %d", status)
 	}
 }
+
+func TestWithdrawAtTheGateAfterDeviceAcceptReroutesTheScoreLane(t *testing.T) {
+	f := newScoringFixture(t, 1, 2, 3)
+	for _, l := range []int{1, 2, 3} {
+		f.lockOnDevice(t, f.pair(t, l))
+	}
+	for _, l := range []int{1, 2, 3} {
+		f.deviceAction(f.pair(t, l), 1, "accept")
+	}
+	path := fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", f.comp, f.entries[2])
+	if status, out := f.env.Do("POST", path, nil); status != http.StatusOK {
+		t.Fatalf("withdraw: %d %v", status, out)
+	}
+	if status, out := f.startNext(f.comp); status != http.StatusOK {
+		t.Fatalf("start next: %d %v", status, out)
+	}
+	if got := f.session(t, f.pair(t, 1))["score_lane"]; got != float64(3) {
+		t.Fatalf("score lane %v", got)
+	}
+}
