@@ -25,8 +25,8 @@ test.describe("results", () => {
     const second = await addEntry(admin, match.id, fresh.id, 2);
     await setVisibility(admin, match.id, {});
     await setStatus(admin, match.id, "active");
-    await setCounts(admin, match.id, first, 1, { x: 2, "10": 10 }, true);
-    await setCounts(admin, match.id, second, 1, { x: 12 }, true);
+    await setCounts(admin, match.id, first, 1, { x: 4, "10": 20 }, true);
+    await setCounts(admin, match.id, second, 1, { x: 24 }, true);
     await setStatus(admin, match.id, "finished");
 
     await page.goto("/");

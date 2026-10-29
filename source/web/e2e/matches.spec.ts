@@ -26,7 +26,9 @@ test.describe("matches", () => {
   });
 
   function segmentHeaders(page: Page) {
-    return section(page, "Entries and progress").getByRole("columnheader", { name: /^S\d+$/ });
+    return section(page, "Entries and progress").getByRole("columnheader", {
+      name: /^(M\d|Stage \d\+\d)$/,
+    });
   }
 
   test("every course shows its label and one column per segment", async ({
@@ -52,8 +54,11 @@ test.describe("matches", () => {
         await seedEntry(admin, id, 1);
         await openMatch(page, id);
         await expect(segmentHeaders(page)).toHaveCount(course.segments);
-        await expect(segmentHeaders(page).first()).toHaveText("S1");
-        await expect(segmentHeaders(page).last()).toHaveText(`S${course.segments}`);
+        await expect(segmentHeaders(page)).toHaveText(
+          course.segments === 6
+            ? ["M1", "M2", "M3", "M4", "Stage 1+2", "Stage 3+4"]
+            : ["Stage 1+2", "Stage 3+4"],
+        );
 
         await page.goto("/admin");
         await expect(row(page, name)).toContainText(course.label);

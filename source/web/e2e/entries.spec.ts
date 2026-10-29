@@ -128,12 +128,12 @@ test.describe("admin ring counts", () => {
     const counts = page.locator(".counts");
     await expect(counts).toContainText(`must sum to ${course.segmentOneShots} shots`);
 
-    await counts.getByLabel("10", { exact: true }).fill("5");
-    await counts.getByLabel("9", { exact: true }).fill("4");
-    await expect(counts.locator(".total")).toContainText("3 to go");
+    await counts.getByLabel("10", { exact: true }).fill("10");
+    await counts.getByLabel("9", { exact: true }).fill("8");
+    await expect(counts.locator(".total")).toContainText("6 to go");
 
-    await counts.getByLabel("8", { exact: true }).fill("5");
-    await expect(counts.locator(".total")).toContainText("2 too many");
+    await counts.getByLabel("8", { exact: true }).fill("10");
+    await expect(counts.locator(".total")).toContainText("4 too many");
 
     await counts.getByRole("button", { name: "Save counts" }).click();
     await expect(section(page, "Entries and progress").getByRole("alert")).toHaveText(
@@ -141,7 +141,7 @@ test.describe("admin ring counts", () => {
     );
     await expect(counts).toBeVisible();
 
-    await counts.getByLabel("8", { exact: true }).fill("3");
+    await counts.getByLabel("8", { exact: true }).fill("6");
     await expect(counts.locator(".total")).toContainText("Shots match");
   });
 
@@ -159,11 +159,11 @@ test.describe("admin ring counts", () => {
     const segment = entryRow.locator("td.segment").first();
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
     const counts = page.locator(".counts");
-    await counts.getByLabel("X", { exact: true }).fill("2");
-    await counts.getByLabel("10", { exact: true }).fill("4");
-    await counts.getByLabel("9", { exact: true }).fill("3");
-    await counts.getByLabel("0", { exact: true }).fill("1");
-    await counts.getByLabel("miss", { exact: true }).fill("2");
+    await counts.getByLabel("X", { exact: true }).fill("4");
+    await counts.getByLabel("10", { exact: true }).fill("8");
+    await counts.getByLabel("9", { exact: true }).fill("6");
+    await counts.getByLabel("0", { exact: true }).fill("2");
+    await counts.getByLabel("miss", { exact: true }).fill("4");
     await expect(counts.locator(".total")).toContainText("Shots match");
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
@@ -193,14 +193,14 @@ test.describe("admin ring counts", () => {
     await openMatch(page, match.id);
 
     const segment = row(page, entry.shooter.last_name).locator("td.segment").first();
-    await expect(segment.locator(".score strong")).toHaveText("120");
+    await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 10));
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
     const counts = page.locator(".counts");
     await counts.getByLabel("9", { exact: true }).fill(String(course.segmentOneShots));
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
     await expect(counts).toHaveCount(0);
-    await expect(segment.locator(".score strong")).toHaveText("108");
+    await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 9));
     await expect(segment.getByText("Accepted", { exact: true })).toHaveAttribute(
       "title",
       new RegExp(`Locked by ${adminUsername}`),

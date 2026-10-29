@@ -33,10 +33,10 @@ async function seedScored(api: APIRequestContext, finish = false) {
     country: string;
   }[];
   const plans = [
-    { lane: 1, counts: { x: 2, "10": 6, "9": 4 }, lock: true },
-    { lane: 2, counts: { x: 6, "10": 6 }, lock: true },
-    { lane: 3, counts: { "9": 12 }, lock: false },
-    { lane: 4, counts: { x: 5, "10": 7 }, lock: false },
+    { lane: 1, counts: { x: 4, "10": 12, "9": 8 }, lock: true },
+    { lane: 2, counts: { x: 12, "10": 12 }, lock: true },
+    { lane: 3, counts: { "9": 24 }, lock: false },
+    { lane: 4, counts: { x: 10, "10": 14 }, lock: false },
   ];
   const shooters = [];
   for (const plan of plans) {
@@ -61,6 +61,7 @@ async function seedScored(api: APIRequestContext, finish = false) {
 
 test.describe("spectator", () => {
   test("standings are ranked by total then X count with the segment status row", async ({
+    course,
     page,
     admin,
   }) => {
@@ -75,7 +76,7 @@ test.describe("spectator", () => {
     await expect(byLane(1).getByRole("cell").first()).toHaveText("2");
     await expect(byLane(3).getByRole("cell").first()).toHaveText("3");
     await expect(byLane(1).getByRole("cell").nth(1)).toHaveText("1");
-    await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "M1", exact: true })).toBeVisible();
     await expect(table.getByRole("columnheader", { name: "X", exact: true })).toBeVisible();
 
     const rows = table.locator("tbody tr");
@@ -83,7 +84,7 @@ test.describe("spectator", () => {
 
     const progress = page.getByRole("status");
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
-    await expect(progress.getByText("Segment 1 of 10")).toBeVisible();
+    await expect(progress.getByText(`Segment 1 of ${course.segments}`)).toBeVisible();
     await expect(page.locator("progress")).toHaveCount(0);
   });
 
@@ -101,7 +102,7 @@ test.describe("spectator", () => {
     const entryId = (
       await (await admin.get(`/api/matches/${match.id}/entries`)).json()
     ).entries.find((e: { lane: number }) => e.lane === 3).id;
-    await setCounts(admin, match.id, entryId, 1, { "9": 12 }, true);
+    await setCounts(admin, match.id, entryId, 1, { "9": 24 }, true);
 
     await expect(progress.getByText("3/4 accepted")).toBeVisible();
     await expect(row(page, entries[2].last_name)).toBeVisible();
@@ -132,7 +133,7 @@ test.describe("spectator", () => {
     const entryId = (
       await (await admin.get(`/api/matches/${match.id}/entries`)).json()
     ).entries.find((e: { lane: number }) => e.lane === 3).id;
-    await setCounts(admin, match.id, entryId, 1, { "9": 12 }, true);
+    await setCounts(admin, match.id, entryId, 1, { "9": 24 }, true);
     await page.waitForTimeout(1000);
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
     expect(streams).toBe(1);
@@ -166,8 +167,8 @@ test.describe("spectator", () => {
     await openMatch(page, match.name);
 
     const accepted = row(page, entries[1].last_name);
-    await expect(accepted.getByLabel("Segment 1: accepted, 120", { exact: true })).toHaveText(
-      "120",
+    await expect(accepted.getByLabel("Segment 1: accepted, 240", { exact: true })).toHaveText(
+      "240",
     );
     const inProgress = row(page, entries[2].last_name);
     await expect(inProgress.getByLabel("Segment 1: in progress", { exact: true })).toHaveText("");
@@ -196,10 +197,10 @@ test.describe("spectator", () => {
       ...(shown.clubs ? [shooter.club] : []),
       ...(shown.countries ? [shooter.country] : []),
       "Revolver",
-      shown.segment ? "120" : "",
+      shown.segment ? "240" : "",
       ...Array<string>(course.segments - 1).fill(""),
-      "120",
-      ...(shown.x ? ["6"] : []),
+      "240",
+      ...(shown.x ? ["12"] : []),
     ];
     const table = page.getByRole("table");
     const winner = table.locator("tbody tr").first();
@@ -232,7 +233,7 @@ test.describe("spectator", () => {
       show_segment_scores: false,
     });
     await openMatch(page, match.name);
-    await expect(table.getByRole("columnheader", { name: "S1", exact: true })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "M1", exact: true })).toBeVisible();
     await expect(winner.getByRole("cell")).toHaveText(winnerCells({ names: true, x: true }));
     await expect(winner.getByLabel("Segment 1: accepted", { exact: true })).toBeVisible();
 
