@@ -2,13 +2,13 @@
   import { api } from "../lib/api/client";
   import { settle } from "../lib/api/util";
   import { entryCommands } from "../lib/entries";
-  import { courseCategories, stageLabel } from "../lib/rulebook.svelte";
+  import { courseCategories, segmentColumn, segmentLabel } from "../lib/rulebook.svelte";
   import ShooterPicker from "./ShooterPicker.svelte";
   import Wa1500Import from "./Wa1500Import.svelte";
   import type { components } from "../lib/api/schema";
 
   type Shooter = components["schemas"]["Shooter"];
-  type EntryWithStages = components["schemas"]["EntryWithStages"];
+  type EntryWithSegments = components["schemas"]["EntryWithSegments"];
   type RingCounts = components["schemas"]["RingCounts"];
 
   let {
@@ -21,7 +21,7 @@
   }: {
     matchId: number;
     course: string;
-    entries: EntryWithStages[];
+    entries: EntryWithSegments[];
     shooters: Shooter[];
     reload: () => Promise<void>;
     status?: components["schemas"]["MatchStatus"];
@@ -46,7 +46,9 @@
   let chosenCategory = $state<string | null>(null);
   let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
-  let scoring = $state<{ entry: EntryWithStages; stage: number; counts: RingCounts } | null>(null);
+  let scoring = $state<{ entry: EntryWithSegments; segment: number; counts: RingCounts } | null>(
+    null,
+  );
   let error = $state("");
   let archivedBlock = $state<Shooter | null>(null);
 
@@ -64,7 +66,7 @@
       ? chosenCategory
       : (categories[0] ?? ""),
   );
-  const stageNumbers = $derived(entries[0]?.stages.map((s) => s.stage_number) ?? []);
+  const segmentNumbers = $derived(entries[0]?.segments.map((s) => s.segment_number) ?? []);
   const shooterName = (id: number) => {
     const s = shooters.find((x) => x.id === id) ?? imported.find((x) => x.id === id);
     return s ? `${s.first_name} ${s.last_name}` : `#${id}`;
@@ -123,27 +125,29 @@
     if (ok) editing = null;
   }
 
-  async function withdraw(entry: EntryWithStages) {
+  async function withdraw(entry: EntryWithSegments) {
     if (!confirm(`Withdraw ${shooterName(entry.shooter_id)}? Results are kept.`)) return;
     await run(commands.withdraw(entry.id));
   }
 
-  async function remove(entry: EntryWithStages) {
+  async function remove(entry: EntryWithSegments) {
     if (!confirm(`Remove ${shooterName(entry.shooter_id)} and their results?`)) return;
     await run(commands.remove(entry.id));
   }
 
-  const unlock = (entry: EntryWithStages, stage: number) => run(commands.unlock(entry.id, stage));
-  const accept = (entry: EntryWithStages, stage: number) => run(commands.accept(entry.id, stage));
-  const lock = (entry: EntryWithStages, stage: number) => run(commands.lock(entry.id, stage));
+  const unlock = (entry: EntryWithSegments, segment: number) =>
+    run(commands.unlock(entry.id, segment));
+  const accept = (entry: EntryWithSegments, segment: number) =>
+    run(commands.accept(entry.id, segment));
+  const lock = (entry: EntryWithSegments, segment: number) => run(commands.lock(entry.id, segment));
 
   async function saveCounts(andLock = false) {
     if (!scoring) return;
-    const { entry, stage, counts } = scoring;
-    const ok = await run(commands.saveCounts(entry.id, stage, counts));
+    const { entry, segment, counts } = scoring;
+    const ok = await run(commands.saveCounts(entry.id, segment, counts));
     if (!ok) return;
     scoring = null;
-    if (andLock) await lock(entry, stage);
+    if (andLock) await lock(entry, segment);
   }
 </script>
 
@@ -208,7 +212,9 @@
       <thead>
         <tr>
           <th>Lane</th><th>Shooter</th><th>Category</th>
-          {#each stageNumbers as n (n)}<th title={stageLabel(course, n)}>S{n}</th>{/each}
+          {#each segmentNumbers as n (n)}<th title={segmentLabel(course, n)}
+              >{segmentColumn(course, n)}</th
+            >{/each}
           <th>Actions</th>
         </tr>
       </thead>
@@ -241,16 +247,16 @@
               </td>
               <td class="category">{entry.category}</td>
             {/if}
-            {#each entry.stages as st (st.stage_number)}
+            {#each entry.segments as st (st.segment_number)}
               <td
-                class="stage"
+                class="segment"
                 class:state-locked={st.status === "accepted"}
                 class:state-scored={st.status === "open" && st.shots_entered >= st.expected_shots}
                 class:state-open={st.status === "open" && st.shots_entered < st.expected_shots}
-                data-label={stageLabel(course, st.stage_number)}
+                data-label={segmentLabel(course, st.segment_number)}
               >
-                <div class="stage-cell">
-                  <div class="stage-status">
+                <div class="segment-cell">
+                  <div class="segment-status">
                     {#if st.status === "accepted"}
                       <span
                         class="badge success"
@@ -277,32 +283,32 @@
                   {#if st.status === "open" && st.shots_entered > 0 && st.shots_entered < st.expected_shots}
                     <span class="muted">{st.shots_entered} / {st.expected_shots} shots</span>
                   {/if}
-                  <span class="stage-actions">
+                  <span class="segment-actions">
                     <button
                       class="secondary"
-                      aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Edit`}
+                      aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Edit`}
                       onclick={() =>
-                        (scoring = { entry, stage: st.stage_number, counts: blankCounts() })}
+                        (scoring = { entry, segment: st.segment_number, counts: blankCounts() })}
                       >Edit</button
                     >
                     {#if st.status === "awaiting_acceptance"}
                       <button
                         class="secondary"
-                        aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Accept`}
-                        onclick={() => accept(entry, st.stage_number)}>Accept</button
+                        aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Accept`}
+                        onclick={() => accept(entry, st.segment_number)}>Accept</button
                       >
                     {/if}
                     {#if st.status !== "open"}
                       <button
                         class="secondary"
-                        aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Unlock`}
-                        onclick={() => unlock(entry, st.stage_number)}>Unlock</button
+                        aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Unlock`}
+                        onclick={() => unlock(entry, st.segment_number)}>Unlock</button
                       >
                     {:else}
                       <button
                         class="secondary"
-                        aria-label={`Lane ${entry.lane} stage ${st.stage_number}: Lock`}
-                        onclick={() => lock(entry, st.stage_number)}>Lock</button
+                        aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Lock`}
+                        onclick={() => lock(entry, st.segment_number)}>Lock</button
                       >
                     {/if}
                   </span>
@@ -335,7 +341,7 @@
           </tr>
         {:else}
           <tr class="empty"
-            ><td colspan={4 + stageNumbers.length}
+            ><td colspan={4 + segmentNumbers.length}
               >No entries yet. Add a shooter above to get started.</td
             ></tr
           >
@@ -346,10 +352,13 @@
 
   {#if scoring}
     {@const expected =
-      scoring.entry.stages.find((s) => s.stage_number === scoring?.stage)?.expected_shots ?? 0}
+      scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
+      0}
     {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
     <div class="card counts">
-      <h3>{shooterName(scoring.entry.shooter_id)}, stage {scoring.stage}: overwrite ring counts</h3>
+      <h3>
+        {shooterName(scoring.entry.shooter_id)}, segment {scoring.segment}: overwrite ring counts
+      </h3>
       <p class="muted">Enter all counts; they must sum to {expected} shots.</p>
       <div class="count-grid">
         {#each ringKeys as k (k)}
@@ -382,19 +391,19 @@
   .add-form label {
     min-width: 0;
   }
-  .entries .stage-cell {
+  .entries .segment-cell {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-2);
   }
-  .entries .stage-status {
+  .entries .segment-status {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }
-  .entries .stage-actions,
+  .entries .segment-actions,
   .entries .entry-buttons {
     display: flex;
     flex-wrap: wrap;
@@ -528,7 +537,7 @@
   .entries .category {
     align-self: center;
   }
-  .entries .stage {
+  .entries .segment {
     order: 4;
     flex: 0 0 calc((100% - (var(--cols) - 1) * var(--space-2)) / var(--cols));
     box-sizing: border-box;
@@ -537,21 +546,21 @@
     border-left: 4px solid var(--border);
     border-radius: var(--radius);
   }
-  .entries .stage.state-locked {
+  .entries .segment.state-locked {
     background: var(--success-bg);
     border-left-color: var(--success-fg);
   }
-  .entries .stage.state-scored {
+  .entries .segment.state-scored {
     background: var(--brand-tint);
     border-left-color: var(--link);
   }
-  .entries .stage.state-open {
+  .entries .segment.state-open {
     border-left-color: var(--warning-fg);
   }
-  .entries .stage.state-locked::before {
+  .entries .segment.state-locked::before {
     color: var(--success-fg);
   }
-  .entries .stage::before {
+  .entries .segment::before {
     content: attr(data-label);
     display: block;
     margin-bottom: var(--space-1);

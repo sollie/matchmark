@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stubFetch } from "../test/fetch";
 
 const body = {
-  courses: [{ key: "60", label: "60 shots", discipline: "60", total_shots: 60, stages: [] }],
+  courses: [
+    { key: "60", label: "60 shots", discipline: "60", total_shots: 60, stages: [], segments: [] },
+  ],
   rings: [],
 };
 
@@ -33,14 +35,12 @@ describe("rulebook store", () => {
     expect(courseLabel("60")).toBe("60 shots");
   });
 
-  it("labels stages with their Part, or the plain number when the course has none", async () => {
-    const stage = (n: number, part?: string) => ({
-      stage_number: n,
-      distance: "7 yd",
-      expected_shots: 12,
-      time_seconds: 20,
-      position: "",
-      part,
+  it("labels segments with their rulebook name, or the number when unknown", async () => {
+    const segment = (number: number, name: string) => ({
+      number,
+      name,
+      stages: [number],
+      shots: 24,
     });
     const grouped = {
       courses: [
@@ -50,24 +50,25 @@ describe("rulebook store", () => {
           discipline: "1500",
           total_shots: 150,
           categories: [],
-          stages: [stage(4, "Match 3")],
-        },
-        {
-          key: "60",
-          label: "60",
-          discipline: "60",
-          total_shots: 60,
-          categories: [],
-          stages: [stage(4)],
+          stages: [],
+          segments: [
+            segment(2, "Match 2"),
+            segment(5, "Match 5 · Stage 1+2"),
+            segment(6, "Match 5 · Stage 3+4"),
+          ],
         },
       ],
       rings: [],
     };
     stubFetch(() => ({ body: grouped }));
-    const { loadRulebook, stageLabel } = await import("./rulebook.svelte");
+    const { loadRulebook, segmentLabel, segmentColumn } = await import("./rulebook.svelte");
     await loadRulebook();
-    expect(stageLabel("150", 4)).toBe("Stage 4 · Match 3");
-    expect(stageLabel("60", 4)).toBe("Stage 4");
-    expect(stageLabel("unknown", 4)).toBe("Stage 4");
+    expect(segmentLabel("150", 5)).toBe("Match 5 · Stage 1+2");
+    expect(segmentLabel("150", 9)).toBe("Segment 9");
+    expect(segmentLabel("unknown", 4)).toBe("Segment 4");
+    expect(segmentColumn("150", 2)).toBe("M2");
+    expect(segmentColumn("150", 5)).toBe("Stage 1+2");
+    expect(segmentColumn("150", 6)).toBe("Stage 3+4");
+    expect(segmentColumn("unknown", 4)).toBe("Segment 4");
   });
 });

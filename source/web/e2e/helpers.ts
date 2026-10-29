@@ -25,7 +25,7 @@ interface Visibility {
   show_names: boolean;
   show_clubs: boolean;
   show_countries: boolean;
-  show_stage_scores: boolean;
+  show_segment_scores: boolean;
   show_ring_counts: boolean;
 }
 
@@ -36,9 +36,9 @@ export type Category = "Revolver" | "Pistol" | "Revolver OS" | "Pistol OS" | "Ca
 export interface Course {
   key: string;
   label: string;
-  stages: number;
-  stageOneShots: number;
-  stageShots: number[];
+  segments: number;
+  segmentOneShots: number;
+  segmentShots: number[];
   categories: string[];
 }
 
@@ -47,7 +47,7 @@ interface RulebookResponse {
     key: string;
     label: string;
     categories: string[];
-    stages: { expected_shots: number }[];
+    segments: { shots: number }[];
   }[];
 }
 
@@ -59,9 +59,9 @@ async function fetchCourses(api: APIRequestContext): Promise<Course[]> {
     key: c.key,
     label: c.label,
     categories: c.categories,
-    stages: c.stages.length,
-    stageOneShots: c.stages[0].expected_shots,
-    stageShots: c.stages.map((st) => st.expected_shots),
+    segments: c.segments.length,
+    segmentOneShots: c.segments[0].shots,
+    segmentShots: c.segments.map((st) => st.shots),
   }));
 }
 
@@ -183,7 +183,7 @@ export async function setVisibility(
     show_names: true,
     show_clubs: true,
     show_countries: true,
-    show_stage_scores: true,
+    show_segment_scores: true,
     show_ring_counts: true,
     ...visibility,
   };
@@ -224,13 +224,13 @@ export async function setCounts(
   api: APIRequestContext,
   matchId: number,
   entryId: number,
-  stage: number,
+  segment: number,
   counts: Partial<RingCounts>,
   lock = false,
 ) {
-  const base = `/api/matches/${matchId}/entries/${entryId}/stages/${stage}`;
+  const base = `/api/matches/${matchId}/entries/${entryId}/segments/${segment}`;
   await checked(await api.put(base, { data: ringCounts(counts) }), "set ring counts");
-  if (lock) await checked(await api.post(`${base}/lock`), "lock stage");
+  if (lock) await checked(await api.post(`${base}/lock`), "lock segment");
 }
 
 export async function createPairing(api: APIRequestContext, matchId: number, lane: number) {
@@ -243,7 +243,7 @@ export async function createPairing(api: APIRequestContext, matchId: number, lan
 export async function deviceLock(
   baseURL: string,
   token: string,
-  stage: number,
+  segment: number,
   counts: Partial<RingCounts>,
 ) {
   const api = await request.newContext({
@@ -252,10 +252,10 @@ export async function deviceLock(
   });
   try {
     await checked(
-      await api.put(`/api/scorer/stages/${stage}`, { data: ringCounts(counts) }),
+      await api.put(`/api/scorer/segments/${segment}`, { data: ringCounts(counts) }),
       "device set counts",
     );
-    await checked(await api.post(`/api/scorer/stages/${stage}/lock`), "device lock");
+    await checked(await api.post(`/api/scorer/segments/${segment}/lock`), "device lock");
   } finally {
     await api.dispose();
   }
@@ -264,7 +264,7 @@ export async function deviceLock(
 export async function deviceAction(
   baseURL: string,
   token: string,
-  stage: number,
+  segment: number,
   action: "accept" | "dispute" | "lock",
 ) {
   const api = await request.newContext({
@@ -272,7 +272,7 @@ export async function deviceAction(
     extraHTTPHeaders: { Authorization: `Bearer ${token}` },
   });
   try {
-    await checked(await api.post(`/api/scorer/stages/${stage}/${action}`), `device ${action}`);
+    await checked(await api.post(`/api/scorer/segments/${segment}/${action}`), `device ${action}`);
   } finally {
     await api.dispose();
   }

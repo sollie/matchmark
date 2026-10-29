@@ -35,11 +35,11 @@ func newNamedScorecardFixture(t *testing.T, name string) *scorecardFixture {
 	f.addEntry(t, "BERG", 5)
 	base := fmt.Sprintf("/api/matches/%d", f.comp)
 	f.env.Do("POST", base+"/status", map[string]any{"status": "active"})
-	stage := fmt.Sprintf("%s/entries/%d/stages/1", base, entry)
-	if status, out := f.env.Do("PUT", stage, counts112); status != http.StatusOK {
+	segment := fmt.Sprintf("%s/entries/%d/segments/1", base, entry)
+	if status, out := f.env.Do("PUT", segment, counts112); status != http.StatusOK {
 		t.Fatalf("set counts: %d %v", status, out)
 	}
-	if status, out := f.env.Do("POST", stage+"/lock", nil); status != http.StatusOK {
+	if status, out := f.env.Do("POST", segment+"/lock", nil); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
 	return &scorecardFixture{fixture: f, entry: entry}
@@ -160,13 +160,13 @@ func TestScorecardReflectsCurrentData(t *testing.T) {
 	f := newScorecardFixture(t)
 	f.finish(t)
 	_, _, before := anonymousGet(t, f.env, f.path(3, ""))
-	stage := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", f.comp, f.entry)
-	if status, out := f.env.Do("PUT", stage, map[string]any{"x": 1, "10": 4, "9": 3, "8": 1, "7": 1, "0": 1, "miss": 1}); status != http.StatusOK {
+	segment := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", f.comp, f.entry)
+	if status, out := f.env.Do("PUT", segment, map[string]any{"x": 2, "10": 8, "9": 6, "8": 2, "7": 2, "0": 2, "miss": 2}); status != http.StatusOK {
 		t.Fatalf("edit: %d %v", status, out)
 	}
 	_, _, after := anonymousGet(t, f.env, f.path(3, ""))
 	if bytes.Equal(before, after) {
-		t.Fatal("scorecard did not change after the stage was edited")
+		t.Fatal("scorecard did not change after the segment was edited")
 	}
 }
 
@@ -202,7 +202,7 @@ func TestScorecardSummaryNamesShooterAndScorers(t *testing.T) {
 	if ct := header.Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("content type %q", ct)
 	}
-	want := `{"lane":3,"scorers":[{"scorer":"Range admin","stage":1}],"shooter":"A HANSEN"}`
+	want := `{"lane":3,"scorers":[{"scorer":"Range admin","segment":1,"segment_name":"Match 1"}],"shooter":"A HANSEN"}`
 	var got map[string]any
 	if err := json.Unmarshal(body, &got); err != nil {
 		t.Fatal(err)

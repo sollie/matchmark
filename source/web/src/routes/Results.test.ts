@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/svelte";
+import { render, screen, within } from "@testing-library/svelte";
 import Results from "./Results.svelte";
 import { stubFetch } from "../test/fetch";
 import { navigate } from "../lib/router.svelte";
@@ -11,7 +11,7 @@ const matches = [
     date: "2026-05-01",
     course: "150",
     status: "finished",
-    current_stage: 10,
+    current_segment: 10,
   },
   {
     id: 8,
@@ -19,7 +19,7 @@ const matches = [
     date: "2026-06-01",
     course: "150",
     status: "active",
-    current_stage: 2,
+    current_segment: 2,
   },
 ];
 
@@ -33,6 +33,110 @@ afterEach(() => {
 });
 
 describe("Results", () => {
+  it("heads the segment columns with the rulebook segment names", async () => {
+    navigate("/results/7");
+    stubFetch((call) => {
+      if (call.path === "/api/rulebook") {
+        return {
+          body: {
+            courses: [
+              {
+                key: "150",
+                label: "150 Course",
+                categories: [],
+                segments: [
+                  { number: 1, name: "Match 1", stages: [1, 2], shots: 24 },
+                  { number: 2, name: "Match 2", stages: [3], shots: 18 },
+                ],
+              },
+            ],
+          },
+        };
+      }
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150 Course",
+          },
+          segments: [1, 2],
+          categories: [
+            {
+              category: "Revolver",
+              rows: [
+                {
+                  rank: 1,
+                  segments: [
+                    { segment: 1, score: 110 },
+                    { segment: 2, score: 120 },
+                  ],
+                  total: 230,
+                },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    expect(await screen.findByRole("columnheader", { name: "Match 1" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Match 2" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "S1" })).toBeNull();
+  });
+
+  it("shows a score card per shooter with ring counts per segment", async () => {
+    navigate("/results/7");
+    const counts = (x: number) => ({ x, "10": 1, "9": 2, "8": 3, "7": 4, "0": 5, miss: 6 });
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150 Course",
+          },
+          segments: [1, 2],
+          categories: [
+            {
+              category: "Revolver",
+              rows: [
+                {
+                  rank: 1,
+                  last_name: "Berg",
+                  first_name: "Ola",
+                  segments: [{ segment: 1, score: 110, ring_counts: counts(7) }, { segment: 2 }],
+                  total: 110,
+                },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    const card = await screen.findByRole("table", { name: "Score card for Ola Berg" });
+    const rows = within(card).getAllByRole("row");
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringContaining("Total"),
+      "X77",
+      "1011",
+      "922",
+      "833",
+      "744",
+      "055",
+      "M66",
+    ]);
+  });
+
   it("offers only finished matches", async () => {
     navigate("/results");
     stubFetch(() => ({ body: { matches } }));
@@ -54,7 +158,7 @@ describe("Results", () => {
                 course: "150",
                 course_label: "150 Course",
               },
-              stages: [1, 2],
+              segments: [1, 2],
               categories: [
                 {
                   category: "Revolver",
@@ -64,7 +168,7 @@ describe("Results", () => {
                       last_name: "Berg",
                       first_name: "Ola",
                       waid: "1001",
-                      stages: [{ stage: 1 }, { stage: 2 }],
+                      segments: [{ segment: 1 }, { segment: 2 }],
                       total: 230,
                     },
                   ],

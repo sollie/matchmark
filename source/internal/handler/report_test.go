@@ -33,7 +33,7 @@ func seedReport(t *testing.T, env *apitest.Env, name string, shooters []reportSh
 	}
 	for i, s := range shooters {
 		if s.counts != nil {
-			path := fmt.Sprintf("/api/matches/%d/entries/%d/stages/1", comp, entryIDs[i])
+			path := fmt.Sprintf("/api/matches/%d/entries/%d/segments/1", comp, entryIDs[i])
 			if status, out := env.Do("PUT", path, s.counts); status != http.StatusOK {
 				t.Fatalf("set counts: %d %v", status, out)
 			}
@@ -45,7 +45,7 @@ func seedReport(t *testing.T, env *apitest.Env, name string, shooters []reportSh
 	return comp
 }
 
-var counts112 = map[string]any{"x": 3, "10": 4, "9": 3, "8": 1, "7": 1, "0": 0, "miss": 0}
+var counts112 = map[string]any{"x": 6, "10": 8, "9": 6, "8": 2, "7": 2, "0": 0, "miss": 0}
 
 func openReport(t *testing.T, env *apitest.Env, comp int) *excelize.File {
 	t.Helper()
@@ -94,7 +94,7 @@ func TestResultsWorkbook(t *testing.T) {
 		}
 	})
 	t.Run("known shooters with total", func(t *testing.T) {
-		want := [][2]string{{"W100", "112"}, {"W200", "0"}}
+		want := [][2]string{{"W100", "224"}, {"W200", "0"}}
 		for i, w := range want {
 			row := 3 + i
 			if got := [2]string{cell(t, f, "Revolver", fmt.Sprintf("A%d", row)), cell(t, f, "Revolver", fmt.Sprintf("B%d", row))}; got != w {
@@ -103,7 +103,7 @@ func TestResultsWorkbook(t *testing.T) {
 		}
 	})
 	t.Run("new shooter block", func(t *testing.T) {
-		want := []string{"NYHUS", "Kari", "", "NOR", "Oslo PPC", "nn", "112"}
+		want := []string{"NYHUS", "Kari", "", "NOR", "Oslo PPC", "nn", "224"}
 		for i, w := range want {
 			ref := fmt.Sprintf("%c14", 'A'+i)
 			if got := cell(t, f, "Revolver", ref); got != w {
@@ -115,13 +115,13 @@ func TestResultsWorkbook(t *testing.T) {
 		}
 	})
 	t.Run("other categories", func(t *testing.T) {
-		if cell(t, f, "Pistol", "A3") != "W300" || cell(t, f, "Pistol", "B3") != "112" {
+		if cell(t, f, "Pistol", "A3") != "W300" || cell(t, f, "Pistol", "B3") != "224" {
 			t.Fatal("pistol row")
 		}
 		if cell(t, f, "Pistol", "F14") != "" {
 			t.Fatal("placeholder not cleared")
 		}
-		if cell(t, f, "Carbine", "A3") != "W400" || cell(t, f, "Carbine", "B3") != "112" {
+		if cell(t, f, "Carbine", "A3") != "W400" || cell(t, f, "Carbine", "B3") != "224" {
 			t.Fatal("carbine row")
 		}
 	})
@@ -139,7 +139,7 @@ func TestResultsWorkbookInsertsRows(t *testing.T) {
 	comp := seedReport(t, env, "Big", shooters)
 	f := openReport(t, env, comp)
 
-	if cell(t, f, "Revolver", "A12") != "W010" || cell(t, f, "Revolver", "B12") != "112" {
+	if cell(t, f, "Revolver", "A12") != "W010" || cell(t, f, "Revolver", "B12") != "224" {
 		t.Fatalf("last known row: %q", cell(t, f, "Revolver", "A12"))
 	}
 	if cell(t, f, "Revolver", "A14") != "New shooters:" || cell(t, f, "Revolver", "A15") != "Last name" {
@@ -150,7 +150,7 @@ func TestResultsWorkbookInsertsRows(t *testing.T) {
 			t.Fatalf("new shooter %d: %q", i, got)
 		}
 	}
-	if got := cell(t, f, "Revolver", "G19"); got != "112" {
+	if got := cell(t, f, "Revolver", "G19"); got != "224" {
 		t.Fatalf("last new shooter result %q", got)
 	}
 }
@@ -172,17 +172,17 @@ func TestResultsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,stage,part,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name"
+	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,segment,segment_name,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name"
 	if strings.Join(rows[0], ",") != wantHeader {
 		t.Fatalf("header %v", rows[0])
 	}
-	if len(rows) != 21 {
-		t.Fatalf("rows %d, want 1 header + 2 entries x 10 stages", len(rows))
+	if len(rows) != 13 {
+		t.Fatalf("rows %d, want 1 header + 2 entries x 6 segments", len(rows))
 	}
-	if got := strings.Join(rows[1], ","); got != "Revolver,1,BERG,Ola,W100,false,1,Match 1,3,4,3,1,1,0,0,112,true,,"+apitest.AdminUsername {
+	if got := strings.Join(rows[1], ","); got != "Revolver,1,BERG,Ola,W100,false,1,Match 1,6,8,6,2,2,0,0,224,true,,"+apitest.AdminUsername {
 		t.Fatalf("first row %q", got)
 	}
-	if got := strings.Join(rows[11], ","); got != "Pistol,2,NYHUS,Kari,,false,1,Match 1,0,0,0,0,0,0,0,0,false,," {
+	if got := strings.Join(rows[7], ","); got != "Pistol,2,NYHUS,Kari,,false,1,Match 1,0,0,0,0,0,0,0,0,false,," {
 		t.Fatalf("pistol row %q", got)
 	}
 }

@@ -8,7 +8,7 @@ export type EntryCommands = ReturnType<typeof entryCommands>;
 
 export function entryCommands(matchId: number, reload: () => Promise<void>) {
   const entryPath = (entryID: number) => ({ matchID: matchId, entryID });
-  const stagePath = (entryID: number, stage: number) => ({ ...entryPath(entryID), stage });
+  const segmentPath = (entryID: number, segment: number) => ({ ...entryPath(entryID), segment });
 
   async function run(
     call: Promise<{ error?: unknown; response: Response }>,
@@ -46,28 +46,28 @@ export function entryCommands(matchId: number, reload: () => Promise<void>) {
           params: { path: entryPath(entryID) },
         }),
       ),
-    unlock: (entryID: number, stage: number) =>
+    unlock: (entryID: number, segment: number) =>
       run(
-        api.POST("/api/matches/{matchID}/entries/{entryID}/stages/{stage}/unlock", {
-          params: { path: stagePath(entryID, stage) },
+        api.POST("/api/matches/{matchID}/entries/{entryID}/segments/{segment}/unlock", {
+          params: { path: segmentPath(entryID, segment) },
         }),
       ),
-    accept: (entryID: number, stage: number) =>
+    accept: (entryID: number, segment: number) =>
       run(
-        api.POST("/api/matches/{matchID}/entries/{entryID}/stages/{stage}/accept", {
-          params: { path: stagePath(entryID, stage) },
+        api.POST("/api/matches/{matchID}/entries/{entryID}/segments/{segment}/accept", {
+          params: { path: segmentPath(entryID, segment) },
         }),
       ),
-    lock: (entryID: number, stage: number) =>
+    lock: (entryID: number, segment: number) =>
       run(
-        api.POST("/api/matches/{matchID}/entries/{entryID}/stages/{stage}/lock", {
-          params: { path: stagePath(entryID, stage) },
+        api.POST("/api/matches/{matchID}/entries/{entryID}/segments/{segment}/lock", {
+          params: { path: segmentPath(entryID, segment) },
         }),
       ),
-    saveCounts: (entryID: number, stage: number, body: RingCounts) =>
+    saveCounts: (entryID: number, segment: number, body: RingCounts) =>
       run(
-        api.PUT("/api/matches/{matchID}/entries/{entryID}/stages/{stage}", {
-          params: { path: stagePath(entryID, stage) },
+        api.PUT("/api/matches/{matchID}/entries/{entryID}/segments/{segment}", {
+          params: { path: segmentPath(entryID, segment) },
           body,
         }),
       ),

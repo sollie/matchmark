@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	scoreLogSchemaVersion = 3
+	scoreLogSchemaVersion = 4
 	emittedAtLayout       = "2006-01-02T15:04:05.000Z"
 )
 
-const eventStageStatus = "stage_status"
+const eventSegmentStatus = "segment_status"
 
 type ScoreLog struct {
 	repo *repository.Repository
@@ -32,27 +32,27 @@ func WithScoreLog(l *slog.Logger) Option {
 	return func(s *Service) { s.scoreLogger = l }
 }
 
-func (l *ScoreLog) EmitStage(ctx context.Context, matchID, entryID int64, stageNumber int) {
+func (l *ScoreLog) EmitSegment(ctx context.Context, matchID, entryID int64, segmentNumber int) {
 	if l == nil || l.log == nil {
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	stage, err := l.repo.GetStage(ctx, matchID, entryID, stageNumber)
+	segment, err := l.repo.GetSegment(ctx, matchID, entryID, segmentNumber)
 	if err != nil {
-		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageStatus, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", eventSegmentStatus, "error", err)
 		return
 	}
-	attrs, err := l.stageEventAttrs(ctx, matchID, entryID, stage)
+	attrs, err := l.segmentEventAttrs(ctx, matchID, entryID, segment)
 	if err != nil {
-		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageStatus, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", eventSegmentStatus, "error", err)
 		return
 	}
-	l.log.LogAttrs(ctx, slog.LevelInfo, eventStageStatus, attrs...)
+	l.log.LogAttrs(ctx, slog.LevelInfo, eventSegmentStatus, attrs...)
 }
 
-func (l *ScoreLog) stageEventAttrs(ctx context.Context, matchID, entryID int64, stage repository.Stage) ([]slog.Attr, error) {
+func (l *ScoreLog) segmentEventAttrs(ctx context.Context, matchID, entryID int64, segment repository.Segment) ([]slog.Attr, error) {
 	comp, err := l.repo.GetMatch(ctx, matchID)
 	if err != nil {
 		return nil, err
@@ -74,17 +74,17 @@ func (l *ScoreLog) stageEventAttrs(ctx context.Context, matchID, entryID int64, 
 		return nil, err
 	}
 	l.seq++
-	c := stage.Counts
+	c := segment.Counts
 	var lockedBy any
-	if stage.Status != repository.StatusOpen {
-		lockedBy = stage.ScorerName
-		if stage.ScorerLane != nil {
-			lockedBy = *stage.ScorerLane
+	if segment.Status != repository.StatusOpen {
+		lockedBy = segment.ScorerName
+		if segment.ScorerLane != nil {
+			lockedBy = *segment.ScorerLane
 		}
 	}
 	return []slog.Attr{
 		slog.Int("schema_version", scoreLogSchemaVersion),
-		slog.String("event", eventStageStatus),
+		slog.String("event", eventSegmentStatus),
 		slog.String("emitted_at", time.Now().UTC().Format(emittedAtLayout)),
 		slog.Int64("seq", l.seq),
 		slog.Group("competition",
@@ -112,32 +112,32 @@ func (l *ScoreLog) stageEventAttrs(ctx context.Context, matchID, entryID int64, 
 				slog.String("club", shooter.Club),
 			),
 		),
-		slog.Group("stage",
-			slog.Int("number", stage.Number),
-			slog.Int("expected_shots", stage.ExpectedShots),
+		slog.Group("segment",
+			slog.Int("number", segment.Number),
+			slog.Int("expected_shots", segment.ExpectedShots),
 		),
 		slog.Any("ring_counts", []int{c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss}),
-		slog.String("status", string(stage.Status)),
+		slog.String("status", string(segment.Status)),
 		slog.Any("locked_by", lockedBy),
-		slog.String("scorer_name", stage.ScorerName),
-		slog.String("locked_at", stage.LockedAt),
-		slog.String("accepted_by", stage.AcceptedBy),
-		slog.String("accepted_at", stage.AcceptedAt),
-		slog.String("disputed_at", stage.DisputedAt),
+		slog.String("scorer_name", segment.ScorerName),
+		slog.String("locked_at", segment.LockedAt),
+		slog.String("accepted_by", segment.AcceptedBy),
+		slog.String("accepted_at", segment.AcceptedAt),
+		slog.String("disputed_at", segment.DisputedAt),
 	}, nil
 }
 
-func (l *ScoreLog) Reemit(ctx context.Context, f repository.LockedStageFilter) {
+func (l *ScoreLog) Reemit(ctx context.Context, f repository.LockedSegmentFilter) {
 	if l == nil || l.log == nil {
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
-	refs, err := l.repo.ListLockedStages(ctx, f)
+	refs, err := l.repo.ListLockedSegments(ctx, f)
 	if err != nil {
-		l.log.ErrorContext(ctx, "score log context failed", "event", eventStageStatus, "error", err)
+		l.log.ErrorContext(ctx, "score log context failed", "event", eventSegmentStatus, "error", err)
 		return
 	}
 	for _, ref := range refs {
-		l.EmitStage(ctx, ref.MatchID, ref.EntryID, ref.Number)
+		l.EmitSegment(ctx, ref.MatchID, ref.EntryID, ref.Number)
 	}
 }

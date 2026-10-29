@@ -24,13 +24,16 @@ export function courseCategories(key: string): string[] {
   return rulebook.courses.find((c) => c.key === key)?.categories ?? [];
 }
 
-export function stageLabel(key: string, stageNumber: number): string {
-  const part = rulebook.courses
+export function segmentLabel(key: string, segmentNumber: number): string {
+  const name = rulebook.courses
     .find((c) => c.key === key)
-    ?.stages?.find((s) => s.stage_number === stageNumber)?.part;
-  return formatStageLabel(stageNumber, part);
+    ?.segments?.find((s) => s.number === segmentNumber)?.name;
+  return name ?? `Segment ${segmentNumber}`;
 }
 
-export function formatStageLabel(stageNumber: number, part?: string): string {
-  return part ? `Stage ${stageNumber} · ${part}` : `Stage ${stageNumber}`;
+export function segmentColumn(key: string, segmentNumber: number): string {
+  const name = segmentLabel(key, segmentNumber);
+  const match = /^Match (\d+)$/.exec(name);
+  if (match) return `M${match[1]}`;
+  return name.replace(/^Match \d+ · /, "");
 }

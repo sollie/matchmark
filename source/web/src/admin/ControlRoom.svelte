@@ -2,15 +2,17 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
+  import { segmentLabel } from "../lib/rulebook.svelte";
 
   type ControlRoom = components["schemas"]["ControlRoom"];
   type Lane = components["schemas"]["ControlRoomLane"];
 
   let {
     matchId,
+    course,
     version,
     changed,
-  }: { matchId: number; version: number; changed: () => Promise<void> } = $props();
+  }: { matchId: number; course: string; version: number; changed: () => Promise<void> } = $props();
 
   let room = $state<ControlRoom | null>(null);
   let error = $state("");
@@ -36,26 +38,28 @@
     await changed();
   }
 
-  const stagePath = (lane: Lane, stage: number) => ({
+  const segmentPath = (lane: Lane, segment: number) => ({
     matchID: matchId,
     entryID: lane.entry_id,
-    stage,
+    segment,
   });
 
   const startNext = () =>
-    run(api.POST("/api/matches/{matchID}/next-stage", { params: { path: { matchID: matchId } } }));
+    run(
+      api.POST("/api/matches/{matchID}/next-segment", { params: { path: { matchID: matchId } } }),
+    );
   const acceptAll = () =>
     run(api.POST("/api/matches/{matchID}/accept-all", { params: { path: { matchID: matchId } } }));
-  const accept = (lane: Lane, stage: number) =>
+  const accept = (lane: Lane, segment: number) =>
     run(
-      api.POST("/api/matches/{matchID}/entries/{entryID}/stages/{stage}/accept", {
-        params: { path: stagePath(lane, stage) },
+      api.POST("/api/matches/{matchID}/entries/{entryID}/segments/{segment}/accept", {
+        params: { path: segmentPath(lane, segment) },
       }),
     );
-  const unlock = (lane: Lane, stage: number) =>
+  const unlock = (lane: Lane, segment: number) =>
     run(
-      api.POST("/api/matches/{matchID}/entries/{entryID}/stages/{stage}/unlock", {
-        params: { path: stagePath(lane, stage) },
+      api.POST("/api/matches/{matchID}/entries/{entryID}/segments/{segment}/unlock", {
+        params: { path: segmentPath(lane, segment) },
       }),
     );
 
@@ -80,10 +84,10 @@
 <section class="card">
   <h2>Control room</h2>
   {#if room}
-    <p>Current stage: <strong>{room.current_stage}</strong></p>
+    <p>Current segment: <strong>{segmentLabel(course, room.current_segment)}</strong></p>
     <div class="row">
       <button class="primary" disabled={!room.can_start_next} onclick={startNext}
-        >Start next stage</button
+        >Start next segment</button
       >
       <button class="primary" disabled={!room.can_accept_all} onclick={acceptAll}>Accept all</button
       >
@@ -119,14 +123,14 @@
                   <button
                     class="secondary"
                     aria-label={`Control room lane ${lane.lane}: Accept`}
-                    onclick={() => accept(lane, room!.current_stage)}>Accept</button
+                    onclick={() => accept(lane, room!.current_segment)}>Accept</button
                   >
                 {/if}
                 {#if lane.status !== "open"}
                   <button
                     class="secondary"
                     aria-label={`Control room lane ${lane.lane}: Unlock`}
-                    onclick={() => unlock(lane, room!.current_stage)}>Unlock</button
+                    onclick={() => unlock(lane, room!.current_segment)}>Unlock</button
                   >
                 {/if}
               </td>

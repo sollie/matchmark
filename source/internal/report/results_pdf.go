@@ -20,15 +20,17 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/core"
 	"github.com/johnfercher/maroto/v2/pkg/fontrepository"
 	"github.com/johnfercher/maroto/v2/pkg/props"
+	"github.com/sollie/matchmark/internal/rulebook"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"
 )
 
 const (
-	pdfFamily     = "go"
-	pdfFontSize   = 9.0
-	pdfRowHeight  = 6.5
-	pdfLogoHeight = 18.0
+	pdfFamily       = "go"
+	pdfFontSize     = 9.0
+	pdfRowHeight    = 6.5
+	pdfHeaderHeight = 13.0
+	pdfLogoHeight   = 18.0
 )
 
 //go:embed matchmark-icon.png
@@ -39,9 +41,10 @@ var (
 	pdfMuted      = &props.Color{Red: 92, Green: 92, Blue: 92}
 )
 
-type ResultsPDFStage struct {
-	Stage int
-	Score *int
+type ResultsPDFSegment struct {
+	Segment int
+	Score   *int
+	Counts  []int
 }
 
 type ResultsPDFRow struct {
@@ -51,7 +54,7 @@ type ResultsPDFRow struct {
 	WAID      *string
 	Club      *string
 	Country   *string
-	Stages    []ResultsPDFStage
+	Segments  []ResultsPDFSegment
 	Total     int
 	XCount    *int
 }
@@ -72,16 +75,17 @@ type ResultsPDFNewShooter struct {
 }
 
 type ResultsPDFData struct {
-	ClubName    string
-	Logo        []byte
-	LogoType    string
-	Generated   time.Time
-	Name        string
-	Date        string
-	CourseLabel string
-	Stages      []int
-	Categories  []ResultsPDFCategory
-	NewShooters []ResultsPDFNewShooter
+	ClubName     string
+	Logo         []byte
+	LogoType     string
+	Generated    time.Time
+	Name         string
+	Date         string
+	CourseLabel  string
+	Segments     []int
+	SegmentNames []string
+	Categories   []ResultsPDFCategory
+	NewShooters  []ResultsPDFNewShooter
 }
 
 type pdfColumn struct {
@@ -100,10 +104,8 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	}
 	columns, cells := resultsColumns(d)
 	newColumns, newCells := newShooterColumns(d)
-	grid := columnGrid(columns)
-	if g := columnGrid(newColumns); g > grid {
-		grid = g
-	}
+	cardColumns := scoreCardColumns(d)
+	grid := max(columnGrid(columns), columnGrid(newColumns), columnGrid(cardColumns))
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
 		WithOrientation(orientation.Vertical).
@@ -128,6 +130,16 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 		p.Add(sectionRow(c.Category, grid), tableHeader(columns, grid))
 		for _, r := range c.Rows {
 			p.Add(tableRow(columns, cells(r), grid, false))
+		}
+		for _, r := range c.Rows {
+			card := scoreCardCells(r)
+			if card == nil {
+				continue
+			}
+			p.Add(row.New(3), sectionRow(scoreCardTitle(r), grid), tableHeader(cardColumns, grid))
+			for _, cells := range card {
+				p.Add(tableRow(cardColumns, cells, grid, false))
+			}
 		}
 		m.AddPages(p)
 	}
@@ -170,7 +182,7 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	showNames := found && first.LastName != nil
 	showClubs := found && first.Club != nil
 	showCountries := found && first.Country != nil
-	showStages := found && len(first.Stages) > 0 && first.Stages[0].Score != nil
+	showSegments := found && len(first.Segments) > 0 && first.Segments[0].Score != nil
 	showX := found && first.XCount != nil
 
 	columns := []pdfColumn{{"#", 2, true}}
@@ -183,9 +195,13 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	if showCountries {
 		columns = append(columns, pdfColumn{"Country", 3, false})
 	}
-	if showStages {
-		for _, n := range d.Stages {
-			columns = append(columns, pdfColumn{"S" + strconv.Itoa(n), 2, true})
+	if showSegments {
+		for i, n := range d.Segments {
+			title := "S" + strconv.Itoa(n)
+			if i < len(d.SegmentNames) {
+				title = d.SegmentNames[i]
+			}
+			columns = append(columns, pdfColumn{title, 4, true})
 		}
 	}
 	columns = append(columns, pdfColumn{"Total", 3, true})
@@ -203,8 +219,8 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 		if showCountries {
 			cells = append(cells, derefString(r.Country))
 		}
-		if showStages {
-			for _, s := range r.Stages {
+		if showSegments {
+			for _, s := range r.Segments {
 				cells = append(cells, derefInt(s.Score))
 			}
 		}
@@ -342,9 +358,64 @@ func tableRow(columns []pdfColumn, cells []string, grid int, header bool) core.R
 	if used < grid {
 		cols = append(cols, col.New(grid-used))
 	}
-	r := row.New(pdfRowHeight).Add(cols...)
+	height := pdfRowHeight
+	if header {
+		height = pdfHeaderHeight
+	}
+	r := row.New(height).Add(cols...)
 	if header {
 		r.WithStyle(&props.Cell{BackgroundColor: pdfHeaderFill})
 	}
 	return r
+}
+
+func scoreCardColumns(d ResultsPDFData) []pdfColumn {
+	columns := []pdfColumn{{"", 4, false}}
+	for i, n := range d.Segments {
+		title := "S" + strconv.Itoa(n)
+		if i < len(d.SegmentNames) {
+			title = d.SegmentNames[i]
+		}
+		columns = append(columns, pdfColumn{title, 5, true})
+	}
+	return append(columns, pdfColumn{"Total", 5, true})
+}
+
+func scoreCardTitle(r ResultsPDFRow) string {
+	if r.LastName == nil {
+		return "#" + strconv.Itoa(r.Rank)
+	}
+	return "#" + strconv.Itoa(r.Rank) + " " + derefString(r.FirstName) + " " + derefString(r.LastName)
+}
+
+func scoreCardCells(r ResultsPDFRow) [][]string {
+	hasCounts := false
+	for _, s := range r.Segments {
+		if s.Counts != nil {
+			hasCounts = true
+		}
+	}
+	if !hasCounts {
+		return nil
+	}
+	rings := rulebook.RingValues()
+	rows := make([][]string, len(rings))
+	totals := make([]int, len(rings))
+	for i, ring := range rings {
+		rows[i] = []string{ring}
+	}
+	for _, s := range r.Segments {
+		for i := range rings {
+			if s.Counts == nil {
+				rows[i] = append(rows[i], "")
+				continue
+			}
+			rows[i] = append(rows[i], strconv.Itoa(s.Counts[i]))
+			totals[i] += s.Counts[i]
+		}
+	}
+	for i := range rings {
+		rows[i] = append(rows[i], strconv.Itoa(totals[i]))
+	}
+	return rows
 }

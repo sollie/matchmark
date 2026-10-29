@@ -9,7 +9,7 @@ const standing = (lane: number, states: string[], withdrawn = false) => ({
   category: "Open",
   withdrawn,
   total: 0,
-  stages: states.map((state, i) => ({ stage: i + 1, accepted: state === "accepted", state })),
+  segments: states.map((state, i) => ({ segment: i + 1, accepted: state === "accepted", state })),
 });
 
 let originalFetch: typeof fetch;
@@ -18,11 +18,32 @@ let send: ((data: unknown) => void) | null;
 function install(status: string, extra?: Parameters<typeof stubFetch>[0]) {
   const calls = stubFetch(
     (call) =>
-      extra?.(call) ?? {
-        body: {
-          matches: [{ id: 7, name: "Club Match", date: "2026-05-01", course: "150", status }],
-        },
-      },
+      extra?.(call) ??
+      (call.path === "/api/rulebook"
+        ? {
+            body: {
+              courses: [
+                {
+                  key: "150",
+                  label: "150",
+                  discipline: "1500",
+                  total_shots: 150,
+                  categories: [],
+                  stages: [],
+                  segments: [
+                    { number: 1, name: "Match 1", stages: [1, 2], shots: 24 },
+                    { number: 2, name: "Match 5 · Stage 1+2", stages: [7, 8], shots: 30 },
+                  ],
+                },
+              ],
+              rings: [],
+            },
+          }
+        : {
+            body: {
+              matches: [{ id: 7, name: "Club Match", date: "2026-05-01", course: "150", status }],
+            },
+          }),
   );
   const previous = globalThis.fetch;
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
@@ -50,14 +71,14 @@ afterEach(() => {
 });
 
 describe("Spectator status row", () => {
-  it("shows the status, stage position and accepted count without progress bars", async () => {
+  it("shows the status, segment position and accepted count without progress bars", async () => {
     install("active");
     const { container } = render(Spectator);
     await screen.findByRole("combobox");
     await waitFor(() => expect(send).not.toBeNull());
     send!({
-      current_stage: 2,
-      total_stages: 10,
+      current_segment: 2,
+      total_segments: 10,
       standings: [
         standing(1, ["accepted", "accepted"]),
         standing(2, ["accepted", "awaiting_acceptance"]),
@@ -66,23 +87,37 @@ describe("Spectator status row", () => {
       ],
     });
     const row = await screen.findByRole("status");
-    await waitFor(() => expect(within(row).getByText("Stage 2 of 10")).toBeTruthy());
+    await waitFor(() => expect(within(row).getByText("Segment 2 of 10")).toBeTruthy());
     expect(within(row).getByText("1/3 accepted")).toBeTruthy();
     expect(within(row).getByText("active")).toBeTruthy();
     expect(within(row).getByText("Live")).toBeTruthy();
-    expect(screen.queryByText("Stage progress")).toBeNull();
+    expect(screen.queryByText("Segment progress")).toBeNull();
     expect(container.querySelector("progress")).toBeNull();
   });
 
-  it("shows Finished instead of the stage position", async () => {
+  it("heads each segment column with its short score-card name", async () => {
+    install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    send!({
+      current_segment: 1,
+      total_segments: 2,
+      standings: [standing(1, ["in_progress", "not_started"])],
+    });
+    expect(await screen.findByRole("columnheader", { name: "M1" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Stage 1+2" })).toBeTruthy();
+  });
+
+  it("shows Finished instead of the segment position", async () => {
     install("finished");
     render(Spectator);
     await screen.findByRole("combobox");
     await waitFor(() => expect(send).not.toBeNull());
-    send!({ current_stage: 10, total_stages: 10, standings: [standing(1, ["accepted"])] });
+    send!({ current_segment: 10, total_segments: 10, standings: [standing(1, ["accepted"])] });
     const row = await screen.findByRole("status");
     await waitFor(() => expect(within(row).getByText("Finished")).toBeTruthy());
-    expect(within(row).queryByText(/Stage \d+ of/)).toBeNull();
+    expect(within(row).queryByText(/Segment \d+ of/)).toBeNull();
     expect(within(row).queryByText(/accepted/)).toBeNull();
   });
 
@@ -91,7 +126,7 @@ describe("Spectator status row", () => {
     const { unmount } = render(Spectator);
     await screen.findByRole("combobox");
     await waitFor(() => expect(send).not.toBeNull());
-    send!({ current_stage: 10, total_stages: 10, standings: [standing(1, ["accepted"])] });
+    send!({ current_segment: 10, total_segments: 10, standings: [standing(1, ["accepted"])] });
     const link = await screen.findByRole("link", { name: "Scorecard for lane 1" });
     expect(link.getAttribute("href")).toMatch(/^\/scorecard\/\d+\/1$/);
     unmount();
@@ -100,7 +135,7 @@ describe("Spectator status row", () => {
     render(Spectator);
     await screen.findByRole("combobox");
     await waitFor(() => expect(send).not.toBeNull());
-    send!({ current_stage: 2, total_stages: 10, standings: [standing(1, ["accepted"])] });
+    send!({ current_segment: 2, total_segments: 10, standings: [standing(1, ["accepted"])] });
     await screen.findByRole("table");
     expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
   });
@@ -113,16 +148,16 @@ describe("Spectator status row", () => {
     const loads = () => calls.filter((c) => c.path === "/api/spectator/matches").length;
     const before = loads();
     send!({
-      current_stage: 2,
-      total_stages: 10,
+      current_segment: 2,
+      total_segments: 10,
       status: "active",
       standings: [standing(1, ["accepted"])],
     });
     await screen.findByRole("table");
     expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
     send!({
-      current_stage: 10,
-      total_stages: 10,
+      current_segment: 10,
+      total_segments: 10,
       status: "finished",
       standings: [standing(1, ["accepted"])],
     });
@@ -192,12 +227,12 @@ describe("Spectator remote control", () => {
     await waitFor(() => expect(screenSend).not.toBeNull());
     screenSend!({ state: "match", match_id: 7, approved: true });
     await waitFor(() => expect(send).not.toBeNull());
-    send!({ current_stage: 1, total_stages: 4, standings: [standing(1, ["accepted"])] });
-    expect(await screen.findByText("Stage 1 of 4")).toBeTruthy();
+    send!({ current_segment: 1, total_segments: 4, standings: [standing(1, ["accepted"])] });
+    expect(await screen.findByText("Segment 1 of 4")).toBeTruthy();
     expect(screen.queryByRole("combobox")).toBeNull();
     screenSend!({ state: "waiting", match_id: null, approved: true });
     expect(await screen.findByText("Waiting for a match")).toBeTruthy();
-    expect(screen.queryByText("Stage 1 of 4")).toBeNull();
+    expect(screen.queryByText("Segment 1 of 4")).toBeNull();
   });
 
   it("keeps showing the final standings of a finished match", async () => {
@@ -209,8 +244,8 @@ describe("Spectator remote control", () => {
     await waitFor(() => expect(send).not.toBeNull());
     send!({
       status: "finished",
-      current_stage: 4,
-      total_stages: 4,
+      current_segment: 4,
+      total_segments: 4,
       standings: [standing(1, ["accepted"])],
     });
     expect(await screen.findByText("Finished")).toBeTruthy();

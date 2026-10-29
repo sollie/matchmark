@@ -31,16 +31,16 @@ func resultsFixture(t *testing.T, opts ...handler.Option) *fixture {
 	delta := f.addShooterEntry(t, "Delta", "1004", "Revolver", 4)
 	echo := f.addShooterEntry(t, "Echo", "1005", "Pistol", 5)
 	f.activate(t)
-	f.scoreAccepted(t, alpha, 1, map[string]any{"x": 3, "10": 7, "9": 2})
-	f.scoreAccepted(t, bravo, 1, map[string]any{"x": 3, "10": 7, "9": 2})
-	f.scoreAccepted(t, charlie, 1, map[string]any{"x": 1, "10": 8, "9": 3})
-	f.scoreAccepted(t, delta, 1, map[string]any{"x": 12})
-	f.scoreAccepted(t, echo, 1, map[string]any{"x": 2, "10": 10})
+	f.scoreAccepted(t, alpha, 1, map[string]any{"x": 6, "10": 14, "9": 4})
+	f.scoreAccepted(t, bravo, 1, map[string]any{"x": 6, "10": 14, "9": 4})
+	f.scoreAccepted(t, charlie, 1, map[string]any{"x": 2, "10": 16, "9": 6})
+	f.scoreAccepted(t, delta, 1, map[string]any{"x": 24})
+	f.scoreAccepted(t, echo, 1, map[string]any{"x": 4, "10": 20})
 	if status, out := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", f.comp, delta), nil); status != http.StatusOK {
 		t.Fatalf("withdraw: %d %v", status, out)
 	}
 	f.finishActive(t)
-	on := map[string]any{"show_names": true, "show_clubs": true, "show_countries": true, "show_stage_scores": true, "show_ring_counts": true}
+	on := map[string]any{"show_names": true, "show_clubs": true, "show_countries": true, "show_segment_scores": true, "show_ring_counts": true}
 	if status, out := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", f.comp), on); status != http.StatusOK {
 		t.Fatalf("visibility: %d %v", status, out)
 	}
@@ -96,12 +96,19 @@ func TestResultsRankingAndGrouping(t *testing.T) {
 		t.Fatalf("names %v ranks %v", names, ranks)
 	}
 	first := rows[0].(map[string]any)
-	if first["waid"] != "1001" || first["total"].(float64) != 118 || first["x_count"].(float64) != 3 {
+	if first["waid"] != "1001" || first["total"].(float64) != 236 || first["x_count"].(float64) != 6 {
 		t.Fatalf("first %v", first)
 	}
-	stages := first["stages"].([]any)
-	if stages[0].(map[string]any)["score"].(float64) != 118 {
-		t.Fatalf("stages %v", stages)
+	segments := first["segments"].([]any)
+	if segments[0].(map[string]any)["score"].(float64) != 236 {
+		t.Fatalf("segments %v", segments)
+	}
+	counts := segments[0].(map[string]any)["ring_counts"].(map[string]any)
+	if counts["x"].(float64) != 6 || counts["10"].(float64) != 14 || counts["9"].(float64) != 4 {
+		t.Fatalf("ring counts %v", counts)
+	}
+	if _, ok := segments[1].(map[string]any)["ring_counts"]; ok {
+		t.Fatalf("ring counts for unaccepted segment: %v", segments[1])
 	}
 	fresh := out["new_shooters"].([]any)
 	if len(fresh) != 1 || fresh[0].(map[string]any)["last_name"] != "CHARLIE" || fresh[0].(map[string]any)["category"] != "Revolver" {
@@ -114,8 +121,8 @@ func TestResultsRankBreaksTieOnXCount(t *testing.T) {
 	a := f.addShooterEntry(t, "ALPHA", "1", "Revolver", 1)
 	b := f.addShooterEntry(t, "BRAVO", "2", "Revolver", 2)
 	f.activate(t)
-	f.scoreAccepted(t, a, 1, map[string]any{"x": 2, "10": 8, "9": 2})
-	f.scoreAccepted(t, b, 1, map[string]any{"x": 5, "10": 5, "9": 2})
+	f.scoreAccepted(t, a, 1, map[string]any{"x": 4, "10": 16, "9": 4})
+	f.scoreAccepted(t, b, 1, map[string]any{"x": 10, "10": 10, "9": 4})
 	f.finishActive(t)
 	_, out := publicGet(t, f, resultsPath(f))
 	rows := out["categories"].([]any)[0].(map[string]any)["rows"].([]any)
@@ -127,7 +134,7 @@ func TestResultsRankBreaksTieOnXCount(t *testing.T) {
 func TestResultsHonoursVisibilityFlags(t *testing.T) {
 	f := resultsFixture(t)
 	visPath := fmt.Sprintf("/api/matches/%d/visibility", f.comp)
-	off := map[string]any{"show_names": false, "show_clubs": false, "show_countries": false, "show_stage_scores": false, "show_ring_counts": false}
+	off := map[string]any{"show_names": false, "show_clubs": false, "show_countries": false, "show_segment_scores": false, "show_ring_counts": false}
 	if status, out := f.env.Do("PUT", visPath, off); status != http.StatusOK {
 		t.Fatalf("put %d %v", status, out)
 	}
@@ -138,9 +145,12 @@ func TestResultsHonoursVisibilityFlags(t *testing.T) {
 			t.Fatalf("%s present: %v", k, row)
 		}
 	}
-	for _, st := range row["stages"].([]any) {
+	for _, st := range row["segments"].([]any) {
 		if _, ok := st.(map[string]any)["score"]; ok {
-			t.Fatalf("stage score present: %v", st)
+			t.Fatalf("segment score present: %v", st)
+		}
+		if _, ok := st.(map[string]any)["ring_counts"]; ok {
+			t.Fatalf("ring counts present: %v", st)
 		}
 	}
 	if row["total"] == nil || row["rank"] == nil {

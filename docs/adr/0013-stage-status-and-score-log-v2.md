@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted; stage status, lockstep and dispute history superseded by 0021 (per scoring segment)
 ---
 
 # Stage status replaces the locked flag; Score log v2

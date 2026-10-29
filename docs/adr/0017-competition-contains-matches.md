@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted; naming reasoning for Parts superseded by 0021
 ---
 
 # A Competition contains Matches

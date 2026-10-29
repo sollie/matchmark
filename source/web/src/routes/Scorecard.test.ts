@@ -8,8 +8,8 @@ const summary = {
   shooter: "Ola Nordmann",
   lane: 3,
   scorers: [
-    { stage: 1, scorer: "Kari Berg" },
-    { stage: 2, scorer: "Range admin" },
+    { segment: 1, segment_name: "Match 1", scorer: "Kari Berg" },
+    { segment: 2, segment_name: "Match 2", scorer: "Range admin" },
   ],
 };
 
@@ -37,7 +37,7 @@ describe("Scorecard", () => {
     navigate("/scorecard/7/3");
     render(Scorecard);
     expect(await screen.findByText("Ola Nordmann")).toBeTruthy();
-    expect(screen.getByText(/Kari Berg/)).toBeTruthy();
+    expect(screen.getByText("Match 1 scored by Kari Berg")).toBeTruthy();
     expect(screen.getByText(/Range admin/)).toBeTruthy();
     const img = screen.getByRole("img", { name: /Ola Nordmann/ }) as HTMLImageElement;
     expect(img.getAttribute("alt")).toContain("lane 3");

@@ -179,9 +179,9 @@ func TestMergeRefreshesStoredNamesOnFinishedMatch(t *testing.T) {
 	if status, out := f.env.Do("POST", fmt.Sprintf("/api/shooters/%d/merge", source), map[string]any{"target_id": target}); status != http.StatusOK {
 		t.Fatalf("merge %d %v", status, out)
 	}
-	events := f.env.StageEvents(f.comp)
+	events := f.env.SegmentEvents(f.comp)
 	if len(events) == 0 {
-		t.Fatal("no stage events")
+		t.Fatal("no segment events")
 	}
 	for _, e := range events {
 		if e.ShooterName != "Bea REAL" {

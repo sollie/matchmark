@@ -10,7 +10,7 @@ import {
 } from "./helpers";
 
 test.describe("course shot counts", () => {
-  test("every stage of every course demands its expected shots", async ({
+  test("every segment of every course demands its expected shots", async ({
     courses,
     adminPage: page,
     admin,
@@ -26,11 +26,11 @@ test.describe("course shot counts", () => {
         const entryRow = row(page, entry.shooter.last_name);
         const alert = section(page, "Entries and progress").getByRole("alert");
 
-        for (const [index, shots] of course.stageShots.entries()) {
-          const stageNumber = index + 1;
-          const stage = entryRow.locator("td.stage").nth(index);
+        for (const [index, shots] of course.segmentShots.entries()) {
+          const segmentNumber = index + 1;
+          const segment = entryRow.locator("td.segment").nth(index);
           await page
-            .getByRole("button", { name: `Lane ${entry.lane} stage ${stageNumber}: Edit` })
+            .getByRole("button", { name: `Lane ${entry.lane} segment ${segmentNumber}: Edit` })
             .click();
           const counts = page.locator(".counts");
           await expect(counts).toContainText(`must sum to ${shots} shots`);
@@ -40,19 +40,19 @@ test.describe("course shot counts", () => {
           await counts.getByRole("button", { name: "Save and lock" }).click();
           await expect(alert).toHaveText("invalid input");
           await expect(counts).toBeVisible();
-          await expect(stage.getByText("Accepted", { exact: true })).toHaveCount(0);
+          await expect(segment.getByText("Accepted", { exact: true })).toHaveCount(0);
 
           await counts.getByLabel("10", { exact: true }).fill(String(shots + 1));
           await expect(counts.locator(".total")).toContainText("1 too many");
           await counts.getByRole("button", { name: "Save and lock" }).click();
           await expect(alert).toHaveText("invalid input");
-          await expect(stage.getByText("Accepted", { exact: true })).toHaveCount(0);
+          await expect(segment.getByText("Accepted", { exact: true })).toHaveCount(0);
 
           await counts.getByLabel("10", { exact: true }).fill(String(shots));
           await expect(counts.locator(".total")).toContainText("Shots match");
           await counts.getByRole("button", { name: "Save and lock" }).click();
           await expect(counts).toHaveCount(0);
-          await expect(stage.getByText("Accepted", { exact: true })).toBeVisible();
+          await expect(segment.getByText("Accepted", { exact: true })).toBeVisible();
         }
       });
     }

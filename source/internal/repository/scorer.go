@@ -77,41 +77,41 @@ func (r *Repository) MannedEntryByLane(ctx context.Context, matchID int64, lane 
 	return e, mapErr(err)
 }
 
-func (r *Repository) LockStage(ctx context.Context, stageID int64, scorerLane int, scorerName string, ev StageEvent) error {
+func (r *Repository) LockSegment(ctx context.Context, segmentID int64, scorerLane int, scorerName string, ev SegmentEvent) error {
 	return r.transition(ctx, true, ev,
-		`UPDATE stages SET status = 'awaiting_acceptance', scorer_lane = ?, scorer_name = ?, locked_at = ?,
+		`UPDATE segments SET status = 'awaiting_acceptance', scorer_lane = ?, scorer_name = ?, locked_at = ?,
 		        accepted_by = NULL, accepted_at = NULL, disputed_at = NULL, started = 0
 		 WHERE id = ? AND status = 'open'`,
-		scorerLane, scorerName, lockTimestamp(), stageID)
+		scorerLane, scorerName, lockTimestamp(), segmentID)
 }
 
-func (r *Repository) LockStageAsUser(ctx context.Context, stageID int64, username string, ev StageEvent) error {
+func (r *Repository) LockSegmentAsUser(ctx context.Context, segmentID int64, username string, ev SegmentEvent) error {
 	now := lockTimestamp()
 	return r.transition(ctx, true, ev,
-		`UPDATE stages SET status = 'accepted', scorer_lane = NULL, scorer_name = ?, locked_at = ?,
+		`UPDATE segments SET status = 'accepted', scorer_lane = NULL, scorer_name = ?, locked_at = ?,
 		        accepted_by = ?, accepted_at = ?, disputed_at = NULL, started = 0
 		 WHERE id = ? AND status = 'open'`,
-		username, now, username, now, stageID)
+		username, now, username, now, segmentID)
 }
 
-func (r *Repository) AcceptStage(ctx context.Context, stageID int64, acceptedBy string, ev StageEvent) error {
+func (r *Repository) AcceptSegment(ctx context.Context, segmentID int64, acceptedBy string, ev SegmentEvent) error {
 	return r.transition(ctx, true, ev,
-		`UPDATE stages SET status = 'accepted', accepted_by = ?, accepted_at = ?
+		`UPDATE segments SET status = 'accepted', accepted_by = ?, accepted_at = ?
 		 WHERE id = ? AND status = 'awaiting_acceptance'`,
-		acceptedBy, lockTimestamp(), stageID)
+		acceptedBy, lockTimestamp(), segmentID)
 }
 
-func (r *Repository) DisputeStage(ctx context.Context, stageID int64, ev StageEvent) error {
+func (r *Repository) DisputeSegment(ctx context.Context, segmentID int64, ev SegmentEvent) error {
 	return r.transition(ctx, true, ev,
-		`UPDATE stages SET status = 'open', scorer_lane = NULL, scorer_name = NULL, locked_at = NULL,
+		`UPDATE segments SET status = 'open', scorer_lane = NULL, scorer_name = NULL, locked_at = NULL,
 		        accepted_by = NULL, accepted_at = NULL, disputed_at = ?
 		 WHERE id = ? AND status = 'awaiting_acceptance'`,
-		lockTimestamp(), stageID)
+		lockTimestamp(), segmentID)
 }
 
-func (r *Repository) UnlockStage(ctx context.Context, stageID int64, ev StageEvent) error {
+func (r *Repository) UnlockSegment(ctx context.Context, segmentID int64, ev SegmentEvent) error {
 	return r.transition(ctx, true, ev,
-		`UPDATE stages SET status = 'open', scorer_lane = NULL, scorer_name = NULL, locked_at = NULL,
+		`UPDATE segments SET status = 'open', scorer_lane = NULL, scorer_name = NULL, locked_at = NULL,
 		        accepted_by = NULL, accepted_at = NULL, disputed_at = NULL
-		 WHERE id = ? AND status <> 'open'`, stageID)
+		 WHERE id = ? AND status <> 'open'`, segmentID)
 }

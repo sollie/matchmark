@@ -41,11 +41,11 @@ func TestAdminStreamPingsOnConnectAndAfterScorerLock(t *testing.T) {
 		t.Fatalf("status %d", s.Status)
 	}
 	awaitEvent(t, s, "changed")
-	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/stages/1", counts(10, 2)); status != http.StatusOK {
+	if status, out := f.env.DoToken(token, "PUT", "/api/scorer/segments/1", counts(10, 2)); status != http.StatusOK {
 		t.Fatalf("set counts: %d %v", status, out)
 	}
 	awaitEvent(t, s, "changed")
-	if status, out := f.env.DoToken(token, "POST", "/api/scorer/stages/1/lock", nil); status != http.StatusOK {
+	if status, out := f.env.DoToken(token, "POST", "/api/scorer/segments/1/lock", nil); status != http.StatusOK {
 		t.Fatalf("lock: %d %v", status, out)
 	}
 	awaitEvent(t, s, "changed")

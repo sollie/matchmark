@@ -6,7 +6,7 @@ import { stubFetch } from "../test/fetch";
 import { rulebook, type RulebookCourse } from "../lib/rulebook.svelte";
 import type { components } from "../lib/api/schema";
 
-type EntryWithStages = components["schemas"]["EntryWithStages"];
+type EntryWithSegments = components["schemas"]["EntryWithSegments"];
 
 const shooters = [
   {
@@ -29,16 +29,16 @@ const shooters = [
   },
 ];
 
-const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
+const entry = (overrides: Partial<EntryWithSegments> = {}): EntryWithSegments => ({
   id: 1,
   match_id: 5,
   shooter_id: 7,
   category: "Pistol",
   lane: 1,
   withdrawn: false,
-  stages: [
+  segments: [
     {
-      stage_number: 1,
+      segment_number: 1,
       expected_shots: 30,
       status: "accepted",
       scorer_lane: 2,
@@ -47,7 +47,7 @@ const entry = (overrides: Partial<EntryWithStages> = {}): EntryWithStages => ({
       shots_entered: 30,
     },
     {
-      stage_number: 2,
+      segment_number: 2,
       expected_shots: 30,
       status: "open",
       scorer_lane: null,
@@ -64,10 +64,10 @@ const course = (key: string, categories: string[]) =>
     key,
     label: key,
     categories,
-    stages: key === "150" ? [{ stage_number: 1, part: "Match 1" }] : [],
+    segments: key === "150" ? [{ number: 1, name: "Match 1", stages: [1, 2], shots: 24 }] : [],
   }) as unknown as RulebookCourse;
 
-function setup(entries: EntryWithStages[] = [entry()], courseKey = "150") {
+function setup(entries: EntryWithSegments[] = [entry()], courseKey = "150") {
   rulebook.courses = [
     course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]),
     course("40", ["Revolver"]),
@@ -93,12 +93,12 @@ describe("Entries", () => {
     expect(options("Move category")).toEqual(["Revolver"]);
   });
 
-  it("titles stage columns with the Part for grouped courses only", () => {
+  it("titles segment columns with the rulebook segment name", () => {
     setup([entry()], "150");
-    expect(screen.getByRole("columnheader", { name: "S1" }).getAttribute("title")).toBe(
-      "Stage 1 · Match 1",
+    expect(screen.getByRole("columnheader", { name: "M1" }).getAttribute("title")).toBe("Match 1");
+    expect(screen.getByRole("columnheader", { name: "Segment 2" }).getAttribute("title")).toBe(
+      "Segment 2",
     );
-    expect(screen.getByRole("columnheader", { name: "S2" }).getAttribute("title")).toBe("Stage 2");
   });
 
   it("keeps the current category of a legacy entry selectable when editing", async () => {
@@ -117,16 +117,16 @@ describe("Entries", () => {
     ).toBe("Revolver");
   });
 
-  it("labels each stage as Accepted or Open", () => {
+  it("labels each segment as Accepted or Open", () => {
     setup();
     const row = screen.getByRole("row", { name: /Jane Doe/ });
     expect(within(row).getByText("Accepted")).toBeTruthy();
     expect(within(row).getByText("Open")).toBeTruthy();
   });
 
-  it("shows scores and tells scored-but-unlocked stages from untouched ones", () => {
-    const stage = (n: number, status: "open" | "accepted", score: number, shots: number) => ({
-      stage_number: n,
+  it("shows scores and tells scored-but-unlocked segments from untouched ones", () => {
+    const segment = (n: number, status: "open" | "accepted", score: number, shots: number) => ({
+      segment_number: n,
       expected_shots: 30,
       status,
       scorer_lane: null,
@@ -136,7 +136,11 @@ describe("Entries", () => {
     });
     setup([
       entry({
-        stages: [stage(1, "accepted", 287, 30), stage(2, "open", 295, 30), stage(3, "open", 0, 0)],
+        segments: [
+          segment(1, "accepted", 287, 30),
+          segment(2, "open", 295, 30),
+          segment(3, "open", 0, 0),
+        ],
       }),
     ]);
     const row = screen.getByRole("row", { name: /Jane Doe/ });
@@ -148,40 +152,40 @@ describe("Entries", () => {
     expect(within(row).getAllByText("pts")).toHaveLength(2);
   });
 
-  it("unlocks a locked stage and reloads", async () => {
+  it("unlocks a locked segment and reloads", async () => {
     const { calls, reload, user } = setup();
-    await user.click(screen.getByRole("button", { name: "Lane 1 stage 1: Unlock" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 1: Unlock" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
-      "POST /api/matches/5/entries/1/stages/1/unlock",
+      "POST /api/matches/5/entries/1/segments/1/unlock",
     ]);
     expect(reload).toHaveBeenCalledOnce();
   });
 
-  it("locks an open stage", async () => {
+  it("locks an open segment", async () => {
     const { calls, user } = setup();
-    await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Lock" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Lock" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
-      "POST /api/matches/5/entries/1/stages/2/lock",
+      "POST /api/matches/5/entries/1/segments/2/lock",
     ]);
   });
 
-  it("overwrites counts and locks the stage when asked", async () => {
+  it("overwrites counts and locks the segment when asked", async () => {
     const { calls, user } = setup();
-    await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
     const x = screen.getByLabelText("X");
     await user.clear(x);
     await user.type(x, "30");
     await user.click(screen.getByRole("button", { name: "Save and lock" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
-      "PUT /api/matches/5/entries/1/stages/2",
-      "POST /api/matches/5/entries/1/stages/2/lock",
+      "PUT /api/matches/5/entries/1/segments/2",
+      "POST /api/matches/5/entries/1/segments/2/lock",
     ]);
     expect(calls[0].body).toEqual({ x: 30, 10: 0, 9: 0, 8: 0, 7: 0, 0: 0, miss: 0 });
   });
 
   it("shows the entered total against the expected shots", async () => {
     const { user } = setup();
-    await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
     expect(screen.getByText("30 to go", { exact: false })).toBeTruthy();
     const x = screen.getByLabelText("X");
     await user.clear(x);
@@ -193,10 +197,10 @@ describe("Entries", () => {
 
   it("saves counts without locking", async () => {
     const { calls, user } = setup();
-    await user.click(screen.getByRole("button", { name: "Lane 1 stage 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
     await user.click(screen.getByRole("button", { name: "Save counts" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
-      "PUT /api/matches/5/entries/1/stages/2",
+      "PUT /api/matches/5/entries/1/segments/2",
     ]);
   });
 
@@ -225,9 +229,9 @@ describe("Entries", () => {
 describe("Entries awaiting acceptance", () => {
   const awaiting = () =>
     entry({
-      stages: [
+      segments: [
         {
-          stage_number: 1,
+          segment_number: 1,
           expected_shots: 30,
           status: "awaiting_acceptance",
           scorer_lane: 2,
@@ -238,19 +242,19 @@ describe("Entries awaiting acceptance", () => {
       ],
     });
 
-  it("accepts a stage that awaits acceptance", async () => {
+  it("accepts a segment that awaits acceptance", async () => {
     const { calls, reload, user } = setup([awaiting()]);
     expect(screen.getByText("Awaiting acceptance")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Lane 1 stage 1: Accept" }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 1: Accept" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
-      "POST /api/matches/5/entries/1/stages/1/accept",
+      "POST /api/matches/5/entries/1/segments/1/accept",
     ]);
     expect(reload).toHaveBeenCalledOnce();
   });
 
-  it("offers no accept for an accepted stage", () => {
+  it("offers no accept for an accepted segment", () => {
     setup();
-    expect(screen.queryByRole("button", { name: "Lane 1 stage 1: Accept" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Lane 1 segment 1: Accept" })).toBeNull();
   });
 
   it("imports a shooter from WA1500 inside the picker and selects it for the entry", async () => {

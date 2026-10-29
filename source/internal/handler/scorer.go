@@ -17,10 +17,10 @@ type deviceKey struct{}
 func (h *Handler) scorerRoutes(r chi.Router) {
 	r.Get("/scorer/session", serve(h.scorerSession))
 	r.Get("/scorer/stream", h.scorerStream)
-	r.Put("/scorer/stages/{stage}", serve(h.scorerSetCounts))
-	r.Post("/scorer/stages/{stage}/lock", serve(h.scorerLock))
-	r.Post("/scorer/stages/{stage}/accept", serve(h.scorerAccept))
-	r.Post("/scorer/stages/{stage}/dispute", serve(h.scorerDispute))
+	r.Put("/scorer/segments/{segment}", serve(h.scorerSetCounts))
+	r.Post("/scorer/segments/{segment}/lock", serve(h.scorerLock))
+	r.Post("/scorer/segments/{segment}/accept", serve(h.scorerAccept))
+	r.Post("/scorer/segments/{segment}/dispute", serve(h.scorerDispute))
 }
 
 func (h *Handler) RequireDevice(next http.Handler) http.Handler {
@@ -52,30 +52,26 @@ func deviceFrom(r *http.Request) service.Device {
 }
 
 func scorerSessionJSON(sess service.ScorerSession) map[string]any {
-	stages := make([]map[string]any, 0, len(sess.Stages))
-	for _, s := range sess.Stages {
-		stage := ringCountsJSON(s.Counts)
-		stage["stage_number"] = s.Number
-		stage["expected_shots"] = s.ExpectedShots
-		stage["status"] = s.Status
-		stage["disputed"] = s.DisputedAt != ""
-		if part := sess.Parts[s.Number]; part != "" {
-			stage["part"] = part
-		}
-		stages = append(stages, stage)
+	segments := make([]map[string]any, 0, len(sess.Segments))
+	for _, s := range sess.Segments {
+		segment := ringCountsJSON(s.Counts)
+		segment["segment_number"] = s.Number
+		segment["expected_shots"] = s.ExpectedShots
+		segment["status"] = s.Status
+		segment["disputed"] = s.DisputedAt != ""
+		segment["name"] = sess.Names[s.Number]
+		segments = append(segments, segment)
 	}
 	out := map[string]any{
 		"match_id": sess.MatchID, "lane": sess.Lane, "score_lane": sess.ScoreLane, "entry_id": sess.EntryID,
-		"shooter_name": sess.ShooterName, "stages": stages, "phase": sess.Phase, "current_stage": sess.CurrentStage,
+		"shooter_name": sess.ShooterName, "segments": segments, "phase": sess.Phase, "current_segment": sess.CurrentSegment,
 	}
 	if a := sess.Acceptance; a != nil {
 		acceptance := ringCountsJSON(a.Counts)
-		acceptance["stage_number"] = a.StageNumber
+		acceptance["segment_number"] = a.SegmentNumber
 		acceptance["total"] = a.Total
 		acceptance["scorer_name"] = a.ScorerName
-		if part := sess.Parts[a.StageNumber]; part != "" {
-			acceptance["part"] = part
-		}
+		acceptance["name"] = sess.Names[a.SegmentNumber]
 		out["acceptance"] = acceptance
 	}
 	return out
@@ -113,20 +109,20 @@ func (h *Handler) scorerStream(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) scorerSetCounts(r *http.Request) (int, any, error) {
 	req := in(r)
-	stage := req.path("stage")
+	segment := req.path("segment")
 	var body ringCountsBody
 	req.body(&body)
 	if req.err != nil {
 		return fail(req.err)
 	}
-	if err := h.svc.DeviceSetRingCounts(r.Context(), deviceFrom(r), int(stage), body.counts()); err != nil {
+	if err := h.svc.DeviceSetRingCounts(r.Context(), deviceFrom(r), int(segment), body.counts()); err != nil {
 		return fail(err)
 	}
 	return okJSON(body)
 }
 
 func (h *Handler) scorerLock(r *http.Request) (int, any, error) {
-	return h.scorerTransition(r, h.svc.DeviceLockStage)
+	return h.scorerTransition(r, h.svc.DeviceLockSegment)
 }
 
 func ringCountsJSON(c repository.RingCounts) map[string]any {
@@ -134,24 +130,24 @@ func ringCountsJSON(c repository.RingCounts) map[string]any {
 }
 
 func (h *Handler) scorerAccept(r *http.Request) (int, any, error) {
-	return h.scorerTransition(r, h.svc.DeviceAcceptStage)
+	return h.scorerTransition(r, h.svc.DeviceAcceptSegment)
 }
 
 func (h *Handler) scorerDispute(r *http.Request) (int, any, error) {
-	return h.scorerTransition(r, h.svc.DeviceDisputeStage)
+	return h.scorerTransition(r, h.svc.DeviceDisputeSegment)
 }
 
-func (h *Handler) scorerTransition(r *http.Request, act func(context.Context, service.Device, int) (repository.StageStatus, error)) (int, any, error) {
+func (h *Handler) scorerTransition(r *http.Request, act func(context.Context, service.Device, int) (repository.SegmentStatus, error)) (int, any, error) {
 	req := in(r)
-	stage := req.path("stage")
+	segment := req.path("segment")
 	if req.err != nil {
 		return fail(req.err)
 	}
-	status, err := act(r.Context(), deviceFrom(r), int(stage))
+	status, err := act(r.Context(), deviceFrom(r), int(segment))
 	if err != nil {
 		return fail(err)
 	}
-	return okJSON(map[string]repository.StageStatus{"status": status})
+	return okJSON(map[string]repository.SegmentStatus{"status": status})
 }
 
 func (h *Handler) createPairing(r *http.Request) (int, any, error) {
@@ -204,29 +200,29 @@ func (h *Handler) revokePairing(r *http.Request) (int, any, error) {
 	return http.StatusNoContent, nil, nil
 }
 
-func (h *Handler) lockStage(r *http.Request) (int, any, error) {
-	return h.adminTransition(r, h.svc.AdminLockStage)
+func (h *Handler) lockSegment(r *http.Request) (int, any, error) {
+	return h.adminTransition(r, h.svc.AdminLockSegment)
 }
 
-func (h *Handler) acceptStage(r *http.Request) (int, any, error) {
-	return h.adminTransition(r, h.svc.AdminAcceptStage)
+func (h *Handler) acceptSegment(r *http.Request) (int, any, error) {
+	return h.adminTransition(r, h.svc.AdminAcceptSegment)
 }
 
-func (h *Handler) unlockStage(r *http.Request) (int, any, error) {
-	return h.adminTransition(r, h.svc.UnlockStage)
+func (h *Handler) unlockSegment(r *http.Request) (int, any, error) {
+	return h.adminTransition(r, h.svc.UnlockSegment)
 }
 
-func (h *Handler) adminTransition(r *http.Request, act func(context.Context, int64, int64, int) (repository.StageStatus, error)) (int, any, error) {
+func (h *Handler) adminTransition(r *http.Request, act func(context.Context, int64, int64, int) (repository.SegmentStatus, error)) (int, any, error) {
 	req := in(r)
-	compID, entryID, stage := req.path("matchID"), req.path("entryID"), req.path("stage")
+	compID, entryID, segment := req.path("matchID"), req.path("entryID"), req.path("segment")
 	if req.err != nil {
 		return fail(req.err)
 	}
-	status, err := act(r.Context(), compID, entryID, int(stage))
+	status, err := act(r.Context(), compID, entryID, int(segment))
 	if err != nil {
 		return fail(err)
 	}
-	return okJSON(map[string]repository.StageStatus{"status": status})
+	return okJSON(map[string]repository.SegmentStatus{"status": status})
 }
 
 type ringCountsBody struct {

@@ -65,7 +65,7 @@
   </label>
   <label>
     Action
-    <input bind:value={action} placeholder="e.g. stage.lock" autocomplete="off" />
+    <input bind:value={action} placeholder="e.g. segment.lock" autocomplete="off" />
   </label>
   <label>
     From

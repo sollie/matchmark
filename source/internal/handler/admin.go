@@ -34,23 +34,23 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Delete("/matches/{matchID}", serve(h.deleteMatch))
 	r.Post("/matches/{matchID}/status", serve(h.setMatchStatus))
 	r.Post("/matches/{matchID}/back-to-draft", serve(h.backToDraft))
-	r.Post("/matches/{matchID}/next-stage", serve(h.startNextStage))
+	r.Post("/matches/{matchID}/next-segment", serve(h.startNextSegment))
 	r.Get("/matches/{matchID}/control-room", serve(h.controlRoom))
 	r.Post("/matches/{matchID}/accept-all", serve(h.acceptAll))
-	r.Get("/matches/{matchID}/stage-events", serve(h.stageEvents))
+	r.Get("/matches/{matchID}/segment-events", serve(h.segmentEvents))
 	r.Get("/matches/{matchID}/entries", serve(h.listEntries))
 	r.Post("/matches/{matchID}/entries", serve(h.addEntry))
 	r.Put("/matches/{matchID}/entries/{entryID}", serve(h.updateEntry))
 	r.Delete("/matches/{matchID}/entries/{entryID}", serve(h.deleteEntry))
 	r.Post("/matches/{matchID}/entries/{entryID}/withdraw", serve(h.withdrawEntry))
 	r.Get("/matches/{matchID}/lanes/{lane}/score-lane", serve(h.scoreLane))
-	r.Put("/matches/{matchID}/entries/{entryID}/stages/{stage}", serve(h.setRingCounts))
+	r.Put("/matches/{matchID}/entries/{entryID}/segments/{segment}", serve(h.setRingCounts))
 	r.Get("/matches/{matchID}/results.xlsx", h.resultsWorkbook)
 	r.Get("/matches/{matchID}/results.csv", h.resultsCSV)
 	r.With(h.render.MiddlewareUncoalesced(ResourceByPath)).Get("/admin/matches/{matchID}/results", h.adminResultsPDF)
-	r.Post("/matches/{matchID}/entries/{entryID}/stages/{stage}/lock", serve(h.lockStage))
-	r.Post("/matches/{matchID}/entries/{entryID}/stages/{stage}/accept", serve(h.acceptStage))
-	r.Post("/matches/{matchID}/entries/{entryID}/stages/{stage}/unlock", serve(h.unlockStage))
+	r.Post("/matches/{matchID}/entries/{entryID}/segments/{segment}/lock", serve(h.lockSegment))
+	r.Post("/matches/{matchID}/entries/{entryID}/segments/{segment}/accept", serve(h.acceptSegment))
+	r.Post("/matches/{matchID}/entries/{entryID}/segments/{segment}/unlock", serve(h.unlockSegment))
 	r.Post("/matches/{matchID}/pairings", serve(h.createPairing))
 	r.Get("/matches/{matchID}/pairings", serve(h.listPairings))
 	r.Delete("/matches/{matchID}/pairings/{pairingID}", serve(h.revokePairing))
@@ -93,7 +93,7 @@ func shooterJSON(s repository.Shooter) map[string]any {
 }
 
 func matchJSON(c repository.Match) map[string]any {
-	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_stage": c.CurrentStage, "activated_at": nullable(c.ActivatedAt)}
+	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt)}
 }
 
 func nullable(s string) any {
@@ -283,17 +283,17 @@ func (h *Handler) backToDraft(r *http.Request) (int, any, error) {
 	return okJSON(map[string]string{"status": string(service.StatusDraft)})
 }
 
-func (h *Handler) startNextStage(r *http.Request) (int, any, error) {
+func (h *Handler) startNextSegment(r *http.Request) (int, any, error) {
 	req := in(r)
 	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
-	stage, err := h.svc.StartNextStage(r.Context(), id)
+	segment, err := h.svc.StartNextSegment(r.Context(), id)
 	if err != nil {
 		return fail(err)
 	}
-	return okJSON(map[string]int{"current_stage": stage})
+	return okJSON(map[string]int{"current_segment": segment})
 }
 
 func (h *Handler) listEntries(r *http.Request) (int, any, error) {
@@ -309,11 +309,11 @@ func (h *Handler) listEntries(r *http.Request) (int, any, error) {
 	out := make([]map[string]any, 0, len(entries))
 	for _, e := range entries {
 		m := entryJSON(e.Entry)
-		stages := make([]map[string]any, 0, len(e.Stages))
-		for _, s := range e.Stages {
-			stages = append(stages, map[string]any{"stage_number": s.Number, "expected_shots": s.ExpectedShots, "status": s.Status, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered})
+		segments := make([]map[string]any, 0, len(e.Segments))
+		for _, s := range e.Segments {
+			segments = append(segments, map[string]any{"segment_number": s.Number, "expected_shots": s.ExpectedShots, "status": s.Status, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered})
 		}
-		m["stages"] = stages
+		m["segments"] = segments
 		out = append(out, m)
 	}
 	return okJSON(map[string]any{"entries": out})
@@ -373,7 +373,7 @@ func controlRoomJSON(room service.ControlRoom) map[string]any {
 		})
 	}
 	return map[string]any{
-		"current_stage": room.CurrentStage, "can_start_next": room.CanStartNext,
+		"current_segment": room.CurrentSegment, "can_start_next": room.CanStartNext,
 		"can_accept_all": room.CanAcceptAll, "lanes": lanes,
 	}
 }
@@ -404,19 +404,19 @@ func (h *Handler) acceptAll(r *http.Request) (int, any, error) {
 	return okJSON(map[string]int{"accepted": n})
 }
 
-func (h *Handler) stageEvents(r *http.Request) (int, any, error) {
+func (h *Handler) segmentEvents(r *http.Request) (int, any, error) {
 	req := in(r)
 	id := req.path("matchID")
 	if req.err != nil {
 		return fail(req.err)
 	}
-	stage, err := queryInt(r, "stage", 0)
-	if err != nil || stage < 0 {
+	segment, err := queryInt(r, "segment", 0)
+	if err != nil || segment < 0 {
 		return fail(service.ErrInvalid)
 	}
 	q := r.URL.Query()
-	history, err := h.svc.StageHistory(r.Context(), id, service.StageHistoryFilter{
-		Scorer: q.Get("scorer"), Shooter: q.Get("shooter"), Stage: stage,
+	history, err := h.svc.SegmentHistory(r.Context(), id, service.SegmentHistoryFilter{
+		Scorer: q.Get("scorer"), Shooter: q.Get("shooter"), Segment: segment,
 	})
 	if err != nil {
 		return fail(err)
@@ -424,7 +424,7 @@ func (h *Handler) stageEvents(r *http.Request) (int, any, error) {
 	events := make([]map[string]any, 0, len(history.Events))
 	for _, e := range history.Events {
 		events = append(events, map[string]any{
-			"id": e.ID, "time": e.CreatedAt, "stage": e.StageNumber, "entry_id": e.EntryID, "event": e.Event,
+			"id": e.ID, "time": e.CreatedAt, "segment": e.SegmentNumber, "entry_id": e.EntryID, "event": e.Event,
 			"actor_type": e.ActorType, "actor_name": e.ActorName,
 			"shooter_name": e.ShooterName, "scorer_name": e.ScorerName,
 		})

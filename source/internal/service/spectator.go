@@ -44,14 +44,14 @@ func (s *Service) standings(ctx context.Context, comp repository.Match) ([]Stand
 	if err != nil {
 		return nil, err
 	}
-	return projectStandings(comp.CurrentStage, vis, entries), nil
+	return projectStandings(comp.CurrentSegment, vis, entries), nil
 }
 
 type SpectatorSnapshot struct {
-	CurrentStage int            `json:"current_stage"`
-	TotalStages  int            `json:"total_stages"`
-	Status       string         `json:"status"`
-	Standings    []StandingView `json:"standings"`
+	CurrentSegment int            `json:"current_segment"`
+	TotalSegments  int            `json:"total_segments"`
+	Status         string         `json:"status"`
+	Standings      []StandingView `json:"standings"`
 }
 
 type cachedSnapshot struct {
@@ -112,7 +112,7 @@ func (s *Service) SpectatorSnapshot(ctx context.Context, matchID int64) (Spectat
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
-	snap := SpectatorSnapshot{CurrentStage: comp.CurrentStage, TotalStages: len(course.Stages), Status: comp.Status, Standings: standings}
+	snap := SpectatorSnapshot{CurrentSegment: comp.CurrentSegment, TotalSegments: len(course.Segments), Status: comp.Status, Standings: standings}
 	slot.cached = &cachedSnapshot{version: version, snapshot: snap}
 	return snap, nil
 }

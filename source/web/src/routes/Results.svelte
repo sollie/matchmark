@@ -2,10 +2,34 @@
   import { api } from "../lib/api/client";
   import { club, clubLogoUrl } from "../lib/club.svelte";
   import { matchRoute, navigate, router } from "../lib/router.svelte";
+  import { loadRulebook, segmentLabel } from "../lib/rulebook.svelte";
   import type { components } from "../lib/api/schema";
 
   type Match = components["schemas"]["Match"];
   type Results = components["schemas"]["Results"];
+  type Row = components["schemas"]["ResultsRow"];
+
+  const rings = [
+    ["X", "x"],
+    ["10", "10"],
+    ["9", "9"],
+    ["8", "8"],
+    ["7", "7"],
+    ["0", "0"],
+    ["M", "miss"],
+  ] as const;
+
+  function hasCounts(row: Row): boolean {
+    return row.segments.some((s) => s.ring_counts !== undefined);
+  }
+
+  function ringTotal(row: Row, key: (typeof rings)[number][1]): number {
+    return row.segments.reduce((sum, s) => sum + (s.ring_counts?.[key] ?? 0), 0);
+  }
+
+  function cardTitle(row: Row): string {
+    return row.last_name === undefined ? `#${row.rank}` : `${row.first_name} ${row.last_name}`;
+  }
 
   let matches = $state<Match[]>([]);
   let loaded = $state(false);
@@ -22,9 +46,9 @@
   const showCountries = $derived(
     results?.categories.some((c) => c.rows.some((r) => r.country !== undefined)) ?? false,
   );
-  const showStages = $derived(
+  const showSegments = $derived(
     results?.categories.some((c) =>
-      c.rows.some((r) => r.stages.some((s) => s.score !== undefined)),
+      c.rows.some((r) => r.segments.some((s) => s.score !== undefined)),
     ) ?? false,
   );
   const showX = $derived(
@@ -32,6 +56,7 @@
   );
 
   $effect(() => {
+    void loadRulebook();
     void (async () => {
       const { data } = await api.GET("/api/spectator/matches");
       matches = (data?.matches ?? []).filter((c) => c.status === "finished");
@@ -106,7 +131,8 @@
                   {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
                   {#if showClubs}<th>Club</th>{/if}
                   {#if showCountries}<th>Country</th>{/if}
-                  {#if showStages}{#each results.stages as n (n)}<th class="num">S{n}</th
+                  {#if showSegments}{#each results.segments as n (n)}<th class="num"
+                        >{segmentLabel(results.match.course, n)}</th
                       >{/each}{/if}
                   <th class="num">Total</th>
                   {#if showX}<th class="num">X</th>{/if}
@@ -120,7 +146,7 @@
                       >{/if}
                     {#if showClubs}<td>{row.club}</td>{/if}
                     {#if showCountries}<td>{row.country}</td>{/if}
-                    {#if showStages}{#each row.stages as st (st.stage)}<td class="num"
+                    {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
                           >{st.score ?? ""}</td
                         >{/each}{/if}
                     <td class="num total">{row.total}</td>
@@ -130,6 +156,32 @@
               </tbody>
             </table>
           </div>
+          {#each category.rows.filter(hasCounts) as row (row.rank + cardTitle(row))}
+            <div class="scroll score-card">
+              <table aria-label={`Score card for ${cardTitle(row)}`}>
+                <thead>
+                  <tr>
+                    <th>{cardTitle(row)}</th>
+                    {#each results.segments as n (n)}<th class="num"
+                        >{segmentLabel(results.match.course, n)}</th
+                      >{/each}
+                    <th class="num">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each rings as [label, key] (key)}
+                    <tr>
+                      <th scope="row">{label}</th>
+                      {#each row.segments as st (st.segment)}<td class="num"
+                          >{st.ring_counts?.[key] ?? ""}</td
+                        >{/each}
+                      <td class="num total">{ringTotal(row, key)}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/each}
         </section>
       {/each}
 
@@ -217,6 +269,10 @@
   }
   .total {
     font-weight: 700;
+  }
+  .score-card {
+    margin: var(--space-4) 0;
+    break-inside: avoid;
   }
   @media print {
     :global(.site-header),

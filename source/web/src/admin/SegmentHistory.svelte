@@ -2,19 +2,20 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
+  import { segmentLabel } from "../lib/rulebook.svelte";
 
-  type History = components["schemas"]["StageHistory"];
+  type History = components["schemas"]["SegmentHistory"];
 
-  let { matchId, version }: { matchId: number; version: number } = $props();
+  let { matchId, version, course }: { matchId: number; version: number; course: string } = $props();
 
   let history = $state<History | null>(null);
   let error = $state("");
   let scorer = $state("");
   let shooter = $state("");
-  let stage = $state("");
+  let segment = $state("");
   let scorerOptions = $state<string[]>([]);
   let shooterOptions = $state<string[]>([]);
-  let stageOptions = $state<number[]>([]);
+  let segmentOptions = $state<number[]>([]);
 
   const labels: Record<string, string> = {
     locked: "Locked",
@@ -27,13 +28,13 @@
   const union = <T,>(known: T[], more: T[]) => [...new Set([...known, ...more])].sort();
 
   async function load() {
-    const result = await api.GET("/api/matches/{matchID}/stage-events", {
+    const result = await api.GET("/api/matches/{matchID}/segment-events", {
       params: {
         path: { matchID: matchId },
         query: {
           scorer: scorer || undefined,
           shooter: shooter || undefined,
-          stage: stage ? Number(stage) : undefined,
+          segment: segment ? Number(segment) : undefined,
         },
       },
     });
@@ -51,9 +52,9 @@
       shooterOptions,
       result.data.events.map((e) => e.shooter_name),
     );
-    stageOptions = union(
-      stageOptions,
-      result.data.events.map((e) => e.stage),
+    segmentOptions = union(
+      segmentOptions,
+      result.data.events.map((e) => e.segment),
     );
   }
 
@@ -61,11 +62,11 @@
     void version;
     void scorer;
     void shooter;
-    void stage;
+    void segment;
     void load();
   });
 
-  const actor = (e: components["schemas"]["StageHistoryEvent"]) =>
+  const actor = (e: components["schemas"]["SegmentHistoryEvent"]) =>
     e.actor_type === "device" ? `Device (${e.scorer_name || "unknown"})` : e.actor_name;
 </script>
 
@@ -87,10 +88,11 @@
       </select>
     </label>
     <label>
-      Stage
-      <select aria-label="Filter by stage" bind:value={stage}>
-        <option value="">All stages</option>
-        {#each stageOptions as n (n)}<option value={String(n)}>Stage {n}</option>{/each}
+      Segment
+      <select aria-label="Filter by segment" bind:value={segment}>
+        <option value="">All segments</option>
+        {#each segmentOptions as n (n)}<option value={String(n)}>{segmentLabel(course, n)}</option
+          >{/each}
       </select>
     </label>
   </div>
@@ -109,19 +111,20 @@
         </tbody>
       </table>
     </div>
-    <h3>Stage events</h3>
+    <h3>Segment events</h3>
     <div class="scroll">
       <table class="events">
         <thead
           ><tr
-            ><th>Time</th><th>Stage</th><th>Event</th><th>Shooter</th><th>Scorer</th><th>By</th></tr
+            ><th>Time</th><th>Segment</th><th>Event</th><th>Shooter</th><th>Scorer</th><th>By</th
+            ></tr
           ></thead
         >
         <tbody>
           {#each history.events as e (e.id)}
             <tr>
               <td>{new Date(e.time).toLocaleString()}</td>
-              <td>{e.stage}</td>
+              <td>{segmentLabel(course, e.segment)}</td>
               <td>{labels[e.event]}</td>
               <td>{e.shooter_name}</td>
               <td>{e.scorer_name || "Admin"}</td>

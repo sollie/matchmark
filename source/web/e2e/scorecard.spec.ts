@@ -2,6 +2,7 @@ import {
   addEntry,
   createMatch,
   createShooter,
+  defaultCourse,
   expect,
   setCounts,
   setStatus,
@@ -15,12 +16,13 @@ test.describe("scorecard", () => {
     page,
     admin,
   }) => {
+    const course = await defaultCourse(admin);
     const match = await createMatch(admin, { name: uniqueName("Scorecard") });
     const shooter = await createShooter(admin);
     const entry = await addEntry(admin, match.id, shooter.id, 1);
     await setVisibility(admin, match.id, {});
     await setStatus(admin, match.id, "active");
-    await setCounts(admin, match.id, entry, 1, { x: 2, "10": 10 }, true);
+    await setCounts(admin, match.id, entry, 1, { x: 2, "10": course.segmentOneShots - 2 }, true);
 
     await page.goto("/");
     await page.getByLabel("Match").selectOption(String(match.id));

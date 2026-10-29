@@ -13,7 +13,7 @@ import {
 } from "./helpers";
 
 test.describe("dispute history", () => {
-  test("lists stage events with device actors resolved, counts disputes per scorer and filters", async ({
+  test("lists segment events with device actors resolved, counts disputes per scorer and filters", async ({
     adminPage: page,
     admin,
     course,
@@ -27,10 +27,10 @@ test.describe("dispute history", () => {
     const lane1 = (await createPairing(admin, match.id, 1)).token;
     const lane2 = (await createPairing(admin, match.id, 2)).token;
 
-    await deviceLock(baseURL!, lane1, 1, { "10": course.stageOneShots });
+    await deviceLock(baseURL!, lane1, 1, { "10": course.segmentOneShots });
     await deviceAction(baseURL!, lane2, 1, "dispute");
-    await deviceLock(baseURL!, lane1, 1, { "10": course.stageOneShots });
-    await deviceLock(baseURL!, lane2, 1, { "10": course.stageOneShots });
+    await deviceLock(baseURL!, lane1, 1, { "10": course.segmentOneShots });
+    await deviceLock(baseURL!, lane2, 1, { "10": course.segmentOneShots });
     await openMatch(page, match.id);
 
     const history = section(page, "Dispute history");
@@ -49,7 +49,7 @@ test.describe("dispute history", () => {
     await expect(row(events, "Disputed")).toHaveCount(0);
 
     await history.getByLabel("Filter by scorer").selectOption("");
-    await history.getByLabel("Filter by stage").selectOption("1");
+    await history.getByLabel("Filter by segment").selectOption("1");
     await expect(events.locator("tbody tr")).toHaveCount(4);
     await history.getByLabel("Filter by shooter").selectOption(name(first));
     await expect(events.locator("tbody tr")).toHaveCount(1);

@@ -69,7 +69,7 @@ func (r *Repository) MergeShooters(ctx context.Context, sourceID, targetID int64
 		return MergeOutcome{}, err
 	}
 	if _, err := tx.ExecContext(ctx,
-		`UPDATE stage_events SET shooter_name = ? WHERE entry_id IN (SELECT id FROM entries WHERE shooter_id = ?)`,
+		`UPDATE segment_events SET shooter_name = ? WHERE entry_id IN (SELECT id FROM entries WHERE shooter_id = ?)`,
 		targetFirst+" "+targetLast, targetID); err != nil {
 		return MergeOutcome{}, err
 	}

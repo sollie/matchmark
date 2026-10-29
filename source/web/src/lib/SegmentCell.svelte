@@ -1,9 +1,10 @@
 <script lang="ts">
   import type { components } from "./api/schema";
 
-  type StageScore = components["schemas"]["StageScore"];
+  type SegmentScore = components["schemas"]["SegmentScore"];
 
-  let { stage, prefix = true }: { stage: StageScore | undefined; prefix?: boolean } = $props();
+  let { segment, prefix = true }: { segment: SegmentScore | undefined; prefix?: boolean } =
+    $props();
 
   const names = {
     not_started: "not started",
@@ -13,19 +14,21 @@
   } as const;
 
   const label = $derived.by(() => {
-    if (!stage) return "";
-    const base = prefix ? `Stage ${stage.stage}: ${names[stage.state]}` : names[stage.state];
-    return stage.state === "accepted" && stage.score !== undefined
-      ? `${base}, ${stage.score}`
+    if (!segment) return "";
+    const base = prefix
+      ? `Segment ${segment.segment}: ${names[segment.state]}`
+      : names[segment.state];
+    return segment.state === "accepted" && segment.score !== undefined
+      ? `${base}, ${segment.score}`
       : base;
   });
   const text = $derived(
-    stage?.state === "accepted" && stage.score !== undefined ? String(stage.score) : "",
+    segment?.state === "accepted" && segment.score !== undefined ? String(segment.score) : "",
   );
 </script>
 
-{#if stage}
-  <span class="cell {stage.state}" title={label} aria-label={label} role="img">{text}</span>
+{#if segment}
+  <span class="cell {segment.state}" title={label} aria-label={label} role="img">{text}</span>
 {/if}
 
 <style>

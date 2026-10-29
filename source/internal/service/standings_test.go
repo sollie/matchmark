@@ -7,14 +7,14 @@ import (
 	"github.com/sollie/matchmark/internal/repository"
 )
 
-func spectatorEntry(lane int, category string, withdrawn bool, stages ...repository.SpectatorStage) repository.SpectatorEntry {
-	e := repository.SpectatorEntry{LastName: "L", FirstName: "F", Club: "C", Country: "NOR", Stages: stages}
+func spectatorEntry(lane int, category string, withdrawn bool, segments ...repository.SpectatorSegment) repository.SpectatorEntry {
+	e := repository.SpectatorEntry{LastName: "L", FirstName: "F", Club: "C", Country: "NOR", Segments: segments}
 	e.Lane, e.Category, e.Withdrawn = lane, category, withdrawn
 	return e
 }
 
-func accepted(n int, c repository.RingCounts) repository.SpectatorStage {
-	return repository.SpectatorStage{Number: n, Counts: c, Status: repository.StatusAccepted}
+func accepted(n int, c repository.RingCounts) repository.SpectatorSegment {
+	return repository.SpectatorSegment{Number: n, Counts: c, Status: repository.StatusAccepted}
 }
 
 func TestProjectStandingsVisibility(t *testing.T) {
@@ -27,19 +27,19 @@ func TestProjectStandingsVisibility(t *testing.T) {
 	}{
 		{"nothing visible", repository.Visibility{}, func(v StandingView) bool {
 			return v.LastName == nil && v.Club == nil && v.Country == nil && v.RingCounts == nil && v.XCount == nil &&
-				v.Stages[0].Score == nil && v.Stages[0].Counts == nil
+				v.Segments[0].Score == nil && v.Segments[0].Counts == nil
 		}},
 		{"names clubs countries", repository.Visibility{Names: true, Clubs: true, Countries: true}, func(v StandingView) bool {
-			return *v.LastName == "L" && *v.FirstName == "F" && *v.Club == "C" && *v.Country == "NOR" && v.Stages[0].Score == nil
+			return *v.LastName == "L" && *v.FirstName == "F" && *v.Club == "C" && *v.Country == "NOR" && v.Segments[0].Score == nil
 		}},
-		{"stage scores without ring counts", repository.Visibility{StageScores: true}, func(v StandingView) bool {
-			return *v.Stages[0].Score == counts.Score() && v.Stages[0].Counts == nil && v.RingCounts == nil
+		{"segment scores without ring counts", repository.Visibility{SegmentScores: true}, func(v StandingView) bool {
+			return *v.Segments[0].Score == counts.Score() && v.Segments[0].Counts == nil && v.RingCounts == nil
 		}},
-		{"ring counts without stage scores", repository.Visibility{RingCounts: true}, func(v StandingView) bool {
-			return v.Stages[0].Score == nil && v.Stages[0].Counts == nil && *v.XCount == 2 && v.RingCounts.Ten == 4
+		{"ring counts without segment scores", repository.Visibility{RingCounts: true}, func(v StandingView) bool {
+			return v.Segments[0].Score == nil && v.Segments[0].Counts == nil && *v.XCount == 2 && v.RingCounts.Ten == 4
 		}},
-		{"stage scores and ring counts", repository.Visibility{StageScores: true, RingCounts: true}, func(v StandingView) bool {
-			return *v.Stages[0].Score == counts.Score() && v.Stages[0].Counts.Nine == 6 && v.RingCounts.X == 2
+		{"segment scores and ring counts", repository.Visibility{SegmentScores: true, RingCounts: true}, func(v StandingView) bool {
+			return *v.Segments[0].Score == counts.Score() && v.Segments[0].Counts.Nine == 6 && v.RingCounts.X == 2
 		}},
 	}
 	for _, tt := range tests {
@@ -52,32 +52,32 @@ func TestProjectStandingsVisibility(t *testing.T) {
 	}
 }
 
-func TestProjectStandingsUnacceptedStages(t *testing.T) {
+func TestProjectStandingsUnacceptedSegments(t *testing.T) {
 	counts := repository.RingCounts{X: 1, Ten: 5, Nine: 6}
 	tests := []struct {
 		name        string
-		status      repository.StageStatus
+		status      repository.SegmentStatus
 		number      int
-		wantState   StageState
+		wantState   SegmentState
 		wantTotal   int
 		wantAccept  bool
 		wantNoScore bool
 	}{
-		{"accepted", repository.StatusAccepted, 1, StageAccepted, counts.Score(), true, false},
-		{"awaiting acceptance", repository.StatusAwaitingAcceptance, 1, StageAwaitingAcceptance, 0, false, true},
-		{"open current stage", repository.StatusOpen, 1, StageInProgress, 0, false, true},
-		{"open future stage", repository.StatusOpen, 2, StageNotStarted, 0, false, true},
+		{"accepted", repository.StatusAccepted, 1, SegmentAccepted, counts.Score(), true, false},
+		{"awaiting acceptance", repository.StatusAwaitingAcceptance, 1, SegmentAwaitingAcceptance, 0, false, true},
+		{"open current segment", repository.StatusOpen, 1, SegmentInProgress, 0, false, true},
+		{"open future segment", repository.StatusOpen, 2, SegmentNotStarted, 0, false, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			entry := spectatorEntry(1, "Pistol", false, repository.SpectatorStage{Number: tt.number, Counts: counts, Status: tt.status})
-			got := projectStandings(1, repository.Visibility{StageScores: true, RingCounts: true}, []repository.SpectatorEntry{entry})[0]
-			sv := got.Stages[0]
+			entry := spectatorEntry(1, "Pistol", false, repository.SpectatorSegment{Number: tt.number, Counts: counts, Status: tt.status})
+			got := projectStandings(1, repository.Visibility{SegmentScores: true, RingCounts: true}, []repository.SpectatorEntry{entry})[0]
+			sv := got.Segments[0]
 			if got.Total != tt.wantTotal || sv.State != tt.wantState || sv.Accepted != tt.wantAccept || (sv.Score == nil) != tt.wantNoScore {
-				t.Fatalf("got total %d stage %+v", got.Total, sv)
+				t.Fatalf("got total %d segment %+v", got.Total, sv)
 			}
 			if tt.wantNoScore && got.XCount != nil && *got.XCount != 0 {
-				t.Fatalf("x_count = %d, want 0 for unaccepted stage", *got.XCount)
+				t.Fatalf("x_count = %d, want 0 for unaccepted segment", *got.XCount)
 			}
 		})
 	}
