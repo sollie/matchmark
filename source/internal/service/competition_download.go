@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/sollie/matchmark/internal/report"
+	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 const (
@@ -101,4 +105,40 @@ func addZipFile(zw *zip.Writer, name string, data []byte) error {
 	}
 	_, err = w.Write(data)
 	return err
+}
+
+func (s *Service) CompetitionWorkbook1500(ctx context.Context, competitionID int64) (Download, error) {
+	comp, err := s.repo.GetCompetition(ctx, competitionID)
+	if err != nil {
+		return Download{}, mapRepoErr(err)
+	}
+	matches, err := s.repo.ListCompetitionMatches(ctx, competitionID)
+	if err != nil {
+		return Download{}, err
+	}
+	var entries []repository.ReportEntry
+	found := false
+	for _, m := range matches {
+		if MatchStatus(m.Status) != StatusFinished || !rulebook.Is1500(m.Course) {
+			continue
+		}
+		found = true
+		data, err := s.loadReport(ctx, m.ID)
+		if err != nil {
+			return Download{}, err
+		}
+		for _, e := range data.Entries {
+			e.MatchDate = m.Date
+			entries = append(entries, e)
+		}
+	}
+	if !found {
+		return Download{}, ErrNothingToReport
+	}
+	out, err := report.CombinedWorkbook(comp, entries)
+	if err != nil {
+		return Download{}, err
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "report.download", Target: idTarget("competition", competitionID), Details: "xlsx 1500"}})
+	return Download{BaseName: downloadBaseName(comp.Name, comp.StartDate) + "-1500", Data: out}, nil
 }

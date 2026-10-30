@@ -867,6 +867,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/competitions/{competitionID}/results.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One combined workbook of every finished 1500 match of the competition, rendered on demand and never stored
+         * @description Filled from the embedded template with the competition start date and name. Matches of other disciplines and unfinished matches are left out. A shooter who shot several matches gets one row per match. Behind the render guard and audited as a `report.download` with details `xlsx 1500`.
+         */
+        get: operations["downloadCompetitionWorkbook1500"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matches/{matchID}/results.xlsx": {
         parameters: {
             query?: never;
@@ -3742,6 +3764,59 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             /** @description Missing or unknown format */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Server busy */
+            503: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    downloadCompetitionWorkbook1500: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitionID: components["parameters"]["CompetitionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The workbook */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description No finished 1500 match to report */
             422: {
                 headers: {
                     [name: string]: unknown;

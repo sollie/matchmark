@@ -1729,6 +1729,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/competitions/{competitionID}/results.xlsx:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionID'
+    get:
+      operationId: downloadCompetitionWorkbook1500
+      tags: [reports]
+      summary: One combined workbook of every finished 1500 match of the competition, rendered on demand and never stored
+      description: |
+        Filled from the embedded template with the competition start date and name. Matches of other disciplines and unfinished matches are left out. A shooter who shot several matches gets one row per match. Behind the render guard and audited as a `report.download` with details `xlsx 1500`.
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The workbook
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: No finished 1500 match to report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Server busy
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/matches/{matchID}/results.xlsx:
     parameters:
       - $ref: '#/components/parameters/MatchID'

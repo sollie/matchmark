@@ -20,6 +20,10 @@ export function courseLabel(key: string): string {
   return rulebook.courses.find((c) => c.key === key)?.label ?? key;
 }
 
+export function is1500(key: string): boolean {
+  return rulebook.courses.find((c) => c.key === key)?.discipline === "1500";
+}
+
 export function courseCategories(key: string): string[] {
   return rulebook.courses.find((c) => c.key === key)?.categories ?? [];
 }
