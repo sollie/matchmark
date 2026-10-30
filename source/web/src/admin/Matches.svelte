@@ -45,19 +45,17 @@
   }
 
   const groups = $derived(
-    competitions.map((comp) => ({
-      comp,
-      matches: matches.filter((m) => m.competition_id === comp.id),
-    })),
+    competitions.map((comp) => {
+      const inComp = matches.filter((m) => m.competition_id === comp.id);
+      const matches1500 = inComp.filter((m) => is1500(m.course));
+      return {
+        comp,
+        matches: inComp,
+        hasFinished1500: matches1500.some((m) => m.status === "finished"),
+        open1500: matches1500.filter((m) => m.status !== "finished"),
+      };
+    }),
   );
-
-  function open1500(inComp: Match[]) {
-    return inComp.filter((m) => is1500(m.course) && m.status !== "finished");
-  }
-
-  function hasFinished1500(inComp: Match[]) {
-    return inComp.some((m) => is1500(m.course) && m.status === "finished");
-  }
 
   async function competitionSaved() {
     creatingCompetition = false;
@@ -163,7 +161,7 @@
   <CompetitionForm saved={competitionSaved} cancel={() => (creatingCompetition = false)} />
 {/if}
 
-{#each groups as { comp, matches: inComp } (comp.id)}
+{#each groups as { comp, matches: inComp, hasFinished1500, open1500 } (comp.id)}
   <section class="competition" aria-label={`Competition ${comp.name}`}>
     <div class="row">
       <h3>{comp.name}</h3>
@@ -188,7 +186,7 @@
           >
         {/each}
       {/if}
-      {#if hasFinished1500(inComp)}
+      {#if hasFinished1500}
         <a
           class="button"
           href={`/api/competitions/${comp.id}/results.xlsx`}
@@ -205,11 +203,9 @@
         >
       {/if}
     </div>
-    {#if hasFinished1500(inComp) && open1500(inComp).length > 0}
+    {#if hasFinished1500 && open1500.length > 0}
       <p class="muted" role="note">
-        The 1500 XLSX leaves out unfinished 1500 matches: {open1500(inComp)
-          .map((m) => m.name)
-          .join(", ")}.
+        The 1500 XLSX leaves out unfinished 1500 matches: {open1500.map((m) => m.name).join(", ")}.
       </p>
     {/if}
     {#if editingCompetition === comp.id}
