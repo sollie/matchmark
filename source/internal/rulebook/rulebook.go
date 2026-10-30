@@ -189,3 +189,8 @@ func CourseByKey(key string) (Course, error) {
 	}
 	return Course{}, fmt.Errorf("unknown course %q", key)
 }
+
+func Is1500(courseKey string) bool {
+	c, err := CourseByKey(courseKey)
+	return err == nil && c.Discipline == course1500.Discipline
+}

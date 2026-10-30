@@ -12,6 +12,7 @@ var (
 	ErrNotFound           = errors.New("not found")
 	ErrConflict           = errors.New("conflict")
 	ErrInvalid            = errors.New("invalid input")
+	ErrNothingToReport    = errors.New("nothing to report")
 	ErrShooterHasEntries  = errors.New("shooter has match entries and cannot be deleted")
 	ErrShooterArchived    = errors.New("shooter_archived")
 	ErrGone               = errors.New("gone")

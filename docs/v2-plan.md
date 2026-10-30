@@ -54,3 +54,4 @@ Delivered as one stack of PRs that merge together (#345). Until step 28 lands, t
 - [x] 34. Segment backend state and services: storage, status, lockstep and Score log (#424).
 - [ ] 35. Scorer, admin and spectator UI per segment (#425).
 - [ ] 36. Scorecard copy, results and reports with one column per segment (#426).
+- [x] 37. Combined 1500 workbook per competition (#421, #438, #439, #440).
