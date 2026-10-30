@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/service"
 )
 
 type competitionBody struct {
@@ -90,29 +92,25 @@ func (h *Handler) deleteCompetition(r *http.Request) (int, any, error) {
 }
 
 func (h *Handler) competitionDownload(w http.ResponseWriter, r *http.Request) {
-	id, err := pathInt(r, "competitionID")
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	file, err := h.svc.CompetitionDownload(r.Context(), id, r.URL.Query().Get("format"))
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeRendered(w, "application/zip", "zip", file, true)
+	h.competitionFile(w, r, "zip", "application/zip", func(ctx context.Context, id int64) (service.Download, error) {
+		return h.svc.CompetitionDownload(ctx, id, r.URL.Query().Get("format"))
+	})
 }
 
 func (h *Handler) competitionWorkbook1500(w http.ResponseWriter, r *http.Request) {
+	h.competitionFile(w, r, "xlsx", xlsxContentType, h.svc.CompetitionWorkbook1500)
+}
+
+func (h *Handler) competitionFile(w http.ResponseWriter, r *http.Request, ext, contentType string, build func(ctx context.Context, id int64) (service.Download, error)) {
 	id, err := pathInt(r, "competitionID")
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	file, err := h.svc.CompetitionWorkbook1500(r.Context(), id)
+	file, err := build(r.Context(), id)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeRendered(w, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx", file, true)
+	writeRendered(w, contentType, ext, file, true)
 }
