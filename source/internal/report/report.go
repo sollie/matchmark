@@ -49,9 +49,6 @@ func sortedEntries(entries []repository.ReportEntry) []repository.ReportEntry {
 		if a.Shooter.FirstName != b.Shooter.FirstName {
 			return a.Shooter.FirstName < b.Shooter.FirstName
 		}
-		if a.MatchDate != b.MatchDate {
-			return a.MatchDate < b.MatchDate
-		}
 		return a.MatchID < b.MatchID
 	})
 	return out
