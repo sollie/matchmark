@@ -4,7 +4,7 @@
   import { failure } from "../lib/api/util";
   import { navigate } from "../lib/router.svelte";
   import { statusTone } from "../lib/domain";
-  import { courseLabel, loadRulebook, rulebook } from "../lib/rulebook.svelte";
+  import { courseLabel, is1500, loadRulebook, rulebook } from "../lib/rulebook.svelte";
   import { localDate } from "../lib/datetime";
   import CompetitionForm from "./CompetitionForm.svelte";
   import type { components } from "../lib/api/schema";
@@ -50,6 +50,14 @@
       matches: matches.filter((m) => m.competition_id === comp.id),
     })),
   );
+
+  function open1500(inComp: Match[]) {
+    return inComp.filter((m) => is1500(m.course) && m.status !== "finished");
+  }
+
+  function hasFinished1500(inComp: Match[]) {
+    return inComp.some((m) => is1500(m.course) && m.status === "finished");
+  }
 
   async function competitionSaved() {
     creatingCompetition = false;
@@ -180,6 +188,15 @@
           >
         {/each}
       {/if}
+      {#if hasFinished1500(inComp)}
+        <a
+          class="button"
+          href={`/api/competitions/${comp.id}/results.xlsx`}
+          download
+          title="Combined 1500 workbook (.xlsx)"
+          aria-label={`Combined 1500 workbook (.xlsx) for ${comp.name}`}>1500 XLSX</a
+        >
+      {/if}
       {#if inComp.length === 0}
         <button
           type="button"
@@ -188,6 +205,13 @@
         >
       {/if}
     </div>
+    {#if hasFinished1500(inComp) && open1500(inComp).length > 0}
+      <p class="muted" role="note">
+        The 1500 XLSX leaves out unfinished 1500 matches: {open1500(inComp)
+          .map((m) => m.name)
+          .join(", ")}.
+      </p>
+    {/if}
     {#if editingCompetition === comp.id}
       <CompetitionForm
         competition={comp}
