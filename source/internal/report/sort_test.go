@@ -6,13 +6,13 @@ import (
 	"github.com/sollie/matchmark/internal/repository"
 )
 
-func TestSortedEntriesTiebreaksByMatchDateThenID(t *testing.T) {
+func TestSortedEntriesTiebreaksByMatchID(t *testing.T) {
 	shooter := repository.Shooter{LastName: "BERG", FirstName: "Ola"}
-	mk := func(matchID int64, date string) repository.ReportEntry {
-		return repository.ReportEntry{Entry: repository.Entry{MatchID: matchID, Category: "Revolver"}, Shooter: shooter, MatchDate: date}
+	mk := func(matchID int64) repository.ReportEntry {
+		return repository.ReportEntry{Entry: repository.Entry{MatchID: matchID, Category: "Revolver"}, Shooter: shooter}
 	}
-	got := sortedEntries([]repository.ReportEntry{mk(3, "2026-05-02"), mk(2, "2026-05-01"), mk(1, "2026-05-02")})
-	want := []int64{2, 1, 3}
+	got := sortedEntries([]repository.ReportEntry{mk(3), mk(1), mk(2)})
+	want := []int64{1, 2, 3}
 	for i, id := range want {
 		if got[i].MatchID != id {
 			t.Fatalf("position %d: match %d, want %d", i, got[i].MatchID, id)
