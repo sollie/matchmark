@@ -12,9 +12,8 @@ type ReportSegment struct {
 
 type ReportEntry struct {
 	Entry
-	Shooter   Shooter
-	Segments  []ReportSegment
-	MatchDate string
+	Shooter  Shooter
+	Segments []ReportSegment
 }
 
 func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]ReportEntry, error) {
