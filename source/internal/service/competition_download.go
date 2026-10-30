@@ -125,10 +125,7 @@ func (s *Service) CompetitionWorkbook1500(ctx context.Context, competitionID int
 		if err != nil {
 			return Download{}, err
 		}
-		for _, e := range data.Entries {
-			e.MatchDate = m.Date
-			entries = append(entries, e)
-		}
+		entries = append(entries, data.Entries...)
 	}
 	if len(entries) == 0 {
 		return Download{}, ErrNothingToReport
