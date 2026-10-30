@@ -9,8 +9,10 @@ import (
 	"github.com/sollie/matchmark/internal/service"
 )
 
+const xlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
 func (h *Handler) resultsWorkbook(w http.ResponseWriter, r *http.Request) {
-	h.download(w, r, "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", h.svc.ResultsWorkbook)
+	h.download(w, r, "xlsx", xlsxContentType, h.svc.ResultsWorkbook)
 }
 
 func (h *Handler) resultsCSV(w http.ResponseWriter, r *http.Request) {
