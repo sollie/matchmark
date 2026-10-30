@@ -111,6 +111,19 @@ func TestCompetitionWorkbook1500SelectionAndRepeatShooters(t *testing.T) {
 		t.Fatalf("no finished 1500 match: %v", err)
 	}
 
+	if id, err := svc.CreateMatch(ctx, repository.Match{CompetitionID: comp, Name: "Empty", Date: "2026-10-19", Course: "150"}); err != nil {
+		t.Fatal(err)
+	} else {
+		for _, st := range []service.MatchStatus{service.StatusActive, service.StatusFinished} {
+			if err := svc.SetMatchStatus(ctx, id, st); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := svc.CompetitionWorkbook1500(ctx, comp); !errors.Is(err, service.ErrNothingToReport) {
+		t.Fatalf("finished 1500 match without entries: %v", err)
+	}
+
 	add("Day one", "2026-10-19", "150", true)
 	add("Day two", "2026-10-20", "150", true)
 	file, err := svc.CompetitionWorkbook1500(ctx, comp)

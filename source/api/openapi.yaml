@@ -1737,7 +1737,7 @@ paths:
       tags: [reports]
       summary: One combined workbook of every finished 1500 match of the competition, rendered on demand and never stored
       description: |
-        Filled from the embedded template with the competition start date and name. Matches of other disciplines and unfinished matches are left out. A shooter who shot several matches gets one row per match. Behind the render guard and audited as a `report.download` with details `xlsx 1500`.
+        Filled from the embedded template with the competition start date and name. Matches of other disciplines and unfinished matches are left out. Responds 422 when there is no entry to report. A shooter who shot several matches gets one row per match. Behind the render guard and audited as a `report.download` with details `xlsx 1500`.
       security:
         - adminCookie: []
       responses:
