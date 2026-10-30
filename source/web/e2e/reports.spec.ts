@@ -87,6 +87,51 @@ test.describe("reports and backup", () => {
     }
   });
 
+  test("the combined 1500 workbook button warns about unfinished 1500 matches", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const { match } = await seedReportMatch(admin);
+    const group = page.getByRole("region", { name: `Competition ${match.name}` });
+    const link = group.getByRole("link", {
+      name: `Combined 1500 workbook (.xlsx) for ${match.name}`,
+    });
+
+    const { matches } = (await (await admin.get("/api/matches")).json()) as {
+      matches: { id: number; competition_id: number }[];
+    };
+    const competitionId = matches.find((m) => m.id === match.id)!.competition_id;
+    const openName = `${match.name} open`;
+    const created = await admin.post("/api/matches", {
+      data: { name: openName, date: match.date, course: "150", competition_id: competitionId },
+    });
+    expect(created.ok()).toBe(true);
+
+    await page.goto("/admin");
+    await expect(group.getByRole("note")).toContainText(`unfinished 1500 matches: ${openName}`);
+    await expect(
+      group.getByRole("link", { name: `Results reports (.xlsx) zip for ${match.name}` }),
+    ).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await link.click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/-1500\.xlsx$/);
+    const bytes = await readFile(await download.path());
+    expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK");
+  });
+
+  test("the combined 1500 workbook button is hidden without a finished 1500 match", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    await page.goto("/admin");
+    const group = page.getByRole("region", { name: `Competition ${match.name}` });
+    await expect(group).toBeVisible();
+    await expect(group.getByRole("link", { name: /^Combined 1500 workbook/ })).toHaveCount(0);
+  });
+
   test("the match page offers no downloads", async ({ adminPage: page, admin }) => {
     const { match } = await seedReportMatch(admin);
     await openMatch(page, match.id);
