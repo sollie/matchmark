@@ -63,15 +63,20 @@ func categoryIndex(category string) int {
 	return len(categories)
 }
 
+type header struct {
+	date string
+	name string
+}
+
 func Workbook(d Data) ([]byte, error) {
-	return build(d.Match.Date, d.Match.Name, d.Entries)
+	return build(header{date: d.Match.Date, name: d.Match.Name}, d.Entries)
 }
 
 func CombinedWorkbook(c repository.Competition, entries []repository.ReportEntry) ([]byte, error) {
-	return build(c.StartDate, c.Name, entries)
+	return build(header{date: c.StartDate, name: c.Name}, entries)
 }
 
-func build(date, name string, all []repository.ReportEntry) ([]byte, error) {
+func build(h header, all []repository.ReportEntry) ([]byte, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(template))
 	if err != nil {
 		return nil, err
@@ -94,7 +99,7 @@ func build(date, name string, all []repository.ReportEntry) ([]byte, error) {
 				fresh = append(fresh, e)
 			}
 		}
-		if err := fillSheet(f, sheets[i], date, name, known, fresh); err != nil {
+		if err := fillSheet(f, sheets[i], h, known, fresh); err != nil {
 			return nil, err
 		}
 	}
@@ -105,11 +110,11 @@ func build(date, name string, all []repository.ReportEntry) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func fillSheet(f *excelize.File, sheet, date, name string, known, fresh []repository.ReportEntry) error {
-	if err := f.SetCellValue(sheet, "A1", date); err != nil {
+func fillSheet(f *excelize.File, sheet string, h header, known, fresh []repository.ReportEntry) error {
+	if err := f.SetCellValue(sheet, "A1", h.date); err != nil {
 		return err
 	}
-	if err := f.SetCellValue(sheet, "B1", name); err != nil {
+	if err := f.SetCellValue(sheet, "B1", h.name); err != nil {
 		return err
 	}
 	extra := len(known) - knownCapacity
