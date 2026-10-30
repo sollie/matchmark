@@ -149,6 +149,10 @@ The admin view of an active match's current segment, with one row per manned lan
 The workbook, one sheet per category, that a club emails to the country representative. It lists a total score per shooter, plus the new shooters.
 _Avoid_: Export, results file
 
+**Combined 1500 workbook**:
+The Results report for a whole Competition: every finished 1500-discipline Match of the Competition in one workbook, one sheet per category, under the Competition's name and start date. A shooter who shot several of those Matches has one row per Match.
+_Avoid_: Competition report, merged report
+
 **Scorecard**:
 The record of one entry's hits per ring for each match, with the scorer's and shooter's names.
 _Avoid_: Score sheet
