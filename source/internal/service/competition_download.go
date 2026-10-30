@@ -117,12 +117,10 @@ func (s *Service) CompetitionWorkbook1500(ctx context.Context, competitionID int
 		return Download{}, err
 	}
 	var entries []repository.ReportEntry
-	found := false
 	for _, m := range matches {
 		if MatchStatus(m.Status) != StatusFinished || !rulebook.Is1500(m.Course) {
 			continue
 		}
-		found = true
 		data, err := s.loadReport(ctx, m.ID)
 		if err != nil {
 			return Download{}, err
@@ -132,7 +130,7 @@ func (s *Service) CompetitionWorkbook1500(ctx context.Context, competitionID int
 			entries = append(entries, e)
 		}
 	}
-	if !found {
+	if len(entries) == 0 {
 		return Download{}, ErrNothingToReport
 	}
 	out, err := report.CombinedWorkbook(comp, entries)
