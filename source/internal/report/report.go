@@ -46,7 +46,13 @@ func sortedEntries(entries []repository.ReportEntry) []repository.ReportEntry {
 		if a.Shooter.LastName != b.Shooter.LastName {
 			return a.Shooter.LastName < b.Shooter.LastName
 		}
-		return a.Shooter.FirstName < b.Shooter.FirstName
+		if a.Shooter.FirstName != b.Shooter.FirstName {
+			return a.Shooter.FirstName < b.Shooter.FirstName
+		}
+		if a.MatchDate != b.MatchDate {
+			return a.MatchDate < b.MatchDate
+		}
+		return a.MatchID < b.MatchID
 	})
 	return out
 }
@@ -61,6 +67,14 @@ func categoryIndex(category string) int {
 }
 
 func Workbook(d Data) ([]byte, error) {
+	return build(d.Match.Date, d.Match.Name, d.Entries)
+}
+
+func CombinedWorkbook(c repository.Competition, entries []repository.ReportEntry) ([]byte, error) {
+	return build(c.StartDate, c.Name, entries)
+}
+
+func build(date, name string, all []repository.ReportEntry) ([]byte, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(template))
 	if err != nil {
 		return nil, err
@@ -70,7 +84,7 @@ func Workbook(d Data) ([]byte, error) {
 	if len(sheets) < len(categories) {
 		return nil, fmt.Errorf("template has %d sheets, need %d", len(sheets), len(categories))
 	}
-	entries := sortedEntries(d.Entries)
+	entries := sortedEntries(all)
 	for i, category := range categories {
 		var known, fresh []repository.ReportEntry
 		for _, e := range entries {
@@ -83,7 +97,7 @@ func Workbook(d Data) ([]byte, error) {
 				fresh = append(fresh, e)
 			}
 		}
-		if err := fillSheet(f, sheets[i], d.Match, known, fresh); err != nil {
+		if err := fillSheet(f, sheets[i], date, name, known, fresh); err != nil {
 			return nil, err
 		}
 	}
@@ -94,11 +108,11 @@ func Workbook(d Data) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func fillSheet(f *excelize.File, sheet string, comp repository.Match, known, fresh []repository.ReportEntry) error {
-	if err := f.SetCellValue(sheet, "A1", comp.Date); err != nil {
+func fillSheet(f *excelize.File, sheet, date, name string, known, fresh []repository.ReportEntry) error {
+	if err := f.SetCellValue(sheet, "A1", date); err != nil {
 		return err
 	}
-	if err := f.SetCellValue(sheet, "B1", comp.Name); err != nil {
+	if err := f.SetCellValue(sheet, "B1", name); err != nil {
 		return err
 	}
 	extra := len(known) - knownCapacity

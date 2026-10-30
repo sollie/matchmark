@@ -102,3 +102,17 @@ func (h *Handler) competitionDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	writeRendered(w, "application/zip", "zip", file, true)
 }
+
+func (h *Handler) competitionWorkbook1500(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "competitionID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	file, err := h.svc.CompetitionWorkbook1500(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeRendered(w, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx", file, true)
+}

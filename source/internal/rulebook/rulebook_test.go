@@ -212,3 +212,11 @@ func TestSegments(t *testing.T) {
 		}
 	}
 }
+
+func TestIs1500(t *testing.T) {
+	for key, want := range map[string]bool{"150": true, "60": false, "48": false, "40": false, "x": false} {
+		if got := rulebook.Is1500(key); got != want {
+			t.Errorf("Is1500(%q) = %v, want %v", key, got, want)
+		}
+	}
+}
