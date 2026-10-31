@@ -878,7 +878,7 @@ export interface paths {
         };
         /**
          * One combined workbook of every finished 1500 match of the competition, rendered on demand and never stored
-         * @description Filled from the embedded template with the competition start date and name. Matches of other disciplines and unfinished matches are left out. A shooter who shot several matches gets one row per match. Behind the render guard and audited as a `report.download` with details `xlsx 1500`.
+         * @description Filled from the embedded template with the competition start date and name. Matches of other disciplines and unfinished matches are left out. Responds 422 when there is no entry to report. A shooter who shot several matches gets one row per match. Behind the render guard and audited as a `report.download` with details `xlsx 1500`.
          */
         get: operations["downloadCompetitionWorkbook1500"];
         put?: never;
@@ -1848,10 +1848,12 @@ export interface components {
             };
             /** @description Segment numbers of the course of fire, in order */
             segments: number[];
-            /** @description Categories with at least one non-withdrawn entry, in rulebook order */
+            /** @description Categories with at least one entry, in rulebook order */
             categories: {
                 category: string;
                 rows: components["schemas"]["ResultsRow"][];
+                /** @description Entries withdrawn during the match, unranked, with the scores of their accepted segments */
+                did_not_finish: components["schemas"]["ResultsDnfRow"][];
             }[];
             /** @description Shooters without a WAID; empty when names are hidden */
             new_shooters: components["schemas"]["ResultsNewShooter"][];
@@ -1872,6 +1874,18 @@ export interface components {
             }[];
             total: number;
             x_count?: number;
+        };
+        ResultsDnfRow: {
+            last_name?: string;
+            first_name?: string;
+            waid?: string;
+            club?: string;
+            country?: string;
+            segments: {
+                segment: number;
+                /** @description Present for accepted segments when segment scores are visible */
+                score?: number;
+            }[];
         };
         ResultsNewShooter: {
             last_name: string;

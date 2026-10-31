@@ -67,6 +67,7 @@ describe("Results", () => {
           categories: [
             {
               category: "Revolver",
+              did_not_finish: [],
               rows: [
                 {
                   rank: 1,
@@ -107,6 +108,7 @@ describe("Results", () => {
           categories: [
             {
               category: "Revolver",
+              did_not_finish: [],
               rows: [
                 {
                   rank: 1,
@@ -137,6 +139,55 @@ describe("Results", () => {
     ]);
   });
 
+  it("lists withdrawn entries as DNF below the ranked rows", async () => {
+    navigate("/results/7");
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150 Course",
+          },
+          segments: [1],
+          categories: [
+            {
+              category: "Revolver",
+              rows: [
+                {
+                  rank: 1,
+                  last_name: "Berg",
+                  first_name: "Ola",
+                  segments: [{ segment: 1, score: 110 }],
+                  total: 110,
+                },
+              ],
+              did_not_finish: [
+                {
+                  last_name: "Slow",
+                  first_name: "Sam",
+                  segments: [{ segment: 1, score: 80 }],
+                },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    const row = await screen.findByRole("row", { name: /Sam Slow/ });
+    expect(row.textContent).toContain("80");
+    expect(within(row).getByText("DNF")).toBeTruthy();
+    const rows = screen.getAllByRole("row");
+    expect(rows.indexOf(row)).toBeGreaterThan(
+      rows.findIndex((r) => /Ola Berg/.test(r.textContent ?? "")),
+    );
+  });
+
   it("offers only finished matches", async () => {
     navigate("/results");
     stubFetch(() => ({ body: { matches } }));
@@ -162,6 +213,7 @@ describe("Results", () => {
               categories: [
                 {
                   category: "Revolver",
+                  did_not_finish: [],
                   rows: [
                     {
                       rank: 1,

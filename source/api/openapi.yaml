@@ -3602,10 +3602,10 @@ components:
           description: Segment numbers of the course of fire, in order
         categories:
           type: array
-          description: Categories with at least one non-withdrawn entry, in rulebook order
+          description: Categories with at least one entry, in rulebook order
           items:
             type: object
-            required: [category, rows]
+            required: [category, rows, did_not_finish]
             properties:
               category:
                 type: string
@@ -3613,6 +3613,11 @@ components:
                 type: array
                 items:
                   $ref: '#/components/schemas/ResultsRow'
+              did_not_finish:
+                type: array
+                description: Entries withdrawn during the match, unranked, with the scores of their accepted segments
+                items:
+                  $ref: '#/components/schemas/ResultsDnfRow'
         new_shooters:
           type: array
           description: Shooters without a WAID; empty when names are hidden
@@ -3652,6 +3657,31 @@ components:
           type: integer
         x_count:
           type: integer
+    ResultsDnfRow:
+      type: object
+      required: [segments]
+      properties:
+        last_name:
+          type: string
+        first_name:
+          type: string
+        waid:
+          type: string
+        club:
+          type: string
+        country:
+          type: string
+        segments:
+          type: array
+          items:
+            type: object
+            required: [segment]
+            properties:
+              segment:
+                type: integer
+              score:
+                type: integer
+                description: Present for accepted segments when segment scores are visible
     ResultsNewShooter:
       type: object
       required: [last_name, first_name, category, total]
