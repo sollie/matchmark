@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import { api } from "../lib/api/client";
   import { settle } from "../lib/api/util";
   import { entryCommands } from "../lib/entries";
@@ -49,6 +50,9 @@
   let scoring = $state<{ entry: EntryWithSegments; segment: number; counts: RingCounts } | null>(
     null,
   );
+  let countsDialog = $state<HTMLDialogElement>();
+  let opener: HTMLElement | null = null;
+  let countsError = $state("");
   let error = $state("");
   let archivedBlock = $state<Shooter | null>(null);
 
@@ -141,17 +145,32 @@
     run(commands.accept(entry.id, segment));
   const lock = (entry: EntryWithSegments, segment: number) => run(commands.lock(entry.id, segment));
 
-  function reveal(node: HTMLElement) {
-    node.scrollIntoView?.({ block: "center" });
-    node.querySelector("input")?.focus({ preventScroll: true });
+  async function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
+    opener = button;
+    countsError = "";
+    scoring = { entry, segment, counts: blankCounts() };
+    await tick();
+    countsDialog?.showModal();
+    countsDialog?.querySelector("input")?.focus();
+  }
+
+  function closeCounts() {
+    countsDialog?.close();
+  }
+
+  function counted() {
+    scoring = null;
+    countsError = "";
+    opener?.focus();
+    opener = null;
   }
 
   async function saveCounts(andLock = false) {
     if (!scoring) return;
     const { entry, segment, counts } = scoring;
-    const ok = await run(commands.saveCounts(entry.id, segment, counts));
-    if (!ok) return;
-    scoring = null;
+    countsError = (await commands.saveCounts(entry.id, segment, counts)) ?? "";
+    if (countsError) return;
+    closeCounts();
     if (andLock) await lock(entry, segment);
   }
 </script>
@@ -292,8 +311,7 @@
                     <button
                       class="secondary"
                       aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Edit`}
-                      onclick={() =>
-                        (scoring = { entry, segment: st.segment_number, counts: blankCounts() })}
+                      onclick={(e) => openCounts(entry, st.segment_number, e.currentTarget)}
                       >Edit</button
                     >
                     {#if st.status === "awaiting_acceptance"}
@@ -355,41 +373,55 @@
     </table>
   </div>
 
-  {#if scoring}
-    {@const expected =
-      scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
-      0}
-    {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
-    <div class="card counts" use:reveal>
-      <h3>
-        {shooterName(scoring.entry.shooter_id)}, segment {scoring.segment}: overwrite ring counts
-      </h3>
-      <p class="muted">Enter all counts; they must sum to {expected} shots.</p>
-      <div class="count-grid">
-        {#each ringKeys as k (k)}
-          <label>
-            {k === "x" ? "X" : k}
-            <input type="number" inputmode="numeric" min="0" bind:value={scoring.counts[k]} />
-          </label>
-        {/each}
-      </div>
-      <p class="total" class:mismatch={total !== expected}>
-        <strong>{total}</strong> / {expected}
-        {#if total === expected}
-          <span class="badge success">✓ Shots match</span>
-        {:else if total > expected}
-          <span class="badge danger">⚠ {total - expected} too many</span>
-        {:else}
-          <span class="badge warning">⚠ {expected - total} to go</span>
-        {/if}
-      </p>
-      <div class="count-actions">
-        <button class="primary" onclick={() => saveCounts()}>Save counts</button>
-        <button class="primary" onclick={() => saveCounts(true)}>Save and lock</button>
-        <button class="secondary" onclick={() => (scoring = null)}>Cancel</button>
-      </div>
-    </div>
-  {/if}
+  <dialog bind:this={countsDialog} class="counts" aria-labelledby="counts-title" onclose={counted}>
+    {#if scoring}
+      {@const expected =
+        scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
+        0}
+      {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
+      <form
+        onsubmit={(e) => e.preventDefault()}
+        onkeydown={(e) => {
+          if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault();
+        }}
+      >
+        <div class="counts-head">
+          <h3 id="counts-title">
+            {shooterName(scoring.entry.shooter_id)}, {segmentLabel(course, scoring.segment)}
+          </h3>
+          <button type="button" class="secondary" aria-label="Close" onclick={closeCounts}>✕</button
+          >
+        </div>
+        {#if countsError}<p class="error" role="alert">{countsError}</p>{/if}
+        <p class="muted">Enter all counts; they must sum to {expected} shots.</p>
+        <div class="count-grid">
+          {#each ringKeys as k (k)}
+            <label>
+              {k === "x" ? "X" : k}
+              <input type="number" inputmode="numeric" min="0" bind:value={scoring.counts[k]} />
+            </label>
+          {/each}
+        </div>
+        <p class="total" class:mismatch={total !== expected}>
+          <strong>{total}</strong> / {expected}
+          {#if total === expected}
+            <span class="badge success">✓ Shots match</span>
+          {:else if total > expected}
+            <span class="badge danger">⚠ {total - expected} too many</span>
+          {:else}
+            <span class="badge warning">⚠ {expected - total} to go</span>
+          {/if}
+        </p>
+        <div class="count-actions">
+          <button type="button" class="primary" onclick={() => saveCounts()}>Save counts</button>
+          <button type="button" class="primary" onclick={() => saveCounts(true)}
+            >Save and lock</button
+          >
+          <button type="button" class="secondary" onclick={closeCounts}>Cancel</button>
+        </div>
+      </form>
+    {/if}
+  </dialog>
 </section>
 
 <style>
@@ -435,6 +467,25 @@
     padding: var(--space-5);
     text-align: center;
     color: var(--text-muted);
+  }
+  dialog.counts {
+    width: min(36rem, calc(100vw - 2 * var(--space-3)));
+    max-height: calc(100vh - 2 * var(--space-3));
+    overflow: auto;
+    padding: var(--space-4);
+    border: 1px solid var(--border, currentColor);
+    border-radius: var(--radius, 0.5rem);
+    background: var(--surface, Canvas);
+    color: var(--text);
+  }
+  .counts-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .counts-head h3 {
+    margin: 0;
   }
   .count-grid {
     display: grid;
