@@ -168,6 +168,45 @@ test.describe("admin ring counts", () => {
     await expect(dialog.getByLabel("10", { exact: true })).toHaveValue("0");
   });
 
+  test("closing a dirty dialog asks to discard, a clean one closes at once", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await openMatch(page, match.id);
+
+    const edit = page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` });
+    const dialog = page.getByRole("dialog");
+    const x = dialog.getByLabel("X", { exact: true });
+
+    await edit.click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+
+    await edit.click();
+    await x.fill("3");
+    await x.fill("0");
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await edit.click();
+    await x.fill("3");
+    await page.keyboard.press("Escape");
+    await expect(dialog.getByText("Discard changes?")).toBeVisible();
+    await dialog.getByRole("button", { name: "Keep editing" }).click();
+    await expect(x).toHaveValue("3");
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await dialog.getByRole("button", { name: "Discard" }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await edit.click();
+    await x.fill("3");
+    await dialog.click({ position: { x: 1, y: 1 } });
+    await expect(dialog.getByText("Discard changes?")).toBeVisible();
+  });
+
   test("the dialog notices stored counts changed by someone else and keeps the inputs", async ({
     course,
     adminPage: page,
