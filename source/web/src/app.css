@@ -363,6 +363,34 @@ input[aria-invalid="true"],
 input:user-invalid {
   border-color: var(--danger);
 }
+input.valid {
+  border-color: var(--success-fg);
+}
+.hint {
+  min-height: 1.2em;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.hint.valid {
+  color: var(--success-fg);
+}
+.success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+.success .check {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.8rem;
+  color: var(--success-fg);
+  background: var(--success-bg);
+  border-radius: 50%;
+}
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--brand);
