@@ -312,7 +312,8 @@ func (h *Handler) listEntries(r *http.Request) (int, any, error) {
 		m := entryJSON(e.Entry)
 		segments := make([]map[string]any, 0, len(e.Segments))
 		for _, s := range e.Segments {
-			segments = append(segments, map[string]any{"segment_number": s.Number, "expected_shots": s.ExpectedShots, "status": s.Status, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered})
+			c := s.Counts
+			segments = append(segments, map[string]any{"segment_number": s.Number, "expected_shots": s.ExpectedShots, "status": s.Status, "scorer_lane": s.ScorerLane, "scorer_name": s.ScorerName, "score": s.Score, "shots_entered": s.ShotsEntered, "x": c.X, "10": c.Ten, "9": c.Nine, "8": c.Eight, "7": c.Seven, "0": c.Zero, "miss": c.Miss})
 		}
 		m["segments"] = segments
 		out = append(out, m)
