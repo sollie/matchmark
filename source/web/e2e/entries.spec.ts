@@ -142,6 +142,32 @@ test.describe("admin ring counts", () => {
     await expect(dialog).toHaveCount(0);
   });
 
+  test("the dialog shows stored counts read-only and pre-fills the inputs", async ({
+    course,
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await setCounts(admin, match.id, entry.entryId, 1, { "10": course.segmentOneShots }, true);
+    await openMatch(page, match.id);
+
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
+    const dialog = page.getByRole("dialog");
+    const stored = dialog.getByRole("region", { name: "Stored counts" });
+    await expect(stored).toContainText(`10 ${course.segmentOneShots}`);
+    await expect(stored).toContainText("Accepted");
+    await expect(dialog.getByLabel("10", { exact: true })).toHaveValue(
+      String(course.segmentOneShots),
+    );
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 2: Edit` }).click();
+    await expect(dialog).toContainText("No counts entered yet");
+    await expect(dialog.getByLabel("10", { exact: true })).toHaveValue("0");
+  });
+
   test("a live shot total flags a wrong total and the save is rejected", async ({
     course,
     adminPage: page,
@@ -224,6 +250,7 @@ test.describe("admin ring counts", () => {
     await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 10));
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
     const counts = page.getByRole("dialog");
+    await counts.getByLabel("10", { exact: true }).fill("0");
     await counts.getByLabel("9", { exact: true }).fill(String(course.segmentOneShots));
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
