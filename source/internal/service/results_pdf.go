@@ -58,11 +58,17 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 				Club: r.Club, Country: r.Country, Total: r.Total, XCount: r.XCount,
 			}
 			for _, st := range r.Segments {
-				seg := report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score}
-				if c := st.RingCounts; c != nil {
-					seg.Counts = []int{c.X, c.Ten, c.Nine, c.Eight, c.Seven, c.Zero, c.Miss}
-				}
-				row.Segments = append(row.Segments, seg)
+				row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
+			}
+			cat.Rows = append(cat.Rows, row)
+		}
+		for _, r := range c.DidNotFinish {
+			row := report.ResultsPDFRow{
+				LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
+				Club: r.Club, Country: r.Country, DNF: true,
+			}
+			for _, st := range r.Segments {
+				row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
 			}
 			cat.Rows = append(cat.Rows, row)
 		}

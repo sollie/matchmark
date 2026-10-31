@@ -110,6 +110,23 @@ func TestResultsRankingAndGrouping(t *testing.T) {
 	if _, ok := segments[1].(map[string]any)["ring_counts"]; ok {
 		t.Fatalf("ring counts for unaccepted segment: %v", segments[1])
 	}
+	dnf := cats[0].(map[string]any)["did_not_finish"].([]any)
+	if len(dnf) != 1 || len(cats[1].(map[string]any)["did_not_finish"].([]any)) != 0 {
+		t.Fatalf("did_not_finish %v", dnf)
+	}
+	late := dnf[0].(map[string]any)
+	lateSegment := late["segments"].([]any)[0].(map[string]any)
+	if late["last_name"] != "DELTA" || lateSegment["score"].(float64) != 240 {
+		t.Fatalf("dnf row %v", late)
+	}
+	for _, k := range []string{"rank", "total", "x_count"} {
+		if _, ok := late[k]; ok {
+			t.Fatalf("dnf row has %s: %v", k, late)
+		}
+	}
+	if _, ok := lateSegment["ring_counts"]; ok {
+		t.Fatalf("dnf row has ring counts: %v", lateSegment)
+	}
 	fresh := out["new_shooters"].([]any)
 	if len(fresh) != 1 || fresh[0].(map[string]any)["last_name"] != "CHARLIE" || fresh[0].(map[string]any)["category"] != "Revolver" {
 		t.Fatalf("new shooters %v", fresh)
@@ -155,6 +172,15 @@ func TestResultsHonoursVisibilityFlags(t *testing.T) {
 	}
 	if row["total"] == nil || row["rank"] == nil {
 		t.Fatalf("always-visible fields missing: %v", row)
+	}
+	late := out["categories"].([]any)[0].(map[string]any)["did_not_finish"].([]any)[0].(map[string]any)
+	for _, k := range []string{"last_name", "first_name", "waid", "club", "country"} {
+		if _, ok := late[k]; ok {
+			t.Fatalf("dnf %s present: %v", k, late)
+		}
+	}
+	if _, ok := late["segments"].([]any)[0].(map[string]any)["score"]; ok {
+		t.Fatalf("dnf segment score present: %v", late)
 	}
 	if fresh := out["new_shooters"].([]any); len(fresh) != 0 {
 		t.Fatalf("new shooters listed without names: %v", fresh)
