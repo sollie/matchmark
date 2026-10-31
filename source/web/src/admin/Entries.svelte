@@ -148,11 +148,20 @@
   async function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
     opener = button;
     countsError = "";
-    scoring = { entry, segment, counts: blankCounts() };
+    const stored = entry.segments.find((s) => s.segment_number === segment);
+    const counts = blankCounts();
+    for (const k of ringKeys) counts[k] = stored?.[k] ?? 0;
+    scoring = { entry, segment, counts };
     await tick();
     countsDialog?.showModal();
     countsDialog?.querySelector("input")?.focus();
   }
+
+  const statusLabels = {
+    open: "Open",
+    awaiting_acceptance: "Awaiting acceptance",
+    accepted: "Accepted",
+  } as const;
 
   function closeCounts() {
     countsDialog?.close();
@@ -378,6 +387,7 @@
       {@const expected =
         scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
         0}
+      {@const stored = scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)}
       {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
       <form
         onsubmit={(e) => e.preventDefault()}
@@ -393,6 +403,22 @@
           >
         </div>
         {#if countsError}<p class="error" role="alert">{countsError}</p>{/if}
+        <section class="stored" aria-label="Stored counts">
+          <h4>Stored counts</h4>
+          {#if stored && stored.shots_entered > 0}
+            <ul class="stored-grid">
+              {#each ringKeys as k (k)}
+                <li>{k === "x" ? "X" : k} <strong>{stored[k]}</strong></li>
+              {/each}
+            </ul>
+            <p>
+              <strong>{stored.shots_entered}</strong> / {expected} shots ·
+              {statusLabels[stored.status]}
+            </p>
+          {:else}
+            <p class="muted">No counts entered yet</p>
+          {/if}
+        </section>
         <p class="muted">Enter all counts; they must sum to {expected} shots.</p>
         <div class="count-grid">
           {#each ringKeys as k (k)}
@@ -486,6 +512,17 @@
   }
   .counts-head h3 {
     margin: 0;
+  }
+  .stored h4 {
+    margin: var(--space-3) 0 var(--space-2);
+  }
+  .stored-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   .count-grid {
     display: grid;
