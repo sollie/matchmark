@@ -81,12 +81,16 @@ const course = (key: string, categories: string[]) =>
     segments: key === "150" ? [{ number: 1, name: "Match 1", stages: [1, 2], shots: 24 }] : [],
   }) as unknown as RulebookCourse;
 
-function setup(entries: EntryWithSegments[] = [entry()], courseKey = "150") {
+function setup(
+  entries: EntryWithSegments[] = [entry()],
+  courseKey = "150",
+  respond?: Parameters<typeof stubFetch>[0],
+) {
   rulebook.courses = [
     course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]),
     course("40", ["Revolver"]),
   ];
-  const calls = stubFetch();
+  const calls = stubFetch(respond);
   const reload = vi.fn(async () => {});
   const view = render(Entries, { matchId: 5, course: courseKey, entries, shooters, reload });
   return { calls, reload, view, user: userEvent.setup() };
@@ -214,6 +218,54 @@ describe("Entries", () => {
     expect(screen.getByText("Shots match", { exact: false })).toBeTruthy();
     await user.type(x, "1");
     expect(screen.getByText("271 too many", { exact: false })).toBeTruthy();
+  });
+
+  it("edits counts in a modal dialog named after the shooter and segment, focusing the first input", async () => {
+    const { user } = setup();
+    const edit = screen.getByRole("button", { name: "Lane 1 segment 2: Edit" });
+    await user.click(edit);
+    const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
+    expect(dialog.hasAttribute("open")).toBe(true);
+    expect(document.activeElement).toBe(within(dialog).getByLabelText("X"));
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(edit);
+  });
+
+  it("does not submit when Enter is pressed in an input", async () => {
+    const { calls, user } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    await user.type(screen.getByLabelText("X"), "3{Enter}");
+    expect(calls).toEqual([]);
+    expect(screen.getByRole("dialog", { name: "Jane Doe, Segment 2" })).toBeTruthy();
+  });
+
+  it("closes on Cancel", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("closes after a successful save", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Save counts" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("stays open with inputs kept and the error inside the dialog when saving fails", async () => {
+    const { user } = setup([entry()], "150", () => ({
+      status: 422,
+      body: { error: "invalid input" },
+    }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    const x = screen.getByLabelText("X");
+    await user.type(x, "5");
+    await user.click(screen.getByRole("button", { name: "Save and lock" }));
+    const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
+    expect(within(dialog).getByRole("alert").textContent).toBe("invalid input");
+    expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("5");
   });
 
   it("saves counts without locking", async () => {
