@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import Entries from "./Entries.svelte";
 import { stubFetch } from "../test/fetch";
@@ -282,6 +282,65 @@ describe("Entries", () => {
     await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  describe("unsaved changes guard", () => {
+    const openEdit = async () => {
+      const ctx = setup();
+      await ctx.user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+      return ctx;
+    };
+    const dialogEl = () => screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
+    const closers = [
+      [
+        "Cancel",
+        async (u: ReturnType<typeof userEvent.setup>) =>
+          u.click(screen.getByRole("button", { name: "Cancel" })),
+      ],
+      [
+        "Close button",
+        async (u: ReturnType<typeof userEvent.setup>) =>
+          u.click(screen.getByRole("button", { name: "Close" })),
+      ],
+      [
+        "Esc",
+        async () => {
+          fireEvent(dialogEl(), new Event("cancel", { cancelable: true }));
+        },
+      ],
+      ["backdrop", async (u: ReturnType<typeof userEvent.setup>) => u.click(dialogEl())],
+    ] as const;
+
+    it.each(closers)("%s closes a clean dialog immediately", async (_n, close) => {
+      const { user } = await openEdit();
+      await close(user);
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it.each(closers)("%s on a dirty dialog asks before discarding", async (_n, close) => {
+      const { user } = await openEdit();
+      await user.type(screen.getByLabelText("X"), "3");
+      await close(user);
+      const dialog = dialogEl();
+      expect(within(dialog).getByText("Discard changes?")).toBeTruthy();
+      await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
+      expect(within(dialog).queryByText("Discard changes?")).toBeNull();
+      expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("3");
+      await close(user);
+      await user.click(within(dialogEl()).getByRole("button", { name: "Discard" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("treats reverting to the original counts as clean", async () => {
+      const { user } = await openEdit();
+      const x = screen.getByLabelText("X");
+      await user.clear(x);
+      await user.type(x, "4");
+      await user.clear(x);
+      await user.type(x, "0");
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
   });
 
   it("closes after a successful save", async () => {
