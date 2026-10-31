@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
+  import PasswordInput from "../lib/PasswordInput.svelte";
   import { refreshAdminSession } from "../lib/session.svelte";
   import type { components } from "../lib/api/schema";
 
@@ -121,17 +122,14 @@
       <option value="admin">Admin</option>
     </select>
   </label>
-  <label>
-    Temporary password
-    <input
-      type="password"
-      bind:value={password}
-      minlength="16"
-      maxlength="128"
-      autocomplete="new-password"
-      required
-    />
-  </label>
+  <PasswordInput
+    label="Temporary password"
+    bind:value={password}
+    minlength={16}
+    maxlength={128}
+    autocomplete="new-password"
+    required
+  />
   <button type="submit" class="primary">Create user</button>
 </form>
 <p class="muted">
@@ -160,17 +158,14 @@
           <td>
             {#if resetFor === u.id}
               <form class="row" onsubmit={(e) => reset(e, u)}>
-                <label>
-                  Temporary password for {u.username}
-                  <input
-                    type="password"
-                    bind:value={resetPassword}
-                    minlength="16"
-                    maxlength="128"
-                    autocomplete="new-password"
-                    required
-                  />
-                </label>
+                <PasswordInput
+                  label="Temporary password for {u.username}"
+                  bind:value={resetPassword}
+                  minlength={16}
+                  maxlength={128}
+                  autocomplete="new-password"
+                  required
+                />
                 <button type="submit" class="primary">Confirm reset</button>
                 <button type="button" onclick={() => (resetFor = null)}>Cancel</button>
               </form>
