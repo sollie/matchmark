@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { errorMessage } from "../lib/api/util";
+  import PasswordInput from "../lib/PasswordInput.svelte";
   import { logout, refreshAdminSession } from "../lib/session.svelte";
 
   let { forced = false, ondone = () => {} }: { forced?: boolean; ondone?: () => void } = $props();
@@ -51,32 +52,28 @@
       <p>You must choose a new password before you can continue.</p>
     {/if}
     <form onsubmit={submit}>
-      <label>
-        Current password
-        <input type="password" bind:value={current} autocomplete="current-password" required />
-      </label>
-      <label>
-        New password
-        <input
-          type="password"
-          bind:value={next}
-          autocomplete="new-password"
-          minlength="16"
-          maxlength="128"
-          required
-        />
-      </label>
-      <label>
-        Confirm new password
-        <input
-          type="password"
-          bind:value={confirm}
-          autocomplete="new-password"
-          minlength="16"
-          maxlength="128"
-          required
-        />
-      </label>
+      <PasswordInput
+        label="Current password"
+        bind:value={current}
+        autocomplete="current-password"
+        required
+      />
+      <PasswordInput
+        label="New password"
+        bind:value={next}
+        autocomplete="new-password"
+        minlength={16}
+        maxlength={128}
+        required
+      />
+      <PasswordInput
+        label="Confirm new password"
+        bind:value={confirm}
+        autocomplete="new-password"
+        minlength={16}
+        maxlength={128}
+        required
+      />
       <p class="muted">16 to 128 characters. Your other sessions are signed out.</p>
       <button class="primary" type="submit" disabled={busy}>Change password</button>
       {#if forced}<button type="button" onclick={signOut}>Sign out</button>{/if}

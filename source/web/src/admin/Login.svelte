@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { errorMessage } from "../lib/api/util";
+  import PasswordInput from "../lib/PasswordInput.svelte";
   import { navigate } from "../lib/router.svelte";
   import { refreshAdminSession } from "../lib/session.svelte";
 
@@ -42,10 +43,12 @@
         Username
         <input type="text" bind:value={username} autocomplete="username" required />
       </label>
-      <label>
-        Password
-        <input type="password" bind:value={password} autocomplete="current-password" required />
-      </label>
+      <PasswordInput
+        label="Password"
+        bind:value={password}
+        autocomplete="current-password"
+        required
+      />
       <button class="primary" type="submit" disabled={busy}>Sign in</button>
     </form>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
