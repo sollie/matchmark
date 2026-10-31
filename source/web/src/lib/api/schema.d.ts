@@ -1686,7 +1686,7 @@ export interface components {
             lane: number;
             withdrawn: boolean;
         };
-        EntrySegment: {
+        EntrySegment: components["schemas"]["RingCounts"] & {
             segment_number: number;
             expected_shots: number;
             status: components["schemas"]["SegmentStatus"];
@@ -1694,7 +1694,7 @@ export interface components {
             scorer_name: string | null;
             /** @description Segment score from the stored ring counts, whether or not the segment is accepted */
             score: number;
-            /** @description Sum of all stored ring counts */
+            /** @description Sum of all stored ring counts; 0 means no counts have been entered (the seven counts are then all 0) */
             shots_entered: number;
         };
         EntryWithSegments: components["schemas"]["Entry"] & {
