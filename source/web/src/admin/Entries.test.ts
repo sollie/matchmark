@@ -232,6 +232,43 @@ describe("Entries", () => {
     expect(document.activeElement).toBe(edit);
   });
 
+  it("shows stored counts read-only and pre-fills the inputs", async () => {
+    const stored = entry({
+      segments: [
+        {
+          ...entry().segments[0],
+          status: "open",
+          score: 280,
+          shots_entered: 30,
+          x: 2,
+          "10": 20,
+          "9": 8,
+        },
+      ],
+    });
+    const { user } = setup([stored]);
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 1: Edit" }));
+    const dialog = screen.getByRole("dialog", { name: /^Jane Doe, / });
+    const previous = within(dialog).getByRole("region", { name: "Stored counts" });
+    expect(previous.textContent).toContain("X 2");
+    expect(previous.textContent).toContain("10 20");
+    expect(previous.textContent).toContain("9 8");
+    expect(previous.textContent).toContain("30 / 30");
+    expect(previous.textContent).toContain("Open");
+    expect(within(dialog).queryByText("No counts entered yet")).toBeNull();
+    expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("2");
+    expect((within(dialog).getByLabelText("10") as HTMLInputElement).value).toBe("20");
+    expect((within(dialog).getByLabelText("9") as HTMLInputElement).value).toBe("8");
+  });
+
+  it("says no counts were entered for a segment without counts", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
+    expect(within(dialog).getByText("No counts entered yet")).toBeTruthy();
+    expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("0");
+  });
+
   it("does not submit when Enter is pressed in an input", async () => {
     const { calls, user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
