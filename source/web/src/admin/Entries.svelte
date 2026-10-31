@@ -47,9 +47,13 @@
   let chosenCategory = $state<string | null>(null);
   let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
-  let scoring = $state<{ entry: EntryWithSegments; segment: number; counts: RingCounts } | null>(
-    null,
-  );
+  let scoring = $state<{
+    entry: EntryWithSegments;
+    segment: number;
+    counts: RingCounts;
+    original: RingCounts;
+  } | null>(null);
+  let confirmDiscard = $state(false);
   let countsDialog = $state<HTMLDialogElement>();
   let openedStored = $state("");
   let opener: HTMLElement | null = null;
@@ -149,10 +153,11 @@
   async function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
     opener = button;
     countsError = "";
+    confirmDiscard = false;
     const stored = entry.segments.find((s) => s.segment_number === segment);
     const counts = blankCounts();
     for (const k of ringKeys) counts[k] = stored?.[k] ?? 0;
-    scoring = { entry, segment, counts };
+    scoring = { entry, segment, counts, original: { ...counts } };
     openedStored = storedKey(stored);
     await tick();
     countsDialog?.showModal();
@@ -172,9 +177,20 @@
     countsDialog?.close();
   }
 
+  function requestClose() {
+    if (!scoring) return;
+    const { counts, original } = scoring;
+    if (ringKeys.some((k) => (Number(counts[k]) || 0) !== original[k])) {
+      confirmDiscard = true;
+      return;
+    }
+    closeCounts();
+  }
+
   function counted() {
     scoring = null;
     countsError = "";
+    confirmDiscard = false;
     opener?.focus();
     opener = null;
   }
@@ -387,7 +403,19 @@
     </table>
   </div>
 
-  <dialog bind:this={countsDialog} class="counts" aria-labelledby="counts-title" onclose={counted}>
+  <dialog
+    bind:this={countsDialog}
+    class="counts"
+    aria-labelledby="counts-title"
+    onclose={counted}
+    oncancel={(e) => {
+      e.preventDefault();
+      requestClose();
+    }}
+    onclick={(e) => {
+      if (e.target === countsDialog) requestClose();
+    }}
+  >
     {#if scoring}
       {@const expected =
         scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
@@ -407,10 +435,20 @@
           <h3 id="counts-title">
             {shooterName(scoring.entry.shooter_id)}, {segmentLabel(course, scoring.segment)}
           </h3>
-          <button type="button" class="secondary" aria-label="Close" onclick={closeCounts}>✕</button
+          <button type="button" class="secondary" aria-label="Close" onclick={requestClose}
+            >✕</button
           >
         </div>
         {#if countsError}<p class="error" role="alert">{countsError}</p>{/if}
+        {#if confirmDiscard}
+          <div class="row" role="alertdialog" aria-label="Discard changes?">
+            <strong>Discard changes?</strong>
+            <button type="button" class="secondary" onclick={() => (confirmDiscard = false)}
+              >Keep editing</button
+            >
+            <button type="button" class="danger" onclick={closeCounts}>Discard</button>
+          </div>
+        {/if}
         <section class="stored" aria-label="Stored counts">
           <h4>Stored counts</h4>
           {#if storedChanged}
@@ -454,7 +492,7 @@
           <button type="button" class="primary" onclick={() => saveCounts(true)}
             >Save and lock</button
           >
-          <button type="button" class="secondary" onclick={closeCounts}>Cancel</button>
+          <button type="button" class="secondary" onclick={requestClose}>Cancel</button>
         </div>
       </form>
     {/if}
