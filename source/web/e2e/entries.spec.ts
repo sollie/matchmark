@@ -168,6 +168,26 @@ test.describe("admin ring counts", () => {
     await expect(dialog.getByLabel("10", { exact: true })).toHaveValue("0");
   });
 
+  test("the dialog notices stored counts changed by someone else and keeps the inputs", async ({
+    course,
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await openMatch(page, match.id);
+
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("10", { exact: true }).fill("3");
+    await expect(dialog).not.toContainText("Stored counts changed since you opened this");
+
+    await setCounts(admin, match.id, entry.entryId, 1, { "10": course.segmentOneShots });
+    await expect(dialog).toContainText("Stored counts changed since you opened this");
+    await expect(dialog.getByLabel("10", { exact: true })).toHaveValue("3");
+  });
+
   test("a live shot total flags a wrong total and the save is rejected", async ({
     course,
     adminPage: page,

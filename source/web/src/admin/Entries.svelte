@@ -51,6 +51,7 @@
     null,
   );
   let countsDialog = $state<HTMLDialogElement>();
+  let openedStored = $state("");
   let opener: HTMLElement | null = null;
   let countsError = $state("");
   let error = $state("");
@@ -152,10 +153,14 @@
     const counts = blankCounts();
     for (const k of ringKeys) counts[k] = stored?.[k] ?? 0;
     scoring = { entry, segment, counts };
+    openedStored = storedKey(stored);
     await tick();
     countsDialog?.showModal();
     countsDialog?.querySelector("input")?.focus();
   }
+
+  const storedKey = (s: { [k in (typeof ringKeys)[number]]: number } | undefined) =>
+    ringKeys.map((k) => s?.[k] ?? 0).join(",");
 
   const statusLabels = {
     open: "Open",
@@ -387,7 +392,10 @@
       {@const expected =
         scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
         0}
-      {@const stored = scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)}
+      {@const stored = entries
+        .find((e) => e.id === scoring?.entry.id)
+        ?.segments.find((s) => s.segment_number === scoring?.segment)}
+      {@const storedChanged = storedKey(stored) !== openedStored}
       {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
       <form
         onsubmit={(e) => e.preventDefault()}
@@ -405,6 +413,9 @@
         {#if countsError}<p class="error" role="alert">{countsError}</p>{/if}
         <section class="stored" aria-label="Stored counts">
           <h4>Stored counts</h4>
+          {#if storedChanged}
+            <p class="error" role="status">Stored counts changed since you opened this</p>
+          {/if}
           {#if stored && stored.shots_entered > 0}
             <ul class="stored-grid">
               {#each ringKeys as k (k)}

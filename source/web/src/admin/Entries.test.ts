@@ -261,6 +261,35 @@ describe("Entries", () => {
     expect((within(dialog).getByLabelText("9") as HTMLInputElement).value).toBe("8");
   });
 
+  it("notices changed stored counts without touching the inputs", async () => {
+    const stored = entry({
+      segments: [{ ...entry().segments[0], status: "open", "10": 30 }, entry().segments[1]],
+    });
+    const { user, view } = setup([stored]);
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 1: Edit" }));
+    const dialog = screen.getByRole("dialog", { name: /^Jane Doe, / });
+    await user.clear(within(dialog).getByLabelText("10"));
+    await user.type(within(dialog).getByLabelText("10"), "25");
+    expect(within(dialog).queryByText("Stored counts changed since you opened this")).toBeNull();
+
+    const changed = entry({
+      segments: [{ ...stored.segments[0], "10": 28, "9": 2 }, stored.segments[1]],
+    });
+    await view.rerender({ entries: [changed] });
+    expect(within(dialog).getByText("Stored counts changed since you opened this")).toBeTruthy();
+    expect((within(dialog).getByLabelText("10") as HTMLInputElement).value).toBe("25");
+    expect(within(dialog).getByRole("region", { name: "Stored counts" }).textContent).toContain(
+      "10 28",
+    );
+  });
+
+  it("does not notice a reload that leaves the stored counts unchanged", async () => {
+    const { user, view } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 1: Edit" }));
+    await view.rerender({ entries: [entry()] });
+    expect(screen.queryByText("Stored counts changed since you opened this")).toBeNull();
+  });
+
   it("says no counts were entered for a segment without counts", async () => {
     const { user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
