@@ -285,7 +285,7 @@ function pairingPath(token: string): string {
 export async function signInViaUi(page: Page, password = adminPassword, username = adminUsername) {
   await page.goto("/admin");
   await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 

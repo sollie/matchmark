@@ -14,7 +14,7 @@ test.describe("auth", () => {
     await expect(page.getByRole("alert")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
 
-    await page.getByLabel("Password").fill(adminPassword);
+    await page.getByLabel("Password", { exact: true }).fill(adminPassword);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
   });
@@ -32,13 +32,13 @@ test.describe("auth", () => {
     await page.goto("/admin");
     for (let attempt = 0; attempt < 5; attempt++) {
       await page.getByLabel("Username").fill(adminUsername);
-      await page.getByLabel("Password").fill(`wrong-password-${attempt}`);
+      await page.getByLabel("Password", { exact: true }).fill(`wrong-password-${attempt}`);
       await page.getByRole("button", { name: "Sign in" }).click();
       await expect(page.getByRole("alert")).toHaveText(/unauthorized/i);
     }
 
     await page.getByLabel("Username").fill(adminUsername);
-    await page.getByLabel("Password").fill(adminPassword);
+    await page.getByLabel("Password", { exact: true }).fill(adminPassword);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("alert")).toContainText("Too many attempts");
     await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();

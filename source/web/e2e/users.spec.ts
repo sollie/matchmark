@@ -27,19 +27,19 @@ test.describe("user management", () => {
     await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
 
     await page.getByLabel("New username").fill(username);
-    await page.getByLabel("Temporary password").fill(temporaryPassword);
+    await page.getByLabel("Temporary password", { exact: true }).fill(temporaryPassword);
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(page.getByRole("status")).toContainText(username);
     await expect(row(page, username)).toContainText("User");
     await expect(row(page, username)).toContainText("Must change password");
 
     await page.getByLabel("New username").fill(username.toUpperCase());
-    await page.getByLabel("Temporary password").fill(temporaryPassword);
+    await page.getByLabel("Temporary password", { exact: true }).fill(temporaryPassword);
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(page.getByRole("alert")).toHaveText("conflict");
 
     await page.getByLabel("New username").fill("bad name");
-    await page.getByLabel("Temporary password").fill(temporaryPassword);
+    await page.getByLabel("Temporary password", { exact: true }).fill(temporaryPassword);
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(row(page, "bad name")).toHaveCount(0);
 
@@ -53,9 +53,9 @@ test.describe("user management", () => {
     await expect(page.getByRole("link", { name: "Shooters" })).toHaveCount(0);
     expect((await page.request.get("/api/shooters")).status()).toBe(403);
 
-    await page.getByLabel("Current password").fill(temporaryPassword);
+    await page.getByLabel("Current password", { exact: true }).fill(temporaryPassword);
     await page.getByLabel("New password", { exact: true }).fill(chosenPassword);
-    await page.getByLabel("Confirm new password").fill(chosenPassword);
+    await page.getByLabel("Confirm new password", { exact: true }).fill(chosenPassword);
     await page.getByRole("button", { name: "Change password" }).click();
 
     await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
@@ -78,15 +78,15 @@ test.describe("user management", () => {
     await openAccountLink(page, "Users");
     await page.getByLabel("New username").fill(username);
     await page.getByLabel("Role").selectOption("admin");
-    await page.getByLabel("Temporary password").fill(temporaryPassword);
+    await page.getByLabel("Temporary password", { exact: true }).fill(temporaryPassword);
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(row(page, username)).toContainText("Not allowed");
 
     await signOutViaMenu(page);
     await signInViaUi(page, temporaryPassword, username);
-    await page.getByLabel("Current password").fill(temporaryPassword);
+    await page.getByLabel("Current password", { exact: true }).fill(temporaryPassword);
     await page.getByLabel("New password", { exact: true }).fill(chosenPassword);
-    await page.getByLabel("Confirm new password").fill(chosenPassword);
+    await page.getByLabel("Confirm new password", { exact: true }).fill(chosenPassword);
     await page.getByRole("button", { name: "Change password" }).click();
     await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
     await openAccountMenu(page);
@@ -149,7 +149,7 @@ test.describe("user lifecycle", () => {
     await openAccountLink(page, "Users");
     await page.getByLabel("New username").fill(username);
     await page.getByLabel("Role").selectOption("admin");
-    await page.getByLabel("Temporary password").fill(temporaryPassword);
+    await page.getByLabel("Temporary password", { exact: true }).fill(temporaryPassword);
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(row(page, username)).toContainText("Admin");
 
