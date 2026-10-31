@@ -1,9 +1,13 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { errorMessage } from "../lib/api/util";
+  import PasswordInput from "../lib/PasswordInput.svelte";
+  import { navigate } from "../lib/router.svelte";
   import { logout, refreshAdminSession } from "../lib/session.svelte";
 
   let { forced = false, ondone = () => {} }: { forced?: boolean; ondone?: () => void } = $props();
+
+  const minLength = 16;
 
   let current = $state("");
   let next = $state("");
@@ -11,6 +15,10 @@
   let error = $state("");
   let done = $state(false);
   let busy = $state(false);
+
+  const lengthMet = $derived(next.length >= minLength);
+  const matches = $derived(confirm !== "" && confirm === next);
+  const mismatch = $derived(confirm !== "" && confirm !== next);
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -46,42 +54,55 @@
 
 <main class={forced ? "centered" : undefined}>
   <div class="card">
-    <h1>Change password</h1>
-    {#if forced}
-      <p>You must choose a new password before you can continue.</p>
-    {/if}
-    <form onsubmit={submit}>
-      <label>
-        Current password
-        <input type="password" bind:value={current} autocomplete="current-password" required />
-      </label>
-      <label>
-        New password
-        <input
-          type="password"
+    {#if done && !forced}
+      <div class="success" role="status">
+        <span class="check" aria-hidden="true">✓</span>
+        <h1>Password changed</h1>
+        <p>Your other sessions were signed out.</p>
+        <button class="primary" type="button" onclick={() => navigate("/admin")}>Continue</button>
+      </div>
+    {:else}
+      <h1>Change password</h1>
+      {#if forced}
+        <p>You must choose a new password before you can continue.</p>
+      {/if}
+      <form onsubmit={submit}>
+        <PasswordInput
+          label="Current password"
+          bind:value={current}
+          autocomplete="current-password"
+          required
+        />
+        <PasswordInput
+          label="New password"
           bind:value={next}
           autocomplete="new-password"
-          minlength="16"
-          maxlength="128"
+          class={lengthMet ? "valid" : undefined}
+          minlength={minLength}
+          maxlength={128}
           required
         />
-      </label>
-      <label>
-        Confirm new password
-        <input
-          type="password"
+        <p class={lengthMet ? "hint valid" : "hint muted"} aria-live="polite">
+          {#if lengthMet}✓ {minLength} characters or more{:else}{next.length} / {minLength} characters{/if}
+        </p>
+        <PasswordInput
+          label="Confirm new password"
           bind:value={confirm}
           autocomplete="new-password"
-          minlength="16"
-          maxlength="128"
+          class={matches ? "valid" : undefined}
+          aria-invalid={mismatch ? "true" : undefined}
+          minlength={minLength}
+          maxlength={128}
           required
         />
-      </label>
-      <p class="muted">16 to 128 characters. Your other sessions are signed out.</p>
-      <button class="primary" type="submit" disabled={busy}>Change password</button>
-      {#if forced}<button type="button" onclick={signOut}>Sign out</button>{/if}
-    </form>
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-    {#if done}<p role="status">Password changed.</p>{/if}
+        <p class={matches ? "hint valid" : mismatch ? "hint error" : "hint"} aria-live="polite">
+          {#if matches}✓ Passwords match{:else if mismatch}Passwords do not match{/if}
+        </p>
+        <p class="muted">16 to 128 characters. Your other sessions are signed out.</p>
+        <button class="primary" type="submit" disabled={busy}>Change password</button>
+        {#if forced}<button type="button" onclick={signOut}>Sign out</button>{/if}
+      </form>
+      {#if error}<p class="error" role="alert">{error}</p>{/if}
+    {/if}
   </div>
 </main>

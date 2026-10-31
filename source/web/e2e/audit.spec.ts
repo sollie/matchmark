@@ -51,11 +51,11 @@ test.describe("audit log", () => {
     await signOutViaMenu(page);
     await page.getByRole("link", { name: "Sign in" }).click();
     await page.getByLabel("Username").fill(username);
-    await page.getByLabel("Password").fill(temporary);
+    await page.getByLabel("Password", { exact: true }).fill(temporary);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByLabel("Current password").fill(temporary);
+    await page.getByLabel("Current password", { exact: true }).fill(temporary);
     await page.getByLabel("New password", { exact: true }).fill(chosen);
-    await page.getByLabel("Confirm new password").fill(chosen);
+    await page.getByLabel("Confirm new password", { exact: true }).fill(chosen);
     await page.getByRole("button", { name: "Change password" }).click();
     await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
     await openAccountMenu(page);
