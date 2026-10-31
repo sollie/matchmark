@@ -153,6 +153,7 @@
   async function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
     opener = button;
     countsError = "";
+    error = "";
     confirmDiscard = false;
     const stored = entry.segments.find((s) => s.segment_number === segment);
     const counts = blankCounts();
@@ -547,11 +548,14 @@
     width: min(36rem, calc(100vw - 2 * var(--space-3)));
     max-height: calc(100vh - 2 * var(--space-3));
     overflow: auto;
-    padding: var(--space-4);
+    padding: 0;
     border: 1px solid var(--border, currentColor);
     border-radius: var(--radius, 0.5rem);
     background: var(--surface, Canvas);
     color: var(--text);
+  }
+  dialog.counts form {
+    padding: var(--space-4);
   }
   .counts-head {
     display: flex;

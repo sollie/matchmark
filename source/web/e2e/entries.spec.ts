@@ -204,6 +204,8 @@ test.describe("admin ring counts", () => {
     await edit.click();
     await x.fill("3");
     await dialog.click({ position: { x: 1, y: 1 } });
+    await expect(dialog.getByText("Discard changes?")).toHaveCount(0);
+    await page.mouse.click(2, 2);
     await expect(dialog.getByText("Discard changes?")).toBeVisible();
   });
 
