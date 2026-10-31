@@ -131,11 +131,13 @@ func (s *Service) UpdateMatch(ctx context.Context, c repository.Match) error {
 	if err != nil {
 		return mapRepoErr(err)
 	}
-	if MatchStatus(current.Status) != StatusDraft {
+	if MatchStatus(current.Status) != StatusDraft && (c.Date != current.Date || c.Course != current.Course) {
 		return ErrConflict
 	}
-	if err := s.checkMatchDate(ctx, current.CompetitionID, c.Date, true); err != nil {
-		return err
+	if c.Date != current.Date {
+		if err := s.checkMatchDate(ctx, current.CompetitionID, c.Date, true); err != nil {
+			return err
+		}
 	}
 	if c.Course != current.Course {
 		n, err := s.repo.CountEntries(ctx, c.ID)
@@ -149,8 +151,15 @@ func (s *Service) UpdateMatch(ctx context.Context, c repository.Match) error {
 	if err := s.repo.UpdateMatch(ctx, c); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: c.Name}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: c.ID}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: matchUpdateDetails(current.Name, c.Name)}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: c.ID}})
 	return nil
+}
+
+func matchUpdateDetails(oldName, newName string) string {
+	if oldName == newName {
+		return newName
+	}
+	return oldName + " -> " + newName
 }
 
 func (s *Service) SetMatchStatus(ctx context.Context, id int64, status MatchStatus) error {
