@@ -114,7 +114,7 @@ test.describe("entries layout", () => {
 });
 
 test.describe("admin ring counts", () => {
-  test("opening Edit on a long entries table brings the counts dialog into view", async ({
+  test("Edit opens a modal dialog without scrolling, focuses the first input and restores focus on close", async ({
     adminPage: page,
     admin,
   }) => {
@@ -125,8 +125,21 @@ test.describe("admin ring counts", () => {
     await page.setViewportSize({ width: 1024, height: 600 });
     await openMatch(page, match.id);
 
-    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
-    await expect(page.locator(".counts")).toBeInViewport();
+    const edit = page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` });
+    await edit.click();
+    const dialog = page.getByRole("dialog", { name: new RegExp(`${entry.shooter.last_name}, `) });
+    await expect(dialog).toBeInViewport();
+    await expect(dialog.getByLabel("X", { exact: true })).toBeFocused();
+
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(edit).toBeFocused();
+
+    await edit.click();
+    await dialog.getByLabel("X", { exact: true }).press("Enter");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await expect(dialog).toHaveCount(0);
   });
 
   test("a live shot total flags a wrong total and the save is rejected", async ({
@@ -140,7 +153,7 @@ test.describe("admin ring counts", () => {
     await openMatch(page, match.id);
 
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
-    const counts = page.locator(".counts");
+    const counts = page.getByRole("dialog");
     await expect(counts).toContainText(`must sum to ${course.segmentOneShots} shots`);
 
     await counts.getByLabel("10", { exact: true }).fill("10");
@@ -173,7 +186,7 @@ test.describe("admin ring counts", () => {
     const entryRow = row(page, entry.shooter.last_name);
     const segment = entryRow.locator("td.segment").first();
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
-    const counts = page.locator(".counts");
+    const counts = page.getByRole("dialog");
     await counts.getByLabel("X", { exact: true }).fill("4");
     await counts.getByLabel("10", { exact: true }).fill("8");
     await counts.getByLabel("9", { exact: true }).fill("6");
@@ -210,7 +223,7 @@ test.describe("admin ring counts", () => {
     const segment = row(page, entry.shooter.last_name).locator("td.segment").first();
     await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 10));
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
-    const counts = page.locator(".counts");
+    const counts = page.getByRole("dialog");
     await counts.getByLabel("9", { exact: true }).fill(String(course.segmentOneShots));
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
