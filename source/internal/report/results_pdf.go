@@ -26,10 +26,12 @@ import (
 
 const (
 	pdfFamily        = "go"
-	pdfFontSize      = 9.0
-	pdfRowHeight     = 6.0
-	pdfSectionHeight = 9.0
-	pdfHeaderHeight  = 10.0
+	pdfFontSize      = 7.0
+	pdfMutedSize     = 6.0
+	pdfLineHeight    = 3.0
+	pdfPadY          = 0.6
+	pdfRowHeight     = 4.2
+	pdfSectionHeight = 8.0
 	pdfLogoHeight    = 18.0
 	pdfHeadGap       = 2.0
 	pdfMargin        = 12.0
@@ -100,6 +102,8 @@ type pdfColumn struct {
 	weight int
 	right  bool
 	muted  bool
+	flex   bool
+	equal  bool
 }
 
 func ResultsPDF(d ResultsPDFData) ([]byte, error) {
@@ -110,9 +114,25 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	ms, err := newMeasurer()
+	if err != nil {
+		return nil, err
+	}
 	columns, cells := resultsColumns(d)
+	var rowCells [][]string
+	for _, c := range d.Categories {
+		for _, r := range c.Rows {
+			rowCells = append(rowCells, cells(r))
+		}
+	}
+	ms.sizeColumns(columns, rowCells)
 	newColumns, newCells := newShooterColumns(d)
-	grid := max(columnGrid(columns), columnGrid(newColumns))
+	var newRowCells [][]string
+	for _, n := range d.NewShooters {
+		newRowCells = append(newRowCells, newCells(n))
+	}
+	ms.sizeColumns(newColumns, newRowCells)
+	grid := pdfGrid
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
 		WithOrientation(orientation.Vertical).
@@ -137,12 +157,14 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	}
 
 	flow := &pdfFlow{add: m.AddRows, used: pdfLogoHeight + pdfHeadGap}
+	header, headerHeight := tableHeader(ms, columns, grid)
 	for _, c := range d.Categories {
-		flow.keep(pdfSectionHeight + pdfHeaderHeight + pdfKeepRows*pdfRowHeight)
+		flow.keep(pdfSectionHeight + headerHeight + pdfKeepRows*pdfRowHeight)
 		flow.push(pdfSectionHeight, sectionRow(categoryTitle(c), grid))
-		flow.push(pdfHeaderHeight, tableHeader(columns, grid))
+		flow.push(headerHeight, header)
 		for _, r := range c.Rows {
-			flow.push(pdfRowHeight, tableRow(columns, cells(r), grid, false, r.Rank >= 1 && r.Rank <= 3 && !r.DNF))
+			tr, height := tableRow(ms, columns, cells(r), grid, false, r.Rank >= 1 && r.Rank <= 3 && !r.DNF)
+			flow.push(height, tr)
 		}
 		flow.push(pdfRowHeight, row.New(pdfRowHeight))
 	}
@@ -151,9 +173,11 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	}
 	if len(d.NewShooters) > 0 {
 		p := page.New()
-		p.Add(sectionRow("New shooters", grid), tableHeader(newColumns, grid))
-		for _, s := range d.NewShooters {
-			p.Add(tableRow(newColumns, newCells(s), grid, false, false))
+		newHeader, _ := tableHeader(ms, newColumns, pdfGrid)
+		p.Add(sectionRow("New shooters", grid), newHeader)
+		for _, cells := range newRowCells {
+			tr, _ := tableRow(ms, newColumns, cells, grid, false, false)
+			p.Add(tr)
 		}
 		m.AddPages(p)
 	}
@@ -163,14 +187,6 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 		return nil, err
 	}
 	return doc.GetBytes(), nil
-}
-
-func columnGrid(columns []pdfColumn) int {
-	n := 0
-	for _, c := range columns {
-		n += c.weight
-	}
-	return n
 }
 
 func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string) {
@@ -196,15 +212,15 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	showSegments := found && len(first.Segments) > 0 && first.Segments[0].Score != nil
 	showX := found && first.XCount != nil
 
-	columns := []pdfColumn{{"#", 2, true, false}}
+	columns := []pdfColumn{{title: "#", right: true}}
 	if showNames {
-		columns = append(columns, pdfColumn{"Shooter", 7, false, false}, pdfColumn{"WAID", 3, false, true})
+		columns = append(columns, pdfColumn{title: "Shooter", flex: true}, pdfColumn{title: "WAID", muted: true})
 	}
 	if showClubs {
-		columns = append(columns, pdfColumn{"Club", 6, false, false})
+		columns = append(columns, pdfColumn{title: "Club", flex: true})
 	}
 	if showCountries {
-		columns = append(columns, pdfColumn{"Country", 3, false, false})
+		columns = append(columns, pdfColumn{title: "Country"})
 	}
 	if showSegments {
 		for i, n := range d.Segments {
@@ -212,12 +228,12 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 			if i < len(d.SegmentNames) {
 				title = d.SegmentNames[i]
 			}
-			columns = append(columns, pdfColumn{title, 4, true, false})
+			columns = append(columns, pdfColumn{title: title, right: true, equal: true})
 		}
 	}
-	columns = append(columns, pdfColumn{"Total", 3, true, false})
+	columns = append(columns, pdfColumn{title: "Total", right: true})
 	if showX {
-		columns = append(columns, pdfColumn{"X", 2, true, false})
+		columns = append(columns, pdfColumn{title: "X", right: true})
 	}
 	return columns, func(r ResultsPDFRow) []string {
 		cells := []string{strconv.Itoa(r.Rank)}
@@ -254,16 +270,16 @@ func newShooterColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFNewShooter
 	showClubs := len(d.NewShooters) > 0 && d.NewShooters[0].Club != nil
 	showCountries := len(d.NewShooters) > 0 && d.NewShooters[0].Country != nil
 	showX := len(d.NewShooters) > 0 && d.NewShooters[0].XCount != nil
-	columns := []pdfColumn{{"Shooter", 8, false, false}, {"Category", 4, false, false}}
+	columns := []pdfColumn{{title: "Shooter", flex: true}, {title: "Category"}}
 	if showClubs {
-		columns = append(columns, pdfColumn{"Club", 6, false, false})
+		columns = append(columns, pdfColumn{title: "Club", flex: true})
 	}
 	if showCountries {
-		columns = append(columns, pdfColumn{"Country", 3, false, false})
+		columns = append(columns, pdfColumn{title: "Country"})
 	}
-	columns = append(columns, pdfColumn{"Total", 3, true, false})
+	columns = append(columns, pdfColumn{title: "Total", right: true})
 	if showX {
-		columns = append(columns, pdfColumn{"X", 2, true, false})
+		columns = append(columns, pdfColumn{title: "X", right: true})
 	}
 	return columns, func(s ResultsPDFNewShooter) []string {
 		cells := []string{s.FirstName + " " + s.LastName, s.Category}
@@ -354,47 +370,56 @@ func textRow(s string, grid int, p props.Text) core.Row {
 }
 
 func sectionRow(title string, grid int) core.Row {
-	return row.New(pdfSectionHeight).Add(col.New(grid).Add(text.New(title, props.Text{Size: 12, Style: fontstyle.Bold, Top: 2})))
+	return row.New(pdfSectionHeight).Add(col.New(grid).Add(text.New(title, props.Text{Size: 10, Style: fontstyle.Bold, Top: 2})))
 }
 
-func tableHeader(columns []pdfColumn, grid int) core.Row {
+func tableHeader(ms *measurer, columns []pdfColumn, grid int) (core.Row, float64) {
 	titles := make([]string, len(columns))
 	for i, c := range columns {
 		titles[i] = c.title
 	}
-	return tableRow(columns, titles, grid, true, false)
+	return tableRow(ms, columns, titles, grid, true, false)
 }
 
-func tableRow(columns []pdfColumn, cells []string, grid int, header, podium bool) core.Row {
-	used := columnGrid(columns)
-	cols := make([]core.Col, 0, len(columns)+1)
+func tableRow(ms *measurer, columns []pdfColumn, cells []string, grid int, header, podium bool) (core.Row, float64) {
+	cols := make([]core.Col, 0, len(columns))
+	lines := 1
 	for i, c := range columns {
-		p := props.Text{Top: 1.5, Left: 1, Right: 1, Size: pdfFontSize}
+		width := float64(c.weight)*pdfUnit - 2*pdfCellPadX
+		maxLines := pdfMaxLines
 		if header {
-			p.Style = fontstyle.Bold
+			maxLines = pdfHeaderLines
 		}
-		if c.right {
-			p.Align = align.Right
+		size := c.fontSize()
+		if header {
+			size = pdfFontSize
 		}
-		if c.muted && !header {
-			p.Size, p.Color = pdfFontSize-1, pdfMuted
+		wrapped := ms.wrap(cells[i], size, header, width, maxLines)
+		lines = max(lines, len(wrapped))
+		texts := make([]core.Component, len(wrapped))
+		for n, line := range wrapped {
+			p := props.Text{Top: pdfPadY + float64(n)*pdfLineHeight, Left: pdfCellPadX, Right: pdfCellPadX, Size: size}
+			if header {
+				p.Style = fontstyle.Bold
+			}
+			if c.right {
+				p.Align = align.Right
+			}
+			if c.muted && !header {
+				p.Color = pdfMuted
+			}
+			texts[n] = text.New(line, p)
 		}
-		cols = append(cols, col.New(c.weight).Add(text.New(cells[i], p)))
+		cols = append(cols, col.New(c.weight).Add(texts...))
 	}
-	if used < grid {
-		cols = append(cols, col.New(grid-used))
-	}
-	height := pdfRowHeight
-	if header {
-		height = pdfHeaderHeight
-	}
+	height := max(pdfRowHeight, 2*pdfPadY+float64(lines)*pdfLineHeight)
 	r := row.New(height).Add(cols...)
 	if header {
 		r.WithStyle(&props.Cell{BackgroundColor: pdfHeaderFill})
 	} else if podium {
 		r.WithStyle(&props.Cell{BackgroundColor: pdfPodiumFill})
 	}
-	return r
+	return r, height
 }
 
 func (d ResultsPDFData) participants() int {
