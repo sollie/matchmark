@@ -32,7 +32,7 @@ test.describe("course shot counts", () => {
           await page
             .getByRole("button", { name: `Lane ${entry.lane} segment ${segmentNumber}: Edit` })
             .click();
-          const counts = page.locator(".counts");
+          const counts = page.getByRole("dialog");
           await expect(counts).toContainText(`must sum to ${shots} shots`);
 
           await counts.getByLabel("10", { exact: true }).fill(String(shots - 1));

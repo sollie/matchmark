@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import Entries from "./Entries.svelte";
 import { stubFetch } from "../test/fetch";
@@ -45,6 +45,13 @@ const entry = (overrides: Partial<EntryWithSegments> = {}): EntryWithSegments =>
       scorer_name: "Rick Roe",
       score: 287,
       shots_entered: 30,
+      x: 0,
+      "10": 0,
+      "9": 0,
+      "8": 0,
+      "7": 0,
+      "0": 0,
+      miss: 0,
     },
     {
       segment_number: 2,
@@ -54,6 +61,13 @@ const entry = (overrides: Partial<EntryWithSegments> = {}): EntryWithSegments =>
       scorer_name: null,
       score: 0,
       shots_entered: 0,
+      x: 0,
+      "10": 0,
+      "9": 0,
+      "8": 0,
+      "7": 0,
+      "0": 0,
+      miss: 0,
     },
   ],
   ...overrides,
@@ -67,12 +81,16 @@ const course = (key: string, categories: string[]) =>
     segments: key === "150" ? [{ number: 1, name: "Match 1", stages: [1, 2], shots: 24 }] : [],
   }) as unknown as RulebookCourse;
 
-function setup(entries: EntryWithSegments[] = [entry()], courseKey = "150") {
+function setup(
+  entries: EntryWithSegments[] = [entry()],
+  courseKey = "150",
+  respond?: Parameters<typeof stubFetch>[0],
+) {
   rulebook.courses = [
     course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]),
     course("40", ["Revolver"]),
   ];
-  const calls = stubFetch();
+  const calls = stubFetch(respond);
   const reload = vi.fn(async () => {});
   const view = render(Entries, { matchId: 5, course: courseKey, entries, shooters, reload });
   return { calls, reload, view, user: userEvent.setup() };
@@ -133,6 +151,13 @@ describe("Entries", () => {
       scorer_name: null,
       score,
       shots_entered: shots,
+      x: 0,
+      "10": 0,
+      "9": 0,
+      "8": 0,
+      "7": 0,
+      "0": 0,
+      miss: 0,
     });
     setup([
       entry({
@@ -195,6 +220,179 @@ describe("Entries", () => {
     expect(screen.getByText("271 too many", { exact: false })).toBeTruthy();
   });
 
+  it("edits counts in a modal dialog named after the shooter and segment, focusing the first input", async () => {
+    const { user } = setup();
+    const edit = screen.getByRole("button", { name: "Lane 1 segment 2: Edit" });
+    await user.click(edit);
+    const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
+    expect(dialog.hasAttribute("open")).toBe(true);
+    expect(document.activeElement).toBe(within(dialog).getByLabelText("X"));
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(edit);
+  });
+
+  it("shows stored counts read-only and pre-fills the inputs", async () => {
+    const stored = entry({
+      segments: [
+        {
+          ...entry().segments[0],
+          status: "open",
+          score: 280,
+          shots_entered: 30,
+          x: 2,
+          "10": 20,
+          "9": 8,
+        },
+      ],
+    });
+    const { user } = setup([stored]);
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 1: Edit" }));
+    const dialog = screen.getByRole("dialog", { name: /^Jane Doe, / });
+    const previous = within(dialog).getByRole("region", { name: "Stored counts" });
+    expect(previous.textContent).toContain("X 2");
+    expect(previous.textContent).toContain("10 20");
+    expect(previous.textContent).toContain("9 8");
+    expect(previous.textContent).toContain("30 / 30");
+    expect(previous.textContent).toContain("Open");
+    expect(within(dialog).queryByText("No counts entered yet")).toBeNull();
+    expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("2");
+    expect((within(dialog).getByLabelText("10") as HTMLInputElement).value).toBe("20");
+    expect((within(dialog).getByLabelText("9") as HTMLInputElement).value).toBe("8");
+  });
+
+  it("notices changed stored counts without touching the inputs", async () => {
+    const stored = entry({
+      segments: [{ ...entry().segments[0], status: "open", "10": 30 }, entry().segments[1]],
+    });
+    const { user, view } = setup([stored]);
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 1: Edit" }));
+    const dialog = screen.getByRole("dialog", { name: /^Jane Doe, / });
+    await user.clear(within(dialog).getByLabelText("10"));
+    await user.type(within(dialog).getByLabelText("10"), "25");
+    expect(within(dialog).queryByText("Stored counts changed since you opened this")).toBeNull();
+
+    const changed = entry({
+      segments: [{ ...stored.segments[0], "10": 28, "9": 2 }, stored.segments[1]],
+    });
+    await view.rerender({ entries: [changed] });
+    expect(within(dialog).getByText("Stored counts changed since you opened this")).toBeTruthy();
+    expect((within(dialog).getByLabelText("10") as HTMLInputElement).value).toBe("25");
+    expect(within(dialog).getByRole("region", { name: "Stored counts" }).textContent).toContain(
+      "10 28",
+    );
+  });
+
+  it("does not notice a reload that leaves the stored counts unchanged", async () => {
+    const { user, view } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 1: Edit" }));
+    await view.rerender({ entries: [entry()] });
+    expect(screen.queryByText("Stored counts changed since you opened this")).toBeNull();
+  });
+
+  it("says no counts were entered for a segment without counts", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
+    expect(within(dialog).getByText("No counts entered yet")).toBeTruthy();
+    expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("0");
+  });
+
+  it("does not submit when Enter is pressed in an input", async () => {
+    const { calls, user } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    await user.type(screen.getByLabelText("X"), "3{Enter}");
+    expect(calls).toEqual([]);
+    expect(screen.getByRole("dialog", { name: "Jane Doe, Segment 2" })).toBeTruthy();
+  });
+
+  it("closes on Cancel", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  describe("unsaved changes guard", () => {
+    const openEdit = async () => {
+      const ctx = setup();
+      await ctx.user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+      return ctx;
+    };
+    const dialogEl = () => screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
+    const closers = [
+      [
+        "Cancel",
+        async (u: ReturnType<typeof userEvent.setup>) =>
+          u.click(screen.getByRole("button", { name: "Cancel" })),
+      ],
+      [
+        "Close button",
+        async (u: ReturnType<typeof userEvent.setup>) =>
+          u.click(screen.getByRole("button", { name: "Close" })),
+      ],
+      [
+        "Esc",
+        async () => {
+          fireEvent(dialogEl(), new Event("cancel", { cancelable: true }));
+        },
+      ],
+      ["backdrop", async (u: ReturnType<typeof userEvent.setup>) => u.click(dialogEl())],
+    ] as const;
+
+    it.each(closers)("%s closes a clean dialog immediately", async (_n, close) => {
+      const { user } = await openEdit();
+      await close(user);
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it.each(closers)("%s on a dirty dialog asks before discarding", async (_n, close) => {
+      const { user } = await openEdit();
+      await user.type(screen.getByLabelText("X"), "3");
+      await close(user);
+      const dialog = dialogEl();
+      expect(within(dialog).getByText("Discard changes?")).toBeTruthy();
+      await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
+      expect(within(dialog).queryByText("Discard changes?")).toBeNull();
+      expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("3");
+      await close(user);
+      await user.click(within(dialogEl()).getByRole("button", { name: "Discard" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("treats reverting to the original counts as clean", async () => {
+      const { user } = await openEdit();
+      const x = screen.getByLabelText("X");
+      await user.clear(x);
+      await user.type(x, "4");
+      await user.clear(x);
+      await user.type(x, "0");
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  it("closes after a successful save", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    await user.click(screen.getByRole("button", { name: "Save counts" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("stays open with inputs kept and the error inside the dialog when saving fails", async () => {
+    const { user } = setup([entry()], "150", () => ({
+      status: 422,
+      body: { error: "invalid input" },
+    }));
+    await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
+    const x = screen.getByLabelText("X");
+    await user.type(x, "5");
+    await user.click(screen.getByRole("button", { name: "Save and lock" }));
+    const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
+    expect(within(dialog).getByRole("alert").textContent).toBe("invalid input");
+    expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("5");
+  });
+
   it("saves counts without locking", async () => {
     const { calls, user } = setup();
     await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
@@ -238,6 +436,13 @@ describe("Entries awaiting acceptance", () => {
           scorer_name: "Rick Roe",
           score: 287,
           shots_entered: 30,
+          x: 0,
+          "10": 0,
+          "9": 0,
+          "8": 0,
+          "7": 0,
+          "0": 0,
+          miss: 0,
         },
       ],
     });

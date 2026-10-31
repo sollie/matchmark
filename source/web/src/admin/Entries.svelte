@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import { api } from "../lib/api/client";
   import { settle } from "../lib/api/util";
   import { entryCommands } from "../lib/entries";
@@ -46,9 +47,17 @@
   let chosenCategory = $state<string | null>(null);
   let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
-  let scoring = $state<{ entry: EntryWithSegments; segment: number; counts: RingCounts } | null>(
-    null,
-  );
+  let scoring = $state<{
+    entry: EntryWithSegments;
+    segment: number;
+    counts: RingCounts;
+    original: RingCounts;
+  } | null>(null);
+  let confirmDiscard = $state(false);
+  let countsDialog = $state<HTMLDialogElement>();
+  let openedStored = $state("");
+  let opener: HTMLElement | null = null;
+  let countsError = $state("");
   let error = $state("");
   let archivedBlock = $state<Shooter | null>(null);
 
@@ -141,17 +150,58 @@
     run(commands.accept(entry.id, segment));
   const lock = (entry: EntryWithSegments, segment: number) => run(commands.lock(entry.id, segment));
 
-  function reveal(node: HTMLElement) {
-    node.scrollIntoView?.({ block: "center" });
-    node.querySelector("input")?.focus({ preventScroll: true });
+  async function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
+    opener = button;
+    countsError = "";
+    error = "";
+    confirmDiscard = false;
+    const stored = entry.segments.find((s) => s.segment_number === segment);
+    const counts = blankCounts();
+    for (const k of ringKeys) counts[k] = stored?.[k] ?? 0;
+    scoring = { entry, segment, counts, original: { ...counts } };
+    openedStored = storedKey(stored);
+    await tick();
+    countsDialog?.showModal();
+    countsDialog?.querySelector("input")?.focus();
+  }
+
+  const storedKey = (s: { [k in (typeof ringKeys)[number]]: number } | undefined) =>
+    ringKeys.map((k) => s?.[k] ?? 0).join(",");
+
+  const statusLabels = {
+    open: "Open",
+    awaiting_acceptance: "Awaiting acceptance",
+    accepted: "Accepted",
+  } as const;
+
+  function closeCounts() {
+    countsDialog?.close();
+  }
+
+  function requestClose() {
+    if (!scoring) return;
+    const { counts, original } = scoring;
+    if (ringKeys.some((k) => (Number(counts[k]) || 0) !== original[k])) {
+      confirmDiscard = true;
+      return;
+    }
+    closeCounts();
+  }
+
+  function counted() {
+    scoring = null;
+    countsError = "";
+    confirmDiscard = false;
+    opener?.focus();
+    opener = null;
   }
 
   async function saveCounts(andLock = false) {
     if (!scoring) return;
     const { entry, segment, counts } = scoring;
-    const ok = await run(commands.saveCounts(entry.id, segment, counts));
-    if (!ok) return;
-    scoring = null;
+    countsError = (await commands.saveCounts(entry.id, segment, counts)) ?? "";
+    if (countsError) return;
+    closeCounts();
     if (andLock) await lock(entry, segment);
   }
 </script>
@@ -292,8 +342,7 @@
                     <button
                       class="secondary"
                       aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Edit`}
-                      onclick={() =>
-                        (scoring = { entry, segment: st.segment_number, counts: blankCounts() })}
+                      onclick={(e) => openCounts(entry, st.segment_number, e.currentTarget)}
                       >Edit</button
                     >
                     {#if st.status === "awaiting_acceptance"}
@@ -355,41 +404,100 @@
     </table>
   </div>
 
-  {#if scoring}
-    {@const expected =
-      scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
-      0}
-    {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
-    <div class="card counts" use:reveal>
-      <h3>
-        {shooterName(scoring.entry.shooter_id)}, segment {scoring.segment}: overwrite ring counts
-      </h3>
-      <p class="muted">Enter all counts; they must sum to {expected} shots.</p>
-      <div class="count-grid">
-        {#each ringKeys as k (k)}
-          <label>
-            {k === "x" ? "X" : k}
-            <input type="number" inputmode="numeric" min="0" bind:value={scoring.counts[k]} />
-          </label>
-        {/each}
-      </div>
-      <p class="total" class:mismatch={total !== expected}>
-        <strong>{total}</strong> / {expected}
-        {#if total === expected}
-          <span class="badge success">✓ Shots match</span>
-        {:else if total > expected}
-          <span class="badge danger">⚠ {total - expected} too many</span>
-        {:else}
-          <span class="badge warning">⚠ {expected - total} to go</span>
+  <dialog
+    bind:this={countsDialog}
+    class="counts"
+    aria-labelledby="counts-title"
+    onclose={counted}
+    oncancel={(e) => {
+      e.preventDefault();
+      requestClose();
+    }}
+    onclick={(e) => {
+      if (e.target === countsDialog) requestClose();
+    }}
+  >
+    {#if scoring}
+      {@const expected =
+        scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
+        0}
+      {@const stored = entries
+        .find((e) => e.id === scoring?.entry.id)
+        ?.segments.find((s) => s.segment_number === scoring?.segment)}
+      {@const storedChanged = storedKey(stored) !== openedStored}
+      {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
+      <form
+        onsubmit={(e) => e.preventDefault()}
+        onkeydown={(e) => {
+          if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault();
+        }}
+      >
+        <div class="counts-head">
+          <h3 id="counts-title">
+            {shooterName(scoring.entry.shooter_id)}, {segmentLabel(course, scoring.segment)}
+          </h3>
+          <button type="button" class="secondary" aria-label="Close" onclick={requestClose}
+            >✕</button
+          >
+        </div>
+        {#if countsError}<p class="error" role="alert">{countsError}</p>{/if}
+        {#if confirmDiscard}
+          <div class="row" role="alertdialog" aria-label="Discard changes?">
+            <strong>Discard changes?</strong>
+            <button type="button" class="secondary" onclick={() => (confirmDiscard = false)}
+              >Keep editing</button
+            >
+            <button type="button" class="danger" onclick={closeCounts}>Discard</button>
+          </div>
         {/if}
-      </p>
-      <div class="count-actions">
-        <button class="primary" onclick={() => saveCounts()}>Save counts</button>
-        <button class="primary" onclick={() => saveCounts(true)}>Save and lock</button>
-        <button class="secondary" onclick={() => (scoring = null)}>Cancel</button>
-      </div>
-    </div>
-  {/if}
+        <section class="stored" aria-label="Stored counts">
+          <h4>Stored counts</h4>
+          {#if storedChanged}
+            <p class="error" role="status">Stored counts changed since you opened this</p>
+          {/if}
+          {#if stored && stored.shots_entered > 0}
+            <ul class="stored-grid">
+              {#each ringKeys as k (k)}
+                <li>{k === "x" ? "X" : k} <strong>{stored[k]}</strong></li>
+              {/each}
+            </ul>
+            <p>
+              <strong>{stored.shots_entered}</strong> / {expected} shots ·
+              {statusLabels[stored.status]}
+            </p>
+          {:else}
+            <p class="muted">No counts entered yet</p>
+          {/if}
+        </section>
+        <p class="muted">Enter all counts; they must sum to {expected} shots.</p>
+        <div class="count-grid">
+          {#each ringKeys as k (k)}
+            <label>
+              {k === "x" ? "X" : k}
+              <input type="number" inputmode="numeric" min="0" bind:value={scoring.counts[k]} />
+            </label>
+          {/each}
+        </div>
+        <p class="total" class:mismatch={total !== expected}>
+          <strong>{total}</strong> / {expected}
+          {#if total === expected}
+            <span class="badge success">✓ Shots match</span>
+          {:else if total > expected}
+            <span class="badge danger">⚠ {total - expected} too many</span>
+          {:else}
+            <span class="badge warning">⚠ {expected - total} to go</span>
+          {/if}
+        </p>
+        <div class="count-actions">
+          <button type="button" class="primary" onclick={() => saveCounts()}>Save counts</button>
+          <button type="button" class="primary" onclick={() => saveCounts(true)}
+            >Save and lock</button
+          >
+          <button type="button" class="secondary" onclick={requestClose}>Cancel</button>
+        </div>
+      </form>
+    {/if}
+  </dialog>
 </section>
 
 <style>
@@ -435,6 +543,39 @@
     padding: var(--space-5);
     text-align: center;
     color: var(--text-muted);
+  }
+  dialog.counts {
+    width: min(36rem, calc(100vw - 2 * var(--space-3)));
+    max-height: calc(100vh - 2 * var(--space-3));
+    overflow: auto;
+    padding: 0;
+    border: 1px solid var(--border, currentColor);
+    border-radius: var(--radius, 0.5rem);
+    background: var(--surface, Canvas);
+    color: var(--text);
+  }
+  dialog.counts form {
+    padding: var(--space-4);
+  }
+  .counts-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .counts-head h3 {
+    margin: 0;
+  }
+  .stored h4 {
+    margin: var(--space-3) 0 var(--space-2);
+  }
+  .stored-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   .count-grid {
     display: grid;

@@ -3283,26 +3283,29 @@ components:
           type: boolean
     EntrySegment:
       type: object
-      required: [segment_number, expected_shots, status, scorer_lane, scorer_name, score, shots_entered]
-      properties:
-        segment_number:
-          type: integer
-        expected_shots:
-          type: integer
-        status:
-          $ref: '#/components/schemas/SegmentStatus'
-        scorer_lane:
-          type: integer
-          nullable: true
-        scorer_name:
-          type: string
-          nullable: true
-        score:
-          type: integer
-          description: Segment score from the stored ring counts, whether or not the segment is accepted
-        shots_entered:
-          type: integer
-          description: Sum of all stored ring counts
+      allOf:
+        - $ref: '#/components/schemas/RingCounts'
+        - type: object
+          required: [segment_number, expected_shots, status, scorer_lane, scorer_name, score, shots_entered]
+          properties:
+            segment_number:
+              type: integer
+            expected_shots:
+              type: integer
+            status:
+              $ref: '#/components/schemas/SegmentStatus'
+            scorer_lane:
+              type: integer
+              nullable: true
+            scorer_name:
+              type: string
+              nullable: true
+            score:
+              type: integer
+              description: Segment score from the stored ring counts, whether or not the segment is accepted
+            shots_entered:
+              type: integer
+              description: Sum of all stored ring counts; 0 means no counts have been entered (the seven counts are then all 0)
     EntryWithSegments:
       allOf:
         - $ref: '#/components/schemas/Entry'

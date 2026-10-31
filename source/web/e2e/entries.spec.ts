@@ -114,7 +114,7 @@ test.describe("entries layout", () => {
 });
 
 test.describe("admin ring counts", () => {
-  test("opening Edit on a long entries table brings the counts dialog into view", async ({
+  test("Edit opens a modal dialog without scrolling, focuses the first input and restores focus on close", async ({
     adminPage: page,
     admin,
   }) => {
@@ -125,8 +125,108 @@ test.describe("admin ring counts", () => {
     await page.setViewportSize({ width: 1024, height: 600 });
     await openMatch(page, match.id);
 
+    const edit = page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` });
+    await edit.click();
+    const dialog = page.getByRole("dialog", { name: new RegExp(`${entry.shooter.last_name}, `) });
+    await expect(dialog).toBeInViewport();
+    await expect(dialog.getByLabel("X", { exact: true })).toBeFocused();
+
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(edit).toBeFocused();
+
+    await edit.click();
+    await dialog.getByLabel("X", { exact: true }).press("Enter");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await expect(dialog).toHaveCount(0);
+  });
+
+  test("the dialog shows stored counts read-only and pre-fills the inputs", async ({
+    course,
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await setCounts(admin, match.id, entry.entryId, 1, { "10": course.segmentOneShots }, true);
+    await openMatch(page, match.id);
+
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
-    await expect(page.locator(".counts")).toBeInViewport();
+    const dialog = page.getByRole("dialog");
+    const stored = dialog.getByRole("region", { name: "Stored counts" });
+    await expect(stored).toContainText(`10 ${course.segmentOneShots}`);
+    await expect(stored).toContainText("Accepted");
+    await expect(dialog.getByLabel("10", { exact: true })).toHaveValue(
+      String(course.segmentOneShots),
+    );
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 2: Edit` }).click();
+    await expect(dialog).toContainText("No counts entered yet");
+    await expect(dialog.getByLabel("10", { exact: true })).toHaveValue("0");
+  });
+
+  test("closing a dirty dialog asks to discard, a clean one closes at once", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await openMatch(page, match.id);
+
+    const edit = page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` });
+    const dialog = page.getByRole("dialog");
+    const x = dialog.getByLabel("X", { exact: true });
+
+    await edit.click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+
+    await edit.click();
+    await x.fill("3");
+    await x.fill("0");
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await edit.click();
+    await x.fill("3");
+    await page.keyboard.press("Escape");
+    await expect(dialog.getByText("Discard changes?")).toBeVisible();
+    await dialog.getByRole("button", { name: "Keep editing" }).click();
+    await expect(x).toHaveValue("3");
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await dialog.getByRole("button", { name: "Discard" }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await edit.click();
+    await x.fill("3");
+    await dialog.click({ position: { x: 1, y: 1 } });
+    await expect(dialog.getByText("Discard changes?")).toHaveCount(0);
+    await page.mouse.click(2, 2);
+    await expect(dialog.getByText("Discard changes?")).toBeVisible();
+  });
+
+  test("the dialog notices stored counts changed by someone else and keeps the inputs", async ({
+    course,
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await setStatus(admin, match.id, "active");
+    await openMatch(page, match.id);
+
+    await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("10", { exact: true }).fill("3");
+    await expect(dialog).not.toContainText("Stored counts changed since you opened this");
+
+    await setCounts(admin, match.id, entry.entryId, 1, { "10": course.segmentOneShots });
+    await expect(dialog).toContainText("Stored counts changed since you opened this");
+    await expect(dialog.getByLabel("10", { exact: true })).toHaveValue("3");
   });
 
   test("a live shot total flags a wrong total and the save is rejected", async ({
@@ -140,7 +240,7 @@ test.describe("admin ring counts", () => {
     await openMatch(page, match.id);
 
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
-    const counts = page.locator(".counts");
+    const counts = page.getByRole("dialog");
     await expect(counts).toContainText(`must sum to ${course.segmentOneShots} shots`);
 
     await counts.getByLabel("10", { exact: true }).fill("10");
@@ -173,7 +273,7 @@ test.describe("admin ring counts", () => {
     const entryRow = row(page, entry.shooter.last_name);
     const segment = entryRow.locator("td.segment").first();
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
-    const counts = page.locator(".counts");
+    const counts = page.getByRole("dialog");
     await counts.getByLabel("X", { exact: true }).fill("4");
     await counts.getByLabel("10", { exact: true }).fill("8");
     await counts.getByLabel("9", { exact: true }).fill("6");
@@ -210,7 +310,8 @@ test.describe("admin ring counts", () => {
     const segment = row(page, entry.shooter.last_name).locator("td.segment").first();
     await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 10));
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
-    const counts = page.locator(".counts");
+    const counts = page.getByRole("dialog");
+    await counts.getByLabel("10", { exact: true }).fill("0");
     await counts.getByLabel("9", { exact: true }).fill(String(course.segmentOneShots));
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
