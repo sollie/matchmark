@@ -9,6 +9,9 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/johnfercher/maroto/v2/pkg/components/row"
+	"github.com/johnfercher/maroto/v2/pkg/core"
 )
 
 var pdfPage = regexp.MustCompile(`/Type /Page[^s]`)
@@ -41,7 +44,7 @@ func sampleResults() ResultsPDFData {
 	}
 }
 
-func TestResultsPDFHasOnePagePerCategory(t *testing.T) {
+func TestResultsPDFFlowsCategoriesBeforeNewShootersPage(t *testing.T) {
 	out, err := ResultsPDF(sampleResults())
 	if err != nil {
 		t.Fatal(err)
@@ -49,8 +52,8 @@ func TestResultsPDFHasOnePagePerCategory(t *testing.T) {
 	if !bytes.HasPrefix(out, []byte("%PDF-")) {
 		t.Fatalf("not a PDF: %q", out[:8])
 	}
-	if got := pageCount(out); got != 3 {
-		t.Fatalf("pages = %d, want 2 categories + new shooters", got)
+	if got := pageCount(out); got != 2 {
+		t.Fatalf("pages = %d, want one page of categories and one of new shooters", got)
 	}
 }
 
@@ -76,7 +79,7 @@ func TestResultsPDFWithHiddenColumnsAndLogo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := pageCount(out); got != 2 {
+	if got := pageCount(out); got != 1 {
 		t.Fatalf("pages = %d", got)
 	}
 }
@@ -120,7 +123,7 @@ func TestResultsPDFWithoutClubSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := pageCount(out); got != 3 {
+	if got := pageCount(out); got != 2 {
 		t.Fatalf("pages = %d", got)
 	}
 }
@@ -143,32 +146,53 @@ func TestResultsColumnsUseSegmentNames(t *testing.T) {
 	}
 }
 
-func TestScoreCardCellsListRingsPerSegmentWithTotals(t *testing.T) {
-	r := ResultsPDFRow{Segments: []ResultsPDFSegment{
-		{Segment: 1, Counts: []int{1, 2, 3, 4, 5, 6, 7}},
-		{Segment: 2},
-		{Segment: 3, Counts: []int{1, 1, 1, 1, 1, 1, 1}},
-	}}
-	got := scoreCardCells(r)
-	if len(got) != 7 || !slices.Equal(got[0], []string{"X", "1", "", "1", "2"}) || !slices.Equal(got[6], []string{"M", "7", "", "1", "8"}) {
-		t.Fatalf("cells %q", got)
+func TestResultsColumnsShowDNFRowsAsDNF(t *testing.T) {
+	d := sampleResults()
+	d.Categories[0].Rows = append(d.Categories[0].Rows, ResultsPDFRow{
+		LastName: ptr("Slow"), FirstName: ptr("Sam"), Club: ptr("Łódź SK"), Country: ptr("NOR"), DNF: true,
+		Segments: []ResultsPDFSegment{{Segment: 1, Score: ptr(80)}, {Segment: 2}},
+	})
+	_, cells := resultsColumns(d)
+	got := cells(d.Categories[0].Rows[2])
+	want := []string{"", "Sam Slow", "", "Łódź SK", "NOR", "80", "", "DNF", ""}
+	if !slices.Equal(got, want) {
+		t.Fatalf("cells %q, want %q", got, want)
 	}
-	if scoreCardCells(ResultsPDFRow{Segments: []ResultsPDFSegment{{Segment: 1}}}) != nil {
-		t.Fatal("card without counts")
+	if got := d.participants(); got != 4 {
+		t.Fatalf("participants = %d, want ranked and DNF rows", got)
 	}
 }
 
-func TestResultsPDFWithScoreCards(t *testing.T) {
-	d := sampleResults()
-	for i := range d.Categories {
-		for j := range d.Categories[i].Rows {
-			for k := range d.Categories[i].Rows[j].Segments {
-				d.Categories[i].Rows[j].Segments[k].Counts = []int{1, 2, 3, 4, 5, 6, 7}
-			}
+func TestPDFFlowKeepsBlockOnOnePage(t *testing.T) {
+	var added []float64
+	f := &pdfFlow{add: func(rows ...core.Row) {
+		for range rows {
+			added = append(added, 0)
 		}
+	}, used: pdfLogoHeight + pdfHeadGap}
+	f.keep(50)
+	if len(added) != 0 {
+		t.Fatal("block that fits must not be pushed down")
 	}
+	f.used = pdfPageHeight - pdfFooterHeight - 10
+	f.keep(50)
+	if len(added) != 1 {
+		t.Fatalf("filler rows = %d, want 1 to force a new page", len(added))
+	}
+	f.push(pdfSectionHeight, row.New(pdfSectionHeight))
+	if want := pdfLogoHeight + pdfHeadGap + pdfSectionHeight; f.used != want {
+		t.Fatalf("used = %v, want %v on the new page", f.used, want)
+	}
+}
+
+func TestResultsPDFFlowsCategoriesOnSharedPages(t *testing.T) {
+	d := sampleResults()
+	d.NewShooters = nil
 	out, err := ResultsPDF(d)
-	if err != nil || !bytes.HasPrefix(out, []byte("%PDF-")) {
-		t.Fatalf("pdf: %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := pageCount(out); got != 1 {
+		t.Fatalf("pages = %d, want short categories on one page", got)
 	}
 }

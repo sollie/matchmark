@@ -34,9 +34,19 @@ type ResultsRow struct {
 	XCount    *int             `json:"x_count,omitempty"`
 }
 
+type ResultsDNFRow struct {
+	LastName  *string          `json:"last_name,omitempty"`
+	FirstName *string          `json:"first_name,omitempty"`
+	WAID      *string          `json:"waid,omitempty"`
+	Club      *string          `json:"club,omitempty"`
+	Country   *string          `json:"country,omitempty"`
+	Segments  []ResultsSegment `json:"segments"`
+}
+
 type ResultsCategory struct {
-	Category string       `json:"category"`
-	Rows     []ResultsRow `json:"rows"`
+	Category     string          `json:"category"`
+	Rows         []ResultsRow    `json:"rows"`
+	DidNotFinish []ResultsDNFRow `json:"did_not_finish"`
 }
 
 type ResultsNewShooter struct {
@@ -107,10 +117,8 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 		out.Segments[i] = course.Segments[i].Number
 	}
 	byCategory := map[string][]rankedEntry{}
+	dnfByCategory := map[string][]rankedEntry{}
 	for _, e := range entries {
-		if e.Withdrawn {
-			continue
-		}
 		r := rankedEntry{entry: e}
 		for _, st := range e.Segments {
 			rs := ResultsSegment{Segment: st.Number}
@@ -128,11 +136,16 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 			}
 			r.view = append(r.view, rs)
 		}
+		if e.Withdrawn {
+			dnfByCategory[e.Category] = append(dnfByCategory[e.Category], r)
+			continue
+		}
 		byCategory[e.Category] = append(byCategory[e.Category], r)
 	}
 	for _, category := range rulebook.Categories() {
 		ranked := byCategory[category]
-		if len(ranked) == 0 {
+		dnf := dnfByCategory[category]
+		if len(ranked) == 0 && len(dnf) == 0 {
 			continue
 		}
 		sort.SliceStable(ranked, func(i, j int) bool {
@@ -141,7 +154,7 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 			}
 			return ranked[i].x > ranked[j].x
 		})
-		cat := ResultsCategory{Category: category, Rows: make([]ResultsRow, len(ranked))}
+		cat := ResultsCategory{Category: category, Rows: make([]ResultsRow, len(ranked)), DidNotFinish: make([]ResultsDNFRow, len(dnf))}
 		rank := 0
 		for i, r := range ranked {
 			if i == 0 || r.total != ranked[i-1].total || r.x != ranked[i-1].x {
@@ -151,6 +164,9 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 			if vis.Names && r.entry.Shooter.WAID == "" {
 				out.NewShooters = append(out.NewShooters, resultsNewShooter(r, category, vis))
 			}
+		}
+		for i, r := range dnf {
+			cat.DidNotFinish[i] = resultsDNFRow(r, vis)
 		}
 		out.Categories = append(out.Categories, cat)
 	}
@@ -193,4 +209,16 @@ func resultsNewShooter(r rankedEntry, category string, vis repository.Visibility
 		n.XCount = &x
 	}
 	return n
+}
+
+func resultsDNFRow(r rankedEntry, vis repository.Visibility) ResultsDNFRow {
+	row := resultsRow(r, 0, vis)
+	segments := make([]ResultsSegment, len(row.Segments))
+	for i, st := range row.Segments {
+		segments[i] = ResultsSegment{Segment: st.Segment, Score: st.Score}
+	}
+	return ResultsDNFRow{
+		LastName: row.LastName, FirstName: row.FirstName, WAID: row.WAID,
+		Club: row.Club, Country: row.Country, Segments: segments,
+	}
 }

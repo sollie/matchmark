@@ -56,6 +56,10 @@ _Avoid_: Guest, beginner
 A shooter's participation in one Match, in one category, on one lane.
 _Avoid_: Registration
 
+**DNF**:
+Did not finish: an Entry withdrawn during a Match. The Results view lists it unranked at the bottom of its category, showing the segment scores logged so far and "DNF" in place of a total. It still counts towards the participant totals.
+_Avoid_: WD, DNS, DSQ
+
 **Category**:
 The class a shooter competes in: Revolver, Pistol, Revolver OS, Pistol OS or Carbine; the rulebook limits which ones a course allows. Each category is one sheet of the results report.
 _Avoid_: Weapon class, class, division
@@ -166,7 +170,7 @@ The printable, public page of a finished match's standings, chosen from a picker
 _Avoid_: Results page, leaderboard
 
 **Results PDF**:
-The Results view rendered as a PDF on demand and never stored. The public one honours visibility flags; the admin one, downloaded from the match list, shows everything.
+The Results view rendered as a PDF on demand and never stored, as standings per category only (no per-shooter ring counts). The public one honours visibility flags; the admin one, downloaded from the match list, shows everything.
 _Avoid_: Results report (that is the `.xlsx`)
 
 **Club settings**:

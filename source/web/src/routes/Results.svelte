@@ -154,6 +154,20 @@
                     {#if showX}<td class="num">{row.x_count}</td>{/if}
                   </tr>
                 {/each}
+                {#each category.did_not_finish as row, i (i)}
+                  <tr class="dnf">
+                    <td class="num"></td>
+                    {#if showNames}<td>{row.first_name} {row.last_name}</td><td>{row.waid ?? ""}</td
+                      >{/if}
+                    {#if showClubs}<td>{row.club}</td>{/if}
+                    {#if showCountries}<td>{row.country}</td>{/if}
+                    {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
+                          >{st.score ?? ""}</td
+                        >{/each}{/if}
+                    <td class="num total">DNF</td>
+                    {#if showX}<td class="num"></td>{/if}
+                  </tr>
+                {/each}
               </tbody>
             </table>
           </div>
@@ -273,6 +287,9 @@
   }
   .total {
     font-weight: 700;
+  }
+  .dnf {
+    color: var(--text-muted);
   }
   .score-card {
     margin: var(--space-4) 0;
