@@ -61,16 +61,17 @@
     {#if page.canBackToDraft}
       <button onclick={backToDraft}>Back to draft</button>
     {/if}
-    {#if match.status === "draft" && !editing}
+    {#if !editing}
       <button onclick={() => (editing = true)}>Edit match</button>
     {/if}
     <button class="danger" onclick={remove}>Delete match</button>
   </div>
   {#if page.error}<p class="error" role="alert">{page.error}</p>{/if}
-  {#if editing && match.status === "draft"}
+  {#if editing}
     <MatchEdit
       {match}
       hasEntries={page.entries.length > 0}
+      draft={match.status === "draft"}
       saved={(updated) => {
         page.saved(updated);
         editing = false;

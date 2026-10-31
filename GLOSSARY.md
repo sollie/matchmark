@@ -13,7 +13,7 @@ An announced event of one or more days run by a club, holding one or more Matche
 _Avoid_: Tournament, event
 
 **Match**:
-One course shot by the shooters of a Competition, on one date inside the Competition's range. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name, date and course can be edited while it is a draft; the course is fixed once it has entries. A shooter has at most one entry per Match.
+One course shot by the shooters of a Competition, on one date inside the Competition's range. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name can be edited in any status; its date and course only while it is a draft, and the course is fixed once it has entries. A shooter has at most one entry per Match.
 _Avoid_: Competition (for a single course), event
 
 **Back to draft**:

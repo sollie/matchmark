@@ -188,10 +188,14 @@ func TestMatchLifecycle(t *testing.T) {
 			t.Fatalf("got %v", out)
 		}
 	})
-	t.Run("update after draft is rejected", func(t *testing.T) {
-		status, _ := env.Do("PUT", path, map[string]any{"name": "X", "date": "2026-10-01", "course": "60"})
+	t.Run("update after draft only renames", func(t *testing.T) {
+		status, _ := env.Do("PUT", path, map[string]any{"name": "X", "date": "2026-10-02", "course": "60"})
 		if status != http.StatusConflict {
 			t.Fatalf("status %d", status)
+		}
+		status, out := env.Do("PUT", path, map[string]any{"name": "X", "date": "2026-10-01", "course": "60"})
+		if status != http.StatusOK || out["name"] != "X" {
+			t.Fatalf("status %d %v", status, out)
 		}
 	})
 	t.Run("delete", func(t *testing.T) {

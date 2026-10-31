@@ -315,16 +315,19 @@ test.describe("matches", () => {
     await expect(page.getByText(locked.label, { exact: false }).first()).toBeVisible();
   });
 
-  test("an active or finished match has no edit action", async ({ adminPage: page, admin }) => {
-    const active = await createMatch(admin, { status: "active" });
-    await openMatch(page, active.id);
-    await expect(page.getByRole("button", { name: "Delete match" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Edit match" })).toHaveCount(0);
-
-    const finished = await createMatch(admin, { status: "finished" });
-    await openMatch(page, finished.id);
-    await expect(page.getByRole("button", { name: "Delete match" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Edit match" })).toHaveCount(0);
+  test("an active or finished match can only be renamed", async ({ adminPage: page, admin }) => {
+    for (const status of ["active", "finished"] as const) {
+      const match = await createMatch(admin, { status });
+      await openMatch(page, match.id);
+      await page.getByRole("button", { name: "Edit match" }).click();
+      const form = page.getByRole("form", { name: "Edit match" });
+      await expect(form.getByLabel("Date")).toBeDisabled();
+      await expect(form.getByLabel("Course of fire")).toBeDisabled();
+      const name = `Renamed ${status} ${Date.now()}`;
+      await form.getByLabel("Name").fill(name);
+      await form.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByRole("heading", { name })).toBeVisible();
+    }
   });
 
   test("deleting a match requires confirmation", async ({ adminPage: page, admin }) => {

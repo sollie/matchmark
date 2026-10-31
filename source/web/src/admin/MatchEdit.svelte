@@ -12,11 +12,13 @@
   let {
     match,
     hasEntries,
+    draft,
     saved,
     cancel,
   }: {
     match: Match;
     hasEntries: boolean;
+    draft: boolean;
     saved: (match: Match) => void;
     cancel: () => void;
   } = $props();
@@ -50,16 +52,20 @@
       pattern={datePattern}
       inputmode="numeric"
       size="10"
+      disabled={!draft}
       required
     /></label
   >
   <label>
     Course of fire
-    <select bind:value={course} disabled={hasEntries}>
+    <select bind:value={course} disabled={!draft || hasEntries}>
       {#each rulebook.courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
     </select>
   </label>
-  {#if hasEntries}<p class="muted">The course cannot change once the match has entries.</p>{/if}
+  {#if !draft}<p class="muted">Only the name can change once the match has started.</p>
+  {:else if hasEntries}<p class="muted">
+      The course cannot change once the match has entries.
+    </p>{/if}
   <button type="submit" class="primary">Save</button>
   <button type="button" onclick={cancel}>Cancel</button>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
