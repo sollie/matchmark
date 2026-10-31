@@ -33,11 +33,11 @@ const match = {
   current_segment: 1,
 };
 
-function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0]) {
+function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0], draft = true) {
   const calls = stubFetch(reply);
   const saved = vi.fn();
   const cancel = vi.fn();
-  render(MatchEdit, { match, hasEntries, saved, cancel });
+  render(MatchEdit, { match, hasEntries, draft, saved, cancel });
   return { calls, saved, cancel, user: userEvent.setup() };
 }
 
@@ -65,6 +65,16 @@ describe("MatchEdit", () => {
     setup(true);
     expect((screen.getByLabelText("Course of fire") as HTMLSelectElement).disabled).toBe(true);
     expect(screen.getByText(/cannot change once the match has entries/)).toBeTruthy();
+  });
+
+  it("leaves only the name editable once the match has started", async () => {
+    const { calls, user } = setup(false, () => ({ body: { ...match, name: "Renamed" } }), false);
+    expect((screen.getByLabelText("Date") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Course of fire") as HTMLSelectElement).disabled).toBe(true);
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Renamed");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(calls[0].body).toEqual({ name: "Renamed", date: match.date, course: match.course });
   });
 
   it("blocks a date that is not ISO 8601", async () => {
