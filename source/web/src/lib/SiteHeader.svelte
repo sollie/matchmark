@@ -2,7 +2,7 @@
   import { router } from "./router.svelte";
   import { club, clubLogoUrl } from "./club.svelte";
   import { admin } from "./session.svelte";
-  import AccountIcon from "./AccountIcon.svelte";
+  import SiteMenu from "./SiteMenu.svelte";
   import AccountMenu from "./AccountMenu.svelte";
 
   const scorerRoute = $derived(router.path === "/score");
@@ -21,7 +21,7 @@
   {/if}
   {#if adminRoute}
     {#if admin.authed && !admin.mustChangePassword}<AccountMenu />{/if}
-  {:else if !scorerRoute}
-    <a class="account-link" href="/admin" aria-label="Sign in" title="Sign in"><AccountIcon /></a>
+  {:else}
+    <SiteMenu adminLink={!scorerRoute} />
   {/if}
 </header>

@@ -49,7 +49,8 @@ test.describe("audit log", () => {
     const chosen = "e2e-chosen-password-5678";
     await admin.post("/api/users", { data: { username, role: "user", password: temporary } });
     await signOutViaMenu(page);
-    await page.getByRole("link", { name: "Sign in" }).click();
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("link", { name: "Admin", exact: true }).click();
     await page.getByLabel("Username").fill(username);
     await page.getByLabel("Password", { exact: true }).fill(temporary);
     await page.getByRole("button", { name: "Sign in" }).click();
