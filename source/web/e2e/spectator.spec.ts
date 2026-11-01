@@ -291,16 +291,18 @@ test("the footer links back to the repository on every page", async ({ page }) =
   }
 });
 
-test("the header sign-in icon leads to the admin area on public pages only", async ({ page }) => {
+test("the header menu leads to the admin area on public pages only", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("link", { name: "Admin", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Menu" })).toHaveCount(0);
 
   await page.goto("/score");
-  await expect(page.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Menu" }).click();
+  await expect(page.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
 });
 
 test("the header does not overflow at 320px", async ({ page }) => {
@@ -310,7 +312,7 @@ test("the header does not overflow at 320px", async ({ page }) => {
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
   expect(overflow).toBe(false);
-  const box = await page.getByRole("link", { name: "Sign in" }).boundingBox();
+  const box = await page.getByRole("button", { name: "Menu" }).boundingBox();
   expect(box!.width).toBeGreaterThanOrEqual(44);
   expect(box!.height).toBeGreaterThanOrEqual(44);
 });
