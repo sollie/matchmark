@@ -23,62 +23,47 @@
   --header-h: 3rem;
 
   --brand-primary: #0f172a;
-  --brand: #1f3a5f;
-  --brand-hover: #2a4d7e;
-  --brand-tint: #e1e9f4;
-  --on-brand: #ffffff;
-  --accent: #0b7285;
-  --bg: #f1f3f6;
-  --surface: #ffffff;
-  --surface-alt: #f6f8fa;
-  --border: #d5dae1;
-  --text: #1a2230;
-  --text-muted: #566070;
-  --link: #1c5aa6;
-  --danger: #b42318;
-  --danger-hover: #912018;
-  --on-danger: #ffffff;
-  --success-bg: #dcf5e3;
-  --success-fg: #0f5f2c;
-  --warning-bg: #fff1c9;
-  --warning-fg: #7a4b00;
-  --danger-bg: #fde2e0;
-  --danger-fg: #8f1c13;
-  --neutral-bg: #e6e9ee;
-  --neutral-fg: #3b4554;
-  --focus: #1c6ed5;
-  --shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 1px 3px rgb(16 24 40 / 0.1);
-  --shadow-lg: 0 8px 24px rgb(16 24 40 / 0.12);
+  --brand: light-dark(#1f3a5f, #4f86d1);
+  --brand-hover: light-dark(#2a4d7e, #6a9be0);
+  --brand-tint: light-dark(#e1e9f4, #1f3354);
+  --on-brand: light-dark(#ffffff, #0b1220);
+  --accent: light-dark(#0b7285, #3cc4dc);
+  --bg: light-dark(#f1f3f6, #0e131b);
+  --surface: light-dark(#ffffff, #171e29);
+  --surface-alt: light-dark(#f6f8fa, #1d2633);
+  --border: light-dark(#d5dae1, #2d394a);
+  --text: light-dark(#1a2230, #e8edf4);
+  --text-muted: light-dark(#566070, #a0acbd);
+  --link: light-dark(#1c5aa6, #8ab8f5);
+  --danger: light-dark(#b42318, #e5584c);
+  --danger-hover: light-dark(#912018, #f0766b);
+  --on-danger: light-dark(#ffffff, #0b1220);
+  --success-bg: light-dark(#dcf5e3, #12361f);
+  --success-fg: light-dark(#0f5f2c, #8be0a6);
+  --warning-bg: light-dark(#fff1c9, #3b2d0b);
+  --warning-fg: light-dark(#7a4b00, #f5cf73);
+  --danger-bg: light-dark(#fde2e0, #44181a);
+  --danger-fg: light-dark(#8f1c13, #ffaaa3);
+  --neutral-bg: light-dark(#e6e9ee, #2a3444);
+  --neutral-fg: light-dark(#3b4554, #cbd4e1);
+  --focus: light-dark(#1c6ed5, #8ab8f5);
+  --shadow:
+    0 1px 2px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.4)),
+    0 1px 3px light-dark(rgb(16 24 40 / 0.1), transparent);
+  --shadow-lg: 0 8px 24px light-dark(rgb(16 24 40 / 0.12), rgb(0 0 0 / 0.5));
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --brand: #4f86d1;
-    --brand-hover: #6a9be0;
-    --brand-tint: #1f3354;
-    --on-brand: #0b1220;
-    --accent: #3cc4dc;
-    --bg: #0e131b;
-    --surface: #171e29;
-    --surface-alt: #1d2633;
-    --border: #2d394a;
-    --text: #e8edf4;
-    --text-muted: #a0acbd;
-    --link: #8ab8f5;
-    --danger: #e5584c;
-    --danger-hover: #f0766b;
-    --on-danger: #0b1220;
-    --success-bg: #12361f;
-    --success-fg: #8be0a6;
-    --warning-bg: #3b2d0b;
-    --warning-fg: #f5cf73;
-    --danger-bg: #44181a;
-    --danger-fg: #ffaaa3;
-    --neutral-bg: #2a3444;
-    --neutral-fg: #cbd4e1;
-    --focus: #8ab8f5;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.5);
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@media print {
+  :root:root {
+    color-scheme: light;
   }
 }
 
@@ -250,6 +235,24 @@ a {
 .account-panel :focus-visible {
   outline-color: var(--focus);
 }
+.theme-selector {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.theme-selector .theme-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.theme-selector label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  cursor: pointer;
+}
 .account-link:focus-visible {
   outline-offset: -2px;
 }
@@ -271,6 +274,23 @@ a {
   max-width: 12rem;
   object-fit: contain;
   border: 1px solid var(--border);
+}
+.login-logo .logo-dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .login-logo .logo-dark {
+    display: block;
+  }
+  :root:not([data-theme="light"]) .login-logo .logo-light {
+    display: none;
+  }
+}
+:root[data-theme="dark"] .login-logo .logo-dark {
+  display: block;
+}
+:root[data-theme="dark"] .login-logo .logo-light {
+  display: none;
 }
 .login-logo {
   display: flex;

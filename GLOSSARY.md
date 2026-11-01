@@ -221,6 +221,12 @@ _Avoid_: Routing, pinning, push
 What a Screen shows while its assigned Match is still a draft: only a waiting message, with no name, date, course or participants. It switches to the Match when the Match starts.
 _Avoid_: Placeholder, blank screen
 
+## Display
+
+**Theme**:
+A viewer's Auto, Light or Dark display preference, kept per browser. Auto follows the operating system.
+_Avoid_: Skin, mode
+
 ## Accounts
 
 **User**:
