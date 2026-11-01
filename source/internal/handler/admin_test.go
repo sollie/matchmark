@@ -284,6 +284,16 @@ func TestEntriesListSegmentScores(t *testing.T) {
 			t.Fatalf("segment %d: %v", i+1, m)
 		}
 	}
+	first := segments[0].(map[string]any)
+	if first["x"] != float64(20) || first["9"] != float64(2) || first["8"] != float64(2) || first["10"] != float64(0) || first["miss"] != float64(0) {
+		t.Fatalf("segment 1 counts: %v", first)
+	}
+	empty := segments[2].(map[string]any)
+	for _, k := range []string{"x", "10", "9", "8", "7", "0", "miss"} {
+		if v, ok := empty[k]; !ok || v != float64(0) {
+			t.Fatalf("segment 3 count %q: %v", k, empty)
+		}
+	}
 }
 
 func TestEntryUpdate(t *testing.T) {
