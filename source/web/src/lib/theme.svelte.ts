@@ -1,6 +1,6 @@
 export type Theme = "auto" | "light" | "dark";
 
-export const themeStorageKey = "matchmark-theme";
+const themeStorageKey = "matchmark-theme";
 
 function read(): Theme {
   try {
@@ -20,7 +20,5 @@ export function setTheme(next: Theme) {
   try {
     if (next === "auto") localStorage.removeItem(themeStorageKey);
     else localStorage.setItem(themeStorageKey, next);
-  } catch {
-    return;
-  }
+  } catch {}
 }
