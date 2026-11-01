@@ -13,23 +13,21 @@ afterEach(() => {
 });
 
 describe("SiteHeader", () => {
-  it("links to the admin area from public routes", () => {
+  it("opens a menu with the theme group and an admin link on public routes", async () => {
+    const user = userEvent.setup();
     render(SiteHeader);
-    const link = screen.getByRole("link", { name: "Sign in" });
-    expect(link.getAttribute("href")).toBe("/admin");
-    expect(link.getAttribute("title")).toBe("Sign in");
+    await user.click(screen.getByRole("button", { name: "Menu" }));
+    expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Admin" }).getAttribute("href")).toBe("/admin");
   });
 
-  it("shows the icon on results routes", () => {
-    router.path = "/results/3";
-    render(SiteHeader);
-    expect(screen.getByRole("link", { name: "Sign in" })).toBeTruthy();
-  });
-
-  it("hides the icon on the scorer route", () => {
+  it("offers only the theme group on the scorer route", async () => {
     router.path = "/score";
+    const user = userEvent.setup();
     render(SiteHeader);
-    expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Menu" }));
+    expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
   });
 
   describe("on admin routes", () => {
@@ -42,7 +40,7 @@ describe("SiteHeader", () => {
       signIn(true, true);
       const user = userEvent.setup();
       render(SiteHeader);
-      expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Menu" })).toBeNull();
       const trigger = screen.getByRole("button", { name: "Account menu" });
       expect(trigger.getAttribute("aria-expanded")).toBe("false");
       await user.click(trigger);

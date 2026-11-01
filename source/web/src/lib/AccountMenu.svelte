@@ -2,6 +2,7 @@
   import { router, navigate } from "./router.svelte";
   import { admin, logout } from "./session.svelte";
   import AccountIcon from "./AccountIcon.svelte";
+  import ThemeSelector from "./ThemeSelector.svelte";
 
   let open = $state(false);
   let root: HTMLElement | undefined = $state();
@@ -66,6 +67,7 @@
         <a href="/admin/audit">Audit log</a>
         {#if admin.canDownloadBackup}<a href="/api/admin/backup" download>Backup</a>{/if}
       {/if}
+      <ThemeSelector />
       <h2>Account</h2>
       <a href="/admin/password">Change password</a>
       <button type="button" onclick={signOut}>Sign out</button>

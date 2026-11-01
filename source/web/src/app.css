@@ -52,7 +52,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --brand: #4f86d1;
     --brand-hover: #6a9be0;
     --brand-tint: #1f3354;
@@ -80,6 +80,40 @@
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.5);
   }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --brand: #4f86d1;
+  --brand-hover: #6a9be0;
+  --brand-tint: #1f3354;
+  --on-brand: #0b1220;
+  --accent: #3cc4dc;
+  --bg: #0e131b;
+  --surface: #171e29;
+  --surface-alt: #1d2633;
+  --border: #2d394a;
+  --text: #e8edf4;
+  --text-muted: #a0acbd;
+  --link: #8ab8f5;
+  --danger: #e5584c;
+  --danger-hover: #f0766b;
+  --on-danger: #0b1220;
+  --success-bg: #12361f;
+  --success-fg: #8be0a6;
+  --warning-bg: #3b2d0b;
+  --warning-fg: #f5cf73;
+  --danger-bg: #44181a;
+  --danger-fg: #ffaaa3;
+  --neutral-bg: #2a3444;
+  --neutral-fg: #cbd4e1;
+  --focus: #8ab8f5;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.5);
 }
 
 :root {
@@ -249,6 +283,24 @@ a {
 }
 .account-panel :focus-visible {
   outline-color: var(--focus);
+}
+.theme-selector {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.theme-selector .theme-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.theme-selector label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  cursor: pointer;
 }
 .account-link:focus-visible {
   outline-offset: -2px;
