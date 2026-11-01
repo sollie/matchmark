@@ -52,6 +52,17 @@ test.describe("theme", () => {
     expect(await background(page)).toBe(darkBackground);
   });
 
+  test("print stays light and the login logo follows the theme", async ({ page }) => {
+    await page.goto("/admin");
+    await expect(page.locator(".logo-dark")).toBeVisible();
+    await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
+    await expect(page.locator(".logo-light")).toBeVisible();
+    await expect(page.locator(".logo-dark")).toBeHidden();
+    await page.emulateMedia({ colorScheme: "dark", media: "print" });
+    await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+    expect(await background(page)).toBe(lightBackground);
+  });
+
   test("the menu is keyboard accessible and closes on Escape", async ({ page }) => {
     await page.goto("/");
     const trigger = page.getByRole("button", { name: "Menu" });
