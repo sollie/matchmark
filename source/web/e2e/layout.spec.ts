@@ -51,6 +51,26 @@ test.describe("layout", () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 
+  test("the matches table is not scrolled sideways on a wide viewport", async ({
+    adminPage: page,
+    admin,
+    courses,
+  }) => {
+    const finished = await createMatch(admin, {
+      name: uniqueName("Wide finished"),
+      date: "2026-03-03",
+      course: courses[0].key,
+      status: "finished",
+    });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/admin");
+    const link = page.getByRole("link", { name: finished.name, exact: true });
+    await expect(link).toBeVisible();
+    const scroller = page.locator(".scroll", { has: link });
+    const sideways = await scroller.evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(sideways).toBeLessThanOrEqual(0);
+  });
+
   test("the shooters table stacks without horizontal overflow at 375px", async ({
     adminPage: page,
     admin,
