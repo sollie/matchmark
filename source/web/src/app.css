@@ -386,6 +386,7 @@ button {
 input,
 select,
 textarea {
+  max-width: 100%;
   padding: 0.4rem 0.6rem;
   color: var(--text);
   background: var(--surface);
@@ -532,6 +533,7 @@ button.ghost:hover:not(:disabled) {
 label {
   display: flex;
   flex-direction: column;
+  max-width: 100%;
   font-size: var(--text-sm);
   font-weight: 500;
   gap: 0.2rem;
@@ -687,7 +689,8 @@ tbody tr:last-child > td {
   table.stacked .row-actions {
     white-space: normal;
   }
-  table.stacked .row-actions button {
+  table.stacked .row-actions button,
+  table.stacked .row-actions a.button {
     margin: var(--space-1) var(--space-1) 0 0;
   }
 }
