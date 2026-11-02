@@ -150,7 +150,7 @@
 </form>
 
 <div class="card scroll">
-  <table>
+  <table class="stacked">
     <thead><tr><th>Screen</th><th>Status</th><th>Match</th><th>Actions</th></tr></thead>
     <tbody>
       {#each screens as s (s.id)}
@@ -169,8 +169,8 @@
               {s.name}
             {/if}
           </td>
-          <td>{s.online ? "Online" : "Offline"}</td>
-          <td>
+          <td data-label="Status">{s.online ? "Online" : "Offline"}</td>
+          <td data-label="Match">
             <select
               aria-label="Match for {s.name}"
               value={s.match_id === null ? "" : String(s.match_id)}
@@ -185,7 +185,7 @@
               {/if}
             </select>
           </td>
-          <td>
+          <td class="row-actions">
             <button
               type="button"
               onclick={() => {
