@@ -185,7 +185,7 @@
 </form>
 
 <div class="card scroll">
-  <table>
+  <table class="stacked">
     <thead>
       <tr><th>Name</th><th>Country</th><th>Club</th><th>WAID</th><th>Entries</th><th></th></tr>
     </thead>
@@ -197,10 +197,10 @@
             {s.last_name}
             {#if s.archived}<span class="badge neutral">Archived</span>{/if}
           </td>
-          <td>{s.country}</td>
-          <td>{s.club}</td>
-          <td>{s.waid || "—"}</td>
-          <td>
+          <td data-label="Country">{s.country}</td>
+          <td data-label="Club">{s.club}</td>
+          <td data-label="WAID">{s.waid || "—"}</td>
+          <td data-label="Entries">
             {#if s.entry_count > 0}
               <button
                 type="button"
