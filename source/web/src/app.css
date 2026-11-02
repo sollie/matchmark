@@ -92,9 +92,13 @@ body {
   flex: 1;
 }
 main {
-  max-width: 64rem;
   margin: 0 auto;
   padding: var(--space-4);
+}
+main.scorer,
+main.scorecard,
+main.centered {
+  max-width: 64rem;
 }
 h1,
 h2,
@@ -640,6 +644,52 @@ tbody tr:last-child > td {
   margin: 0;
   border: 0;
   border-radius: 0;
+  width: fit-content;
+  min-width: min(100%, 40rem);
+  max-width: 100%;
+}
+.card:not(:has(.scroll)) {
+  max-width: 40rem;
+}
+@media (max-width: 40rem) {
+  .card .scroll {
+    width: 100%;
+  }
+  table.stacked,
+  table.stacked tbody,
+  table.stacked tr,
+  table.stacked td {
+    display: block;
+  }
+  table.stacked thead {
+    display: none;
+  }
+  table.stacked tr {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border);
+  }
+  table.stacked tr:last-child {
+    border-bottom: 0;
+  }
+  table.stacked td {
+    padding: var(--space-1) 0;
+    border: 0;
+  }
+  table.stacked td:first-child {
+    font-weight: 600;
+  }
+  table.stacked td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+  table.stacked .row-actions {
+    white-space: normal;
+  }
+  table.stacked .row-actions button {
+    margin: var(--space-1) var(--space-1) 0 0;
+  }
 }
 .num {
   text-align: right;
