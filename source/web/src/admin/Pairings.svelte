@@ -107,18 +107,18 @@
   {/if}
 
   <div class="scroll">
-    <table>
+    <table class="stacked">
       <thead><tr><th>Lane</th><th>Status</th><th></th></tr></thead>
       <tbody>
         {#each pairings as p (p.id)}
           <tr>
-            <td>{p.lane}</td>
-            <td
+            <td data-label="Lane">{p.lane}</td>
+            <td data-label="Status"
               ><span class="badge {p.revoked ? 'neutral' : 'success'}"
                 >{p.revoked ? "revoked" : "paired"}</span
               ></td
             >
-            <td
+            <td class="row-actions"
               >{#if !p.revoked}<button class="danger" onclick={() => revoke(p)}>Revoke</button
                 >{/if}</td
             >

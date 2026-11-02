@@ -80,7 +80,7 @@
 <p class="muted">Entries are kept forever and cannot be edited or deleted. Dates are UTC.</p>
 
 <div class="card scroll">
-  <table>
+  <table class="stacked">
     <thead>
       <tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Details</th><th>IP</th></tr>
     </thead>
@@ -88,11 +88,11 @@
       {#each entries as e (e.id)}
         <tr>
           <td>{new Date(e.time).toLocaleString()}</td>
-          <td>{e.username}</td>
-          <td>{e.action}</td>
-          <td>{e.target}</td>
-          <td>{e.details}</td>
-          <td>{e.ip}</td>
+          <td data-label="User">{e.username}</td>
+          <td data-label="Action">{e.action}</td>
+          <td data-label="Target">{e.target}</td>
+          <td data-label="Details">{e.details}</td>
+          <td data-label="IP">{e.ip}</td>
         </tr>
       {:else}
         <tr><td colspan="6" class="muted">No entries match.</td></tr>

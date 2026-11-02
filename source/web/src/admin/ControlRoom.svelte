@@ -94,7 +94,7 @@
     </div>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <div class="scroll">
-      <table class="lanes">
+      <table class="lanes stacked">
         <thead>
           <tr
             ><th>Lane</th><th>Shooter</th><th>Scorer</th><th>Status</th><th>Disputes</th><th
@@ -105,12 +105,14 @@
         <tbody>
           {#each room.lanes as lane (lane.entry_id)}
             <tr>
-              <td>{lane.lane}</td>
-              <td>{lane.shooter_name}</td>
-              <td>{lane.scorer_name || "Admin"}</td>
-              <td><span class="badge {statusTone(lane)}">{statusLabel(lane)}</span></td>
-              <td>{lane.disputes}</td>
-              <td>
+              <td data-label="Lane">{lane.lane}</td>
+              <td data-label="Shooter">{lane.shooter_name}</td>
+              <td data-label="Scorer">{lane.scorer_name || "Admin"}</td>
+              <td data-label="Status"
+                ><span class="badge {statusTone(lane)}">{statusLabel(lane)}</span></td
+              >
+              <td data-label="Disputes">{lane.disputes}</td>
+              <td data-label="Device">
                 <span class="badge {lane.paired ? 'success' : 'neutral'}"
                   >{lane.paired ? "Paired" : "Not paired"}</span
                 >
@@ -118,7 +120,7 @@
                   >{lane.connected ? "Connected" : "Not connected"}</span
                 >
               </td>
-              <td class="actions">
+              <td class="actions row-actions">
                 {#if lane.status === "awaiting_acceptance"}
                   <button
                     class="secondary"
