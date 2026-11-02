@@ -16,9 +16,13 @@ A user's ring-count edit on a locked stage keeps it locked and takes it over: th
 
 Editing a match (name, date, course), an entry (category, lane) or a shooter (name, club) re-emits `stage_locked` for every affected locked stage, keeping `locked_by`, `scorer_name` and `locked_at` as currently recorded and setting a new `emitted_at` and `seq`. Unlocked stages emit nothing.
 
+## Optional file sink
+
+An optional `LOG_FILE` appends the Score log and audit lines to a file as well as stdout (append-only, mode 0600, fail fast if it cannot be opened). A write failure to the file logs one error line to stdout and never fails a lock. Rotation is left to the administrator.
+
 ## Considered Options
 
-- A dedicated log file or table: rejected, stdout is already shipped by container log collection and the destination stays injectable.
+- A dedicated log file or table: rejected as the primary destination, stdout is already shipped by container log collection and the destination stays injectable; an optional file copy was added later.
 - Replication only: kept as the primary protection, the Score log is a last-resort source.
 
 ## Consequences

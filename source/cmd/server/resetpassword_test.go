@@ -130,3 +130,35 @@ func TestResetPasswordCommandWritesAuditRowAndLine(t *testing.T) {
 		t.Fatalf("entries = %+v, %v", entries, err)
 	}
 }
+
+func TestResetPasswordCommandAppendsAuditLineToLogFile(t *testing.T) {
+	getenv, _, _ := resetFixture(t)
+	logPath := filepath.Join(t.TempDir(), "events.log")
+	withLog := func(k string) string {
+		if k == "LOG_FILE" {
+			return logPath
+		}
+		return getenv(k)
+	}
+	var out bytes.Buffer
+	if err := runResetPassword([]string{"admin"}, withLog, strings.NewReader(newPassword+"\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(logPath)
+	if err != nil || strings.Count(string(data), "\n") != 1 || !strings.Contains(string(data), `"msg":"audit"`) {
+		t.Fatalf("file = %q, err = %v", data, err)
+	}
+	if !strings.Contains(out.String(), `"msg":"audit"`) {
+		t.Fatalf("stdout = %s", out.String())
+	}
+	bad := func(k string) string {
+		if k == "LOG_FILE" {
+			return filepath.Join(t.TempDir(), "missing", "x.log")
+		}
+		return getenv(k)
+	}
+	err = runResetPassword([]string{"admin"}, bad, strings.NewReader(newPassword+"\n"), &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "LOG_FILE") {
+		t.Fatalf("err = %v", err)
+	}
+}
