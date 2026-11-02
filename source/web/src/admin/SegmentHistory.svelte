@@ -100,11 +100,15 @@
   {#if history}
     <h3>Disputes per scorer</h3>
     <div class="scroll">
-      <table class="scorers">
+      <table class="scorers stacked">
         <thead><tr><th>Scorer</th><th>Locks</th><th>Disputes</th></tr></thead>
         <tbody>
           {#each history.scorers as s (s.scorer_name)}
-            <tr><td>{s.scorer_name}</td><td>{s.locks}</td><td>{s.disputes}</td></tr>
+            <tr
+              ><td>{s.scorer_name}</td><td data-label="Locks">{s.locks}</td><td
+                data-label="Disputes">{s.disputes}</td
+              ></tr
+            >
           {:else}
             <tr><td colspan="3" class="muted">No scorer events.</td></tr>
           {/each}
@@ -113,7 +117,7 @@
     </div>
     <h3>Segment events</h3>
     <div class="scroll">
-      <table class="events">
+      <table class="events stacked">
         <thead
           ><tr
             ><th>Time</th><th>Segment</th><th>Event</th><th>Shooter</th><th>Scorer</th><th>By</th
@@ -124,11 +128,11 @@
           {#each history.events as e (e.id)}
             <tr>
               <td>{new Date(e.time).toLocaleString()}</td>
-              <td>{segmentLabel(course, e.segment)}</td>
-              <td>{labels[e.event]}</td>
-              <td>{e.shooter_name}</td>
-              <td>{e.scorer_name || "Admin"}</td>
-              <td>{actor(e)}</td>
+              <td data-label="Segment">{segmentLabel(course, e.segment)}</td>
+              <td data-label="Event">{labels[e.event]}</td>
+              <td data-label="Shooter">{e.shooter_name}</td>
+              <td data-label="Scorer">{e.scorer_name || "Admin"}</td>
+              <td data-label="By">{actor(e)}</td>
             </tr>
           {:else}
             <tr><td colspan="6" class="muted">No events match.</td></tr>
