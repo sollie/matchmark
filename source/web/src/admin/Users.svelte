@@ -138,7 +138,7 @@
 </p>
 
 <div class="card scroll">
-  <table>
+  <table class="stacked">
     <thead>
       <tr><th>Username</th><th>Role</th><th>Status</th><th>Backup</th><th>Actions</th></tr>
     </thead>
@@ -146,16 +146,18 @@
       {#each users as u (u.id)}
         <tr>
           <td>{u.username}</td>
-          <td>{u.role === "admin" ? "Admin" : "User"}</td>
-          <td
+          <td data-label="Role">{u.role === "admin" ? "Admin" : "User"}</td>
+          <td data-label="Status"
             >{!u.active
               ? "Deactivated"
               : u.must_change_password
                 ? "Must change password"
                 : "Active"}</td
           >
-          <td>{u.role !== "admin" ? "-" : u.can_download_backup ? "Allowed" : "Not allowed"}</td>
-          <td>
+          <td data-label="Backup"
+            >{u.role !== "admin" ? "-" : u.can_download_backup ? "Allowed" : "Not allowed"}</td
+          >
+          <td data-label="Actions">
             {#if resetFor === u.id}
               <form class="row" onsubmit={(e) => reset(e, u)}>
                 <PasswordInput

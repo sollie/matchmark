@@ -330,7 +330,6 @@
   }
   @media (min-width: 90rem) {
     .spectator {
-      max-width: 96rem;
       font-size: var(--text-lg);
     }
     .spectator :global(th) {
