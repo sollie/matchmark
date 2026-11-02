@@ -173,7 +173,10 @@ test.describe("shooters", () => {
     await openShooters(page);
 
     const entered = row(page, shooter.last_name);
-    await expect(entered.getByRole("button", { name: "Delete" })).toBeDisabled();
+    await expect(entered.getByRole("button", { name: "Delete" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     await entered.getByRole("button", { name: "Entered in 2 matches" }).click();
     await expect(entered.getByRole("link", { name: draft.name })).toHaveAttribute(
       "href",
@@ -205,7 +208,7 @@ test.describe("shooters", () => {
     ).toBeVisible();
     await expect(
       row(page, shooter.last_name).getByRole("button", { name: "Delete" }),
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   test("an incomplete form is blocked", async ({ adminPage: page }) => {
@@ -351,14 +354,43 @@ test.describe("shooters", () => {
     await expect(archived.getByText("Archived")).toHaveCount(0);
   });
 
-  test("a shooter with entries points to archive or merge", async ({ adminPage: page, admin }) => {
-    const match = await createMatch(admin);
+  test("pressing the greyed Delete explains why and offers archive", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    const draft = await createMatch(admin);
+    const done = await createMatch(admin);
     const shooter = await createShooter(admin, { last_name: uniqueLastName("Entered") });
-    await addEntry(admin, match.id, shooter.id, 1);
+    await addEntry(admin, draft.id, shooter.id, 1);
+    await addEntry(admin, done.id, shooter.id, 1);
+    await setStatus(admin, done.id, "active");
+    await setStatus(admin, done.id, "finished");
     await openShooters(page);
-    await expect(
-      row(page, shooter.last_name).getByText("Archive or merge this shooter instead."),
-    ).toBeVisible();
+
+    const entered = row(page, shooter.last_name);
+    await expect(entered.getByText("Archive or merge this shooter instead.")).toHaveCount(0);
+    await entered.getByRole("button", { name: "Delete" }).click({ force: true });
+
+    const dialog = page.getByRole("dialog", {
+      name: `Can't delete ${shooter.first_name} ${shooter.last_name}`,
+    });
+    await expect(dialog.getByRole("link", { name: draft.name })).toBeVisible();
+    await expect(dialog.getByRole("link", { name: done.name })).toBeVisible();
+    await expect(dialog.getByText(/finished matches cannot be removed/)).toBeVisible();
+
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await expect(dialog).toBeHidden();
+
+    await entered.getByRole("button", { name: "Delete" }).click({ force: true });
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    await entered.getByRole("button", { name: "Delete" }).click({ force: true });
+    await dialog.getByRole("button", { name: "Archive" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(row(page, shooter.last_name)).toHaveCount(0);
   });
 
   test("importing a hit that matches an archived shooter asks to unarchive", async ({
