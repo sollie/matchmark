@@ -68,12 +68,17 @@ func run(logger *slog.Logger) error {
 	}
 	defer func() { _ = conn.Close() }()
 	repo := repository.New(conn)
-	audit := service.NewAudit(repo, logger)
+	eventLog, closer, err := openEventLog(cfg.LogFile, os.Stdout)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closer.Close() }()
+	audit := service.NewAudit(repo, eventLog)
 	auth := service.NewAuth(repo, service.WithAuthAudit(audit))
 	if err := auth.SeedAdmin(cfg.AdminUsername, cfg.AdminPassword); err != nil {
 		return err
 	}
-	svcOpts = append(svcOpts, service.WithScoreLog(logger), service.WithAudit(audit))
+	svcOpts = append(svcOpts, service.WithScoreLog(eventLog), service.WithAudit(audit))
 	svc := service.New(repo, svcOpts...)
 	go svc.RunScreenSweep(ctx)
 	api := handler.NewRouter(svc, repo,

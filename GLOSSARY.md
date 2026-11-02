@@ -186,7 +186,7 @@ Copying the club's data to a separate host so it can be snapshotted and restored
 _Avoid_: Sync, backup
 
 **Score log**:
-The JSON `segment_status` lines the server writes to stdout whenever a segment changes status. Each line is self-contained, so a match's scored results, including segments awaiting acceptance, can be rebuilt by taking the latest line per segment.
+The JSON `segment_status` lines the server writes to stdout (and, when `LOG_FILE` is set, also to that file) whenever a segment changes status. Each line is self-contained, so a match's scored results, including segments awaiting acceptance, can be rebuilt by taking the latest line per segment.
 _Avoid_: Scoring log
 
 **Restore**:

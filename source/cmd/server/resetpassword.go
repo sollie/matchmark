@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -42,7 +41,12 @@ func runResetPassword(args []string, getenv func(string) string, stdin io.Reader
 	}
 	defer func() { _ = conn.Close() }()
 	repo := repository.New(conn)
-	audit := service.NewAudit(repo, slog.New(slog.NewJSONHandler(stdout, nil)))
+	eventLog, closer, err := openEventLog(cfg.LogFile, stdout)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closer.Close() }()
+	audit := service.NewAudit(repo, eventLog)
 	auth := service.NewAuth(repo, service.WithAuthAudit(audit))
 	ctx := service.WithActor(context.Background(), service.Actor{Username: service.CLIActor})
 	if err := auth.ResetPassword(ctx, args[0], password); err != nil {
