@@ -22,6 +22,7 @@ type Config struct {
 	AdminUsername string
 	AdminPassword string
 	DBPath        string
+	LogFile       string
 	ListenAddr    string
 	BaseURL       string
 	TrustedProxy  []netip.Prefix
@@ -42,6 +43,7 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		AdminUsername: getenv("ADMIN_USERNAME"),
 		AdminPassword: getenv("ADMIN_PASSWORD"),
 		DBPath:        getenv("DB_PATH"),
+		LogFile:       getenv("LOG_FILE"),
 		ListenAddr:    getenv("LISTEN_ADDR"),
 		BaseURL:       getenv("BASE_URL"),
 		TLSCertFile:   getenv("TLS_CERT_FILE"),

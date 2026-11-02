@@ -104,6 +104,7 @@ Tests seed data through the admin API with unique names and send a unique `X-For
 | `ADMIN_USERNAME` | required when there are no users | Username of the seeded admin: 3-32 characters from `a-z`, `0-9`, `.`, `_`, `-` (stored lowercase); ignored once users exist |
 | `ADMIN_PASSWORD` | required when there are no users | Password of the seeded admin, 16-128 characters; ignored once users exist |
 | `DB_PATH` | `data/matchmark.db` (`/data/matchmark.db` in the image) | SQLite file; its directory also holds backups and ACME certificates |
+| `LOG_FILE` | empty | Also append [Score log and audit](#score-log) lines to this file (mode `0600`); the directory must exist. Empty keeps stdout only |
 | `LISTEN_ADDR` | `:8080` plain, `:8443` with TLS | Listen address |
 | `BASE_URL` | empty | Public URL, used for pairing links; an `https` URL marks the session cookie `Secure` (see [TLS modes](#tls-modes)) |
 | `TRUSTED_PROXY` | empty | Comma-separated IPs or CIDRs of reverse proxies whose forwarded client IP headers are trusted |
@@ -132,6 +133,14 @@ Every change, login, failed login, failed password change, report download, back
 ### Score log
 
 Each time a stage changes status (locked, accepted, disputed, unlocked, or edited by the admin), a `stage_status` line is also written to stdout with the match, entry, shooter, ring counts, the stage status and who locked or accepted it (see `docs/spec.md`). Keep your container logs: if the database is lost and there is no replica, they are the only record of the final scores. The lines contain personal data (WAID, names, club), so apply your club's retention policy to them.
+
+#### Log file
+
+Set `LOG_FILE` to also append Score log and audit lines (and the audit logger's own `audit write failed` line) to a file, in addition to stdout. Request, startup, replication and certmagic lines stay on stdout only. The file is created with mode `0600` if missing, but its directory must already exist; the server and `reset-password` refuse to start if it cannot be opened. A failed write to the file logs one `ERROR` line to stdout and never fails a lock.
+
+In Docker, put it on the existing `/data` volume, for example `LOG_FILE=/data/matchmark-events.log` (the compose file passes `LOG_FILE` through). To read it on the host, bind mount a directory (for example `./logs:/logs`, `LOG_FILE=/logs/events.log`); it must be writable by the image's non-root user.
+
+MatchMark does not rotate the file. Rotation is your job; the file stays open, so use logrotate with `copytruncate`. The file may be passed to `matchmark restore`, which skips the audit lines.
 
 To preview what a log would restore, run `matchmark restore [file]` (or pipe the log on stdin, e.g. `docker compose logs --no-log-prefix matchmark | matchmark restore`). It needs no `ADMIN_USERNAME` or `ADMIN_PASSWORD`, skips non-score and malformed lines with a count, rejects any `schema_version` other than 3 (so logs written before the Competition and Match split must be restored with the earlier release), treats lines with an unknown course key or status, an invalid `locked_by` or an `emitted_at` outside the fixed-width layout as malformed, and prints the competitions, matches, entries and scored stages it would restore. Without `--apply` it is a dry run and writes nothing.
 
