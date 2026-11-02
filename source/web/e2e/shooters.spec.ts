@@ -383,6 +383,7 @@ test.describe("shooters", () => {
     await expect(dialog).toBeHidden();
 
     await entered.getByRole("button", { name: "Delete" }).click({ force: true });
+    await expect(dialog).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 
