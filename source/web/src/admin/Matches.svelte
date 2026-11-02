@@ -216,7 +216,7 @@
       />
     {/if}
     <div class="card scroll">
-      <table>
+      <table class="stacked">
         <thead
           ><tr><th>Name</th><th>Date</th><th>Course</th><th>Status</th><th>Actions</th></tr></thead
         >
@@ -224,10 +224,12 @@
           {#each inComp as c (c.id)}
             <tr>
               <td><a href={`/admin/matches/${c.id}`}>{c.name}</a></td>
-              <td>{c.date}</td>
-              <td>{courseLabel(c.course)}</td>
-              <td><span class="badge {statusTone[c.status]}">{c.status}</span></td>
-              <td class="row-actions">
+              <td data-label="Date">{c.date}</td>
+              <td data-label="Course">{courseLabel(c.course)}</td>
+              <td data-label="Status"
+                ><span class="badge {statusTone[c.status]}">{c.status}</span></td
+              >
+              <td class="row-actions" data-label={c.status === "finished" ? "Actions" : undefined}>
                 {#if c.status === "finished"}
                   <a
                     class="button"

@@ -6,6 +6,7 @@
   import Wa1500Import from "./Wa1500Import.svelte";
   import NameFields from "./NameFields.svelte";
   import ShooterMerge from "./ShooterMerge.svelte";
+  import Modal from "../lib/Modal.svelte";
   import { normalizeFirstName, normalizeLastName } from "../lib/names";
 
   type Shooter = components["schemas"]["Shooter"];
@@ -31,6 +32,7 @@
   let importing = $state(false);
   let notice = $state("");
   let merging = $state<ShooterListItem | null>(null);
+  let blocked = $state<{ shooter: ShooterListItem; matches: ShooterMatch[] } | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function load() {
@@ -93,20 +95,31 @@
     await load();
   }
 
-  async function toggleMatches(s: ShooterListItem) {
-    if (expanded === s.id) {
-      expanded = null;
-      return;
-    }
+  async function fetchMatches(s: ShooterListItem) {
     const result = await api.GET("/api/shooters/{shooterID}", {
       params: { path: { shooterID: s.id } },
     });
     if (!result.data) {
       error = failure(result);
+      return null;
+    }
+    return result.data.matches;
+  }
+
+  async function toggleMatches(s: ShooterListItem) {
+    if (expanded === s.id) {
+      expanded = null;
       return;
     }
-    matches = result.data.matches;
+    const loaded = await fetchMatches(s);
+    if (!loaded) return;
+    matches = loaded;
     expanded = s.id;
+  }
+
+  async function explainBlocked(s: ShooterListItem) {
+    const loaded = await fetchMatches(s);
+    if (loaded) blocked = { shooter: s, matches: loaded };
   }
 
   const entriesLabel = (n: number) => `Entered in ${n} ${n === 1 ? "match" : "matches"}`;
@@ -170,6 +183,52 @@
   <ShooterMerge source={merging} onmerged={merged} oncancel={() => (merging = null)} />
 {/if}
 
+{#if blocked}
+  {@const b = blocked}
+  {@const finished = b.matches.filter((m) => m.status === "finished")}
+  <Modal
+    title={`Can't delete ${b.shooter.first_name} ${b.shooter.last_name}`}
+    onclose={() => (blocked = null)}
+  >
+    <p>
+      {b.shooter.first_name}
+      {b.shooter.last_name} is entered in these matches:
+    </p>
+    <ul class="matches">
+      {#each b.matches as m (m.id)}
+        <li><a href={`/admin/matches/${m.id}`}>{m.name}</a>, {m.date}, {m.status}</li>
+      {/each}
+    </ul>
+    {#if finished.length > 0}
+      <p>
+        Entries in finished matches cannot be removed, so archive or merge this shooter instead.
+      </p>
+    {:else}
+      <p>Remove the entries from these matches first, or archive or merge this shooter instead.</p>
+    {/if}
+    <div class="row">
+      <button
+        type="button"
+        class="secondary"
+        onclick={() => {
+          const s = b.shooter;
+          blocked = null;
+          setArchived(s, !s.archived);
+        }}>{b.shooter.archived ? "Unarchive" : "Archive"}</button
+      >
+      <button
+        type="button"
+        class="secondary"
+        onclick={() => {
+          merging = b.shooter;
+          blocked = null;
+        }}>Merge into…</button
+      >
+      <button type="button" onclick={() => (blocked = null)}>Close</button>
+    </div>
+  </Modal>
+{/if}
+
 {#if importing}
   <Wa1500Import onsaved={imported} oncancel={() => (importing = false)} />
 {/if}
@@ -185,7 +244,7 @@
 </form>
 
 <div class="card scroll">
-  <table>
+  <table class="stacked">
     <thead>
       <tr><th>Name</th><th>Country</th><th>Club</th><th>WAID</th><th>Entries</th><th></th></tr>
     </thead>
@@ -197,10 +256,10 @@
             {s.last_name}
             {#if s.archived}<span class="badge neutral">Archived</span>{/if}
           </td>
-          <td>{s.country}</td>
-          <td>{s.club}</td>
-          <td>{s.waid || "—"}</td>
-          <td>
+          <td data-label="Country">{s.country}</td>
+          <td data-label="Club">{s.club}</td>
+          <td data-label="WAID">{s.waid || "—"}</td>
+          <td data-label="Entries">
             {#if s.entry_count > 0}
               <button
                 type="button"
@@ -229,15 +288,9 @@
             <button class="secondary" onclick={() => (merging = s)}>Merge into…</button>
             <button
               class="danger"
-              disabled={s.entry_count > 0}
-              title={s.entry_count > 0
-                ? "Remove the shooter's entries first. Entries in finished matches cannot be removed."
-                : undefined}
-              onclick={() => remove(s)}>Delete</button
+              aria-disabled={s.entry_count > 0 ? "true" : undefined}
+              onclick={() => (s.entry_count > 0 ? explainBlocked(s) : remove(s))}>Delete</button
             >
-            {#if s.entry_count > 0}
-              <span class="muted">Archive or merge this shooter instead.</span>
-            {/if}
           </td>
         </tr>
       {:else}
