@@ -4,6 +4,7 @@ import {
   openAccountLink,
   openAccountMenu,
   row,
+  signInViaUi,
   signOutViaMenu,
   test,
   uniqueName,
@@ -49,11 +50,7 @@ test.describe("audit log", () => {
     const chosen = "e2e-chosen-password-5678";
     await admin.post("/api/users", { data: { username, role: "user", password: temporary } });
     await signOutViaMenu(page);
-    await page.getByRole("button", { name: "Menu" }).click();
-    await page.getByRole("link", { name: "Admin", exact: true }).click();
-    await page.getByLabel("Username").fill(username);
-    await page.getByLabel("Password", { exact: true }).fill(temporary);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await signInViaUi(page, temporary, username);
     await page.getByLabel("Current password", { exact: true }).fill(temporary);
     await page.getByLabel("New password", { exact: true }).fill(chosen);
     await page.getByLabel("Confirm new password", { exact: true }).fill(chosen);
