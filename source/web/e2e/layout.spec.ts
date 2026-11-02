@@ -1,4 +1,4 @@
-import { expect, openAccountLink, test } from "./helpers";
+import { createMatch, expect, openAccountLink, test, uniqueName } from "./helpers";
 
 test.describe("layout", () => {
   test("the users table stacks without horizontal overflow at 375px", async ({
@@ -8,6 +8,29 @@ test.describe("layout", () => {
     await openAccountLink(page, "Users");
     await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Reset password" }).first()).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test("the matches table stacks without horizontal overflow at 375px", async ({
+    adminPage: page,
+    admin,
+    courses,
+  }) => {
+    const finished = await createMatch(admin, {
+      name: uniqueName("Stacked finished"),
+      date: "2026-03-03",
+      course: courses[0].key,
+      status: "finished",
+    });
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto("/admin");
+    await expect(page.getByRole("link", { name: finished.name, exact: true })).toBeVisible();
+    for (const name of ["Results report (.xlsx)", "Detailed CSV", "Results PDF"]) {
+      await expect(page.getByRole("link", { name: `${name} for ${finished.name}` })).toBeVisible();
+    }
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
