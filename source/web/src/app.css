@@ -643,6 +643,11 @@ tbody tr:last-child > td {
 .row-actions a.button + a.button {
   margin-left: var(--space-1);
 }
+.card.scroll {
+  width: fit-content;
+  min-width: min(100%, 40rem);
+  max-width: 100%;
+}
 .card .scroll {
   margin: 0;
   border: 0;
@@ -651,10 +656,11 @@ tbody tr:last-child > td {
   min-width: min(100%, 40rem);
   max-width: 100%;
 }
-.card:not(:has(.scroll)) {
+.card:not(.scroll):not(:has(.scroll)) {
   max-width: 40rem;
 }
 @media (max-width: 40rem) {
+  .card.scroll,
   .card .scroll {
     width: 100%;
   }
