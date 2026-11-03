@@ -1674,6 +1674,8 @@ export interface components {
             show_countries: boolean;
             show_segment_scores: boolean;
             show_ring_counts: boolean;
+            /** @description Standings view; true shows one table per category, false one combined table */
+            group_by_category: boolean;
         };
         Entry: {
             /** Format: int64 */
@@ -1911,6 +1913,8 @@ export interface components {
             current_segment: number;
             /** @description Number of segments in the match's course of fire */
             total_segments: number;
+            /** @description Standings view; true shows one table per category, false one combined table */
+            group_by_category: boolean;
             standings: components["schemas"]["Standing"][];
         };
     };

@@ -3250,7 +3250,7 @@ components:
         - $ref: '#/components/schemas/MatchInput'
     Visibility:
       type: object
-      required: [show_names, show_clubs, show_countries, show_segment_scores, show_ring_counts]
+      required: [show_names, show_clubs, show_countries, show_segment_scores, show_ring_counts, group_by_category]
       properties:
         show_names:
           type: boolean
@@ -3262,6 +3262,9 @@ components:
           type: boolean
         show_ring_counts:
           type: boolean
+        group_by_category:
+          type: boolean
+          description: Standings view; true shows one table per category, false one combined table
     Entry:
       type: object
       required: [id, match_id, shooter_id, category, lane, withdrawn]
@@ -3709,7 +3712,7 @@ components:
       description: A segment after the current segment is not started; an open segment of the current or an earlier segment, including a disputed (reopened) one, is in progress; a locked segment awaits acceptance until it is accepted. Only an accepted segment has a score
     SpectatorSnapshot:
       type: object
-      required: [current_segment, total_segments, status, standings]
+      required: [current_segment, total_segments, status, standings, group_by_category]
       properties:
         status:
           type: string
@@ -3721,6 +3724,9 @@ components:
         total_segments:
           type: integer
           description: Number of segments in the match's course of fire
+        group_by_category:
+          type: boolean
+          description: Standings view; true shows one table per category, false one combined table
         standings:
           type: array
           items:
