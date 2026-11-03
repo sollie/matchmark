@@ -4,6 +4,7 @@ import "context"
 
 type ClubSettings struct {
 	Name    string
+	Palette string
 	HasLogo bool
 	Version int64
 }
@@ -16,13 +17,19 @@ type ClubLogo struct {
 func (r *Repository) GetClub(ctx context.Context) (ClubSettings, error) {
 	var c ClubSettings
 	err := r.db.QueryRowContext(ctx,
-		`SELECT name, logo IS NOT NULL, version FROM club_settings WHERE id = 1`).Scan(&c.Name, &c.HasLogo, &c.Version)
+		`SELECT name, palette, logo IS NOT NULL, version FROM club_settings WHERE id = 1`).Scan(&c.Name, &c.Palette, &c.HasLogo, &c.Version)
 	return c, mapErr(err)
 }
 
 func (r *Repository) SetClubName(ctx context.Context, name string) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE club_settings SET name = ?, version = version + 1 WHERE id = 1`, name)
+	return err
+}
+
+func (r *Repository) SetClubPalette(ctx context.Context, palette string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE club_settings SET palette = ?, version = version + 1 WHERE id = 1`, palette)
 	return err
 }
 
