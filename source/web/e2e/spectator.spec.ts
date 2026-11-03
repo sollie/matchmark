@@ -6,6 +6,7 @@ import {
   expect,
   newApi,
   row,
+  seedEntry,
   setCounts,
   setStatus,
   setVisibility,
@@ -86,6 +87,42 @@ test.describe("spectator", () => {
     await expect(progress.getByText("2/4 accepted")).toBeVisible();
     await expect(progress.getByText(`Segment 1 of ${course.segments}`)).toBeVisible();
     await expect(page.locator("progress")).toHaveCount(0);
+  });
+
+  test("grouped standings show one ranked table per category", async ({ page, admin }) => {
+    const match = await createMatch(admin, { name: uniqueName("Grouped") });
+    await setVisibility(admin, match.id, { group_by_category: true });
+    const plans = [
+      { lane: 1, category: "Pistol" as const, counts: { "10": 24 } },
+      { lane: 2, category: "Revolver" as const, counts: { "9": 24 } },
+      { lane: 3, category: "Revolver" as const, counts: { "10": 24 } },
+    ];
+    const seeded = [];
+    for (const plan of plans) {
+      seeded.push(await seedEntry(admin, match.id, plan.lane, plan.category));
+    }
+    await setStatus(admin, match.id, "active");
+    for (const [i, plan] of plans.entries()) {
+      await setCounts(admin, match.id, seeded[i].entryId, 1, plan.counts, true);
+    }
+    await openMatch(page, match.name);
+
+    const revolver = page.getByRole("heading", { name: "Revolver", level: 3 });
+    await expect(revolver).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3 })).toHaveText(["Revolver", "Pistol"]);
+    const tables = page.getByRole("table");
+    await expect(tables).toHaveCount(2);
+    const first = tables.nth(0).locator("tbody tr");
+    await expect(first.nth(0).getByRole("cell").first()).toHaveText("1");
+    await expect(first.nth(0).getByRole("cell").nth(1)).toHaveText("3");
+    await expect(first.nth(1).getByRole("cell").first()).toHaveText("2");
+    await expect(tables.nth(1).locator("tbody tr").first().getByRole("cell").first()).toHaveText(
+      "1",
+    );
+
+    await setVisibility(admin, match.id, { group_by_category: false });
+    await expect(tables).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 3 })).toHaveCount(0);
   });
 
   test("an accepted segment appears live without polling requests", async ({ page, admin }) => {

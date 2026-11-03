@@ -98,3 +98,5 @@ export class ScreenControl {
     this.revert("");
   }
 }
+
+export const screenControl = new ScreenControl();
