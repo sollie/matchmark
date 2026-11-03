@@ -32,26 +32,28 @@ func (s *Service) Standings(ctx context.Context, matchID int64) ([]StandingView,
 	if err != nil {
 		return nil, err
 	}
-	return s.standings(ctx, comp)
+	standings, _, err := s.standings(ctx, comp)
+	return standings, err
 }
 
-func (s *Service) standings(ctx context.Context, comp repository.Match) ([]StandingView, error) {
+func (s *Service) standings(ctx context.Context, comp repository.Match) (views []StandingView, grouped bool, err error) {
 	vis, err := s.repo.GetVisibility(ctx, comp.ID)
 	if err != nil {
-		return nil, mapRepoErr(err)
+		return nil, false, mapRepoErr(err)
 	}
 	entries, err := s.repo.ListSpectatorEntries(ctx, comp.ID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return projectStandings(comp.CurrentSegment, vis, entries), nil
+	return projectStandings(comp.CurrentSegment, vis, entries), vis.GroupByCategory, nil
 }
 
 type SpectatorSnapshot struct {
-	CurrentSegment int            `json:"current_segment"`
-	TotalSegments  int            `json:"total_segments"`
-	Status         string         `json:"status"`
-	Standings      []StandingView `json:"standings"`
+	CurrentSegment  int            `json:"current_segment"`
+	TotalSegments   int            `json:"total_segments"`
+	Status          string         `json:"status"`
+	Standings       []StandingView `json:"standings"`
+	GroupByCategory bool           `json:"group_by_category"`
 }
 
 type cachedSnapshot struct {
@@ -102,7 +104,7 @@ func (s *Service) SpectatorSnapshot(ctx context.Context, matchID int64) (Spectat
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
-	standings, err := s.standings(ctx, comp)
+	standings, grouped, err := s.standings(ctx, comp)
 	if err != nil {
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
@@ -112,7 +114,7 @@ func (s *Service) SpectatorSnapshot(ctx context.Context, matchID int64) (Spectat
 		slot.cached = nil
 		return SpectatorSnapshot{}, err
 	}
-	snap := SpectatorSnapshot{CurrentSegment: comp.CurrentSegment, TotalSegments: len(course.Segments), Status: comp.Status, Standings: standings}
+	snap := SpectatorSnapshot{CurrentSegment: comp.CurrentSegment, TotalSegments: len(course.Segments), Status: comp.Status, Standings: standings, GroupByCategory: grouped}
 	slot.cached = &cachedSnapshot{version: version, snapshot: snap}
 	return snap, nil
 }

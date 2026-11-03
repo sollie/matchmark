@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import Spectator from "./Spectator.svelte";
+import SiteHeader from "../lib/SiteHeader.svelte";
+import { screenControl } from "../lib/screenControl.svelte";
+import { router } from "../lib/router.svelte";
 import { stubFetch } from "../test/fetch";
 
 const standing = (lane: number, states: string[], withdrawn = false) => ({
@@ -28,7 +31,7 @@ function install(status: string, extra?: Parameters<typeof stubFetch>[0]) {
                   label: "150",
                   discipline: "1500",
                   total_shots: 150,
-                  categories: [],
+                  categories: ["Revolver", "Pistol"],
                   stages: [],
                   segments: [
                     { number: 1, name: "Match 1", stages: [1, 2], shots: 24 },
@@ -166,16 +169,103 @@ describe("Spectator status row", () => {
   });
 });
 
+describe("Spectator standings grouping", () => {
+  const entry = (lane: number, category: string, total: number, x: number, withdrawn = false) => ({
+    lane,
+    category,
+    withdrawn,
+    total,
+    x_count: x,
+    segments: [],
+  });
+  const rows = [
+    entry(1, "Pistol", 100, 2),
+    entry(2, "Revolver", 90, 1),
+    entry(3, "Revolver", 90, 5),
+    entry(4, "Revolver", 10, 0, true),
+    entry(5, "Revolver", 70, 0),
+    entry(6, "Pistol", 100, 2),
+  ];
+
+  async function open(group: boolean, standings: unknown[]) {
+    install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    send!({ current_segment: 1, total_segments: 2, group_by_category: group, standings });
+  }
+
+  const cells = (table: HTMLElement) =>
+    within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .map((r) => [...r.querySelectorAll("td")].slice(0, 2).map((c) => c.textContent));
+
+  it("renders one ranked table per category in rulebook order with withdrawn last", async () => {
+    await open(true, rows);
+    await screen.findByRole("heading", { name: "Revolver" });
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings).toEqual(["Revolver", "Pistol"]);
+    expect(screen.getByRole("heading", { name: "Standings" }).classList).not.toContain("sr-only");
+    const [revolver, pistol] = screen.getAllByRole("table");
+    expect(cells(revolver)).toEqual([
+      ["1", "3"],
+      ["2", "2"],
+      ["3", "5"],
+      ["", "4"],
+    ]);
+    expect(cells(pistol)).toEqual([
+      ["1", "1"],
+      ["1", "6"],
+    ]);
+  });
+
+  it("keeps one combined table with overall ranks when not grouped", async () => {
+    await open(false, [entry(1, "Pistol", 100, 2), entry(2, "Revolver", 90, 1)]);
+    await screen.findByRole("heading", { name: "Standings" });
+    expect(screen.getAllByRole("table")).toHaveLength(1);
+    expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
+    expect(cells(screen.getByRole("table"))).toEqual([
+      ["1", "1"],
+      ["2", "2"],
+    ]);
+  });
+
+  it("puts withdrawn entries last and unranked when not grouped", async () => {
+    await open(false, [
+      entry(3, "Pistol", 100, 2),
+      entry(1, "Pistol", 95, 0, true),
+      entry(2, "Revolver", 90, 1),
+    ]);
+    await screen.findByRole("table");
+    expect(cells(screen.getByRole("table"))).toEqual([
+      ["1", "3"],
+      ["2", "2"],
+      ["", "1"],
+    ]);
+  });
+
+  it("shows a single category without a heading in either mode", async () => {
+    await open(true, [entry(1, "Revolver", 100, 2), entry(2, "Revolver", 90, 1)]);
+    await screen.findByRole("table");
+    expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
+    expect(screen.getByRole("heading", { name: "Standings" }).classList).toContain("sr-only");
+    expect(screen.getAllByRole("table")).toHaveLength(1);
+  });
+});
+
 describe("Spectator remote control", () => {
   const key = "matchmark.screen";
   let screenSend: ((data: unknown) => void) | null;
   let screenStatus: number;
   let screenAuth: string | null;
 
-  function installManaged(status = "active") {
+  function installManaged(status = "active", opts = { rejectEnable: false }) {
     const calls = install(status, (call) =>
       call.method === "POST" && call.path === "/api/spectator/screens"
-        ? { status: 201, body: { token: "tok", code: "ABC234" } }
+        ? opts.rejectEnable
+          ? { status: 500, body: { error: "Nope" } }
+          : { status: 201, body: { token: "tok", code: "ABC234" } }
         : call.method === "DELETE"
           ? { status: 204 }
           : undefined,
@@ -200,8 +290,28 @@ describe("Spectator remote control", () => {
     return calls;
   }
 
+  function renderPage() {
+    screenControl.stop();
+    const stored = localStorage.getItem(key);
+    screenControl.registration = stored ? JSON.parse(stored) : null;
+    screenControl.assignment = null;
+    screenControl.connection = "connecting";
+    screenControl.notice = "";
+    screenControl.error = "";
+    screenControl.busy = false;
+    render(SiteHeader);
+    render(Spectator);
+  }
+
+  async function menuItem(name: string) {
+    const trigger = screen.getByRole("button", { name: "Menu" });
+    if (trigger.getAttribute("aria-expanded") !== "true") await userEvent.click(trigger);
+    return screen.findByRole("button", { name });
+  }
+
   beforeEach(() => {
     localStorage.clear();
+    router.path = "/";
     screenSend = null;
     screenStatus = 200;
     screenAuth = null;
@@ -210,9 +320,9 @@ describe("Spectator remote control", () => {
 
   it("registers on opt-in, shows the code, stores the token and hides the picker", async () => {
     installManaged();
-    render(Spectator);
+    renderPage();
     await screen.findByRole("combobox");
-    await userEvent.click(screen.getByRole("button", { name: "Enable remote control" }));
+    await userEvent.click(await menuItem("Enable remote control"));
     expect(await screen.findByText("ABC234")).toBeTruthy();
     expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ token: "tok", code: "ABC234" });
     await waitFor(() => expect(screenAuth).toBe("Bearer tok"));
@@ -223,7 +333,7 @@ describe("Spectator remote control", () => {
   it("follows the assigned match and returns to waiting", async () => {
     localStorage.setItem(key, JSON.stringify({ token: "tok", code: "ABC234" }));
     installManaged();
-    render(Spectator);
+    renderPage();
     await waitFor(() => expect(screenSend).not.toBeNull());
     screenSend!({ state: "match", match_id: 7, approved: true });
     await waitFor(() => expect(send).not.toBeNull());
@@ -238,7 +348,7 @@ describe("Spectator remote control", () => {
   it("keeps showing the final standings of a finished match", async () => {
     localStorage.setItem(key, JSON.stringify({ token: "tok", code: "ABC234" }));
     installManaged("finished");
-    render(Spectator);
+    renderPage();
     await waitFor(() => expect(screenSend).not.toBeNull());
     screenSend!({ state: "match", match_id: 7, approved: true });
     await waitFor(() => expect(send).not.toBeNull());
@@ -254,7 +364,7 @@ describe("Spectator remote control", () => {
   it("shows the code until approved, then offers leave below the standings", async () => {
     localStorage.setItem(key, JSON.stringify({ token: "tok", code: "ABC234" }));
     installManaged();
-    render(Spectator);
+    renderPage();
     await waitFor(() => expect(screenSend).not.toBeNull());
     screenSend!({ state: "waiting", match_id: null, approved: false });
     expect(await screen.findByRole("region", { name: "Remote control" })).toBeTruthy();
@@ -262,15 +372,40 @@ describe("Spectator remote control", () => {
     await waitFor(() =>
       expect(screen.queryByRole("region", { name: "Remote control" })).toBeNull(),
     );
-    expect(screen.getByRole("button", { name: "Leave remote control" })).toBeTruthy();
+    expect(await menuItem("Leave remote control")).toBeTruthy();
+  });
+
+  it("closes the menu when the item is clicked", async () => {
+    installManaged();
+    renderPage();
+    await screen.findByRole("combobox");
+    await userEvent.click(await menuItem("Enable remote control"));
+    expect(screen.queryByRole("button", { name: "Enable remote control" })).toBeNull();
+  });
+
+  it("shows enable errors in the notice card", async () => {
+    installManaged("active", { rejectEnable: true });
+    renderPage();
+    await screen.findByRole("combobox");
+    await userEvent.click(await menuItem("Enable remote control"));
+    expect((await screen.findByRole("alert")).textContent).toContain("Nope");
+  });
+
+  it("offers no remote control on other routes", async () => {
+    router.path = "/results";
+    installManaged();
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "Menu" }));
+    expect(screen.queryByRole("button", { name: "Enable remote control" })).toBeNull();
   });
 
   it("leaves remote control and reverts to the match picker", async () => {
     localStorage.setItem(key, JSON.stringify({ token: "tok", code: "ABC234" }));
     const calls = installManaged();
-    render(Spectator);
-    await userEvent.click(await screen.findByRole("button", { name: "Leave remote control" }));
+    renderPage();
+    await userEvent.click(await menuItem("Leave remote control"));
     expect(await screen.findByRole("combobox")).toBeTruthy();
+    expect((await menuItem("Enable remote control")).textContent).toBeTruthy();
     expect(localStorage.getItem(key)).toBeNull();
     const leave = calls.find((c) => c.method === "DELETE");
     expect(leave?.path).toBe("/api/spectator/screens/self");
@@ -282,7 +417,7 @@ describe("Spectator remote control", () => {
     screenStatus = status;
     installManaged();
     screenStatus = status;
-    render(Spectator);
+    renderPage();
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(await screen.findByRole("combobox")).toBeTruthy();
     expect(localStorage.getItem(key)).toBeNull();
