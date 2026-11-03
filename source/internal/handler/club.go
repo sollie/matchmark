@@ -17,12 +17,13 @@ func (h *Handler) clubPublicRoutes(r chi.Router) {
 
 type clubResponse struct {
 	Name    string `json:"name"`
+	Palette string `json:"palette"`
 	HasLogo bool   `json:"has_logo"`
 	Version int64  `json:"version"`
 }
 
 func toClubResponse(c service.ClubSettings) clubResponse {
-	return clubResponse{Name: c.Name, HasLogo: c.HasLogo, Version: c.Version}
+	return clubResponse{Name: c.Name, Palette: c.Palette, HasLogo: c.HasLogo, Version: c.Version}
 }
 
 func (h *Handler) getClub(w http.ResponseWriter, r *http.Request) {
@@ -37,13 +38,14 @@ func (h *Handler) getClub(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) setClub(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name string `json:"name"`
+		Name    *string `json:"name"`
+		Palette *string `json:"palette"`
 	}
 	if err := decode(r, &body); err != nil {
 		writeError(w, err)
 		return
 	}
-	c, err := h.svc.SetClubName(r.Context(), body.Name)
+	c, err := h.svc.SetClub(r.Context(), body.Name, body.Palette)
 	if err != nil {
 		writeError(w, err)
 		return

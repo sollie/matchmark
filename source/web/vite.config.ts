@@ -14,6 +14,11 @@ export default defineConfig({
     },
   ],
   build: { outDir: "dist", emptyOutDir: true },
-  test: { environment: "jsdom", include: ["src/**/*.test.ts"], setupFiles: ["src/test/setup.ts"] },
-  server: { proxy: { "/api": "http://localhost:8080" } },
+  test: {
+    css: { include: [/palettes\.css/] },
+    environment: "jsdom",
+    include: ["src/**/*.test.ts"],
+    setupFiles: ["src/test/setup.ts"],
+  },
+  server: { proxy: { "/api": "http://localhost:8080" }, fs: { allow: ["..", "."] } },
 });

@@ -17,7 +17,7 @@ describe("SiteHeader", () => {
     const user = userEvent.setup();
     render(SiteHeader);
     await user.click(screen.getByRole("button", { name: "Menu" }));
-    expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "Mode" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Admin" }).getAttribute("href")).toBe("/admin");
   });
 
@@ -26,7 +26,7 @@ describe("SiteHeader", () => {
     const user = userEvent.setup();
     render(SiteHeader);
     await user.click(screen.getByRole("button", { name: "Menu" }));
-    expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "Mode" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
   });
 

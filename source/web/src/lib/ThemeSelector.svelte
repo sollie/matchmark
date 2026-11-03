@@ -8,8 +8,8 @@
   ];
 </script>
 
-<div class="theme-selector" role="radiogroup" aria-label="Theme">
-  <span class="theme-title" aria-hidden="true">Theme</span>
+<div class="theme-selector" role="radiogroup" aria-label="Mode">
+  <span class="theme-title" aria-hidden="true">Mode</span>
   <div class="theme-options">
     {#each options as option (option.value)}
       <label>
