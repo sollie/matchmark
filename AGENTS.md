@@ -33,7 +33,7 @@ Specification and decisions:
 - Work in a dedicated worktree (`git worktree add ../mm-<branch> -b <branch> origin/main`) and run `npm ci` in `source/web` inside it; the shared checkout can be switched by another session.
 - To inspect a failed CI run, use `scripts/ci-failures.sh <run-id>`; it prints only the failing Go and Playwright test lines from `gh run view --log-failed`.
 - Stage files by explicit path (`git add <path>`) so only intended changes are committed.
-- Run `scripts/install-hooks.sh` once per clone to enable the pre-commit (untracked files) and pre-push (web verify and e2e) hooks.
+- Run `scripts/install-hooks.sh` once per clone to enable the pre-commit (untracked files) and pre-push (web verify) hooks.
 - Never add comments to code (enforced by `scripts/check-no-comments.sh`).
 - Prefer the simplest solution that satisfies the requirement — avoid over-engineering.
 - Before adding a new dependency, verify it is actively maintained and has recent releases. Prefer well-known, widely-used libraries over obscure alternatives.
