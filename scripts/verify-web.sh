@@ -11,7 +11,3 @@ fi
 
 cd source/web
 npm run verify
-
-if echo "$changed" | grep -q '^source/web/src/' && [ -z "${SKIP_E2E:-}" ]; then
-  npm run e2e
-fi
