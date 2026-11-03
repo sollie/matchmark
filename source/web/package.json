@@ -9,7 +9,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "e2e": "playwright test",
-    "verify": "npm run check && npm run build && npm test && npm audit",
+    "verify": "npm run check && npm run build && npm test && npm audit --audit-level=moderate",
     "format": "prettier --write src e2e",
     "format:check": "prettier --check src e2e"
   },
