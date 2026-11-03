@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autoScroll } from "../lib/autoScroll";
   import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
   import SegmentCell from "../lib/SegmentCell.svelte";
@@ -249,10 +250,12 @@
         <p>No results yet.</p>
       </div>
     {:else}
-      {#each groups as group (group.category ?? "")}
-        {#if group.category !== null}<h3>{group.category}</h3>{/if}
-        {@render standingsTable(group.rows)}
-      {/each}
+      <div class="standings" use:autoScroll>
+        {#each groups as group (group.category ?? "")}
+          {#if group.category !== null}<h3>{group.category}</h3>{/if}
+          {@render standingsTable(group.rows)}
+        {/each}
+      </div>
       {#if segmentNumbers.length > 0}
         <ul class="legend" aria-label="Segment state legend">
           <li>
@@ -299,6 +302,10 @@
   .picker {
     display: block;
     margin: var(--space-3) 0;
+  }
+  .standings {
+    max-height: calc(100dvh - 14rem);
+    overflow-y: auto;
   }
   .status {
     display: flex;
