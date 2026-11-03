@@ -2,7 +2,12 @@
   import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
   import SegmentCell from "../lib/SegmentCell.svelte";
-  import { loadRulebook, segmentColumn, segmentLabel } from "../lib/rulebook.svelte";
+  import {
+    courseCategories,
+    loadRulebook,
+    segmentColumn,
+    segmentLabel,
+  } from "../lib/rulebook.svelte";
   import { openStream, type StreamState } from "../lib/sse";
   import { screenControl } from "../lib/screenControl.svelte";
   import type { components } from "../lib/api/schema";
@@ -90,12 +95,88 @@
     return () => stream.close();
   });
 
-  function rank(i: number): number {
+  type Group = { category: string | null; rows: Standing[] };
+
+  const groups = $derived.by((): Group[] => {
+    if (!snapshot?.group_by_category) return [{ category: null, rows: standings }];
+    const order = courseCategories(current?.course ?? "");
+    const present = [...new Set(standings.map((s) => s.category))];
+    const known = order.filter((c) => present.includes(c));
+    const categories = [...known, ...present.filter((c) => !known.includes(c))];
+    if (categories.length <= 1) return [{ category: null, rows: standings }];
+    return categories.map((category) => ({
+      category,
+      rows: standings
+        .filter((s) => s.category === category)
+        .sort(
+          (a, b) =>
+            Number(a.withdrawn) - Number(b.withdrawn) ||
+            b.total - a.total ||
+            (b.x_count ?? 0) - (a.x_count ?? 0),
+        ),
+    }));
+  });
+  const headingHidden = $derived(new Set(standings.map((s) => s.category)).size <= 1);
+
+  function rank(rows: Standing[], i: number): number {
+    const tied = (a: Standing, b: Standing) =>
+      a.total === b.total && (!snapshot?.group_by_category || a.x_count === b.x_count);
     let r = i;
-    while (r > 0 && standings[r - 1].total === standings[i].total) r--;
+    while (r > 0 && tied(rows[r - 1], rows[i])) r--;
     return r + 1;
   }
 </script>
+
+{#snippet standingsTable(rows: Standing[])}
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th class="num">Lane</th>
+          {#if showNames}<th>Name</th>{/if}
+          {#if showClubs}<th class="optional">Club</th>{/if}
+          {#if showCountries}<th class="optional">Country</th>{/if}
+          <th class="optional">Category</th>
+          {#each segmentNumbers as n (n)}<th
+              class="num"
+              title={segmentLabel(current?.course ?? "", n)}
+              >{segmentColumn(current?.course ?? "", n)}</th
+            >{/each}
+          <th class="num">Total</th>
+          {#if showX}<th class="num">X</th>{/if}
+          {#if finished}<th>Scorecard</th>{/if}
+        </tr>
+      </thead>
+      <tbody>
+        {#each rows as s, i (s.lane)}
+          <tr class:muted={s.withdrawn} class:leader={!s.withdrawn && rank(rows, i) === 1}>
+            <td class="num rank">{s.withdrawn ? "" : rank(rows, i)}</td>
+            <td class="num">{s.lane}</td>
+            {#if showNames}<td>{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
+              >{/if}
+            {#if showClubs}<td class="optional">{s.club}</td>{/if}
+            {#if showCountries}<td class="optional">{s.country}</td>{/if}
+            <td class="optional">{s.category}</td>
+            {#each segmentNumbers as n (n)}
+              <td class="num"
+                ><SegmentCell segment={s.segments?.find((st) => st.segment === n)} /></td
+              >
+            {/each}
+            <td class="num total">{s.total}</td>
+            {#if showX}<td class="num">{s.x_count}</td>{/if}
+            {#if finished}<td
+                >{#if !s.withdrawn}<a
+                    href={`/scorecard/${viewed}/${s.lane}`}
+                    aria-label={`Scorecard for lane ${s.lane}`}>View</a
+                  >{/if}</td
+              >{/if}
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
+{/snippet}
 
 <main class="spectator">
   <h1 class="sr-only">Live standings</h1>
@@ -154,61 +235,16 @@
       </div>
     </div>
 
-    <h2>Standings</h2>
+    <h2 class:sr-only={headingHidden}>Standings</h2>
     {#if standings.length === 0}
       <div class="card empty">
         <p>No results yet.</p>
       </div>
     {:else}
-      <div class="scroll">
-        <table>
-          <thead>
-            <tr>
-              <th class="num">#</th>
-              <th class="num">Lane</th>
-              {#if showNames}<th>Name</th>{/if}
-              {#if showClubs}<th class="optional">Club</th>{/if}
-              {#if showCountries}<th class="optional">Country</th>{/if}
-              <th class="optional">Category</th>
-              {#each segmentNumbers as n (n)}<th
-                  class="num"
-                  title={segmentLabel(current?.course ?? "", n)}
-                  >{segmentColumn(current?.course ?? "", n)}</th
-                >{/each}
-              <th class="num">Total</th>
-              {#if showX}<th class="num">X</th>{/if}
-              {#if finished}<th>Scorecard</th>{/if}
-            </tr>
-          </thead>
-          <tbody>
-            {#each standings as s, i (s.lane)}
-              <tr class:muted={s.withdrawn} class:leader={!s.withdrawn && rank(i) === 1}>
-                <td class="num rank">{s.withdrawn ? "" : rank(i)}</td>
-                <td class="num">{s.lane}</td>
-                {#if showNames}<td
-                    >{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
-                  >{/if}
-                {#if showClubs}<td class="optional">{s.club}</td>{/if}
-                {#if showCountries}<td class="optional">{s.country}</td>{/if}
-                <td class="optional">{s.category}</td>
-                {#each segmentNumbers as n (n)}
-                  <td class="num"
-                    ><SegmentCell segment={s.segments?.find((st) => st.segment === n)} /></td
-                  >
-                {/each}
-                <td class="num total">{s.total}</td>
-                {#if showX}<td class="num">{s.x_count}</td>{/if}
-                {#if finished}<td
-                    >{#if !s.withdrawn}<a
-                        href={`/scorecard/${viewed}/${s.lane}`}
-                        aria-label={`Scorecard for lane ${s.lane}`}>View</a
-                      >{/if}</td
-                  >{/if}
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
+      {#each groups as group (group.category ?? "")}
+        {#if group.category !== null}<h3>{group.category}</h3>{/if}
+        {@render standingsTable(group.rows)}
+      {/each}
       {#if segmentNumbers.length > 0}
         <ul class="legend" aria-label="Segment state legend">
           <li>
@@ -313,6 +349,14 @@
   tr.leader:hover > td {
     background: var(--brand-tint);
     font-weight: 600;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .legend {
     display: flex;

@@ -14,10 +14,11 @@ import (
 const eventWait = 3 * time.Second
 
 type snapshotBody struct {
-	CurrentSegment int              `json:"current_segment"`
-	Standings      []map[string]any `json:"standings"`
-	TotalSegments  int              `json:"total_segments"`
-	Status         string           `json:"status"`
+	CurrentSegment  int              `json:"current_segment"`
+	Standings       []map[string]any `json:"standings"`
+	TotalSegments   int              `json:"total_segments"`
+	Status          string           `json:"status"`
+	GroupByCategory bool             `json:"group_by_category"`
 }
 
 func streamPath(f *fixture) string {
@@ -95,6 +96,24 @@ func TestSpectatorStreamHonoursVisibilityFlags(t *testing.T) {
 	}
 	if _, ok := nextSnapshot(t, s).Standings[0]["last_name"]; ok {
 		t.Fatal("names should be hidden after the change")
+	}
+}
+
+func TestSpectatorStreamCarriesGroupByCategory(t *testing.T) {
+	f := spectatorFixture(t)
+	visPath := fmt.Sprintf("/api/matches/%d/visibility", f.comp)
+	if status, out := f.env.Do("GET", visPath, nil); status != http.StatusOK || out["group_by_category"] != true {
+		t.Fatalf("default: %d %v", status, out)
+	}
+	s := f.env.OpenStream(streamPath(f), nil)
+	if !nextSnapshot(t, s).GroupByCategory {
+		t.Fatal("grouping should be on by default")
+	}
+	if status, out := f.env.Do("PUT", visPath, map[string]bool{"show_names": true, "group_by_category": false}); status != http.StatusOK || out["group_by_category"] != false {
+		t.Fatalf("visibility: %d %v", status, out)
+	}
+	if nextSnapshot(t, s).GroupByCategory {
+		t.Fatal("grouping should be off after the change")
 	}
 }
 
