@@ -360,6 +360,8 @@ test.describe("matches", () => {
     await expect(visibility.getByLabel("X count")).not.toBeChecked();
     await visibility.getByLabel("Clubs").uncheck();
     await visibility.getByLabel("X count").check();
+    await expect(visibility.getByLabel("Group standings by category")).toBeChecked();
+    await visibility.getByLabel("Group standings by category").uncheck();
     await visibility.getByRole("button", { name: "Save" }).click();
     await expect(visibility.getByRole("status")).toHaveText("Saved");
 
@@ -370,5 +372,6 @@ test.describe("matches", () => {
     await expect(reloaded.getByLabel("Countries")).toBeChecked();
     await expect(reloaded.getByLabel("Segment scores")).toBeChecked();
     await expect(reloaded.getByLabel("X count")).toBeChecked();
+    await expect(reloaded.getByLabel("Group standings by category")).not.toBeChecked();
   });
 });

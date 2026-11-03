@@ -14,6 +14,7 @@
     ["show_countries", "Countries"],
     ["show_segment_scores", "Segment scores"],
     ["show_ring_counts", "X count"],
+    ["group_by_category", "Group standings by category"],
   ];
 
   let visibility = $state<Visibility | null>(null);
