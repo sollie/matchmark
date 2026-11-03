@@ -203,18 +203,20 @@
       <p class="muted">Reload this page once a match has started.</p>
     </div>
   {:else}
-    <div class="bar card">
+    <div class="bar">
       {#if !control.managed}
-        <label class="picker">
-          Match
-          <select bind:value={selected}>
-            {#each matches as c (c.id)}
-              <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
-            {/each}
-          </select>
-        </label>
+        <div class="card picker-card">
+          <label class="picker">
+            Match
+            <select bind:value={selected}>
+              {#each matches as c (c.id)}
+                <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
+              {/each}
+            </select>
+          </label>
+        </div>
       {/if}
-      <div class="status" role="status">
+      <div class="card status" role="status">
         <div class="progress-info">
           {#if current}<span class="badge neutral">{current.status}</span>{/if}
           {#if finished}
@@ -288,19 +290,28 @@
     font-size: var(--text-base);
     padding: var(--space-2) var(--space-3);
     max-width: 100%;
+    min-width: 0;
   }
   .picker {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    min-width: 0;
+    max-width: 100%;
   }
   .bar {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-2) var(--space-4);
+    gap: var(--space-3);
     margin: var(--space-3) 0 var(--space-4);
+  }
+  .picker-card,
+  .status {
+    display: flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-4);
+    margin: 0;
   }
   .spectator {
     display: flex;
@@ -312,19 +323,16 @@
     min-height: 0;
     overflow-y: auto;
   }
+  .picker-card {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
   .status {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
     gap: var(--space-2) var(--space-4);
     flex-wrap: wrap;
-    flex: 1 1 auto;
-  }
-  @media (max-width: 45rem) {
-    .picker,
-    .status {
-      flex: 1 1 100%;
-    }
+    flex: 100 1 12rem;
   }
   .progress-info,
   .connection {
