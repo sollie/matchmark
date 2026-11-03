@@ -295,6 +295,9 @@
   .picker {
     display: flex;
     align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    white-space: nowrap;
     gap: var(--space-2);
     min-width: 0;
     max-width: 100%;
@@ -324,6 +327,7 @@
     overflow-y: auto;
   }
   .picker-card {
+    justify-content: center;
     flex: 1 1 auto;
     min-width: 0;
     max-width: 100%;
