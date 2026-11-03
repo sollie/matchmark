@@ -151,3 +151,52 @@ func TestClubChangesAreAudited(t *testing.T) {
 		}
 	}
 }
+
+func TestClubPaletteDefaultsAndIsChosenByAdmin(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	_, got := env.Do("GET", "/api/club", nil)
+	if got["palette"] != "matchmark" {
+		t.Fatalf("default palette: %v", got)
+	}
+	status, out := env.Do("PUT", "/api/club", map[string]string{"palette": "arctic-blue"})
+	if status != http.StatusOK || out["palette"] != "arctic-blue" {
+		t.Fatalf("put: %d %v", status, out)
+	}
+	_, got = env.Do("GET", "/api/club", nil)
+	if got["palette"] != "arctic-blue" || got["name"] != "" {
+		t.Fatalf("get: %v", got)
+	}
+	status, out = env.Do("PUT", "/api/club", map[string]string{"name": "Oslo PPC"})
+	if status != http.StatusOK || out["palette"] != "arctic-blue" || out["name"] != "Oslo PPC" {
+		t.Fatalf("name-only put: %d %v", status, out)
+	}
+}
+
+func TestClubRejectsUnknownPalette(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	if status, _ := env.Do("PUT", "/api/club", map[string]string{"palette": "neon"}); status != http.StatusBadRequest {
+		t.Fatalf("unknown palette: %d", status)
+	}
+	_, got := env.Do("GET", "/api/club", nil)
+	if got["palette"] != "matchmark" {
+		t.Fatalf("palette changed: %v", got)
+	}
+}
+
+func TestClubPaletteRequiresAdmin(t *testing.T) {
+	env := apitest.New(t)
+	if status, _ := env.Do("PUT", "/api/club", map[string]string{"palette": "arctic-blue"}); status != http.StatusUnauthorized {
+		t.Fatalf("palette without session: %d", status)
+	}
+}
+
+func TestClubPaletteChangeIsAudited(t *testing.T) {
+	env := apitest.NewAdmin(t)
+	env.Do("PUT", "/api/club", map[string]string{"palette": "nordic-forest"})
+	for _, l := range env.AuditLines() {
+		if l["action"] == "club.palette" && l["details"] == "nordic-forest" {
+			return
+		}
+	}
+	t.Fatalf("missing club.palette audit: %v", env.AuditLines())
+}

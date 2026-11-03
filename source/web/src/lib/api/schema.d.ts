@@ -115,7 +115,7 @@ export interface paths {
         };
         /** Club name and logo state, shown on public pages */
         get: operations["getClub"];
-        /** Set the club name, trimmed and at most 100 characters (admin only) */
+        /** Set the club name (trimmed, at most 100 characters) and/or palette; omitted fields are unchanged (admin only) */
         put: operations["setClub"];
         post?: never;
         delete?: never;
@@ -1433,6 +1433,8 @@ export interface components {
         Club: {
             /** @description Empty when no name is set */
             name: string;
+            /** @description Palette id; matchmark by default */
+            palette: string;
             has_logo: boolean;
             /** Format: int64 */
             version: number;
@@ -2237,7 +2239,9 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    name: string;
+                    name?: string;
+                    /** @description Palette id, one of the catalogue */
+                    palette?: string;
                 };
             };
         };
@@ -2249,6 +2253,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Club"];
+                };
+            };
+            /** @description Unknown palette id */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             401: components["responses"]["Unauthorized"];
