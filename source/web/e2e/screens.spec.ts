@@ -26,6 +26,7 @@ test.describe("remote-controlled screens", () => {
     });
     const viewer = await context.newPage();
     await viewer.goto("/");
+    await viewer.getByRole("button", { name: "Menu" }).click();
     await viewer.getByRole("button", { name: "Enable remote control" }).click();
     const region = viewer.getByRole("region", { name: "Remote control" });
     const code = (await region.locator(".code").innerText()).trim();
@@ -63,10 +64,14 @@ test.describe("remote-controlled screens", () => {
     await setStatus(api, other.id, "finished");
     await expect(viewer.getByText("Finished").first()).toBeVisible();
 
+    await viewer.getByRole("button", { name: "Menu" }).click();
     await viewer.getByRole("button", { name: "Leave remote control" }).click();
+    await viewer.getByRole("button", { name: "Menu" }).click();
     await expect(viewer.getByRole("button", { name: "Enable remote control" })).toBeVisible();
+    await viewer.keyboard.press("Escape");
     await expect(row(admin, screenName)).toHaveCount(0);
 
+    await viewer.getByRole("button", { name: "Menu" }).click();
     await viewer.getByRole("button", { name: "Enable remote control" }).click();
     const second = (await region.locator(".code").innerText()).trim();
     const secondName = uniqueName("Lobby");
@@ -77,7 +82,9 @@ test.describe("remote-controlled screens", () => {
     await row(admin, secondName).getByRole("button", { name: "Remove" }).click();
     await expect(row(admin, secondName)).toHaveCount(0);
     await expect(viewer.getByRole("alert")).toBeVisible();
+    await viewer.getByRole("button", { name: "Menu" }).click();
     await expect(viewer.getByRole("button", { name: "Enable remote control" })).toBeVisible();
+    await viewer.keyboard.press("Escape");
 
     await context.close();
   });

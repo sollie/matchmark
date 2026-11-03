@@ -6,6 +6,7 @@
   import AccountMenu from "./AccountMenu.svelte";
 
   const scorerRoute = $derived(router.path === "/score");
+  const spectatorRoute = $derived(router.path === "/");
   const adminRoute = $derived(router.path === "/admin" || router.path.startsWith("/admin/"));
 </script>
 
@@ -22,6 +23,6 @@
   {#if adminRoute}
     {#if admin.authed && !admin.mustChangePassword}<AccountMenu />{/if}
   {:else}
-    <SiteMenu adminLink={!scorerRoute} />
+    <SiteMenu adminLink={!scorerRoute} remoteControl={spectatorRoute} />
   {/if}
 </header>

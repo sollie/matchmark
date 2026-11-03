@@ -4,7 +4,7 @@
   import SegmentCell from "../lib/SegmentCell.svelte";
   import { loadRulebook, segmentColumn, segmentLabel } from "../lib/rulebook.svelte";
   import { openStream, type StreamState } from "../lib/sse";
-  import { ScreenControl } from "../lib/screenControl.svelte";
+  import { screenControl } from "../lib/screenControl.svelte";
   import type { components } from "../lib/api/schema";
 
   type Match = components["schemas"]["Match"];
@@ -17,7 +17,7 @@
   let snapshot = $state<Snapshot | null>(null);
   let connection = $state<StreamState>("connecting");
   let updated = $state<Date | null>(null);
-  const control = new ScreenControl();
+  const control = screenControl;
 
   const viewed = $derived(
     control.managed
@@ -97,22 +97,14 @@
   }
 </script>
 
-{#snippet enable()}
-  <p>
-    <button onclick={() => control.enable()} disabled={control.busy}>Enable remote control</button>
-  </p>
-  {#if control.error}<p class="error" role="alert">{control.error}</p>{/if}
-{/snippet}
-
 <main class="spectator">
-  <h1>Live standings</h1>
-  {#if control.notice}
-    <p class="card notice" role="alert">{control.notice}</p>
+  <h1 class="sr-only">Live standings</h1>
+  {#if control.notice || control.error}
+    <p class="card notice" role="alert">{control.notice || control.error}</p>
   {/if}
   {#if control.managed && control.registration && !control.assignment?.approved}
     <div class="card remote" role="region" aria-label="Remote control">
       <span>Remote control code <strong class="code">{control.registration.code}</strong></span>
-      <button onclick={() => control.leave()} disabled={control.busy}>Leave remote control</button>
     </div>
   {/if}
   {#if control.managed && viewed === null}
@@ -125,40 +117,40 @@
       <p>No matches are live yet.</p>
       <p class="muted">Reload this page once a match has started.</p>
     </div>
-    {@render enable()}
   {:else}
-    {#if !control.managed}
-      <label class="picker">
-        Match
-        <select bind:value={selected}>
-          {#each matches as c (c.id)}
-            <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
-          {/each}
-        </select>
-      </label>
-      {@render enable()}
-    {/if}
-    <div class="status card" role="status">
-      <div class="progress-info">
-        {#if current}<span class="badge neutral">{current.status}</span>{/if}
-        {#if finished}
-          <strong>Finished</strong>
-          <a href={`/results/${viewed}`}>View results</a>
-        {:else if snapshot && acceptance}
-          <strong>Segment {snapshot.current_segment} of {snapshot.total_segments}</strong>
-          <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
-        {/if}
-      </div>
-      <div class="connection">
-        {#if connection === "stale"}
-          <span class="badge danger">Offline</span>
-          {#if updated}<span class="muted">Last update {clockTime(updated)}</span>{/if}
-        {:else if updated}
-          <span class="badge success">Live</span>
-          <span class="muted">Updated {clockTime(updated)}</span>
-        {:else}
-          <span class="badge neutral">Loading</span>
-        {/if}
+    <div class="bar card">
+      {#if !control.managed}
+        <label class="picker">
+          Match
+          <select bind:value={selected}>
+            {#each matches as c (c.id)}
+              <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
+      <div class="status" role="status">
+        <div class="progress-info">
+          {#if current}<span class="badge neutral">{current.status}</span>{/if}
+          {#if finished}
+            <strong>Finished</strong>
+            <a href={`/results/${viewed}`}>View results</a>
+          {:else if snapshot && acceptance}
+            <strong>Segment {snapshot.current_segment} of {snapshot.total_segments}</strong>
+            <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
+          {/if}
+        </div>
+        <div class="connection">
+          {#if connection === "stale"}
+            <span class="badge danger">Offline</span>
+            {#if updated}<span class="muted">Last update {clockTime(updated)}</span>{/if}
+          {:else if updated}
+            <span class="badge success">Live</span>
+            <span class="muted">Updated {clockTime(updated)}</span>
+          {:else}
+            <span class="badge neutral">Loading</span>
+          {/if}
+        </div>
       </div>
     </div>
 
@@ -247,11 +239,6 @@
       {/if}
     {/if}
   {/if}
-  {#if control.managed && control.assignment?.approved}
-    <p class="leave">
-      <button onclick={() => control.leave()} disabled={control.busy}>Leave remote control</button>
-    </p>
-  {/if}
 </main>
 
 <style>
@@ -261,8 +248,17 @@
     max-width: 100%;
   }
   .picker {
-    display: block;
-    margin: var(--space-3) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--space-4);
+    margin: var(--space-3) 0 var(--space-4);
   }
   .status {
     display: flex;
@@ -270,8 +266,13 @@
     justify-content: space-between;
     gap: var(--space-2) var(--space-4);
     flex-wrap: wrap;
-    padding: var(--space-2) var(--space-4);
-    margin: 0 0 var(--space-4);
+    flex: 1 1 auto;
+  }
+  @media (max-width: 45rem) {
+    .picker,
+    .status {
+      flex: 1 1 100%;
+    }
   }
   .progress-info,
   .connection {
