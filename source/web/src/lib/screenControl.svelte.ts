@@ -30,16 +30,6 @@ export class ScreenControl {
   managed = $derived(this.registration !== null);
   private stream: StreamHandle | null = null;
 
-  reload() {
-    this.stop();
-    this.registration = load();
-    this.assignment = null;
-    this.connection = "connecting";
-    this.notice = "";
-    this.error = "";
-    this.busy = false;
-  }
-
   start() {
     this.stop();
     const registration = this.registration;

@@ -17,9 +17,11 @@ function makeNode(scrollHeight: number, clientHeight: number) {
 }
 
 function reducedMotion(matches: boolean) {
-  vi.stubGlobal("matchMedia", (query: string) => ({
-    matches: matches && query.includes("prefers-reduced-motion"),
+  const query = vi.fn((q: string) => ({
+    matches: matches && q.includes("prefers-reduced-motion"),
   }));
+  vi.stubGlobal("matchMedia", query);
+  return query;
 }
 
 beforeEach(() => {
@@ -62,17 +64,20 @@ describe("autoScroll", () => {
     expect(node.scrollTop).toBeGreaterThan(0);
   });
 
-  it.each(["wheel", "touchstart", "keydown"])("pauses on %s and resumes after idle", (type) => {
-    const { node } = makeNode(2000, 500);
-    autoScroll(node);
-    vi.advanceTimersByTime(6_000);
-    node.dispatchEvent(new Event(type));
-    node.scrollTop = 300;
-    vi.advanceTimersByTime(9_000);
-    expect(node.scrollTop).toBe(300);
-    vi.advanceTimersByTime(2_000);
-    expect(node.scrollTop).toBeGreaterThan(300);
-  });
+  it.each(["wheel", "touchstart", "keydown", "pointerdown"])(
+    "pauses on %s and resumes after idle",
+    (type) => {
+      const { node } = makeNode(2000, 500);
+      autoScroll(node);
+      vi.advanceTimersByTime(6_000);
+      node.dispatchEvent(new Event(type));
+      node.scrollTop = 300;
+      vi.advanceTimersByTime(9_000);
+      expect(node.scrollTop).toBe(300);
+      vi.advanceTimersByTime(2_000);
+      expect(node.scrollTop).toBeGreaterThan(300);
+    },
+  );
 
   it("does not scroll under reduced motion", () => {
     reducedMotion(true);
@@ -80,6 +85,14 @@ describe("autoScroll", () => {
     autoScroll(node);
     vi.advanceTimersByTime(60_000);
     expect(node.scrollTop).toBe(0);
+  });
+
+  it("queries reduced motion once instead of on every tick", () => {
+    const query = reducedMotion(false);
+    const { node } = makeNode(2000, 500);
+    autoScroll(node);
+    vi.advanceTimersByTime(10_000);
+    expect(query).toHaveBeenCalledTimes(1);
   });
 
   it("keeps its position when content grows and stops when it fits again", () => {
