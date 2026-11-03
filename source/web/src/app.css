@@ -22,31 +22,6 @@
   --touch: 44px;
   --header-h: 3rem;
 
-  --brand-primary: #0f172a;
-  --brand: light-dark(#1f3a5f, #4f86d1);
-  --brand-hover: light-dark(#2a4d7e, #6a9be0);
-  --brand-tint: light-dark(#e1e9f4, #1f3354);
-  --on-brand: light-dark(#ffffff, #0b1220);
-  --accent: light-dark(#0b7285, #3cc4dc);
-  --bg: light-dark(#f1f3f6, #0e131b);
-  --surface: light-dark(#ffffff, #171e29);
-  --surface-alt: light-dark(#f6f8fa, #1d2633);
-  --border: light-dark(#d5dae1, #2d394a);
-  --text: light-dark(#1a2230, #e8edf4);
-  --text-muted: light-dark(#566070, #a0acbd);
-  --link: light-dark(#1c5aa6, #8ab8f5);
-  --danger: light-dark(#b42318, #e5584c);
-  --danger-hover: light-dark(#912018, #f0766b);
-  --on-danger: light-dark(#ffffff, #0b1220);
-  --success-bg: light-dark(#dcf5e3, #12361f);
-  --success-fg: light-dark(#0f5f2c, #8be0a6);
-  --warning-bg: light-dark(#fff1c9, #3b2d0b);
-  --warning-fg: light-dark(#7a4b00, #f5cf73);
-  --danger-bg: light-dark(#fde2e0, #44181a);
-  --danger-fg: light-dark(#8f1c13, #ffaaa3);
-  --neutral-bg: light-dark(#e6e9ee, #2a3444);
-  --neutral-fg: light-dark(#3b4554, #cbd4e1);
-  --focus: light-dark(#1c6ed5, #8ab8f5);
   --shadow:
     0 1px 2px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.4)),
     0 1px 3px light-dark(rgb(16 24 40 / 0.1), transparent);
@@ -129,7 +104,7 @@ a {
   align-items: center;
   min-height: var(--header-h);
   padding: 0 var(--space-4);
-  background: var(--brand-primary);
+  background: var(--header);
   border-bottom: 1px solid var(--border);
 }
 .site-header :focus-visible {

@@ -210,7 +210,7 @@ paths:
     put:
       operationId: setClub
       tags: [club]
-      summary: Set the club name, trimmed and at most 100 characters (admin only)
+      summary: Set the club name (trimmed, at most 100 characters) and/or palette; omitted fields are unchanged (admin only)
       security:
         - adminCookie: []
       requestBody:
@@ -219,11 +219,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
               properties:
                 name:
                   type: string
                   maxLength: 100
+                palette:
+                  type: string
+                  description: Palette id, one of the catalogue
       responses:
         '200':
           description: Updated club settings
@@ -231,6 +233,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Club'
+        '400':
+          description: Unknown palette id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2786,11 +2794,14 @@ components:
           format: date-time
     Club:
       type: object
-      required: [name, has_logo, version]
+      required: [name, palette, has_logo, version]
       properties:
         name:
           type: string
           description: Empty when no name is set
+        palette:
+          type: string
+          description: Palette id; matchmark by default
         has_logo:
           type: boolean
         version:

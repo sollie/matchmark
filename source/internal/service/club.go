@@ -43,15 +43,29 @@ func (s *Service) clubBranding(ctx context.Context) (string, ClubLogo, error) {
 	return club.Name, logo, nil
 }
 
-func (s *Service) SetClubName(ctx context.Context, name string) (ClubSettings, error) {
-	name = strings.TrimSpace(name)
-	if utf8.RuneCountInString(name) > MaxClubNameLength {
-		return ClubSettings{}, ErrInvalid
+func (s *Service) SetClub(ctx context.Context, name, palette *string) (ClubSettings, error) {
+	if name != nil {
+		trimmed := strings.TrimSpace(*name)
+		name = &trimmed
+		if utf8.RuneCountInString(trimmed) > MaxClubNameLength {
+			return ClubSettings{}, ErrInvalid
+		}
 	}
-	if err := s.repo.SetClubName(ctx, name); err != nil {
-		return ClubSettings{}, mapRepoErr(err)
+	if palette != nil && !ValidPalette(*palette) {
+		return ClubSettings{}, ErrUnknownPalette
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "club.update", Target: "club", Details: name}})
+	if name != nil {
+		if err := s.repo.SetClubName(ctx, *name); err != nil {
+			return ClubSettings{}, mapRepoErr(err)
+		}
+		s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "club.update", Target: "club", Details: *name}})
+	}
+	if palette != nil {
+		if err := s.repo.SetClubPalette(ctx, *palette); err != nil {
+			return ClubSettings{}, mapRepoErr(err)
+		}
+		s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "club.palette", Target: "club", Details: *palette}})
+	}
 	return s.GetClub(ctx)
 }
 

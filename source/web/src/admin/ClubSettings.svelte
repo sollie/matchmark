@@ -3,6 +3,7 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import { club, clubLogoUrl, refreshClub } from "../lib/club.svelte";
+  import { applyPalette, palettes } from "../lib/palettes";
 
   let name = $state("");
   let loaded = $state(false);
@@ -15,6 +16,23 @@
     name = club.name;
     loaded = true;
   });
+
+  async function choosePalette(e: Event) {
+    const previous = club.palette;
+    const next = (e.currentTarget as HTMLSelectElement).value;
+    error = "";
+    message = "";
+    applyPalette(next);
+    const result = await api.PUT("/api/club", { body: { palette: next } });
+    if (!result.response.ok) {
+      applyPalette(previous);
+      (e.currentTarget as HTMLSelectElement).value = previous;
+      error = failure(result);
+      return;
+    }
+    message = "Palette saved.";
+    await refreshClub();
+  }
 
   async function saveName(e: SubmitEvent) {
     e.preventDefault();
@@ -82,6 +100,18 @@
       <label>Name <input bind:value={name} maxlength="100" /></label>
       <button type="submit">Save name</button>
     </form>
+  </section>
+
+  <section aria-labelledby="club-palette-heading">
+    <h2 id="club-palette-heading">Club palette</h2>
+    <label>
+      Palette
+      <select value={club.palette} onchange={choosePalette}>
+        {#each palettes as palette (palette.id)}
+          <option value={palette.id}>{palette.name}</option>
+        {/each}
+      </select>
+    </label>
   </section>
 
   <section aria-labelledby="club-logo-heading">

@@ -11,7 +11,7 @@ async function background(page: Page) {
 async function chooseTheme(page: Page, name: "Auto" | "Light" | "Dark") {
   const trigger = page.getByRole("button", { name: /^(Menu|Account menu)$/ });
   if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
-  await page.getByRole("radiogroup", { name: "Theme" }).getByLabel(name).check();
+  await page.getByRole("radiogroup", { name: "Mode" }).getByLabel(name).check();
 }
 
 test.describe("theme", () => {
@@ -30,7 +30,7 @@ test.describe("theme", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     expect(await background(page)).toBe(lightBackground);
     await page.getByRole("button", { name: "Menu" }).click();
-    await expect(page.getByRole("radiogroup", { name: "Theme" }).getByLabel("Light")).toBeChecked();
+    await expect(page.getByRole("radiogroup", { name: "Mode" }).getByLabel("Light")).toBeChecked();
 
     await chooseTheme(page, "Auto");
     await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.*/);
@@ -75,7 +75,7 @@ test.describe("theme", () => {
     await expect(trigger).toBeFocused();
   });
 
-  test("the signed-in admin menu carries the Theme group", async ({ adminPage: page }) => {
+  test("the signed-in admin menu carries the Mode group", async ({ adminPage: page }) => {
     await chooseTheme(page, "Light");
     expect(await background(page)).toBe(lightBackground);
     const menu = page.locator(".account-panel");
@@ -84,7 +84,7 @@ test.describe("theme", () => {
     expect(await background(page)).toBe(lightBackground);
   });
 
-  test("the scorer device menu has the Theme group and no admin link", async ({
+  test("the scorer device menu has the Mode group and no admin link", async ({
     admin,
     openDevice,
   }) => {
@@ -94,7 +94,7 @@ test.describe("theme", () => {
     const pairing = await createPairing(admin, match.id, 1);
     const device = await openDevice(pairing.token);
     await device.getByRole("button", { name: "Menu" }).click();
-    await expect(device.getByRole("radiogroup", { name: "Theme" })).toBeVisible();
+    await expect(device.getByRole("radiogroup", { name: "Mode" })).toBeVisible();
     await expect(device.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
     await chooseTheme(device, "Light");
     await expect(device.locator("html")).toHaveAttribute("data-theme", "light");
