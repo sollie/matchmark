@@ -10,7 +10,12 @@
         var t = localStorage.getItem("matchmark-theme");
         if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
       } catch (e) {}
+      try {
+        var p = localStorage.getItem("matchmark-palette");
+        if (p && /^[a-z-]+$/.test(p)) document.documentElement.setAttribute("data-palette", p);
+      } catch (e) {}
     </script>
+    <link rel="stylesheet" href="/src/palettes.css" />
     <link rel="stylesheet" href="/src/app.css" />
     <title>MatchMark</title>
   </head>
