@@ -36,7 +36,7 @@ func (s *Service) Standings(ctx context.Context, matchID int64) ([]StandingView,
 	return standings, err
 }
 
-func (s *Service) standings(ctx context.Context, comp repository.Match) ([]StandingView, bool, error) {
+func (s *Service) standings(ctx context.Context, comp repository.Match) (views []StandingView, grouped bool, err error) {
 	vis, err := s.repo.GetVisibility(ctx, comp.ID)
 	if err != nil {
 		return nil, false, mapRepoErr(err)

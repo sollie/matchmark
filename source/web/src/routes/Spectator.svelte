@@ -98,13 +98,16 @@
 
   type Group = { category: string | null; rows: Standing[] };
 
+  const withdrawnLast = (rows: Standing[]) =>
+    [...rows].sort((a, b) => Number(a.withdrawn) - Number(b.withdrawn));
+
   const groups = $derived.by((): Group[] => {
-    if (!snapshot?.group_by_category) return [{ category: null, rows: standings }];
+    if (!snapshot?.group_by_category) return [{ category: null, rows: withdrawnLast(standings) }];
     const order = courseCategories(current?.course ?? "");
     const present = [...new Set(standings.map((s) => s.category))];
     const known = order.filter((c) => present.includes(c));
     const categories = [...known, ...present.filter((c) => !known.includes(c))];
-    if (categories.length <= 1) return [{ category: null, rows: standings }];
+    if (categories.length <= 1) return [{ category: null, rows: withdrawnLast(standings) }];
     return categories.map((category) => ({
       category,
       rows: standings
@@ -299,8 +302,14 @@
     padding: var(--space-2) var(--space-4);
     margin: var(--space-3) 0 var(--space-4);
   }
+  .spectator {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - var(--header-h));
+  }
   .standings {
-    max-height: calc(100dvh - 14rem);
+    flex: 0 1 auto;
+    min-height: 0;
     overflow-y: auto;
   }
   .status {

@@ -231,6 +231,20 @@ describe("Spectator standings grouping", () => {
     ]);
   });
 
+  it("puts withdrawn entries last and unranked when not grouped", async () => {
+    await open(false, [
+      entry(3, "Pistol", 100, 2),
+      entry(1, "Pistol", 95, 0, true),
+      entry(2, "Revolver", 90, 1),
+    ]);
+    await screen.findByRole("table");
+    expect(cells(screen.getByRole("table"))).toEqual([
+      ["1", "3"],
+      ["2", "2"],
+      ["", "1"],
+    ]);
+  });
+
   it("shows a single category without a heading in either mode", async () => {
     await open(true, [entry(1, "Revolver", 100, 2), entry(2, "Revolver", 90, 1)]);
     await screen.findByRole("table");
@@ -277,7 +291,14 @@ describe("Spectator remote control", () => {
   }
 
   function renderPage() {
-    screenControl.reload();
+    screenControl.stop();
+    const stored = localStorage.getItem(key);
+    screenControl.registration = stored ? JSON.parse(stored) : null;
+    screenControl.assignment = null;
+    screenControl.connection = "connecting";
+    screenControl.notice = "";
+    screenControl.error = "";
+    screenControl.busy = false;
     render(SiteHeader);
     render(Spectator);
   }
