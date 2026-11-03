@@ -165,6 +165,10 @@ _Avoid_: Score sheet
 The Scorecard of one entry rendered as an image on demand once its match is finished, for the shooter to keep. It shows each segment's ring counts with that segment's scorer (the range admin for admin-scored segments) and counts only accepted segments. It is public, ignores spectator visibility flags, is addressed by match and lane, is never stored and answers 404 for an unfinished match, a withdrawn entry or an empty lane.
 _Avoid_: Receipt, printout
 
+**Standings view**:
+How the live spectator screen lays out a Match's standings: grouped, one table per Category with ranks within the Category, or combined, one table with one overall rank. An admin chooses it per Match; grouped is the default. A Match with a single Category looks the same either way. Withdrawn entries (DNF, and any later DSQ or DNS) stay unranked at the bottom of their Category, or of the combined table.
+_Avoid_: Leaderboard, layout mode
+
 **Results view**:
 The printable, public page of a finished match's standings, chosen from a picker of finished matches and honouring spectator visibility flags. It is the source of the Results PDF and is separate from the live spectator screen.
 _Avoid_: Results page, leaderboard

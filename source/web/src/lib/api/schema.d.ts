@@ -1674,7 +1674,7 @@ export interface components {
             show_countries: boolean;
             show_segment_scores: boolean;
             show_ring_counts: boolean;
-            /** @description Standings view; true shows one table per category, false one combined table */
+            /** @description Standings view; true (default) shows one table per category in rulebook order with ranks within the category, false one combined table with the overall rank. A single-category match looks the same either way */
             group_by_category: boolean;
         };
         Entry: {
@@ -1913,7 +1913,7 @@ export interface components {
             current_segment: number;
             /** @description Number of segments in the match's course of fire */
             total_segments: number;
-            /** @description Standings view; true shows one table per category, false one combined table */
+            /** @description Standings view; true (default) shows one table per category in rulebook order with ranks within the category, false one combined table with the overall rank. A single-category match looks the same either way */
             group_by_category: boolean;
             standings: components["schemas"]["Standing"][];
         };

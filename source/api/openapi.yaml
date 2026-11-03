@@ -3264,7 +3264,7 @@ components:
           type: boolean
         group_by_category:
           type: boolean
-          description: Standings view; true shows one table per category, false one combined table
+          description: Standings view; true (default) shows one table per category in rulebook order with ranks within the category, false one combined table with the overall rank. A single-category match looks the same either way
     Entry:
       type: object
       required: [id, match_id, shooter_id, category, lane, withdrawn]
@@ -3726,7 +3726,7 @@ components:
           description: Number of segments in the match's course of fire
         group_by_category:
           type: boolean
-          description: Standings view; true shows one table per category, false one combined table
+          description: Standings view; true (default) shows one table per category in rulebook order with ranks within the category, false one combined table with the overall rank. A single-category match looks the same either way
         standings:
           type: array
           items:
