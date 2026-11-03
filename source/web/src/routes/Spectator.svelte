@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { autoScroll } from "../lib/autoScroll";
   import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
   import SegmentCell from "../lib/SegmentCell.svelte";
@@ -168,7 +169,7 @@
         <p>No results yet.</p>
       </div>
     {:else}
-      <div class="scroll">
+      <div class="scroll standings" use:autoScroll>
         <table>
           <thead>
             <tr>
@@ -263,6 +264,9 @@
   .picker {
     display: block;
     margin: var(--space-3) 0;
+  }
+  .standings {
+    max-height: calc(100dvh - 14rem);
   }
   .status {
     display: flex;
