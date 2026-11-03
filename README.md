@@ -45,7 +45,7 @@ For frontend development run `npm run dev` in `source/web`; it proxies `/api` to
 
 ## Git hooks
 
-Run `scripts/install-hooks.sh` once per clone. The pre-commit hook rejects commits while untracked, non-ignored files exist. The pre-push hook runs `scripts/verify-web.sh`, which runs `npm run verify` in `source/web` when `source/web` or `source/api` changed relative to `origin/main`, and the full e2e suite when `source/web/src` changed. Set `SKIP_E2E=1` to skip e2e.
+Run `scripts/install-hooks.sh` once per clone. The pre-commit hook rejects commits while untracked, non-ignored files exist. The commit-msg hook strips Copilot attribution lines (`Co-authored-by: ...Copilot...`) from commit messages. The pre-push hook runs `scripts/verify-web.sh`, which runs `npm run verify` in `source/web` when `source/web` or `source/api` changed relative to `origin/main`, and the full e2e suite when `source/web/src` changed. Set `SKIP_E2E=1` to skip e2e.
 
 ## End-to-end tests
 

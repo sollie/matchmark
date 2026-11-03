@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+msg_file=$1
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
+grep -viE '^[[:space:]]*co-authored-by:.*copilot|^[[:space:]]*(generated|created|written) (with|by) .*copilot' "$msg_file" >"$tmp" || true
+cat "$tmp" >"$msg_file"
