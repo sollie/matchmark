@@ -28,10 +28,11 @@ type visibilityBody struct {
 	ShowCountries     bool `json:"show_countries"`
 	ShowSegmentScores bool `json:"show_segment_scores"`
 	ShowRingCounts    bool `json:"show_ring_counts"`
+	GroupByCategory   bool `json:"group_by_category"`
 }
 
 func visibilityJSON(v repository.Visibility) visibilityBody {
-	return visibilityBody{v.Names, v.Clubs, v.Countries, v.SegmentScores, v.RingCounts}
+	return visibilityBody{v.Names, v.Clubs, v.Countries, v.SegmentScores, v.RingCounts, v.GroupByCategory}
 }
 
 func (h *Handler) getVisibility(r *http.Request) (int, any, error) {
@@ -55,7 +56,7 @@ func (h *Handler) setVisibility(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	v := repository.Visibility{Names: body.ShowNames, Clubs: body.ShowClubs, Countries: body.ShowCountries, SegmentScores: body.ShowSegmentScores, RingCounts: body.ShowRingCounts}
+	v := repository.Visibility{Names: body.ShowNames, Clubs: body.ShowClubs, Countries: body.ShowCountries, SegmentScores: body.ShowSegmentScores, RingCounts: body.ShowRingCounts, GroupByCategory: body.GroupByCategory}
 	if err := h.svc.SetVisibility(r.Context(), id, v); err != nil {
 		return fail(err)
 	}

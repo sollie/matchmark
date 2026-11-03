@@ -3,11 +3,12 @@ package repository
 import "context"
 
 type Visibility struct {
-	Names         bool
-	Clubs         bool
-	Countries     bool
-	SegmentScores bool
-	RingCounts    bool
+	Names           bool
+	Clubs           bool
+	Countries       bool
+	SegmentScores   bool
+	RingCounts      bool
+	GroupByCategory bool
 }
 
 type SpectatorSegment struct {
@@ -28,15 +29,15 @@ type SpectatorEntry struct {
 func (r *Repository) GetVisibility(ctx context.Context, matchID int64) (Visibility, error) {
 	var v Visibility
 	err := r.db.QueryRowContext(ctx,
-		`SELECT show_names, show_clubs, show_countries, show_segment_scores, show_ring_counts FROM matches WHERE id = ?`,
-		matchID).Scan(&v.Names, &v.Clubs, &v.Countries, &v.SegmentScores, &v.RingCounts)
+		`SELECT show_names, show_clubs, show_countries, show_segment_scores, show_ring_counts, group_by_category FROM matches WHERE id = ?`,
+		matchID).Scan(&v.Names, &v.Clubs, &v.Countries, &v.SegmentScores, &v.RingCounts, &v.GroupByCategory)
 	return v, mapErr(err)
 }
 
 func (r *Repository) SetVisibility(ctx context.Context, matchID int64, v Visibility) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE matches SET show_names = ?, show_clubs = ?, show_countries = ?, show_segment_scores = ?, show_ring_counts = ? WHERE id = ?`,
-		v.Names, v.Clubs, v.Countries, v.SegmentScores, v.RingCounts, matchID)
+		`UPDATE matches SET show_names = ?, show_clubs = ?, show_countries = ?, show_segment_scores = ?, show_ring_counts = ?, group_by_category = ? WHERE id = ?`,
+		v.Names, v.Clubs, v.Countries, v.SegmentScores, v.RingCounts, v.GroupByCategory, matchID)
 	return affected(res, mapErr(err))
 }
 

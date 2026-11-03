@@ -27,6 +27,7 @@ interface Visibility {
   show_countries: boolean;
   show_segment_scores: boolean;
   show_ring_counts: boolean;
+  group_by_category: boolean;
 }
 
 type MatchStatus = "draft" | "active" | "finished";
@@ -185,6 +186,7 @@ export async function setVisibility(
     show_countries: true,
     show_segment_scores: true,
     show_ring_counts: true,
+    group_by_category: true,
     ...visibility,
   };
   await checked(
