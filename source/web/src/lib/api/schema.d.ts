@@ -1544,10 +1544,25 @@ export interface components {
         };
         /** @enum {string} */
         MatchStatus: "draft" | "active" | "finished";
+        /** @description A WA1500 Classification; 0 Unclassified, 1 Marksman, 2 Sharpshooter, 3 Expert, 4 Master, 5 High Master */
+        Classification: {
+            value: number;
+            /** @enum {string} */
+            name: "Unclassified" | "Marksman" | "Sharpshooter" | "Expert" | "Master" | "High Master";
+        };
         Shooter: {
             /** Format: int64 */
             id: number;
             archived: boolean;
+            /** @description Classification per Category, refreshed from the WA1500 register; a Category is absent until it has been fetched */
+            classifications: {
+                [key: string]: components["schemas"]["Classification"];
+            };
+            /**
+             * Format: date-time
+             * @description When the shooter was last refreshed from the WA1500 register; null when never refreshed
+             */
+            wa1500_synced_at: string | null;
         } & components["schemas"]["ShooterInput"];
         ShooterListItem: components["schemas"]["Shooter"] & {
             /** @description Entries of the shooter in any match, withdrawn ones included. Any entry blocks deleting the shooter (409). */
@@ -1870,6 +1885,8 @@ export interface components {
             waid?: string;
             club?: string;
             country?: string;
+            /** @description The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched */
+            classification?: components["schemas"]["Classification"];
             segments: {
                 segment: number;
                 /** @description Present for accepted segments when segment scores are visible */

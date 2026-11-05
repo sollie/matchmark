@@ -3,6 +3,7 @@ package wa1500
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -37,9 +38,11 @@ func TestParseResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Shooter{
-		{WAID: "3289", LastName: "ANDERSON", FirstName: "Mike", Country: "Canada", Club: "CCSC"},
+		{WAID: "3289", LastName: "ANDERSON", FirstName: "Mike", Country: "Canada", Club: "CCSC",
+			Classes: map[string]Classification{"Revolver": Unclassified, "Pistol": Marksman, "Revolver OS": HighMaster}},
 		{WAID: "412", LastName: "ÅSEN", FirstName: "Kari Anne", Country: "Norway"},
-		{WAID: "77", LastName: "MONONYM", Country: "Sweden", Club: "SSK"},
+		{WAID: "77", LastName: "MONONYM", Country: "Sweden", Club: "SSK",
+			Classes: map[string]Classification{"Carbine": Sharpshooter, "Revolver": Expert, "Pistol": Master}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v\nwant %+v", got, want)
@@ -142,5 +145,23 @@ func TestClientFailures(t *testing.T) {
 func TestDefaultHostIsFixed(t *testing.T) {
 	if NewClient().baseURL != "https://wa1500.org" {
 		t.Fatal("unexpected default host")
+	}
+}
+
+func TestClassificationNames(t *testing.T) {
+	want := map[Classification]string{0: "Unclassified", 1: "Marksman", 2: "Sharpshooter", 3: "Expert", 4: "Master", 5: "High Master"}
+	for c, name := range want {
+		if c.Name() != name {
+			t.Fatalf("%d: %q", c, c.Name())
+		}
+		if got, ok := ParseClassification(" " + strings.ToUpper(name) + " "); !ok || got != c {
+			t.Fatalf("parse %q: %v %v", name, got, ok)
+		}
+	}
+	if _, ok := ParseClassification("Wizard"); ok {
+		t.Fatal("unknown parsed")
+	}
+	if out, _ := json.Marshal(Master); string(out) != `{"value":4,"name":"Master"}` {
+		t.Fatalf("json %s", out)
 	}
 }

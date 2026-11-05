@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,6 +15,8 @@ import (
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
+
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 const (
@@ -31,6 +34,8 @@ type Shooter struct {
 	LastName  string `json:"last_name"`
 	Country   string `json:"country"`
 	Club      string `json:"club"`
+
+	Classes map[string]Classification `json:"-"`
 }
 
 type Searcher interface {
@@ -133,6 +138,21 @@ func parseRow(tr *html.Node) (Shooter, bool) {
 	s := Shooter{WAID: waid, LastName: clean(last), FirstName: clean(first), Country: cells["Country"], Club: cells["Club"]}
 	if s.LastName == "" {
 		return Shooter{}, false
+	}
+	for _, category := range rulebook.Categories() {
+		raw, ok := cells["class. "+category]
+		if !ok {
+			continue
+		}
+		class, ok := ParseClassification(raw)
+		if !ok {
+			slog.Warn("wa1500 unknown classification", "waid", waid, "category", category, "value", raw)
+			continue
+		}
+		if s.Classes == nil {
+			s.Classes = map[string]Classification{}
+		}
+		s.Classes[category] = class
 	}
 	return s, true
 }

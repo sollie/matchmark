@@ -20,6 +20,7 @@ func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]Report
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT e.id, e.category, e.lane, e.withdrawn,
 		        sh.id, sh.last_name, sh.first_name, sh.country, sh.club, COALESCE(sh.waid, ''),
+		        sh.class_revolver, sh.class_pistol, sh.class_revolver_os, sh.class_pistol_os, sh.class_carbine,
 		        s.segment_number, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.status, s.scorer_lane, COALESCE(s.scorer_name, '')
 		 FROM entries e
 		 JOIN shooters sh ON sh.id = e.shooter_id
@@ -36,12 +37,15 @@ func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]Report
 		var sh Shooter
 		var st ReportSegment
 		var withdrawn int
-		if err := rows.Scan(&e.ID, &e.Category, &e.Lane, &withdrawn,
-			&sh.ID, &sh.LastName, &sh.FirstName, &sh.Country, &sh.Club, &sh.WAID,
+		var classes classScan
+		dest := append([]any{&e.ID, &e.Category, &e.Lane, &withdrawn,
+			&sh.ID, &sh.LastName, &sh.FirstName, &sh.Country, &sh.Club, &sh.WAID}, classes.dest()...)
+		if err := rows.Scan(append(dest,
 			&st.Number, &st.Counts.X, &st.Counts.Ten, &st.Counts.Nine, &st.Counts.Eight, &st.Counts.Seven, &st.Counts.Zero, &st.Counts.Miss,
-			&st.Status, &st.ScorerLane, &st.ScorerName); err != nil {
+			&st.Status, &st.ScorerLane, &st.ScorerName)...); err != nil {
 			return nil, err
 		}
+		sh.Classes = classes.values()
 		if n := len(entries); n == 0 || entries[n-1].ID != e.ID {
 			e.MatchID = matchID
 			e.ShooterID = sh.ID

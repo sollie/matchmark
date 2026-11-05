@@ -28,6 +28,7 @@ type Env struct {
 	Server *httptest.Server
 	client *http.Client
 	repo   *repository.Repository
+	svc    *service.Service
 	auth   *service.Auth
 
 	mu     sync.Mutex
@@ -168,6 +169,18 @@ func New(t *testing.T) *Env {
 
 func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	t.Helper()
+	return newEnv(t, baseURL, nil, opts...)
+}
+
+func NewAdminWithService(t *testing.T, svcOpts []service.Option, opts ...handler.Option) *Env {
+	t.Helper()
+	e := newEnv(t, "http://localhost", svcOpts, opts...)
+	e.Login()
+	return e
+}
+
+func newEnv(t *testing.T, baseURL string, svcOpts []service.Option, opts ...handler.Option) *Env {
+	t.Helper()
 	conn, err := db.Open(":memory:")
 	if err != nil {
 		t.Fatalf("open db: %v", err)
@@ -181,7 +194,8 @@ func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 	if err := auth.SeedAdmin(AdminUsername, AdminPassword); err != nil {
 		t.Fatalf("seed admin: %v", err)
 	}
-	e.Server = httptest.NewServer(handler.NewRouter(service.New(repo, service.WithAudit(audit), service.WithScoreLog(slog.New(slog.NewJSONHandler(&e.scores, nil)))), repo, append([]handler.Option{handler.WithAuth(auth, baseURL), handler.WithAudit(audit)}, opts...)...))
+	e.svc = service.New(repo, append([]service.Option{service.WithAudit(audit), service.WithScoreLog(slog.New(slog.NewJSONHandler(&e.scores, nil))), service.WithClock(e.now)}, svcOpts...)...)
+	e.Server = httptest.NewServer(handler.NewRouter(e.svc, repo, append([]handler.Option{handler.WithAuth(auth, baseURL), handler.WithAudit(audit)}, opts...)...))
 	t.Cleanup(e.Server.Close)
 	jar, err := cookiejar.New(nil)
 	if err != nil {
@@ -194,10 +208,15 @@ func NewWithBaseURL(t *testing.T, baseURL string, opts ...handler.Option) *Env {
 func NewAdmin(t *testing.T, opts ...handler.Option) *Env {
 	t.Helper()
 	e := NewWithBaseURL(t, "http://localhost", opts...)
-	if status, out := e.Do("POST", "/api/admin/login", map[string]string{"username": AdminUsername, "password": AdminPassword}); status != http.StatusNoContent {
-		t.Fatalf("admin login: %d %v", status, out)
-	}
+	e.Login()
 	return e
+}
+
+func (e *Env) Login() {
+	e.t.Helper()
+	if status, out := e.Do("POST", "/api/admin/login", map[string]string{"username": AdminUsername, "password": AdminPassword}); status != http.StatusNoContent {
+		e.t.Fatalf("admin login: %d %v", status, out)
+	}
 }
 
 func (e *Env) Do(method, path string, body any) (int, map[string]any) {
@@ -254,4 +273,9 @@ func (e *Env) ID(method, path string, body any) int {
 		e.t.Fatalf("%s %s: status %d body %v", method, path, status, out)
 	}
 	return int(out["id"].(float64))
+}
+
+func (e *Env) RunShooterSyncBatch() {
+	e.t.Helper()
+	e.svc.SyncDueShooters(context.Background())
 }

@@ -13,6 +13,8 @@ type Shooter struct {
 	Club      string
 	WAID      string
 	Archived  bool
+	Classes   map[string]int
+	SyncedAt  string
 }
 
 type Match struct {

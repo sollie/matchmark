@@ -6,6 +6,7 @@ import (
 
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 type ResultsMatch struct {
@@ -23,15 +24,16 @@ type ResultsSegment struct {
 }
 
 type ResultsRow struct {
-	Rank      int              `json:"rank"`
-	LastName  *string          `json:"last_name,omitempty"`
-	FirstName *string          `json:"first_name,omitempty"`
-	WAID      *string          `json:"waid,omitempty"`
-	Club      *string          `json:"club,omitempty"`
-	Country   *string          `json:"country,omitempty"`
-	Segments  []ResultsSegment `json:"segments"`
-	Total     int              `json:"total"`
-	XCount    *int             `json:"x_count,omitempty"`
+	Rank      int                    `json:"rank"`
+	LastName  *string                `json:"last_name,omitempty"`
+	FirstName *string                `json:"first_name,omitempty"`
+	WAID      *string                `json:"waid,omitempty"`
+	Club      *string                `json:"club,omitempty"`
+	Country   *string                `json:"country,omitempty"`
+	Class     *wa1500.Classification `json:"classification,omitempty"`
+	Segments  []ResultsSegment       `json:"segments"`
+	Total     int                    `json:"total"`
+	XCount    *int                   `json:"x_count,omitempty"`
 }
 
 type ResultsDNFRow struct {
@@ -187,6 +189,12 @@ func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
 	}
 	if vis.Countries {
 		row.Country = &sh.Country
+	}
+	if vis.Names {
+		if v, ok := sh.Classes[r.entry.Category]; ok {
+			class := wa1500.Classification(v)
+			row.Class = &class
+		}
 	}
 	if vis.RingCounts {
 		x := r.x

@@ -23,13 +23,16 @@ type EntryWithSegments struct {
 	Segments []SegmentInfo
 }
 
-const shooterColumns = `id, last_name, first_name, country, club, COALESCE(waid, ''), archived`
+var shooterColumns = `id, last_name, first_name, country, club, COALESCE(waid, ''), archived, ` + classColumns + `, wa1500_synced_at`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
 func scanShooter(row rowScanner) (Shooter, error) {
 	var s Shooter
-	err := row.Scan(&s.ID, &s.LastName, &s.FirstName, &s.Country, &s.Club, &s.WAID, &s.Archived)
+	var classes classScan
+	var synced sql.NullString
+	err := row.Scan(append(append([]any{&s.ID, &s.LastName, &s.FirstName, &s.Country, &s.Club, &s.WAID, &s.Archived}, classes.dest()...), &synced)...)
+	s.Classes, s.SyncedAt = classes.values(), synced.String
 	return s, err
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/service"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 func (h *Handler) adminRoutes(r chi.Router) {
@@ -87,9 +88,14 @@ func (b shooterBody) shooter(id int64) repository.Shooter {
 }
 
 func shooterJSON(s repository.Shooter) map[string]any {
+	classes := make(map[string]wa1500.Classification, len(s.Classes))
+	for category, v := range s.Classes {
+		classes[category] = wa1500.Classification(v)
+	}
 	return map[string]any{
 		"id": s.ID, "last_name": s.LastName, "first_name": s.FirstName,
 		"country": s.Country, "club": s.Club, "waid": s.WAID, "archived": s.Archived,
+		"classifications": classes, "wa1500_synced_at": nullable(s.SyncedAt),
 	}
 }
 
