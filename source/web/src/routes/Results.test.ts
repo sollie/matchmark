@@ -252,4 +252,91 @@ describe("Results", () => {
     render(Results);
     expect(await screen.findByText("Results are not available for this match.")).toBeTruthy();
   });
+
+  it("shows a Class column with the Classification name, hiding Unclassified", async () => {
+    navigate("/results/7");
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      const row = (rank: number, last: string, classification?: object) => ({
+        rank,
+        last_name: last,
+        first_name: "A",
+        segments: [{ segment: 1, score: 100 }],
+        total: 100,
+        classification,
+      });
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150",
+          },
+          segments: [1],
+          categories: [
+            {
+              category: "Pistol",
+              did_not_finish: [],
+              rows: [
+                row(1, "Berg", { value: 4, name: "Master" }),
+                row(2, "Dahl", { value: 0, name: "Unclassified" }),
+                row(3, "Eng"),
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    expect(await screen.findByRole("columnheader", { name: "Class" })).toBeTruthy();
+    const cells = (name: RegExp) =>
+      within(screen.getByRole("row", { name }))
+        .getAllByRole("cell")
+        .map((c) => c.textContent);
+    expect(cells(/Berg/)).toContain("Master");
+    expect(cells(/Dahl/)).not.toContain("Unclassified");
+    expect(cells(/Dahl/)).toHaveLength(cells(/Berg/).length);
+  });
+
+  it("omits the Class column when no row has a Classification", async () => {
+    navigate("/results/7");
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150",
+          },
+          segments: [1],
+          categories: [
+            {
+              category: "Pistol",
+              did_not_finish: [],
+              rows: [
+                {
+                  rank: 1,
+                  last_name: "Berg",
+                  first_name: "A",
+                  classification: { value: 0, name: "Unclassified" },
+                  segments: [{ segment: 1, score: 100 }],
+                  total: 100,
+                },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    expect(await screen.findByRole("columnheader", { name: "Total" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Class" })).toBeNull();
+  });
 });

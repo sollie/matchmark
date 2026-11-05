@@ -53,6 +53,39 @@ test.describe("results", () => {
     expect(download.suggestedFilename()).toMatch(/-results\.pdf$/);
   });
 
+  test("the Class column shows the Classification and hides Unclassified", async ({
+    page,
+    admin,
+  }) => {
+    const course = await defaultCourse(admin);
+    const match = await createMatch(admin, { name: uniqueName("Class") });
+    const classed = await createShooter(admin);
+    const unclassed = await createShooter(admin);
+    const first = await addEntry(admin, match.id, classed.id, 1);
+    const second = await addEntry(admin, match.id, unclassed.id, 2);
+    await setVisibility(admin, match.id, {});
+    await setStatus(admin, match.id, "active");
+    await setCounts(admin, match.id, first, 1, { x: course.segmentOneShots }, true);
+    await setCounts(admin, match.id, second, 1, { "10": course.segmentOneShots }, true);
+    await setStatus(admin, match.id, "finished");
+
+    await page.route("**/api/spectator/matches/*/results", async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      const rows = body.categories[0].rows;
+      rows[0].classification = { value: 4, name: "Master" };
+      rows[1].classification = { value: 0, name: "Unclassified" };
+      await route.fulfill({ response, json: body });
+    });
+    await page.goto(`/results/${match.id}`);
+
+    await expect(page.getByRole("columnheader", { name: "Class" })).toBeVisible();
+    await expect(
+      row(page, classed.last_name).first().getByRole("cell", { name: "Master" }),
+    ).toBeVisible();
+    await expect(row(page, unclassed.last_name).first()).not.toContainText("Unclassified");
+  });
+
   test("an unfinished match has no results", async ({ page, admin }) => {
     const match = await createMatch(admin, { name: uniqueName("Unfinished"), status: "active" });
     await page.goto(`/results/${match.id}`);
