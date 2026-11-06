@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 type RingCountsView struct {
@@ -47,17 +48,18 @@ func segmentState(st repository.SegmentStatus, number, currentSegment int) Segme
 }
 
 type StandingView struct {
-	Lane       int                `json:"lane"`
-	Category   string             `json:"category"`
-	Withdrawn  bool               `json:"withdrawn"`
-	Total      int                `json:"total"`
-	LastName   *string            `json:"last_name,omitempty"`
-	FirstName  *string            `json:"first_name,omitempty"`
-	Club       *string            `json:"club,omitempty"`
-	Country    *string            `json:"country,omitempty"`
-	XCount     *int               `json:"x_count,omitempty"`
-	RingCounts *RingCountsView    `json:"ring_counts,omitempty"`
-	Segments   []SegmentScoreView `json:"segments,omitempty"`
+	Lane       int                    `json:"lane"`
+	Category   string                 `json:"category"`
+	Withdrawn  bool                   `json:"withdrawn"`
+	Total      int                    `json:"total"`
+	LastName   *string                `json:"last_name,omitempty"`
+	FirstName  *string                `json:"first_name,omitempty"`
+	Club       *string                `json:"club,omitempty"`
+	Country    *string                `json:"country,omitempty"`
+	Class      *wa1500.Classification `json:"classification,omitempty"`
+	XCount     *int                   `json:"x_count,omitempty"`
+	RingCounts *RingCountsView        `json:"ring_counts,omitempty"`
+	Segments   []SegmentScoreView     `json:"segments,omitempty"`
 }
 
 func ringCountsView(c repository.RingCounts) RingCountsView {
@@ -99,6 +101,12 @@ func projectStandings(currentSegment int, vis repository.Visibility, entries []r
 		}
 		if vis.Names {
 			v.LastName, v.FirstName = &e.LastName, &e.FirstName
+		}
+		if vis.Names {
+			if c, ok := e.Classes[e.Category]; ok {
+				class := wa1500.Classification(c)
+				v.Class = &class
+			}
 		}
 		if vis.Clubs {
 			v.Club = &e.Club

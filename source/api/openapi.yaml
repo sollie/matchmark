@@ -3607,6 +3607,9 @@ components:
           type: string
         country:
           type: string
+        classification:
+          $ref: '#/components/schemas/Classification'
+          description: The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched
         x_count:
           type: integer
         ring_counts:

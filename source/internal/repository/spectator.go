@@ -23,6 +23,7 @@ type SpectatorEntry struct {
 	FirstName string
 	Club      string
 	Country   string
+	Classes   map[string]int
 	Segments  []SpectatorSegment
 }
 
@@ -62,6 +63,7 @@ func (r *Repository) ListPublicMatches(ctx context.Context) ([]Match, error) {
 func (r *Repository) ListSpectatorEntries(ctx context.Context, matchID int64) ([]SpectatorEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT e.id, e.category, e.lane, e.withdrawn, sh.last_name, sh.first_name, sh.club, sh.country,
+		        sh.class_revolver, sh.class_pistol, sh.class_revolver_os, sh.class_pistol_os, sh.class_carbine,
 		        st.segment_number, st.x, st.ten, st.nine, st.eight, st.seven, st.zero, st.miss, st.status
 		 FROM entries e
 		 JOIN shooters sh ON sh.id = e.shooter_id
@@ -76,10 +78,13 @@ func (r *Repository) ListSpectatorEntries(ctx context.Context, matchID int64) ([
 	for rows.Next() {
 		var e SpectatorEntry
 		var s SpectatorSegment
-		if err := rows.Scan(&e.ID, &e.Category, &e.Lane, &e.Withdrawn, &e.LastName, &e.FirstName, &e.Club, &e.Country,
-			&s.Number, &s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &s.Status); err != nil {
+		var classes classScan
+		dest := append([]any{&e.ID, &e.Category, &e.Lane, &e.Withdrawn, &e.LastName, &e.FirstName, &e.Club, &e.Country}, classes.dest()...)
+		if err := rows.Scan(append(dest,
+			&s.Number, &s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &s.Status)...); err != nil {
 			return nil, err
 		}
+		e.Classes = classes.values()
 		if n := len(entries); n > 0 && entries[n-1].ID == e.ID {
 			entries[n-1].Segments = append(entries[n-1].Segments, s)
 			continue

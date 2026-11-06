@@ -36,6 +36,7 @@
   const showNames = $derived(standings.some((s) => s.last_name !== undefined));
   const showClubs = $derived(standings.some((s) => s.club !== undefined));
   const showCountries = $derived(standings.some((s) => s.country !== undefined));
+  const showClass = $derived(standings.some((s) => (s.classification?.value ?? 0) > 0));
   const showX = $derived(standings.some((s) => s.x_count !== undefined));
   const current = $derived(matches.find((c) => c.id === viewed));
   const finished = $derived((current?.status ?? snapshot?.status) === "finished");
@@ -139,6 +140,7 @@
           <th class="num">#</th>
           <th class="num">Lane</th>
           {#if showNames}<th>Name</th>{/if}
+          {#if showClass}<th class="optional">Class</th>{/if}
           {#if showClubs}<th class="optional">Club</th>{/if}
           {#if showCountries}<th class="optional">Country</th>{/if}
           <th class="optional">Category</th>
@@ -158,6 +160,9 @@
             <td class="num rank">{s.withdrawn ? "" : rank(rows, i)}</td>
             <td class="num">{s.lane}</td>
             {#if showNames}<td>{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
+              >{/if}
+            {#if showClass}<td class="optional"
+                >{s.classification && s.classification.value > 0 ? s.classification.name : ""}</td
               >{/if}
             {#if showClubs}<td class="optional">{s.club}</td>{/if}
             {#if showCountries}<td class="optional">{s.country}</td>{/if}

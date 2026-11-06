@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 func spectatorEntry(lane int, category string, withdrawn bool, segments ...repository.SpectatorSegment) repository.SpectatorEntry {
@@ -49,6 +50,22 @@ func TestProjectStandingsVisibility(t *testing.T) {
 				t.Fatalf("got %+v", got)
 			}
 		})
+	}
+}
+
+func TestProjectStandingsClassificationFollowsNamesAndEntryCategory(t *testing.T) {
+	entry := spectatorEntry(1, "Pistol", false, accepted(1, repository.RingCounts{X: 1}))
+	entry.Classes = map[string]int{"Pistol": 3, "Revolver": 1}
+	got := projectStandings(1, repository.Visibility{Names: true}, []repository.SpectatorEntry{entry})[0]
+	if got.Class == nil || *got.Class != wa1500.Expert {
+		t.Fatalf("class %v", got.Class)
+	}
+	if got := projectStandings(1, repository.Visibility{}, []repository.SpectatorEntry{entry})[0]; got.Class != nil {
+		t.Fatalf("hidden names leaked class %v", got.Class)
+	}
+	entry.Classes = map[string]int{"Revolver": 1}
+	if got := projectStandings(1, repository.Visibility{Names: true}, []repository.SpectatorEntry{entry})[0]; got.Class != nil {
+		t.Fatalf("other category leaked class %v", got.Class)
 	}
 }
 
