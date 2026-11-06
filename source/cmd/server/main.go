@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -92,9 +93,12 @@ func run(logger *slog.Logger) error {
 		handler.WithWA1500(service.NewWA1500Lookup(register)),
 	)
 	root := trustedProxyRealIP(cfg.TrustedProxy)(requestLogger(logger)(compression(!cfg.DisableCompression)(spaHandler(web.Dist(), api))))
+	baseCtx, cancelRequests := context.WithCancel(context.Background())
+	defer cancelRequests()
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
 		Handler:           root,
+		BaseContext:       func(net.Listener) context.Context { return baseCtx },
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 	}
@@ -109,6 +113,8 @@ func run(logger *slog.Logger) error {
 		}
 		return err
 	case <-ctx.Done():
+		logger.Info("shutting down, closing open streams")
+		cancelRequests()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
