@@ -126,7 +126,12 @@ func (s *Service) SyncDueShooters(ctx context.Context) {
 		slog.WarnContext(ctx, "wa1500 background sync list failed", "error", err)
 		return
 	}
-	attempts := 0
+	attempts, failed := 0, 0
+	defer func() {
+		if attempts > 0 {
+			slog.InfoContext(ctx, "wa1500 background sync", "due", len(due), "attempted", attempts, "failed", failed)
+		}
+	}()
 	for _, sh := range due {
 		if ctx.Err() != nil || attempts == backgroundSyncBatch {
 			return
@@ -143,7 +148,9 @@ func (s *Service) SyncDueShooters(ctx context.Context) {
 		}
 		attempts++
 		reqCtx, cancel := context.WithTimeout(ctx, backgroundRefreshTimout)
-		_ = s.RefreshShooter(reqCtx, sh)
+		if s.RefreshShooter(reqCtx, sh) != nil {
+			failed++
+		}
 		cancel()
 	}
 }
