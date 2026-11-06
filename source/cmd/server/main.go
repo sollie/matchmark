@@ -78,16 +78,18 @@ func run(logger *slog.Logger) error {
 	if err := auth.SeedAdmin(cfg.AdminUsername, cfg.AdminPassword); err != nil {
 		return err
 	}
-	svcOpts = append(svcOpts, service.WithScoreLog(eventLog), service.WithAudit(audit))
+	register := wa1500.NewClient()
+	svcOpts = append(svcOpts, service.WithScoreLog(eventLog), service.WithAudit(audit), service.WithShooterRegister(register))
 	svc := service.New(repo, svcOpts...)
 	go svc.RunScreenSweep(ctx)
+	go svc.RunShooterSync(ctx)
 	api := handler.NewRouter(svc, repo,
 		handler.WithAuth(auth, cfg.BaseURL),
 		handler.WithVersion(version),
 		handler.WithTLS(cfg.TLSMode != TLSPlain),
 		handler.WithAudit(audit),
 		handler.WithBackupDir(filepath.Dir(cfg.DBPath)),
-		handler.WithWA1500(service.NewWA1500Lookup(wa1500.NewClient())),
+		handler.WithWA1500(service.NewWA1500Lookup(register)),
 	)
 	root := trustedProxyRealIP(cfg.TrustedProxy)(requestLogger(logger)(compression(!cfg.DisableCompression)(spaHandler(web.Dist(), api))))
 	srv := &http.Server{

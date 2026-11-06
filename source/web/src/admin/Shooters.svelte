@@ -7,6 +7,7 @@
   import NameFields from "./NameFields.svelte";
   import ShooterMerge from "./ShooterMerge.svelte";
   import Modal from "../lib/Modal.svelte";
+  import ClassChips from "../lib/ClassChips.svelte";
   import { normalizeFirstName, normalizeLastName } from "../lib/names";
 
   type Shooter = components["schemas"]["Shooter"];
@@ -125,9 +126,14 @@
   const entriesLabel = (n: number) => `Entered in ${n} ${n === 1 ? "match" : "matches"}`;
 
   function edit(s: Shooter) {
-    const { id, archived: _archived, ...rest } = s;
-    editing = id;
-    form = rest;
+    editing = s.id;
+    form = {
+      last_name: s.last_name,
+      first_name: s.first_name,
+      country: s.country,
+      club: s.club,
+      waid: s.waid,
+    };
   }
 
   function cancel() {
@@ -255,6 +261,7 @@
             {s.first_name}
             {s.last_name}
             {#if s.archived}<span class="badge neutral">Archived</span>{/if}
+            <ClassChips classifications={s.classifications} />
           </td>
           <td data-label="Country">{s.country}</td>
           <td data-label="Club">{s.club}</td>

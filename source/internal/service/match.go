@@ -151,6 +151,7 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if rulebook.ValidateCategory(comp.Course, e.Category) != nil {
 		return 0, ErrInvalid
 	}
+	s.refreshStaleShooter(ctx, shooter)
 	course, err := rulebook.CourseByKey(comp.Course)
 	if err != nil {
 		return 0, err

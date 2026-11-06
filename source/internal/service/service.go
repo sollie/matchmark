@@ -4,8 +4,10 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 var (
@@ -41,10 +43,14 @@ type Service struct {
 	screenConns    map[int64]int
 	snapMu         sync.Mutex
 	snaps          map[int64]*snapSlot
+	register       wa1500.Searcher
+	now            func() time.Time
+	syncPace       time.Duration
+	sync           shooterSync
 }
 
 func New(repo *repository.Repository, opts ...Option) *Service {
-	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]*snapSlot{}, screenThrottle: NewLoginThrottle(), screenConns: map[int64]int{}}
+	s := &Service{repo: repo, bus: NewBroadcaster(defaultCoalesceWindow), snaps: map[int64]*snapSlot{}, screenThrottle: NewLoginThrottle(), screenConns: map[int64]int{}, now: time.Now, syncPace: backgroundSyncPace}
 	for _, opt := range opts {
 		opt(s)
 	}

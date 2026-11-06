@@ -35,6 +35,33 @@ test.describe("shooters", () => {
     await expect(form.getByLabel("Last name")).toHaveValue("");
   });
 
+  test("a shooter shows one chip per Category with a Classification", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const lastName = uniqueLastName("Classed");
+    await page.route(/\/api\/shooters(\?.*)?$/, async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      for (const s of body.shooters) {
+        if (s.last_name === lastName) {
+          s.classifications = {
+            Revolver: { value: 3, name: "Expert" },
+            Pistol: { value: 0, name: "Unclassified" },
+          };
+        }
+      }
+      await route.fulfill({ response, json: body });
+    });
+    await createShooter(admin, { last_name: lastName });
+    await openShooters(page);
+    await page.getByRole("searchbox", { name: "Search shooters" }).fill(lastName);
+
+    const chips = row(page, lastName).getByRole("list", { name: "Classifications" });
+    await expect(chips.getByRole("listitem")).toHaveCount(1);
+    await expect(chips).toContainText("Revolver Expert");
+  });
+
   test("first name comes before last name and typing shows the normalized form", async ({
     adminPage: page,
   }) => {

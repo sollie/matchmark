@@ -81,6 +81,7 @@ func (s *Service) importUpdate(ctx context.Context, existing, sh repository.Shoo
 	if err := s.UpdateShooter(ctx, sh); err != nil {
 		return ShooterImportResult{}, err
 	}
+	s.refreshImported(ctx, id)
 	return ShooterImportResult{ID: id}, nil
 }
 
@@ -89,5 +90,19 @@ func (s *Service) importCreate(ctx context.Context, sh repository.Shooter) (Shoo
 	if err != nil {
 		return ShooterImportResult{}, err
 	}
+	s.refreshImported(ctx, id)
 	return ShooterImportResult{ID: id, Created: true}, nil
+}
+
+func (s *Service) refreshImported(ctx context.Context, id int64) {
+	if s.register == nil {
+		return
+	}
+	sh, err := s.repo.GetShooter(ctx, id)
+	if err != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, addEntryRefreshTimeout)
+	defer cancel()
+	_ = s.RefreshShooter(ctx, sh)
 }

@@ -44,6 +44,10 @@
   const showClubs = $derived(
     results?.categories.some((c) => c.rows.some((r) => r.club !== undefined)) ?? false,
   );
+  const showClass = $derived(
+    results?.categories.some((c) => c.rows.some((r) => (r.classification?.value ?? 0) > 0)) ??
+      false,
+  );
   const showCountries = $derived(
     results?.categories.some((c) => c.rows.some((r) => r.country !== undefined)) ?? false,
   );
@@ -130,6 +134,7 @@
                 <tr>
                   <th class="num">#</th>
                   {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
+                  {#if showClass}<th>Class</th>{/if}
                   {#if showClubs}<th>Club</th>{/if}
                   {#if showCountries}<th>Country</th>{/if}
                   {#if showSegments}{#each results.segments as n (n)}<th class="num"
@@ -145,6 +150,11 @@
                     <td class="num">{row.rank}</td>
                     {#if showNames}<td>{row.first_name} {row.last_name}</td><td>{row.waid ?? ""}</td
                       >{/if}
+                    {#if showClass}<td
+                        >{row.classification && row.classification.value > 0
+                          ? row.classification.name
+                          : ""}</td
+                      >{/if}
                     {#if showClubs}<td>{row.club}</td>{/if}
                     {#if showCountries}<td>{row.country}</td>{/if}
                     {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
@@ -159,6 +169,7 @@
                     <td class="num"></td>
                     {#if showNames}<td>{row.first_name} {row.last_name}</td><td>{row.waid ?? ""}</td
                       >{/if}
+                    {#if showClass}<td></td>{/if}
                     {#if showClubs}<td>{row.club}</td>{/if}
                     {#if showCountries}<td>{row.country}</td>{/if}
                     {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"

@@ -17,6 +17,8 @@ const shooters = [
     club: "Club",
     waid: "",
     archived: false,
+    classifications: {},
+    wa1500_synced_at: null,
   },
   {
     id: 8,
@@ -26,6 +28,8 @@ const shooters = [
     club: "Club",
     waid: "",
     archived: false,
+    classifications: {},
+    wa1500_synced_at: null,
   },
 ];
 
