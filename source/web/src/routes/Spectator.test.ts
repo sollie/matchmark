@@ -112,6 +112,44 @@ describe("Spectator status row", () => {
     expect(screen.getByRole("columnheader", { name: "Stage 1+2" })).toBeTruthy();
   });
 
+  it("shows a Class column with the Classification name, hiding Unclassified", async () => {
+    install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    const named = (lane: number, last: string, classification?: object) => ({
+      ...standing(lane, ["in_progress"]),
+      first_name: "A",
+      last_name: last,
+      classification,
+    });
+    send!({
+      current_segment: 1,
+      total_segments: 2,
+      standings: [
+        named(1, "Berg", { value: 4, name: "Master" }),
+        named(2, "Dahl", { value: 0, name: "Unclassified" }),
+      ],
+    });
+    expect(await screen.findByRole("columnheader", { name: "Class" })).toBeTruthy();
+    const cells = (name: RegExp) =>
+      within(screen.getByRole("row", { name }))
+        .getAllByRole("cell")
+        .map((c) => c.textContent);
+    expect(cells(/Berg/)).toContain("Master");
+    expect(cells(/Dahl/)).not.toContain("Unclassified");
+  });
+
+  it("omits the Class column when no standing has a Classification", async () => {
+    install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    send!({ current_segment: 1, total_segments: 2, standings: [standing(1, ["in_progress"])] });
+    await screen.findByRole("columnheader", { name: "Total" });
+    expect(screen.queryByRole("columnheader", { name: "Class" })).toBeNull();
+  });
+
   it("shows Finished instead of the segment position", async () => {
     install("finished");
     render(Spectator);

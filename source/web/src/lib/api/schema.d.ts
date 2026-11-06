@@ -1851,6 +1851,8 @@ export interface components {
             first_name?: string;
             club?: string;
             country?: string;
+            /** @description The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched */
+            classification?: components["schemas"]["Classification"];
             x_count?: number;
             ring_counts?: components["schemas"]["RingCounts"];
             segments?: components["schemas"]["SegmentScore"][];
