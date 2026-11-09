@@ -1,7 +1,7 @@
 import { expect, test, uniqueName } from "./helpers";
 
 test.describe("competitions", () => {
-  test("create a competition, group matches under it and enforce its date range", async ({
+  test("create a competition, group matches under it and enforce its date span", async ({
     adminPage: page,
   }) => {
     const competition = uniqueName("Nationals");

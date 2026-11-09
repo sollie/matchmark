@@ -140,7 +140,7 @@ func restoreMatch(ctx context.Context, tx *sql.Tx, rc RestoreMatch, counts *Rest
 
 func restoreCompetition(ctx context.Context, tx *sql.Tx, rc RestoreMatch) (int64, error) {
 	if rc.CompetitionID == 0 {
-		return ensureContainer(ctx, tx, 0, rc.Match.Name, rc.Match.Date)
+		return ensureContainer(ctx, tx, 0, rc.Match.Name, rc.Match.Date, nil)
 	}
 	res, err := tx.ExecContext(ctx,
 		`INSERT OR IGNORE INTO competitions (id, name, start_date, end_date) VALUES (?, ?, ?, ?)`,

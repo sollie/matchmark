@@ -92,6 +92,7 @@ type ResultsPDFData struct {
 	Name         string
 	Date         string
 	CourseLabel  string
+	Range        string
 	Segments     []int
 	SegmentNames []string
 	Categories   []ResultsPDFCategory

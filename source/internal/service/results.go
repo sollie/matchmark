@@ -15,6 +15,7 @@ type ResultsMatch struct {
 	Date        string `json:"date"`
 	Course      string `json:"course"`
 	CourseLabel string `json:"course_label"`
+	Range       string `json:"range,omitempty"`
 }
 
 type ResultsSegment struct {
@@ -118,8 +119,12 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 	if err != nil {
 		return ResultsView{}, err
 	}
+	competition, err := s.repo.GetCompetition(ctx, comp.CompetitionID)
+	if err != nil {
+		return ResultsView{}, err
+	}
 	out := ResultsView{
-		Match:       ResultsMatch{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: course.Label},
+		Match:       ResultsMatch{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: course.Label, Range: competition.RangeName},
 		Segments:    make([]int, len(course.Segments)),
 		Categories:  []ResultsCategory{},
 		NewShooters: []ResultsNewShooter{},

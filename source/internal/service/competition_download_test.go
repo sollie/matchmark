@@ -25,7 +25,7 @@ func TestCompetitionDownloadNamesAndSkips(t *testing.T) {
 	svc := service.New(repository.New(conn))
 	ctx := context.Background()
 
-	comp, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Nationals", StartDate: "2026-10-19", EndDate: "2026-10-19"})
+	comp, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Nationals", StartDate: "2026-10-19", EndDate: "2026-10-19"}, service.OptionalID{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestCompetitionWorkbook1500SelectionAndRepeatShooters(t *testing.T) {
 	svc := service.New(repository.New(conn))
 	ctx := context.Background()
 
-	comp, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Nationals", StartDate: "2026-10-19", EndDate: "2026-10-20"})
+	comp, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Nationals", StartDate: "2026-10-19", EndDate: "2026-10-20"}, service.OptionalID{})
 	if err != nil {
 		t.Fatal(err)
 	}

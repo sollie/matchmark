@@ -10,6 +10,7 @@ tags:
   - name: users
   - name: audit
   - name: club
+  - name: ranges
   - name: shooters
   - name: competitions
   - name: matches
@@ -230,6 +231,11 @@ paths:
                   type: string
                   enum: [Master, Unclassified]
                   description: The Class an Unclassified shooter competes in when a match goes active (rule 20.2)
+                default_range_id:
+                  type: integer
+                  format: int64
+                  nullable: true
+                  description: The range pre-filled on new competitions; null clears it. It must be an active range
       responses:
         '200':
           description: Updated club settings
@@ -866,6 +872,148 @@ paths:
                   - $ref: '#/components/schemas/Error'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/ranges:
+    get:
+      operationId: listRanges
+      tags: [ranges]
+      summary: All ranges including archived ones, by name
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The club's ranges
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ranges]
+                properties:
+                  ranges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Range'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createRange
+      tags: [ranges]
+      summary: Add a range; names are unique ignoring case (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RangeInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/ranges/{rangeID}:
+    parameters:
+      - $ref: '#/components/parameters/RangeID'
+    put:
+      operationId: updateRange
+      tags: [ranges]
+      summary: Rename a range (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RangeInput'
+      responses:
+        '200':
+          description: The updated range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Range'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: deleteRange
+      tags: [ranges]
+      summary: Delete a range (admin only)
+      description: Answers 409 for a range used by a competition or set as the club default; archive it instead
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Deleted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ranges/{rangeID}/archive:
+    parameters:
+      - $ref: '#/components/parameters/RangeID'
+    post:
+      operationId: archiveRange
+      tags: [ranges]
+      summary: Hide a range from pickers; past competitions keep it (admin only)
+      description: Answers 409 for the club default range
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The archived range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Range'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ranges/{rangeID}/unarchive:
+    parameters:
+      - $ref: '#/components/parameters/RangeID'
+    post:
+      operationId: unarchiveRange
+      tags: [ranges]
+      summary: Make an archived range selectable again (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Range'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/competitions:
     get:
       operationId: listCompetitions
@@ -929,7 +1077,7 @@ paths:
       tags: [competitions]
       security:
         - adminCookie: []
-      description: Rejected with 422 when the new range would leave a match of the competition outside it
+      description: Rejected with 422 when the new date span would leave a match of the competition outside it
       requestBody:
         required: true
         content:
@@ -2716,6 +2864,13 @@ components:
       type: http
       scheme: bearer
   parameters:
+    RangeID:
+      name: rangeID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     MatchID:
       name: matchID
       in: path
@@ -2851,8 +3006,13 @@ components:
           format: date-time
     Club:
       type: object
-      required: [name, palette, has_logo, version, unclassified_class]
+      required: [name, palette, has_logo, version, unclassified_class, default_range_id]
       properties:
+        default_range_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: The range pre-filled on new competitions; null when unset
         unclassified_class:
           type: string
           enum: [Master, Unclassified]
@@ -3290,6 +3450,29 @@ components:
         end_date:
           type: string
           description: ISO 8601 calendar date, YYYY-MM-DD, not before start_date
+        range_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: The range of the competition. Omitted on create it defaults to the club default range, else the only active range; omitted on update it is unchanged; null clears it. Archived ranges are rejected unless already set
+    Range:
+      allOf:
+        - type: object
+          required: [id, archived]
+          properties:
+            id:
+              type: integer
+              format: int64
+            archived:
+              type: boolean
+        - $ref: '#/components/schemas/RangeInput'
+    RangeInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
     Competition:
       allOf:
         - type: object
@@ -3301,6 +3484,10 @@ components:
             match_count:
               type: integer
               description: Number of matches in the competition
+            range_name:
+              type: string
+              nullable: true
+              description: Name of the competition's range; null when it has none
         - $ref: '#/components/schemas/CompetitionInput'
     MatchInput:
       type: object
@@ -3734,6 +3921,9 @@ components:
               description: Course of fire key from the rulebook
             course_label:
               type: string
+            range:
+              type: string
+              description: Name of the competition's range; absent when it has none
         segments:
           type: array
           items:

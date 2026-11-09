@@ -3,9 +3,12 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import { localDate } from "../lib/datetime";
+  import { onMount } from "svelte";
+  import { club, refreshClub } from "../lib/club.svelte";
   import type { components } from "../lib/api/schema";
 
   type Competition = components["schemas"]["Competition"];
+  type Range = components["schemas"]["Range"];
 
   const datePattern = "\\d{4}-\\d{2}-\\d{2}";
 
@@ -24,11 +27,33 @@
   let startDate = $state(untrack(() => competition?.start_date ?? today));
   let endDate = $state(untrack(() => competition?.end_date ?? today));
   let error = $state("");
+  let ranges = $state<Range[]>([]);
+  let rangeChoice = $state(
+    untrack(() => (competition?.range_id == null ? "" : String(competition.range_id))),
+  );
+
+  onMount(async () => {
+    const { data } = await api.GET("/api/ranges");
+    if (!data) return;
+    ranges = data.ranges;
+    if (competition) return;
+    await refreshClub();
+    const active = ranges.filter((r) => !r.archived);
+    if (club.defaultRangeId !== null) rangeChoice = String(club.defaultRangeId);
+    else if (active.length === 1) rangeChoice = String(active[0].id);
+  });
+
+  const pickable = $derived(ranges.filter((r) => !r.archived || r.id === competition?.range_id));
 
   async function save(e: SubmitEvent) {
     e.preventDefault();
     error = "";
-    const body = { name, start_date: startDate, end_date: endDate };
+    const body = {
+      name,
+      start_date: startDate,
+      end_date: endDate,
+      range_id: rangeChoice === "" ? null : Number(rangeChoice),
+    };
     const result = competition
       ? await api.PUT("/api/competitions/{competitionID}", {
           params: { path: { competitionID: competition.id } },
@@ -67,6 +92,15 @@
       size="10"
       required
     /></label
+  >
+  <label
+    >Range
+    <select bind:value={rangeChoice}>
+      <option value="">No range</option>
+      {#each pickable as range (range.id)}
+        <option value={String(range.id)}>{range.name}{range.archived ? " (archived)" : ""}</option>
+      {/each}
+    </select></label
   >
   <button type="submit" class="primary">Save</button>
   <button type="button" onclick={cancel}>Cancel</button>

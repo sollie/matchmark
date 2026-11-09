@@ -51,6 +51,12 @@ func (s *Service) CreateMatch(ctx context.Context, c repository.Match) (int64, e
 	if err := s.checkMatchDate(ctx, c.CompetitionID, c.Date, false); err != nil {
 		return 0, err
 	}
+	if c.CompetitionID == 0 {
+		var err error
+		if c.NewRangeID, err = s.newCompetitionRange(ctx, OptionalID{}); err != nil {
+			return 0, err
+		}
+	}
 	id, err := s.repo.CreateMatch(ctx, c)
 	if err != nil {
 		return id, mapRepoErr(err)
@@ -72,9 +78,13 @@ func validCompetition(c repository.Competition) bool {
 		validDate(c.StartDate) && validDate(c.EndDate) && c.EndDate >= c.StartDate
 }
 
-func (s *Service) CreateMatchInNewCompetition(ctx context.Context, comp repository.Competition, c repository.Match) (int64, error) {
+func (s *Service) CreateMatchInNewCompetition(ctx context.Context, comp repository.Competition, rng OptionalID, c repository.Match) (int64, error) {
 	if !validCompetition(comp) || !validMatch(c) || c.Date < comp.StartDate || c.Date > comp.EndDate {
 		return 0, ErrInvalid
+	}
+	var err error
+	if comp.RangeID, err = s.newCompetitionRange(ctx, rng); err != nil {
+		return 0, err
 	}
 	compID, id, err := s.repo.CreateMatchInNewCompetition(ctx, comp, c)
 	if err != nil {
@@ -85,9 +95,13 @@ func (s *Service) CreateMatchInNewCompetition(ctx context.Context, comp reposito
 	return id, nil
 }
 
-func (s *Service) CreateCompetition(ctx context.Context, c repository.Competition) (int64, error) {
+func (s *Service) CreateCompetition(ctx context.Context, c repository.Competition, rng OptionalID) (int64, error) {
 	if !validCompetition(c) {
 		return 0, ErrInvalid
+	}
+	var err error
+	if c.RangeID, err = s.newCompetitionRange(ctx, rng); err != nil {
+		return 0, err
 	}
 	id, err := s.repo.CreateCompetition(ctx, c)
 	if err != nil {
@@ -97,12 +111,16 @@ func (s *Service) CreateCompetition(ctx context.Context, c repository.Competitio
 	return id, nil
 }
 
-func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competition) error {
+func (s *Service) UpdateCompetition(ctx context.Context, c repository.Competition, rng OptionalID) error {
 	if !validCompetition(c) {
 		return ErrInvalid
 	}
-	if _, err := s.repo.GetCompetition(ctx, c.ID); err != nil {
+	current, err := s.repo.GetCompetition(ctx, c.ID)
+	if err != nil {
 		return mapRepoErr(err)
+	}
+	if c.RangeID, err = s.updatedCompetitionRange(ctx, rng, current.RangeID); err != nil {
+		return err
 	}
 	first, last, err := s.repo.MatchDateBounds(ctx, c.ID)
 	if err != nil {

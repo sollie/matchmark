@@ -7,6 +7,7 @@ export const club = $state({
   hasLogo: false,
   version: 0,
   unclassifiedClass: "Master",
+  defaultRangeId: null as number | null,
 });
 
 export async function refreshClub() {
@@ -18,6 +19,7 @@ export async function refreshClub() {
   club.hasLogo = data.has_logo;
   club.version = data.version;
   club.unclassifiedClass = data.unclassified_class;
+  club.defaultRangeId = data.default_range_id ?? null;
 }
 
 export function clubLogoUrl(version: number): string {

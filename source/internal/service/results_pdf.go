@@ -38,6 +38,7 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		Name:        view.Match.Name,
 		Date:        view.Match.Date,
 		CourseLabel: view.Match.CourseLabel,
+		Range:       view.Match.Range,
 		Segments:    view.Segments,
 	}
 	var logo ClubLogo

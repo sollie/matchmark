@@ -9,11 +9,15 @@ An organisation that runs competitions and owns its own users, shooters and resu
 _Avoid_: Tenant, organisation
 
 **Competition**:
-An announced event of one or more days run by a club, holding one or more Matches. It has a name and a start and end date and no status of its own.
+An announced event of one or more days run by a club, holding one or more Matches. It has a name, a start and end date (its date span), an optional Range and no status of its own.
 _Avoid_: Tournament, event
 
+**Range**:
+A shooting range the club uses, identified by its name and an archived flag. Club settings hold the list and an optional default Range; a Competition has at most one Range, pre-filled with the default (or the only active Range) when created and editable afterwards. A Range used by a Competition cannot be deleted, only archived; archived Ranges are hidden from pickers but stay on past Competitions, and the default cannot be archived. The Range name appears on the results header.
+_Avoid_: Venue, location, date range (use date span for dates)
+
 **Match**:
-One course shot by the shooters of a Competition, on one date inside the Competition's range. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name can be edited in any status; its date and course only while it is a draft, and the course is fixed once it has entries. A shooter has at most one entry per Match.
+One course shot by the shooters of a Competition, on one date inside the Competition's date span. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name can be edited in any status; its date and course only while it is a draft, and the course is fixed once it has entries. A shooter has at most one entry per Match.
 _Avoid_: Competition (for a single course), event
 
 **Back to draft**:

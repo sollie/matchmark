@@ -35,7 +35,7 @@ func (h *Handler) createMatch(r *http.Request) (int, any, error) {
 	case body.Competition != nil && body.CompetitionID != 0:
 		err = service.ErrInvalid
 	case body.Competition != nil:
-		id, err = h.svc.CreateMatchInNewCompetition(r.Context(), body.Competition.competition(0), m)
+		id, err = h.svc.CreateMatchInNewCompetition(r.Context(), body.Competition.competition(0), body.Competition.RangeID, m)
 	default:
 		id, err = h.svc.CreateMatch(r.Context(), m)
 	}

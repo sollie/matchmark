@@ -52,6 +52,11 @@ func NewRouter(svc *service.Service, repo *repository.Repository, opts ...Option
 			r.With(h.RequireAdmin).Put("/club", h.setClub)
 			r.With(h.RequireAdmin).Put("/club/logo", h.putClubLogo)
 			r.With(h.RequireAdmin).Delete("/club/logo", h.deleteClubLogo)
+			r.With(h.RequireAdmin).Post("/ranges", serve(h.createRange))
+			r.With(h.RequireAdmin).Put("/ranges/{rangeID}", serve(h.updateRange))
+			r.With(h.RequireAdmin).Post("/ranges/{rangeID}/archive", serve(h.archiveRange))
+			r.With(h.RequireAdmin).Post("/ranges/{rangeID}/unarchive", serve(h.unarchiveRange))
+			r.With(h.RequireAdmin).Delete("/ranges/{rangeID}", serve(h.deleteRange))
 		}
 		r.Get("/version", h.getVersion)
 		h.clubPublicRoutes(r)

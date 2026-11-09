@@ -27,6 +27,7 @@ type Match struct {
 	CurrentSegment int
 	ActivatedAt    string
 	Classified     bool
+	NewRangeID     *int64
 }
 
 type DateRange struct {
@@ -75,7 +76,7 @@ func (r *Repository) CreateMatch(ctx context.Context, c Match) (int64, error) {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	containerID, err := ensureContainer(ctx, tx, c.CompetitionID, c.Name, c.Date)
+	containerID, err := ensureContainer(ctx, tx, c.CompetitionID, c.Name, c.Date, c.NewRangeID)
 	if err != nil {
 		return 0, err
 	}
@@ -98,7 +99,7 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO competitions (name, start_date, end_date) VALUES (?, ?, ?)`, comp.Name, comp.StartDate, comp.EndDate)
+		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, comp.Name, comp.StartDate, comp.EndDate, comp.RangeID)
 	if err != nil {
 		return 0, 0, mapErr(err)
 	}
@@ -118,12 +119,12 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 	return compID, id, tx.Commit()
 }
 
-func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string) (int64, error) {
+func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string, rangeID *int64) (int64, error) {
 	if id != 0 {
 		return id, nil
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO competitions (name, start_date, end_date) VALUES (?, ?, ?)`, name, date, date)
+		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, name, date, date, rangeID)
 	if err != nil {
 		return 0, mapErr(err)
 	}

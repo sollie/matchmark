@@ -60,7 +60,7 @@ func (s *Service) unclassifiedClass(ctx context.Context) (int, error) {
 	return int(wa1500.Master), nil
 }
 
-func (s *Service) SetClub(ctx context.Context, name, palette, unclassifiedClass *string) (ClubSettings, error) {
+func (s *Service) SetClub(ctx context.Context, name, palette, unclassifiedClass *string, defaultRange OptionalID) (ClubSettings, error) {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		name = &trimmed
@@ -91,6 +91,11 @@ func (s *Service) SetClub(ctx context.Context, name, palette, unclassifiedClass 
 			return ClubSettings{}, mapRepoErr(err)
 		}
 		s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "club.unclassified_class", Target: "club", Details: *unclassifiedClass}})
+	}
+	if defaultRange.Set {
+		if err := s.setDefaultRange(ctx, defaultRange.ID); err != nil {
+			return ClubSettings{}, err
+		}
 	}
 	return s.GetClub(ctx)
 }

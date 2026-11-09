@@ -9,6 +9,7 @@ type ClubSettings struct {
 	Version int64
 
 	UnclassifiedClass string
+	DefaultRangeID    *int64
 }
 
 type ClubLogo struct {
@@ -19,7 +20,7 @@ type ClubLogo struct {
 func (r *Repository) GetClub(ctx context.Context) (ClubSettings, error) {
 	var c ClubSettings
 	err := r.db.QueryRowContext(ctx,
-		`SELECT name, palette, logo IS NOT NULL, version, unclassified_class FROM club_settings WHERE id = 1`).Scan(&c.Name, &c.Palette, &c.HasLogo, &c.Version, &c.UnclassifiedClass)
+		`SELECT name, palette, logo IS NOT NULL, version, unclassified_class, default_range_id FROM club_settings WHERE id = 1`).Scan(&c.Name, &c.Palette, &c.HasLogo, &c.Version, &c.UnclassifiedClass, &c.DefaultRangeID)
 	return c, mapErr(err)
 }
 

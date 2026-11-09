@@ -170,6 +170,7 @@
           ? comp.start_date
           : `${comp.start_date} – ${comp.end_date}`}</span
       >
+      {#if comp.range_name}<span class="muted">{comp.range_name}</span>{/if}
       <button
         type="button"
         onclick={() => (editingCompetition = comp.id)}
