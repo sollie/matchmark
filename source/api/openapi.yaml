@@ -351,6 +351,34 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/officials/candidates:
+    get:
+      operationId: listOfficialCandidates
+      tags: [users]
+      summary: List active users that have a WAID, to pick Referees and Range officers from
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: Active users with a WAID
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [candidates]
+                properties:
+                  candidates:
+                    type: array
+                    items:
+                      type: object
+                      required: [username, waid]
+                      properties:
+                        username:
+                          type: string
+                        waid:
+                          type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/users:
     get:
       operationId: listUsers

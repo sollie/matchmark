@@ -143,4 +143,52 @@ test.describe("competitions", () => {
       edit.getByText("Leave a role empty to use the competition's officials."),
     ).toBeVisible();
   });
+
+  test("officials are picked from users with a WAID and the signed-in user is the default Referee", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const username = uniqueName("official").replace(" ", "-");
+    const ownWaid = String(Math.floor(1e8 + Math.random() * 9e8));
+    const otherWaid = String(Math.floor(1e8 + Math.random() * 9e8));
+    const created = await admin.post("/api/users", {
+      data: { username, role: "user", password: "e2e-temporary-password-1" },
+    });
+    const { id } = await created.json();
+    await admin.put(`/api/users/${id}/waid`, { data: { waid: otherWaid } });
+    await admin.put("/api/admin/waid", { data: { waid: ownWaid } });
+
+    try {
+      await page.goto("/admin");
+      let body: Record<string, unknown> = {};
+      await page.route("**/api/competitions", async (route) => {
+        if (route.request().method() !== "POST") return route.fallback();
+        body = route.request().postDataJSON();
+        await route.fulfill({ status: 422, json: { error: "stubbed" } });
+      });
+
+      await page.getByRole("button", { name: "New competition" }).click();
+      const form = page.getByRole("form", { name: "New competition" });
+      await expect(form.getByLabel("Referee WAID 1")).toHaveValue(ownWaid);
+      await expect(form.getByLabel("Pick referee from users")).not.toContainText(`(${ownWaid})`);
+      await form
+        .getByLabel("Pick referee from users")
+        .selectOption({ label: `${username} (${otherWaid})` });
+      await expect(form.getByLabel("Referee WAID 2")).toHaveValue(otherWaid);
+      await form
+        .getByLabel("Pick range officer from users")
+        .selectOption({ label: `${username} (${otherWaid})` });
+      await expect(form.getByLabel("Range officer WAID 1")).toHaveValue(otherWaid);
+
+      await form.getByLabel("Competition name").fill(uniqueName("Picked"));
+      await form.getByRole("button", { name: "Save" }).click();
+      await expect(form.getByRole("alert")).toHaveText("stubbed");
+      expect(body).toMatchObject({
+        referee_waids: [ownWaid, otherWaid],
+        range_officer_waids: [otherWaid],
+      });
+    } finally {
+      await admin.put("/api/admin/waid", { data: { waid: "" } });
+    }
+  });
 });

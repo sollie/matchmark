@@ -43,6 +43,7 @@ func NewRouter(svc *service.Service, repo *repository.Repository, opts ...Option
 			r.With(h.RequireUser).Put("/admin/waid", h.setOwnWAID)
 			r.With(h.RequireAdmin).Get("/admin/backup", h.backup)
 			r.With(h.RequireAdmin).Get("/audit-log", h.listAudit)
+			r.With(h.RequireUser).Get("/officials/candidates", h.officialCandidates)
 			r.With(h.RequireAdmin).Get("/users", h.listUsers)
 			r.With(h.RequireAdmin).Post("/users", h.createUser)
 			r.With(h.RequireAdmin).Post("/users/{userID}/deactivate", h.deactivateUser)

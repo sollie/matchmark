@@ -123,6 +123,7 @@
       {#each rulebook.courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
     </select>
   </label>
+  <p class="muted">Leave a role empty to use the competition's officials.</p>
   <OfficialsInput role="Referee" bind:waids={refereeWaids} />
   <OfficialsInput role="Range officer" bind:waids={rangeOfficerWaids} />
   <label>

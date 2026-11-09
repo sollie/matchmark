@@ -333,3 +333,38 @@ func TestUserWAIDIsOptionalUniqueAndAdminManaged(t *testing.T) {
 		t.Fatalf("session: %v", session)
 	}
 }
+
+func TestOfficialCandidatesListActiveUsersWithAWAID(t *testing.T) {
+	env, _ := officialsEnv(t)
+	if status, _ := env.Do("PUT", "/api/admin/waid", map[string]any{"waid": "1001"}); status != http.StatusOK {
+		t.Fatalf("own waid: %d", status)
+	}
+	var ids []int
+	for _, name := range []string{"second", "third", "fourth"} {
+		status, out := env.Do("POST", "/api/users", map[string]any{"username": name, "role": "user", "password": "a-long-enough-password"})
+		if status != http.StatusCreated {
+			t.Fatalf("create %s: %d %v", name, status, out)
+		}
+		ids = append(ids, int(out["id"].(float64)))
+	}
+	env.Do("PUT", fmt.Sprintf("/api/users/%d/waid", ids[0]), map[string]any{"waid": "2002"})
+	env.Do("PUT", fmt.Sprintf("/api/users/%d/waid", ids[1]), map[string]any{"waid": "3003"})
+	env.Do("POST", fmt.Sprintf("/api/users/%d/deactivate", ids[1]), nil)
+
+	status, out := env.Do("GET", "/api/officials/candidates", nil)
+	if status != http.StatusOK {
+		t.Fatalf("candidates: %d %v", status, out)
+	}
+	var got []string
+	for _, v := range out["candidates"].([]any) {
+		c := v.(map[string]any)
+		got = append(got, c["waid"].(string)+"="+c["username"].(string))
+	}
+	if len(got) != 2 || got[0] == got[1] {
+		t.Fatalf("candidates: %v", got)
+	}
+	seen := map[string]bool{got[0]: true, got[1]: true}
+	if !seen["2002=second"] || !seen["1001="+apitest.AdminUsername] {
+		t.Fatalf("candidates: %v", got)
+	}
+}
