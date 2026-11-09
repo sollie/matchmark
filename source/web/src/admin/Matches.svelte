@@ -104,7 +104,7 @@
 <h1>Matches</h1>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 
-<form class="row card" onsubmit={create}>
+<form class="form-grid card" onsubmit={create}>
   <label>Name <input bind:value={name} maxlength="128" required /></label>
   <label
     >Date <input

@@ -15,6 +15,7 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
 	"github.com/johnfercher/maroto/v2/pkg/config"
 	"github.com/johnfercher/maroto/v2/pkg/consts/align"
+	"github.com/johnfercher/maroto/v2/pkg/consts/border"
 	"github.com/johnfercher/maroto/v2/pkg/consts/extension"
 	"github.com/johnfercher/maroto/v2/pkg/consts/fontstyle"
 	"github.com/johnfercher/maroto/v2/pkg/consts/orientation"
@@ -51,9 +52,11 @@ var matchMarkIcon []byte
 var wa1500Logo []byte
 
 var (
-	pdfHeaderFill = &props.Color{Red: 238, Green: 238, Blue: 238}
-	pdfMuted      = &props.Color{Red: 92, Green: 92, Blue: 92}
-	pdfPodiumFill = &props.Color{Red: 255, Green: 248, Blue: 225}
+	pdfHeaderFill  = &props.Color{Red: 238, Green: 238, Blue: 238}
+	pdfMuted       = &props.Color{Red: 92, Green: 92, Blue: 92}
+	pdfSectionFill = &props.Color{Red: 184, Green: 224, Blue: 160}
+	pdfGroupFill   = &props.Color{Red: 228, Green: 241, Blue: 218}
+	pdfGroupText   = &props.Color{Red: 46, Green: 84, Blue: 30}
 )
 
 type ResultsPDFSegment struct {
@@ -189,7 +192,7 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 			}
 			flow.push(headerHeight, header)
 			for _, r := range g.Rows {
-				tr, height := tableRow(ms, columns, cells(r), grid, false, r.Rank >= 1 && r.Rank <= 3 && !r.DNF)
+				tr, height := tableRow(ms, columns, cells(r), grid, false)
 				flow.push(height, tr)
 			}
 			flow.push(pdfRowHeight, row.New(pdfRowHeight))
@@ -203,7 +206,7 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 		newHeader, _ := tableHeader(ms, newColumns, pdfGrid)
 		p.Add(sectionRow("New shooters", grid), newHeader)
 		for _, cells := range newRowCells {
-			tr, _ := tableRow(ms, newColumns, cells, grid, false, false)
+			tr, _ := tableRow(ms, newColumns, cells, grid, false)
 			p.Add(tr)
 		}
 		m.AddPages(p)
@@ -496,11 +499,11 @@ func textRow(s string, grid int, p props.Text) core.Row {
 }
 
 func sectionRow(title string, grid int) core.Row {
-	return row.New(pdfSectionHeight).Add(col.New(grid).Add(text.New(title, props.Text{Size: 10, Style: fontstyle.Bold, Top: 2})))
+	return row.New(pdfSectionHeight).WithStyle(&props.Cell{BackgroundColor: pdfSectionFill}).Add(col.New(grid).Add(text.New(title, props.Text{Size: 10, Style: fontstyle.Bold, Top: 2, Left: 2})))
 }
 
 func groupRow(title string, grid int) core.Row {
-	return row.New(pdfGroupHeight).Add(col.New(grid).Add(text.New(title, props.Text{Size: 9, Style: fontstyle.Bold, Top: 1.2, Color: pdfMuted})))
+	return row.New(pdfGroupHeight).WithStyle(&props.Cell{BackgroundColor: pdfGroupFill, BorderType: border.Left, BorderColor: pdfGroupText, BorderThickness: 1.2}).Add(col.New(grid).Add(text.New(title, props.Text{Size: 9, Style: fontstyle.Bold, Top: 1.2, Left: 2, Color: pdfGroupText})))
 }
 
 func tableHeader(ms *measurer, columns []pdfColumn, grid int) (core.Row, float64) {
@@ -508,10 +511,10 @@ func tableHeader(ms *measurer, columns []pdfColumn, grid int) (core.Row, float64
 	for i, c := range columns {
 		titles[i] = c.title
 	}
-	return tableRow(ms, columns, titles, grid, true, false)
+	return tableRow(ms, columns, titles, grid, true)
 }
 
-func tableRow(ms *measurer, columns []pdfColumn, cells []string, grid int, header, podium bool) (core.Row, float64) {
+func tableRow(ms *measurer, columns []pdfColumn, cells []string, grid int, header bool) (core.Row, float64) {
 	cols := make([]core.Col, 0, len(columns))
 	lines := 1
 	for i, c := range columns {
@@ -546,8 +549,6 @@ func tableRow(ms *measurer, columns []pdfColumn, cells []string, grid int, heade
 	r := row.New(height).Add(cols...)
 	if header {
 		r.WithStyle(&props.Cell{BackgroundColor: pdfHeaderFill})
-	} else if podium {
-		r.WithStyle(&props.Cell{BackgroundColor: pdfPodiumFill})
 	}
 	return r, height
 }
