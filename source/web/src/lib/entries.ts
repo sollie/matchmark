@@ -34,6 +34,13 @@ export function entryCommands(matchId: number, reload: () => Promise<void>) {
           body,
         }),
       ),
+    classify: (entryID: number, classification: number, entryClass: number) =>
+      run(
+        api.PUT("/api/matches/{matchID}/entries/{entryID}/classification", {
+          params: { path: entryPath(entryID) },
+          body: { classification_at_match: classification, class: entryClass },
+        }),
+      ),
     withdraw: (entryID: number) =>
       run(
         api.POST("/api/matches/{matchID}/entries/{entryID}/withdraw", {

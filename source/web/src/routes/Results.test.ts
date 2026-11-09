@@ -253,7 +253,7 @@ describe("Results", () => {
     expect(await screen.findByText("Results are not available for this match.")).toBeTruthy();
   });
 
-  it("shows a Class column with the Classification name, hiding Unclassified", async () => {
+  it("shows a Classification column with the Classification name, hiding Unclassified", async () => {
     navigate("/results/7");
     stubFetch((call) => {
       if (!call.path.endsWith("/results")) return { body: { matches } };
@@ -291,7 +291,7 @@ describe("Results", () => {
       };
     });
     render(Results);
-    expect(await screen.findByRole("columnheader", { name: "Class" })).toBeTruthy();
+    expect(await screen.findByRole("columnheader", { name: "Classification" })).toBeTruthy();
     const cells = (name: RegExp) =>
       within(screen.getByRole("row", { name }))
         .getAllByRole("cell")
@@ -301,7 +301,7 @@ describe("Results", () => {
     expect(cells(/Dahl/)).toHaveLength(cells(/Berg/).length);
   });
 
-  it("omits the Class column when no row has a Classification", async () => {
+  it("omits the Classification column when no row has a Classification", async () => {
     navigate("/results/7");
     stubFetch((call) => {
       if (!call.path.endsWith("/results")) return { body: { matches } };
@@ -337,6 +337,6 @@ describe("Results", () => {
     });
     render(Results);
     expect(await screen.findByRole("columnheader", { name: "Total" })).toBeTruthy();
-    expect(screen.queryByRole("columnheader", { name: "Class" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Classification" })).toBeNull();
   });
 });

@@ -34,6 +34,22 @@
     await refreshClub();
   }
 
+  async function chooseUnclassifiedClass(e: Event) {
+    const select = e.currentTarget as HTMLSelectElement;
+    error = "";
+    message = "";
+    const result = await api.PUT("/api/club", {
+      body: { unclassified_class: select.value as "Master" | "Unclassified" },
+    });
+    if (!result.response.ok) {
+      select.value = club.unclassifiedClass;
+      error = failure(result);
+      return;
+    }
+    message = "Unclassified class saved.";
+    await refreshClub();
+  }
+
   async function saveName(e: SubmitEvent) {
     e.preventDefault();
     error = "";
@@ -112,6 +128,18 @@
         {/each}
       </select>
     </label>
+  </section>
+
+  <section aria-labelledby="club-class-heading">
+    <h2 id="club-class-heading">Unclassified shooters</h2>
+    <label>
+      Unclassified shooters compete as
+      <select value={club.unclassifiedClass} onchange={chooseUnclassifiedClass}>
+        <option value="Master">Master</option>
+        <option value="Unclassified">Unclassified</option>
+      </select>
+    </label>
+    <p class="muted">Applied when a match goes active (rule 20.2).</p>
   </section>
 
   <section aria-labelledby="club-logo-heading">

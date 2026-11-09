@@ -20,10 +20,12 @@ type clubResponse struct {
 	Palette string `json:"palette"`
 	HasLogo bool   `json:"has_logo"`
 	Version int64  `json:"version"`
+
+	UnclassifiedClass string `json:"unclassified_class"`
 }
 
 func toClubResponse(c service.ClubSettings) clubResponse {
-	return clubResponse{Name: c.Name, Palette: c.Palette, HasLogo: c.HasLogo, Version: c.Version}
+	return clubResponse{Name: c.Name, Palette: c.Palette, HasLogo: c.HasLogo, Version: c.Version, UnclassifiedClass: c.UnclassifiedClass}
 }
 
 func (h *Handler) getClub(w http.ResponseWriter, r *http.Request) {
@@ -40,12 +42,14 @@ func (h *Handler) setClub(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name    *string `json:"name"`
 		Palette *string `json:"palette"`
+
+		UnclassifiedClass *string `json:"unclassified_class"`
 	}
 	if err := decode(r, &body); err != nil {
 		writeError(w, err)
 		return
 	}
-	c, err := h.svc.SetClub(r.Context(), body.Name, body.Palette)
+	c, err := h.svc.SetClub(r.Context(), body.Name, body.Palette, body.UnclassifiedClass)
 	if err != nil {
 		writeError(w, err)
 		return

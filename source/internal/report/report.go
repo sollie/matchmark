@@ -152,7 +152,8 @@ func fillSheet(f *excelize.File, sheet string, h header, known, fresh []reposito
 		}
 	}
 	for i, e := range fresh {
-		if err := setRow(f, sheet, firstNewRow+i, 1, e.Shooter.LastName, e.Shooter.FirstName, "", e.Shooter.Country, e.Shooter.Club, "nn", total(e)); err != nil {
+		id := e.Identity(e.Shooter.Club, e.Shooter.Country, e.Shooter.Classes)
+		if err := setRow(f, sheet, firstNewRow+i, 1, e.Shooter.LastName, e.Shooter.FirstName, "", id.Country, id.Club, "nn", total(e)); err != nil {
 			return err
 		}
 	}

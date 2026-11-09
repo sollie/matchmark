@@ -57,9 +57,18 @@ type StandingView struct {
 	Club       *string                `json:"club,omitempty"`
 	Country    *string                `json:"country,omitempty"`
 	Class      *wa1500.Classification `json:"classification,omitempty"`
+	CompeteAs  *wa1500.Classification `json:"class,omitempty"`
 	XCount     *int                   `json:"x_count,omitempty"`
 	RingCounts *RingCountsView        `json:"ring_counts,omitempty"`
 	Segments   []SegmentScoreView     `json:"segments,omitempty"`
+}
+
+func classificationPtr(v *int) *wa1500.Classification {
+	if v == nil {
+		return nil
+	}
+	c := wa1500.Classification(*v)
+	return &c
 }
 
 func ringCountsView(c repository.RingCounts) RingCountsView {
@@ -102,17 +111,15 @@ func projectStandings(currentSegment int, vis repository.Visibility, entries []r
 		if vis.Names {
 			v.LastName, v.FirstName = &e.LastName, &e.FirstName
 		}
+		id := e.Identity(e.Club, e.Country, e.Classes)
 		if vis.Names {
-			if c, ok := e.Classes[e.Category]; ok {
-				class := wa1500.Classification(c)
-				v.Class = &class
-			}
+			v.Class, v.CompeteAs = classificationPtr(id.Classification), classificationPtr(id.Class)
 		}
 		if vis.Clubs {
-			v.Club = &e.Club
+			v.Club = &id.Club
 		}
 		if vis.Countries {
-			v.Country = &e.Country
+			v.Country = &id.Country
 		}
 		if vis.RingCounts {
 			c := ringCountsView(total)

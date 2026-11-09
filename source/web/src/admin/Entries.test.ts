@@ -40,6 +40,10 @@ const entry = (overrides: Partial<EntryWithSegments> = {}): EntryWithSegments =>
   category: "Pistol 1500",
   lane: 1,
   withdrawn: false,
+  classification_at_match: null,
+  class: null,
+  club: null,
+  country: null,
   segments: [
     {
       segment_number: 1,
@@ -196,6 +200,33 @@ describe("Entries", () => {
       "POST /api/matches/5/entries/1/segments/1/unlock",
     ]);
     expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("corrects the frozen classification and class of an entry", async () => {
+    const frozen = entry({
+      club: "Club",
+      country: "SWE",
+      classification_at_match: { value: 0, name: "Unclassified" },
+      class: { value: 4, name: "Master" },
+    });
+    const { calls, user } = setup([frozen]);
+    expect(screen.getByText("Unclassified / Master")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Correct class for Jane Doe" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Classification at match" }),
+      "Expert",
+    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "Class" }), "Expert");
+    await user.click(screen.getByRole("button", { name: "Save class" }));
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "PUT /api/matches/5/entries/1/classification",
+    ]);
+    expect(calls[0].body).toEqual({ classification_at_match: 3, class: 3 });
+  });
+
+  it("offers no class correction before the entry is frozen", () => {
+    setup();
+    expect(screen.queryByRole("button", { name: /Correct class/ })).toBeNull();
   });
 
   it("locks an open segment", async () => {

@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 const (
@@ -43,7 +44,23 @@ func (s *Service) clubBranding(ctx context.Context) (string, ClubLogo, error) {
 	return club.Name, logo, nil
 }
 
-func (s *Service) SetClub(ctx context.Context, name, palette *string) (ClubSettings, error) {
+const (
+	UnclassifiedAsMaster       = "Master"
+	UnclassifiedAsUnclassified = "Unclassified"
+)
+
+func (s *Service) unclassifiedClass(ctx context.Context) (int, error) {
+	club, err := s.repo.GetClub(ctx)
+	if err != nil {
+		return 0, mapRepoErr(err)
+	}
+	if club.UnclassifiedClass == UnclassifiedAsUnclassified {
+		return int(wa1500.Unclassified), nil
+	}
+	return int(wa1500.Master), nil
+}
+
+func (s *Service) SetClub(ctx context.Context, name, palette, unclassifiedClass *string) (ClubSettings, error) {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		name = &trimmed
@@ -53,6 +70,9 @@ func (s *Service) SetClub(ctx context.Context, name, palette *string) (ClubSetti
 	}
 	if palette != nil && !ValidPalette(*palette) {
 		return ClubSettings{}, ErrUnknownPalette
+	}
+	if unclassifiedClass != nil && *unclassifiedClass != UnclassifiedAsMaster && *unclassifiedClass != UnclassifiedAsUnclassified {
+		return ClubSettings{}, ErrInvalid
 	}
 	if name != nil {
 		if err := s.repo.SetClubName(ctx, *name); err != nil {
@@ -65,6 +85,12 @@ func (s *Service) SetClub(ctx context.Context, name, palette *string) (ClubSetti
 			return ClubSettings{}, mapRepoErr(err)
 		}
 		s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "club.palette", Target: "club", Details: *palette}})
+	}
+	if unclassifiedClass != nil {
+		if err := s.repo.SetClubUnclassifiedClass(ctx, *unclassifiedClass); err != nil {
+			return ClubSettings{}, mapRepoErr(err)
+		}
+		s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "club.unclassified_class", Target: "club", Details: *unclassifiedClass}})
 	}
 	return s.GetClub(ctx)
 }

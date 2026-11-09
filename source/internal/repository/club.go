@@ -7,6 +7,8 @@ type ClubSettings struct {
 	Palette string
 	HasLogo bool
 	Version int64
+
+	UnclassifiedClass string
 }
 
 type ClubLogo struct {
@@ -17,7 +19,7 @@ type ClubLogo struct {
 func (r *Repository) GetClub(ctx context.Context) (ClubSettings, error) {
 	var c ClubSettings
 	err := r.db.QueryRowContext(ctx,
-		`SELECT name, palette, logo IS NOT NULL, version FROM club_settings WHERE id = 1`).Scan(&c.Name, &c.Palette, &c.HasLogo, &c.Version)
+		`SELECT name, palette, logo IS NOT NULL, version, unclassified_class FROM club_settings WHERE id = 1`).Scan(&c.Name, &c.Palette, &c.HasLogo, &c.Version, &c.UnclassifiedClass)
 	return c, mapErr(err)
 }
 
@@ -30,6 +32,12 @@ func (r *Repository) SetClubName(ctx context.Context, name string) error {
 func (r *Repository) SetClubPalette(ctx context.Context, palette string) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE club_settings SET palette = ?, version = version + 1 WHERE id = 1`, palette)
+	return err
+}
+
+func (r *Repository) SetClubUnclassifiedClass(ctx context.Context, class string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE club_settings SET unclassified_class = ?, version = version + 1 WHERE id = 1`, class)
 	return err
 }
 

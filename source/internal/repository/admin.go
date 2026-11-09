@@ -181,15 +181,28 @@ func (r *Repository) UpdateMatch(ctx context.Context, c Match) error {
 	return tx.Commit()
 }
 
-func (r *Repository) SetMatchStatus(ctx context.Context, id int64, from, to string) error {
+func (r *Repository) SetMatchStatus(ctx context.Context, id int64, from, to string, unclassifiedClass int) error {
 	var activatedAt any
 	if to == "active" {
 		activatedAt = time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 	}
-	res, err := r.db.ExecContext(ctx,
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
 		`UPDATE matches SET status = ?, activated_at = COALESCE(?, activated_at) WHERE id = ? AND status = ?`,
 		to, activatedAt, id, from)
-	return conflictIfNone(res, err)
+	if err := conflictIfNone(res, err); err != nil {
+		return err
+	}
+	if to == "active" {
+		if err := freezeEntries(ctx, tx, id, 0, unclassifiedClass); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (r *Repository) BackToDraft(ctx context.Context, id int64) error {
@@ -205,6 +218,10 @@ func (r *Repository) BackToDraft(ctx context.Context, id int64) error {
 		   WHERE e.match_id = matches.id
 		   AND (s.x + s.ten + s.nine + s.eight + s.seven + s.zero + s.miss) > 0)`, id)
 	if err := conflictIfNone(res, err); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE entries SET classification_at_match = NULL, class = NULL, club = NULL, country = NULL WHERE match_id = ?`, id); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -243,16 +260,36 @@ func (r *Repository) CountEntries(ctx context.Context, matchID int64) (int, erro
 func (r *Repository) GetEntry(ctx context.Context, matchID, entryID int64) (Entry, error) {
 	var e Entry
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, match_id, shooter_id, category, lane, withdrawn FROM entries WHERE id = ? AND match_id = ?`,
-		entryID, matchID).Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn)
+		`SELECT id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country FROM entries WHERE id = ? AND match_id = ?`,
+		entryID, matchID).Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn,
+		&e.ClassificationAtMatch, &e.Class, &e.Club, &e.Country)
 	return e, mapErr(err)
 }
 
-func (r *Repository) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int) error {
-	res, err := r.db.ExecContext(ctx,
+func (r *Repository) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int, unclassifiedClass int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var previous string
+	var frozen bool
+	if err := tx.QueryRowContext(ctx,
+		`SELECT category, club IS NOT NULL FROM entries WHERE id = ? AND match_id = ?`, entryID, matchID).Scan(&previous, &frozen); err != nil {
+		return mapErr(err)
+	}
+	res, err := tx.ExecContext(ctx,
 		`UPDATE entries SET category = ?, lane = ? WHERE id = ? AND match_id = ?`,
 		category, lane, entryID, matchID)
-	return affected(res, err)
+	if err := affected(res, err); err != nil {
+		return err
+	}
+	if frozen && previous != category {
+		if err := freezeEntries(ctx, tx, matchID, entryID, unclassifiedClass); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (r *Repository) DeleteEntry(ctx context.Context, matchID, entryID int64) error {
@@ -263,7 +300,7 @@ func (r *Repository) DeleteEntry(ctx context.Context, matchID, entryID int64) er
 
 func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWithSegments, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, match_id, shooter_id, category, lane, withdrawn FROM entries WHERE match_id = ? ORDER BY lane, id`,
+		`SELECT id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country FROM entries WHERE match_id = ? ORDER BY lane, id`,
 		matchID)
 	if err != nil {
 		return nil, err
@@ -272,7 +309,8 @@ func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWit
 	index := map[int64]int{}
 	for rows.Next() {
 		var e EntryWithSegments
-		if err := rows.Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn); err != nil {
+		if err := rows.Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn,
+			&e.ClassificationAtMatch, &e.Class, &e.Club, &e.Country); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}

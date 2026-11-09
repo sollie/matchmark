@@ -53,7 +53,7 @@ test.describe("results", () => {
     expect(download.suggestedFilename()).toMatch(/-results\.pdf$/);
   });
 
-  test("the Class column shows the Classification and hides Unclassified", async ({
+  test("the Classification column shows the Classification and hides Unclassified", async ({
     page,
     admin,
   }) => {
@@ -79,7 +79,7 @@ test.describe("results", () => {
     });
     await page.goto(`/results/${match.id}`);
 
-    await expect(page.getByRole("columnheader", { name: "Class" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Classification" })).toBeVisible();
     await expect(
       row(page, classed.last_name).first().getByRole("cell", { name: "Master" }),
     ).toBeVisible();

@@ -31,6 +31,7 @@ type ResultsRow struct {
 	Club      *string                `json:"club,omitempty"`
 	Country   *string                `json:"country,omitempty"`
 	Class     *wa1500.Classification `json:"classification,omitempty"`
+	CompeteAs *wa1500.Classification `json:"class,omitempty"`
 	Segments  []ResultsSegment       `json:"segments"`
 	Total     int                    `json:"total"`
 	XCount    *int                   `json:"x_count,omitempty"`
@@ -184,17 +185,15 @@ func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
 			row.WAID = &sh.WAID
 		}
 	}
+	id := r.entry.Identity(sh.Club, sh.Country, sh.Classes)
 	if vis.Clubs {
-		row.Club = &sh.Club
+		row.Club = &id.Club
 	}
 	if vis.Countries {
-		row.Country = &sh.Country
+		row.Country = &id.Country
 	}
 	if vis.Names {
-		if v, ok := sh.Classes[r.entry.Category]; ok {
-			class := wa1500.Classification(v)
-			row.Class = &class
-		}
+		row.Class, row.CompeteAs = classificationPtr(id.Classification), classificationPtr(id.Class)
 	}
 	if vis.RingCounts {
 		x := r.x
@@ -206,11 +205,12 @@ func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
 func resultsNewShooter(r rankedEntry, category string, vis repository.Visibility) ResultsNewShooter {
 	sh := r.entry.Shooter
 	n := ResultsNewShooter{LastName: sh.LastName, FirstName: sh.FirstName, Category: category, Total: r.total}
+	id := r.entry.Identity(sh.Club, sh.Country, sh.Classes)
 	if vis.Clubs {
-		n.Club = &sh.Club
+		n.Club = &id.Club
 	}
 	if vis.Countries {
-		n.Country = &sh.Country
+		n.Country = &id.Country
 	}
 	if vis.RingCounts {
 		x := r.x

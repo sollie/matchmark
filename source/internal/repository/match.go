@@ -41,6 +41,11 @@ type Entry struct {
 	Category  string
 	Lane      int
 	Withdrawn bool
+
+	ClassificationAtMatch *int
+	Class                 *int
+	Club                  *string
+	Country               *string
 }
 
 type SegmentSeed struct {

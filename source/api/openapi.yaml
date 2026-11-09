@@ -210,7 +210,7 @@ paths:
     put:
       operationId: setClub
       tags: [club]
-      summary: Set the club name (trimmed, at most 100 characters) and/or palette; omitted fields are unchanged (admin only)
+      summary: Set the club name (trimmed, at most 100 characters), palette and/or unclassified class; omitted fields are unchanged (admin only)
       security:
         - adminCookie: []
       requestBody:
@@ -226,6 +226,10 @@ paths:
                 palette:
                   type: string
                   description: Palette id, one of the catalogue
+                unclassified_class:
+                  type: string
+                  enum: [Master, Unclassified]
+                  description: The Class an Unclassified shooter competes in when a match goes active (rule 20.2)
       responses:
         '200':
           description: Updated club settings
@@ -1394,6 +1398,47 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/matches/{matchID}/entries/{entryID}/classification:
+    parameters:
+      - $ref: '#/components/parameters/MatchID'
+      - $ref: '#/components/parameters/EntryID'
+    put:
+      operationId: setEntryClassification
+      description: Corrects the frozen Classification at match and Class of a 1500 entry (rule 20.6); audited. Answers 409 for an entry that is not frozen or is not in a 1500 category
+      tags: [entries]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classification_at_match, class]
+              properties:
+                classification_at_match:
+                  type: integer
+                  minimum: 0
+                  maximum: 5
+                class:
+                  type: integer
+                  minimum: 0
+                  maximum: 5
+      responses:
+        '200':
+          description: The updated entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/matches/{matchID}/entries/{entryID}/withdraw:
     parameters:
       - $ref: '#/components/parameters/MatchID'
@@ -2794,8 +2839,12 @@ components:
           format: date-time
     Club:
       type: object
-      required: [name, palette, has_logo, version]
+      required: [name, palette, has_logo, version, unclassified_class]
       properties:
+        unclassified_class:
+          type: string
+          enum: [Master, Unclassified]
+          description: The Class an Unclassified shooter competes in; Master by default
         name:
           type: string
           description: Empty when no name is set
@@ -3301,8 +3350,28 @@ components:
           description: Standings view; true (default) shows one table per category in rulebook order with ranks within the category, false one combined table with the overall rank. A single-category match looks the same either way
     Entry:
       type: object
-      required: [id, match_id, shooter_id, category, lane, withdrawn]
+      required: [id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country]
       properties:
+        classification_at_match:
+          description: The shooter's Classification frozen when the match went active; null until frozen, for other categories, or when never fetched
+          oneOf:
+            - $ref: '#/components/schemas/Classification'
+            - type: 'null'
+        class:
+          description: The Class the shooter competes in, frozen with the Classification at match; an Unclassified shooter gets the club setting. Null when not frozen
+          oneOf:
+            - $ref: '#/components/schemas/Classification'
+            - type: 'null'
+        club:
+          type:
+            - string
+            - 'null'
+          description: Club frozen when the match went active; null until frozen
+        country:
+          type:
+            - string
+            - 'null'
+          description: Country frozen when the match went active; null until frozen
         id:
           type: integer
           format: int64
@@ -3609,7 +3678,10 @@ components:
           type: string
         classification:
           $ref: '#/components/schemas/Classification'
-          description: The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched
+          description: Classification at match for frozen entries, otherwise the shooter's live Classification for the entry's Category; present when names are visible and known
+        class:
+          $ref: '#/components/schemas/Classification'
+          description: The Class the shooter competed in; present when names are visible and the entry is frozen
         x_count:
           type: integer
         ring_counts:
@@ -3685,7 +3757,10 @@ components:
           type: string
         classification:
           $ref: '#/components/schemas/Classification'
-          description: The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched
+          description: Classification at match for frozen entries, otherwise the shooter's live Classification for the entry's Category; present when names are visible and known
+        class:
+          $ref: '#/components/schemas/Classification'
+          description: The Class the shooter competed in; present when names are visible and the entry is frozen
         segments:
           type: array
           items:

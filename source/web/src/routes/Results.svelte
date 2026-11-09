@@ -134,7 +134,7 @@
                 <tr>
                   <th class="num">#</th>
                   {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
-                  {#if showClass}<th>Class</th>{/if}
+                  {#if showClass}<th>Classification</th>{/if}
                   {#if showClubs}<th>Club</th>{/if}
                   {#if showCountries}<th>Country</th>{/if}
                   {#if showSegments}{#each results.segments as n (n)}<th class="num"

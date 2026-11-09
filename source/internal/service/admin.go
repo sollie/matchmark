@@ -8,6 +8,7 @@ import (
 
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 var ErrNotBetweenSegments = errors.New("entries can only change between segments")
@@ -190,7 +191,11 @@ func (s *Service) BackToDraft(ctx context.Context, id int64) error {
 }
 
 func (s *Service) changeStatus(ctx context.Context, id int64, from, status MatchStatus, actor *Actor) error {
-	if err := s.repo.SetMatchStatus(ctx, id, string(from), string(status)); err != nil {
+	unclassified, err := s.unclassifiedClass(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.SetMatchStatus(ctx, id, string(from), string(status), unclassified); err != nil {
 		return mapRepoErr(err)
 	}
 	record := Change{Audit: AuditEvent{Action: "match.status", Target: idTarget("match", id), Details: string(status)}, Actor: actor, MatchID: id, Live: LiveMatch, Screens: true}
@@ -388,10 +393,34 @@ func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, categ
 	default:
 		return repository.Entry{}, ErrConflict
 	}
-	if err := s.repo.UpdateEntry(ctx, matchID, entryID, category, lane); err != nil {
+	unclassified, err := s.unclassifiedClass(ctx)
+	if err != nil {
+		return repository.Entry{}, err
+	}
+	if err := s.repo.UpdateEntry(ctx, matchID, entryID, category, lane, unclassified); err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: matchID, EntryID: entryID}})
+	e, err := s.repo.GetEntry(ctx, matchID, entryID)
+	return e, mapRepoErr(err)
+}
+
+func (s *Service) SetEntryClassification(ctx context.Context, matchID, entryID int64, classification, class wa1500.Classification) (repository.Entry, error) {
+	if !classification.Valid() || !class.Valid() {
+		return repository.Entry{}, ErrInvalid
+	}
+	entry, err := s.repo.GetEntry(ctx, matchID, entryID)
+	if err != nil {
+		return repository.Entry{}, mapRepoErr(err)
+	}
+	if !rulebook.IsClassified(entry.Category) || !entry.Frozen() {
+		return repository.Entry{}, ErrConflict
+	}
+	if err := s.repo.SetEntryClassification(ctx, matchID, entryID, int(classification), int(class)); err != nil {
+		return repository.Entry{}, mapRepoErr(err)
+	}
+	details := "classification_at_match=" + classification.Name() + ", class=" + class.Name()
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.classification", Target: entryTarget(matchID, entryID), Details: details}, MatchID: matchID, Live: LiveMatch})
 	e, err := s.repo.GetEntry(ctx, matchID, entryID)
 	return e, mapRepoErr(err)
 }

@@ -173,6 +173,15 @@ func ClassifiedCategories() []ClassifiedCategory {
 	return out
 }
 
+func IsClassified(category string) bool {
+	for _, c := range categoryList {
+		if c.name == category {
+			return c.column != ""
+		}
+	}
+	return false
+}
+
 func CategoriesForCourse(key string) ([]string, error) {
 	if !slices.Contains(courseKeys, key) {
 		return nil, fmt.Errorf("unknown course %q", key)

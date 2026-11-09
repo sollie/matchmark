@@ -260,6 +260,12 @@ The module that decides whether a login attempt is allowed: it limits failures p
 The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records segment status changes, and from the Dispute history.
 _Avoid_: Activity log, history
 
+**Classification at match**:
+The Classification frozen on an Entry when its Match goes active; results read it instead of the shooter's current value. Admins can correct it. See ADR 0025.
+
+**Class**:
+The group an Entry competes in, frozen with the Classification at match and equal to it, except Unclassified, which maps to the club setting "Unclassified shooters compete as" (Master or Unclassified).
+
 **Classification**:
 A shooter's WA1500 skill level in one Category: Unclassified, Marksman, Sharpshooter, Expert, Master or High Master, in rising order. A shooter holds one Classification per classified Category (the five 1500 categories: Revolver 1500, Pistol 1500, Revolver Optical Sight 1500, Pistol Optical Sight 1500, Carbine 1500). Unclassified means the shooter has not competed in that Category; no value means it has not been fetched yet. Only shooters with a WAID have one. It is the current value, not the value at the time of a Match.
 _Avoid_: Rank, class, level

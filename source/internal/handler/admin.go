@@ -43,6 +43,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/matches/{matchID}/entries", serve(h.listEntries))
 	r.Post("/matches/{matchID}/entries", serve(h.addEntry))
 	r.Put("/matches/{matchID}/entries/{entryID}", serve(h.updateEntry))
+	r.Put("/matches/{matchID}/entries/{entryID}/classification", serve(h.setEntryClassification))
 	r.Delete("/matches/{matchID}/entries/{entryID}", serve(h.deleteEntry))
 	r.Post("/matches/{matchID}/entries/{entryID}/withdraw", serve(h.withdrawEntry))
 	r.Get("/matches/{matchID}/lanes/{lane}/score-lane", serve(h.scoreLane))
@@ -114,7 +115,16 @@ func entryJSON(e repository.Entry) map[string]any {
 	return map[string]any{
 		"id": e.ID, "match_id": e.MatchID, "shooter_id": e.ShooterID,
 		"category": e.Category, "lane": e.Lane, "withdrawn": e.Withdrawn,
+		"classification_at_match": classificationJSON(e.ClassificationAtMatch), "class": classificationJSON(e.Class),
+		"club": e.Club, "country": e.Country,
 	}
+}
+
+func classificationJSON(v *int) any {
+	if v == nil {
+		return nil
+	}
+	return wa1500.Classification(*v)
 }
 
 func (h *Handler) listShooters(r *http.Request) (int, any, error) {
@@ -339,6 +349,28 @@ func (h *Handler) updateEntry(r *http.Request) (int, any, error) {
 		return fail(req.err)
 	}
 	e, err := h.svc.UpdateEntry(r.Context(), compID, entryID, body.Category, body.Lane)
+	if err != nil {
+		return fail(err)
+	}
+	return okJSON(entryJSON(e))
+}
+
+func (h *Handler) setEntryClassification(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID, entryID := req.path("matchID"), req.path("entryID")
+	var body struct {
+		ClassificationAtMatch *int `json:"classification_at_match"`
+		Class                 *int `json:"class"`
+	}
+	req.body(&body)
+	if req.err != nil {
+		return fail(req.err)
+	}
+	if body.ClassificationAtMatch == nil || body.Class == nil {
+		return fail(service.ErrInvalid)
+	}
+	e, err := h.svc.SetEntryClassification(r.Context(), compID, entryID,
+		wa1500.Classification(*body.ClassificationAtMatch), wa1500.Classification(*body.Class))
 	if err != nil {
 		return fail(err)
 	}

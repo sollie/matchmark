@@ -115,7 +115,7 @@ export interface paths {
         };
         /** Club name and logo state, shown on public pages */
         get: operations["getClub"];
-        /** Set the club name (trimmed, at most 100 characters) and/or palette; omitted fields are unchanged (admin only) */
+        /** Set the club name (trimmed, at most 100 characters), palette and/or unclassified class; omitted fields are unchanged (admin only) */
         put: operations["setClub"];
         post?: never;
         delete?: never;
@@ -657,6 +657,26 @@ export interface paths {
         put: operations["updateEntry"];
         post?: never;
         delete: operations["deleteEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matches/{matchID}/entries/{entryID}/classification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchID: components["parameters"]["MatchID"];
+                entryID: components["parameters"]["EntryID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Corrects the frozen Classification at match and Class of a 1500 entry (rule 20.6); audited. Answers 409 for an entry that is not frozen or is not in a 1500 category */
+        put: operations["setEntryClassification"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1431,6 +1451,11 @@ export interface components {
             last_seen_at: string;
         };
         Club: {
+            /**
+             * @description The Class an Unclassified shooter competes in; Master by default
+             * @enum {string}
+             */
+            unclassified_class: "Master" | "Unclassified";
             /** @description Empty when no name is set */
             name: string;
             /** @description Palette id; matchmark by default */
@@ -1695,6 +1720,14 @@ export interface components {
             group_by_category: boolean;
         };
         Entry: {
+            /** @description The shooter's Classification frozen when the match went active; null until frozen, for other categories, or when never fetched */
+            classification_at_match: components["schemas"]["Classification"] | null;
+            /** @description The Class the shooter competes in, frozen with the Classification at match; an Unclassified shooter gets the club setting. Null when not frozen */
+            class: components["schemas"]["Classification"] | null;
+            /** @description Club frozen when the match went active; null until frozen */
+            club: string | null;
+            /** @description Country frozen when the match went active; null until frozen */
+            country: string | null;
             /** Format: int64 */
             id: number;
             /** Format: int64 */
@@ -1851,8 +1884,10 @@ export interface components {
             first_name?: string;
             club?: string;
             country?: string;
-            /** @description The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched */
+            /** @description Classification at match for frozen entries, otherwise the shooter's live Classification for the entry's Category; present when names are visible and known */
             classification?: components["schemas"]["Classification"];
+            /** @description The Class the shooter competed in; present when names are visible and the entry is frozen */
+            class?: components["schemas"]["Classification"];
             x_count?: number;
             ring_counts?: components["schemas"]["RingCounts"];
             segments?: components["schemas"]["SegmentScore"][];
@@ -1887,8 +1922,10 @@ export interface components {
             waid?: string;
             club?: string;
             country?: string;
-            /** @description The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched */
+            /** @description Classification at match for frozen entries, otherwise the shooter's live Classification for the entry's Category; present when names are visible and known */
             classification?: components["schemas"]["Classification"];
+            /** @description The Class the shooter competed in; present when names are visible and the entry is frozen */
+            class?: components["schemas"]["Classification"];
             segments: {
                 segment: number;
                 /** @description Present for accepted segments when segment scores are visible */
@@ -2261,6 +2298,11 @@ export interface operations {
                     name?: string;
                     /** @description Palette id, one of the catalogue */
                     palette?: string;
+                    /**
+                     * @description The Class an Unclassified shooter competes in when a match goes active (rule 20.2)
+                     * @enum {string}
+                     */
+                    unclassified_class?: "Master" | "Unclassified";
                 };
             };
         };
@@ -3497,6 +3539,40 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    setEntryClassification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchID: components["parameters"]["MatchID"];
+                entryID: components["parameters"]["EntryID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    classification_at_match: number;
+                    class: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The updated entry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
         };
     };
     withdrawEntry: {

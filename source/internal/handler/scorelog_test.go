@@ -70,7 +70,7 @@ func TestResultsCSVNamesUserWhoLockedSegment(t *testing.T) {
 	f.env.Do("PUT", segment, map[string]any{"x": 24})
 	f.env.Do("POST", segment+"/lock", nil)
 	_, _, body := f.env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", f.comp))
-	want := ",true,," + apitest.AdminUsername + "\n"
+	want := ",true,," + apitest.AdminUsername + ",,,"
 	if !strings.Contains(string(body), want) {
 		t.Fatalf("csv lacks %q: %s", want, body)
 	}

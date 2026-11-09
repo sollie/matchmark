@@ -140,7 +140,7 @@
           <th class="num">#</th>
           <th class="num">Lane</th>
           {#if showNames}<th>Name</th>{/if}
-          {#if showClass}<th class="optional">Class</th>{/if}
+          {#if showClass}<th class="optional">Classification</th>{/if}
           {#if showClubs}<th class="optional">Club</th>{/if}
           {#if showCountries}<th class="optional">Country</th>{/if}
           <th class="optional">Category</th>
