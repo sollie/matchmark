@@ -112,7 +112,7 @@ describe("Spectator status row", () => {
     expect(screen.getByRole("columnheader", { name: "Stage 1+2" })).toBeTruthy();
   });
 
-  it("shows a Classification column with the Classification name, hiding Unclassified", async () => {
+  it("shows a Classification column with the Classification name, labelling Unclassified", async () => {
     install("active");
     render(Spectator);
     await screen.findByRole("combobox");
@@ -137,7 +137,7 @@ describe("Spectator status row", () => {
         .getAllByRole("cell")
         .map((c) => c.textContent);
     expect(cells(/Berg/)).toContain("Master");
-    expect(cells(/Dahl/)).not.toContain("Unclassified");
+    expect(cells(/Dahl/)).toContain("Unclassified");
   });
 
   it("omits the Classification column when no standing has a Classification", async () => {
