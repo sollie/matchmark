@@ -498,7 +498,7 @@ func textRow(s string, grid int, p props.Text) core.Row {
 }
 
 func sectionRow(title string, grid int) core.Row {
-	return row.New(pdfSectionHeight).WithStyle(&props.Cell{BackgroundColor: pdfSectionFill}).Add(col.New(grid).Add(text.New(title, props.Text{Size: 10, Style: fontstyle.Bold, Top: 2})))
+	return row.New(pdfSectionHeight).WithStyle(&props.Cell{BackgroundColor: pdfSectionFill}).Add(col.New(grid).Add(text.New(title, props.Text{Size: 10, Style: fontstyle.Bold, Top: 2, Left: 2})))
 }
 
 func groupRow(title string, grid int) core.Row {
