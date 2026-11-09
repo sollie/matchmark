@@ -27,6 +27,8 @@
   let date = $state(untrack(() => match.date));
   let course = $state(untrack(() => match.course));
   let classified = $state(untrack(() => match.classified));
+  let refereeWaid = $state(untrack(() => match.referee_waid ?? ""));
+  let rangeOfficerWaid = $state(untrack(() => match.range_officer_waid ?? ""));
   let error = $state("");
 
   onMount(loadRulebook);
@@ -36,7 +38,14 @@
     error = "";
     const result = await api.PUT("/api/matches/{matchID}", {
       params: { path: { matchID: match.id } },
-      body: { name, date, course, classified },
+      body: {
+        name,
+        date,
+        course,
+        classified,
+        referee_waid: refereeWaid.trim(),
+        range_officer_waid: rangeOfficerWaid.trim(),
+      },
     });
     if (result.data) saved(result.data);
     else error = failure(result);
@@ -66,8 +75,16 @@
   <label class="check">
     <input type="checkbox" bind:checked={classified} /> Classified match
   </label>
+  <label>
+    Referee WAID
+    <input bind:value={refereeWaid} maxlength="32" inputmode="numeric" size="10" />
+  </label>
+  <label>
+    Range officer WAID
+    <input bind:value={rangeOfficerWaid} maxlength="32" inputmode="numeric" size="10" />
+  </label>
   {#if !draft}<p class="muted">
-      Only the name and Classified match can change once the match has started.
+      Only the name, Classified match and officials can change once the match has started.
     </p>
   {:else if hasEntries}<p class="muted">
       The course cannot change once the match has entries.

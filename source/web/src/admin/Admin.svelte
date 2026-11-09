@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { router, matchRoute } from "../lib/router.svelte";
   import { admin, refreshAdminSession } from "../lib/session.svelte";
+  import Account from "./Account.svelte";
   import ChangePassword from "./ChangePassword.svelte";
   import Login from "./Login.svelte";
   import Shooters from "./Shooters.svelte";
@@ -72,6 +73,8 @@
         <h1>Not allowed</h1>
         <p>Only admins can read the audit log.</p>
       {/if}
+    {:else if router.path === "/admin/account"}
+      <Account />
     {:else if router.path === "/admin/password"}
       <ChangePassword />
     {:else if currentMatch}

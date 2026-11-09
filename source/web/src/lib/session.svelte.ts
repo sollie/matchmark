@@ -7,6 +7,7 @@ export const admin = $state<{
   username: string;
   isAdmin: boolean;
   canDownloadBackup: boolean;
+  waid: string;
 }>({
   checked: false,
   authed: false,
@@ -14,6 +15,7 @@ export const admin = $state<{
   username: "",
   isAdmin: false,
   canDownloadBackup: false,
+  waid: "",
 });
 
 export async function refreshAdminSession(): Promise<void> {
@@ -23,6 +25,7 @@ export async function refreshAdminSession(): Promise<void> {
   admin.username = data?.username ?? "";
   admin.isAdmin = data?.role === "admin";
   admin.canDownloadBackup = data?.can_download_backup ?? false;
+  admin.waid = data?.waid ?? "";
   admin.checked = true;
 }
 
@@ -32,6 +35,7 @@ function clear(): void {
   admin.username = "";
   admin.isAdmin = false;
   admin.canDownloadBackup = false;
+  admin.waid = "";
 }
 
 export function markLoggedOut(): void {

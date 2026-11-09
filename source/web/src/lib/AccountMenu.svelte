@@ -5,9 +5,14 @@
   import ThemeSelector from "./ThemeSelector.svelte";
 
   const ownsPage = $derived(
-    ["/admin/users", "/admin/screens", "/admin/club", "/admin/audit", "/admin/password"].some(
-      (p) => router.path === p || router.path.startsWith(p + "/"),
-    ),
+    [
+      "/admin/users",
+      "/admin/screens",
+      "/admin/club",
+      "/admin/audit",
+      "/admin/account",
+      "/admin/password",
+    ].some((p) => router.path === p || router.path.startsWith(p + "/")),
   );
 
   async function signOut(close: () => void) {
@@ -33,6 +38,7 @@
     {/if}
     <ThemeSelector />
     <h2>Account</h2>
+    <a href="/admin/account">WAID</a>
     <a href="/admin/password">Change password</a>
     <button type="button" onclick={() => signOut(close)}>Sign out</button>
   {/snippet}

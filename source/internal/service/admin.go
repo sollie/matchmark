@@ -150,10 +150,13 @@ func (s *Service) UpdateMatch(ctx context.Context, c repository.Match) error {
 			return ErrConflict
 		}
 	}
+	if err := s.resolveOfficials(ctx, &c, current); err != nil {
+		return err
+	}
 	if err := s.repo.UpdateMatch(ctx, c); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: matchUpdateDetails(current.Name, c.Name)}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: c.ID}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: joinDetails(matchUpdateDetails(current.Name, c.Name), officialsDetails(current, c))}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: c.ID}})
 	return nil
 }
 

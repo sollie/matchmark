@@ -29,6 +29,14 @@ func (h *Handler) createMatch(r *http.Request) (int, any, error) {
 		return fail(req.err)
 	}
 	m := repository.Match{CompetitionID: body.CompetitionID, Name: body.Name, Date: body.Date, Course: body.Course}
+	if body.RefereeWAID != nil {
+		m.RefereeWAID = *body.RefereeWAID
+	} else {
+		m.RefereeWAID = currentUser(r).WAID
+	}
+	if body.RangeOfficerWAID != nil {
+		m.RangeOfficerWAID = *body.RangeOfficerWAID
+	}
 	var id int64
 	var err error
 	switch {

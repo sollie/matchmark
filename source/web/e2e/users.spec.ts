@@ -19,6 +19,37 @@ function newUsername(): string {
 }
 
 test.describe("user management", () => {
+  test("an admin sets and clears a user's WAID and a duplicate is refused", async ({
+    adminPage: page,
+  }) => {
+    const first = newUsername();
+    const second = newUsername();
+    const waid = String(Math.floor(1e8 + Math.random() * 9e8));
+    await openAccountLink(page, "Users");
+    for (const username of [first, second]) {
+      await page.getByLabel("New username").fill(username);
+      await page.getByLabel("Temporary password", { exact: true }).fill(temporaryPassword);
+      await page.getByRole("button", { name: "Create user" }).click();
+      await expect(row(page, username)).toBeVisible();
+    }
+
+    await row(page, first).getByRole("button", { name: "Set WAID" }).click();
+    await page.getByLabel(`WAID for ${first}`).fill(waid);
+    await page.getByRole("button", { name: "Save WAID" }).click();
+    await expect(row(page, first)).toContainText(waid);
+
+    await row(page, second).getByRole("button", { name: "Set WAID" }).click();
+    await page.getByLabel(`WAID for ${second}`).fill(waid);
+    await page.getByRole("button", { name: "Save WAID" }).click();
+    await expect(page.getByRole("alert")).toHaveText("conflict");
+    await page.getByRole("button", { name: "Cancel" }).click();
+
+    await row(page, first).getByRole("button", { name: "Set WAID" }).click();
+    await page.getByLabel(`WAID for ${first}`).fill("");
+    await page.getByRole("button", { name: "Save WAID" }).click();
+    await expect(row(page, first)).not.toContainText(waid);
+  });
+
   test("an admin creates a user who must change the temporary password before using the app", async ({
     adminPage: page,
   }) => {

@@ -3,6 +3,7 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import { navigate } from "../lib/router.svelte";
+  import { admin } from "../lib/session.svelte";
   import { statusTone } from "../lib/domain";
   import { courseLabel, is1500, loadRulebook, rulebook } from "../lib/rulebook.svelte";
   import { localDate } from "../lib/datetime";
@@ -34,6 +35,8 @@
   let name = $state("");
   let date = $state(localDate(new Date()));
   let course = $state("150");
+  let refereeWaid = $state(admin.waid);
+  let rangeOfficerWaid = $state("");
   let error = $state("");
 
   async function load() {
@@ -79,7 +82,13 @@
   async function create(e: SubmitEvent) {
     e.preventDefault();
     error = "";
-    const body: components["schemas"]["MatchInput"] = { name, date, course };
+    const body: components["schemas"]["MatchInput"] = {
+      name,
+      date,
+      course,
+      referee_waid: refereeWaid.trim(),
+      range_officer_waid: rangeOfficerWaid.trim(),
+    };
     if (competitionChoice === newCompetition) {
       body.competition = { name: compName, start_date: compStart, end_date: compEnd };
     } else if (competitionChoice !== sameDay) {
@@ -112,6 +121,14 @@
     <select bind:value={course}>
       {#each rulebook.courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
     </select>
+  </label>
+  <label>
+    Referee WAID
+    <input bind:value={refereeWaid} maxlength="32" inputmode="numeric" size="10" />
+  </label>
+  <label>
+    Range officer WAID
+    <input bind:value={rangeOfficerWaid} maxlength="32" inputmode="numeric" size="10" />
   </label>
   <label>
     Competition

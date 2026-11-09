@@ -68,6 +68,9 @@ type matchBody struct {
 	CompetitionID int64            `json:"competition_id"`
 	Competition   *competitionBody `json:"competition"`
 	Classified    *bool            `json:"classified"`
+
+	RefereeWAID      *string `json:"referee_waid"`
+	RangeOfficerWAID *string `json:"range_officer_waid"`
 }
 
 func matchesJSON(comps []repository.Match) []map[string]any {
@@ -103,7 +106,9 @@ func shooterJSON(s repository.Shooter) map[string]any {
 }
 
 func matchJSON(c repository.Match) map[string]any {
-	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt), "classified": c.Classified}
+	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt), "classified": c.Classified,
+		"referee_waid": nullable(c.RefereeWAID), "referee_name": nullable(c.RefereeName),
+		"range_officer_waid": nullable(c.RangeOfficerWAID), "range_officer_name": nullable(c.RangeOfficerName)}
 }
 
 func nullable(s string) any {
@@ -252,15 +257,22 @@ func (h *Handler) updateMatch(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	classified := body.Classified
-	if classified == nil {
-		current, err := h.repo.GetMatch(r.Context(), id)
-		if err != nil {
-			return fail(err)
-		}
-		classified = &current.Classified
+	current, err := h.repo.GetMatch(r.Context(), id)
+	if err != nil {
+		return fail(err)
 	}
-	if err := h.svc.UpdateMatch(r.Context(), repository.Match{ID: id, Name: body.Name, Date: body.Date, Course: body.Course, Classified: *classified}); err != nil {
+	m := repository.Match{ID: id, Name: body.Name, Date: body.Date, Course: body.Course, Classified: current.Classified,
+		RefereeWAID: current.RefereeWAID, RangeOfficerWAID: current.RangeOfficerWAID}
+	if body.Classified != nil {
+		m.Classified = *body.Classified
+	}
+	if body.RefereeWAID != nil {
+		m.RefereeWAID = *body.RefereeWAID
+	}
+	if body.RangeOfficerWAID != nil {
+		m.RangeOfficerWAID = *body.RangeOfficerWAID
+	}
+	if err := h.svc.UpdateMatch(r.Context(), m); err != nil {
 		return fail(err)
 	}
 	c, err := h.repo.GetMatch(r.Context(), id)

@@ -51,6 +51,9 @@ func (s *Service) CreateMatch(ctx context.Context, c repository.Match) (int64, e
 	if err := s.checkMatchDate(ctx, c.CompetitionID, c.Date, false); err != nil {
 		return 0, err
 	}
+	if err := s.resolveOfficials(ctx, &c, repository.Match{}); err != nil {
+		return 0, err
+	}
 	if c.CompetitionID == 0 {
 		var err error
 		if c.NewRangeID, err = s.newCompetitionRange(ctx, OptionalID{}); err != nil {
@@ -61,7 +64,7 @@ func (s *Service) CreateMatch(ctx context.Context, c repository.Match) (int64, e
 	if err != nil {
 		return id, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.create", Target: idTarget("match", id), Details: c.Name}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.create", Target: idTarget("match", id), Details: joinDetails(c.Name, officialsDetails(repository.Match{}, c))}})
 	return id, nil
 }
 
@@ -82,6 +85,9 @@ func (s *Service) CreateMatchInNewCompetition(ctx context.Context, comp reposito
 	if !validCompetition(comp) || !validMatch(c) || c.Date < comp.StartDate || c.Date > comp.EndDate {
 		return 0, ErrInvalid
 	}
+	if err := s.resolveOfficials(ctx, &c, repository.Match{}); err != nil {
+		return 0, err
+	}
 	var err error
 	if comp.RangeID, err = s.newCompetitionRange(ctx, rng); err != nil {
 		return 0, err
@@ -91,7 +97,7 @@ func (s *Service) CreateMatchInNewCompetition(ctx context.Context, comp reposito
 		return 0, mapRepoErr(err)
 	}
 	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "competition.create", Target: idTarget("competition", compID), Details: comp.Name}})
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.create", Target: idTarget("match", id), Details: c.Name}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.create", Target: idTarget("match", id), Details: joinDetails(c.Name, officialsDetails(repository.Match{}, c))}})
 	return id, nil
 }
 

@@ -63,6 +63,8 @@ describe("MatchEdit", () => {
       date: "2026-10-19",
       course: "60",
       classified: true,
+      referee_waid: "",
+      range_officer_waid: "",
     });
     expect(saved).toHaveBeenCalledOnce();
   });
@@ -85,6 +87,8 @@ describe("MatchEdit", () => {
       date: match.date,
       course: match.course,
       classified: true,
+      referee_waid: "",
+      range_officer_waid: "",
     });
   });
 

@@ -16,6 +16,14 @@ _Avoid_: Tournament, event
 A shooting range the club uses, identified by its name and an archived flag. Club settings hold the list and an optional default Range; a Competition has at most one Range, pre-filled with the default (or the only active Range) when created and editable afterwards. A Range used by a Competition cannot be deleted, only archived; archived Ranges are hidden from pickers but stay on past Competitions, and the default cannot be archived. The Range name appears on the results header.
 _Avoid_: Venue, location, date range (use date span for dates)
 
+**Referee**:
+The official who judges a Match (rulebook term). Stored on the Match as a WAID with the name snapshotted from the WA1500 register when it was set; optional, and by default the signed-in admin who creates the Match when that user has a WAID. Shown in the results PDF header only when set.
+_Avoid_: Judge, Dommer
+
+**Range officer**:
+The official in charge of the range during a Match (rulebook term). Stored on the Match like the Referee, but empty by default. Not the same thing as the Range (the place).
+_Avoid_: Standplassleder, range master
+
 **Match**:
 One course shot by the shooters of a Competition, on one date inside the Competition's date span. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name can be edited in any status; its date and course only while it is a draft, and the course is fixed once it has entries. A shooter has at most one entry per Match.
 _Avoid_: Competition (for a single course), event

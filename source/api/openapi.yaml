@@ -109,6 +109,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/admin/waid:
+    put:
+      operationId: setOwnWAID
+      tags: [admin-auth]
+      summary: Set or clear the signed-in user's own WAID
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWAIDRequest'
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The user must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/admin/backup:
     get:
       operationId: adminBackup
@@ -489,6 +521,42 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SetRoleRequest'
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/waid:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    put:
+      operationId: setUserWAID
+      tags: [users]
+      summary: Set or clear a user's WAID (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWAIDRequest'
       responses:
         '200':
           description: The updated user
@@ -1151,6 +1219,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/Invalid'
+        '503':
+          description: The WA1500 register is unreachable, so an official's WAID could not be looked up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/matches/{matchID}:
     parameters:
       - $ref: '#/components/parameters/MatchID'
@@ -1196,6 +1270,12 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
+        '503':
+          description: The WA1500 register is unreachable, so an official's WAID could not be looked up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       operationId: deleteMatch
       tags: [matches]
@@ -3147,7 +3227,7 @@ components:
           maxLength: 128
     SessionUser:
       type: object
-      required: [username, role, can_download_backup]
+      required: [username, role, can_download_backup, waid]
       properties:
         username:
           type: string
@@ -3155,12 +3235,16 @@ components:
           $ref: '#/components/schemas/UserRole'
         can_download_backup:
           type: boolean
+        waid:
+          type: string
+          nullable: true
+          description: The user's WAID; null when not set
     UserRole:
       type: string
       enum: [admin, user]
     User:
       type: object
-      required: [id, username, role, active, can_download_backup, must_change_password]
+      required: [id, username, role, active, can_download_backup, must_change_password, waid]
       properties:
         id:
           type: integer
@@ -3174,6 +3258,10 @@ components:
           type: boolean
         must_change_password:
           type: boolean
+        waid:
+          type: string
+          nullable: true
+          description: The user's WAID, unique when set; null when not set
     AuditEntry:
       type: object
       required: [id, time, user_id, username, action, target, details, ip]
@@ -3233,6 +3321,14 @@ components:
       properties:
         can_download_backup:
           type: boolean
+    SetWAIDRequest:
+      type: object
+      required: [waid]
+      properties:
+        waid:
+          type: string
+          maxLength: 32
+          description: WAID, trimmed; an empty string clears it. Unique across users
     CreateUserRequest:
       type: object
       required: [username, role, password]
@@ -3512,6 +3608,16 @@ components:
         classified:
           type: boolean
           description: Classified match. When on (the default), results and standings group each classified Category's rows by Class. Optional on update; omitting it keeps the current value. Editable in any status
+        referee_waid:
+          type: string
+          nullable: true
+          maxLength: 32
+          description: WAID of the Referee, looked up in the WA1500 register when it changes; an empty string clears it. On create, omitting it defaults to the signed-in user's WAID when set. On update, omitting it keeps the current value. Fails with 422 when the WAID is not in the register and 503 when the register is unreachable, storing nothing. Editable in any status
+        range_officer_waid:
+          type: string
+          nullable: true
+          maxLength: 32
+          description: WAID of the Range officer, same rules as referee_waid except that it is empty by default
     Match:
       allOf:
         - type: object
@@ -3532,6 +3638,14 @@ components:
               type: string
               nullable: true
               description: UTC time the match left draft, backfilled with the match date for matches activated before this field existed. Null for drafts. Admin responses only
+            referee_name:
+              type: string
+              nullable: true
+              description: Referee name snapshotted from the WA1500 register when the WAID was set. Admin responses only
+            range_officer_name:
+              type: string
+              nullable: true
+              description: Range officer name snapshotted from the WA1500 register when the WAID was set. Admin responses only
         - $ref: '#/components/schemas/MatchInput'
     Visibility:
       type: object

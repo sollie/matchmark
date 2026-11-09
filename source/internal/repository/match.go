@@ -28,6 +28,21 @@ type Match struct {
 	ActivatedAt    string
 	Classified     bool
 	NewRangeID     *int64
+
+	RefereeWAID      string
+	RefereeName      string
+	RangeOfficerWAID string
+	RangeOfficerName string
+}
+
+const matchColumns = `id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, ''), classified,
+	COALESCE(referee_waid, ''), COALESCE(referee_name, ''), COALESCE(range_officer_waid, ''), COALESCE(range_officer_name, '')`
+
+func scanMatch(s scanner) (Match, error) {
+	var c Match
+	err := s.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt, &c.Classified,
+		&c.RefereeWAID, &c.RefereeName, &c.RangeOfficerWAID, &c.RangeOfficerName)
+	return c, mapErr(err)
 }
 
 type DateRange struct {
@@ -81,7 +96,8 @@ func (r *Repository) CreateMatch(ctx context.Context, c Match) (int64, error) {
 		return 0, err
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`, containerID, c.Name, c.Date, c.Course)
+		`INSERT INTO matches (competition_id, name, date, course, referee_waid, referee_name, range_officer_waid, range_officer_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		containerID, c.Name, c.Date, c.Course, nullIfEmpty(c.RefereeWAID), nullIfEmpty(c.RefereeName), nullIfEmpty(c.RangeOfficerWAID), nullIfEmpty(c.RangeOfficerName))
 	if err != nil {
 		return 0, mapErr(err)
 	}
@@ -108,7 +124,8 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 		return 0, 0, err
 	}
 	res, err = tx.ExecContext(ctx,
-		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`, compID, c.Name, c.Date, c.Course)
+		`INSERT INTO matches (competition_id, name, date, course, referee_waid, referee_name, range_officer_waid, range_officer_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		compID, c.Name, c.Date, c.Course, nullIfEmpty(c.RefereeWAID), nullIfEmpty(c.RefereeName), nullIfEmpty(c.RangeOfficerWAID), nullIfEmpty(c.RangeOfficerName))
 	if err != nil {
 		return 0, 0, mapErr(err)
 	}
@@ -146,11 +163,7 @@ func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRa
 }
 
 func (r *Repository) GetMatch(ctx context.Context, id int64) (Match, error) {
-	var c Match
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, ''), classified FROM matches WHERE id = ?`, id).
-		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt, &c.Classified)
-	return c, mapErr(err)
+	return scanMatch(r.db.QueryRowContext(ctx, `SELECT `+matchColumns+` FROM matches WHERE id = ?`, id))
 }
 
 func (r *Repository) CreateEntry(ctx context.Context, e Entry, segments []SegmentSeed) (int64, error) {

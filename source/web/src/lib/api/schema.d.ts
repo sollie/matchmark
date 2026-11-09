@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/waid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or clear the signed-in user's own WAID */
+        put: operations["setOwnWAID"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/backup": {
         parameters: {
             query?: never;
@@ -230,6 +247,25 @@ export interface paths {
         get?: never;
         /** Promote to admin or demote to user; demotion ends sessions and the last active admin is refused (admin only) */
         put: operations["setUserRole"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{userID}/waid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or clear a user's WAID (admin only) */
+        put: operations["setUserWAID"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1609,6 +1645,8 @@ export interface components {
             username: string;
             role: components["schemas"]["UserRole"];
             can_download_backup: boolean;
+            /** @description The user's WAID; null when not set */
+            waid: string | null;
         };
         /** @enum {string} */
         UserRole: "admin" | "user";
@@ -1619,6 +1657,8 @@ export interface components {
             active: boolean;
             can_download_backup: boolean;
             must_change_password: boolean;
+            /** @description The user's WAID, unique when set; null when not set */
+            waid: string | null;
         };
         AuditEntry: {
             /** Format: int64 */
@@ -1648,6 +1688,10 @@ export interface components {
         };
         SetBackupPermissionRequest: {
             can_download_backup: boolean;
+        };
+        SetWAIDRequest: {
+            /** @description WAID, trimmed; an empty string clears it. Unique across users */
+            waid: string;
         };
         CreateUserRequest: {
             username: string;
@@ -1802,6 +1846,10 @@ export interface components {
             course: string;
             /** @description Classified match. When on (the default), results and standings group each classified Category's rows by Class. Optional on update; omitting it keeps the current value. Editable in any status */
             classified?: boolean;
+            /** @description WAID of the Referee, looked up in the WA1500 register when it changes; an empty string clears it. On create, omitting it defaults to the signed-in user's WAID when set. On update, omitting it keeps the current value. Fails with 422 when the WAID is not in the register and 503 when the register is unreachable, storing nothing. Editable in any status */
+            referee_waid?: string | null;
+            /** @description WAID of the Range officer, same rules as referee_waid except that it is empty by default */
+            range_officer_waid?: string | null;
         };
         Match: {
             /** Format: int64 */
@@ -1813,6 +1861,10 @@ export interface components {
             current_segment: number;
             /** @description UTC time the match left draft, backfilled with the match date for matches activated before this field existed. Null for drafts. Admin responses only */
             activated_at?: string | null;
+            /** @description Referee name snapshotted from the WA1500 register when the WAID was set. Admin responses only */
+            referee_name?: string | null;
+            /** @description Range officer name snapshotted from the WA1500 register when the WAID was set. Admin responses only */
+            range_officer_name?: string | null;
         } & components["schemas"]["MatchInput"];
         Visibility: {
             show_names: boolean;
@@ -2306,6 +2358,42 @@ export interface operations {
             };
         };
     };
+    setOwnWAID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetWAIDRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The user must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
     adminBackup: {
         parameters: {
             query?: never;
@@ -2722,6 +2810,45 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SetRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The caller is not an admin, or must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    setUserWAID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetWAIDRequest"];
             };
         };
         responses: {
@@ -3408,6 +3535,15 @@ export interface operations {
             201: components["responses"]["Created"];
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["Invalid"];
+            /** @description The WA1500 register is unreachable, so an official's WAID could not be looked up */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     getMatch: {
@@ -3462,6 +3598,15 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Invalid"];
+            /** @description The WA1500 register is unreachable, so an official's WAID could not be looked up */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     deleteMatch: {

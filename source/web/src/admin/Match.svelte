@@ -66,6 +66,12 @@
     {/if}
     <button class="danger" onclick={remove}>Delete match</button>
   </div>
+  {#if match.referee_waid || match.range_officer_waid}
+    <p class="muted">
+      {#if match.referee_waid}Referee: {match.referee_name} ({match.referee_waid}){/if}
+      {#if match.range_officer_waid}Range officer: {match.range_officer_name} ({match.range_officer_waid}){/if}
+    </p>
+  {/if}
   {#if page.error}<p class="error" role="alert">{page.error}</p>{/if}
   {#if editing}
     <MatchEdit
