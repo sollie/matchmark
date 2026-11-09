@@ -54,7 +54,7 @@ var wa1500Logo []byte
 var (
 	pdfHeaderFill  = &props.Color{Red: 238, Green: 238, Blue: 238}
 	pdfMuted       = &props.Color{Red: 92, Green: 92, Blue: 92}
-	pdfSectionFill = &props.Color{Red: 124, Green: 176, Blue: 96}
+	pdfSectionFill = &props.Color{Red: 184, Green: 224, Blue: 160}
 	pdfGroupFill   = &props.Color{Red: 228, Green: 241, Blue: 218}
 	pdfGroupText   = &props.Color{Red: 46, Green: 84, Blue: 30}
 )
