@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
       options: --ipc=host
     env:
       HOME: /root
@@ -119,7 +119,7 @@ jobs:
 
       - name: Check Playwright image matches lockfile
         working-directory: source/web
-        run: test "$(node -p "require('./node_modules/@playwright/test/package.json').version")" = "1.64.1"
+        run: test "$(node -p "require('./node_modules/@playwright/test/package.json').version")" = "1.65.0"
 
       - name: E2E
         working-directory: source/web
