@@ -51,9 +51,10 @@ var matchMarkIcon []byte
 var wa1500Logo []byte
 
 var (
-	pdfHeaderFill = &props.Color{Red: 238, Green: 238, Blue: 238}
-	pdfMuted      = &props.Color{Red: 92, Green: 92, Blue: 92}
-	pdfPodiumFill = &props.Color{Red: 255, Green: 248, Blue: 225}
+	pdfHeaderFill  = &props.Color{Red: 238, Green: 238, Blue: 238}
+	pdfMuted       = &props.Color{Red: 92, Green: 92, Blue: 92}
+	pdfSectionFill = &props.Color{Red: 184, Green: 224, Blue: 160}
+	pdfPodiumFill  = &props.Color{Red: 255, Green: 248, Blue: 225}
 )
 
 type ResultsPDFSegment struct {
@@ -496,7 +497,7 @@ func textRow(s string, grid int, p props.Text) core.Row {
 }
 
 func sectionRow(title string, grid int) core.Row {
-	return row.New(pdfSectionHeight).Add(col.New(grid).Add(text.New(title, props.Text{Size: 10, Style: fontstyle.Bold, Top: 2})))
+	return row.New(pdfSectionHeight).WithStyle(&props.Cell{BackgroundColor: pdfSectionFill}).Add(col.New(grid).Add(text.New(title, props.Text{Size: 10, Style: fontstyle.Bold, Top: 2})))
 }
 
 func groupRow(title string, grid int) core.Row {
