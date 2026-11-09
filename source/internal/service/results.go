@@ -32,6 +32,7 @@ type ResultsRow struct {
 	Country   *string                `json:"country,omitempty"`
 	Class     *wa1500.Classification `json:"classification,omitempty"`
 	CompeteAs *wa1500.Classification `json:"class,omitempty"`
+	Remarks   *string                `json:"remarks,omitempty"`
 	Segments  []ResultsSegment       `json:"segments"`
 	Total     int                    `json:"total"`
 	XCount    *int                   `json:"x_count,omitempty"`
@@ -43,6 +44,7 @@ type ResultsDNFRow struct {
 	WAID      *string          `json:"waid,omitempty"`
 	Club      *string          `json:"club,omitempty"`
 	Country   *string          `json:"country,omitempty"`
+	Remarks   *string          `json:"remarks,omitempty"`
 	Segments  []ResultsSegment `json:"segments"`
 }
 
@@ -251,6 +253,7 @@ func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
 	}
 	if vis.Names {
 		row.Class, row.CompeteAs = classificationPtr(id.Classification), classificationPtr(id.Class)
+		row.Remarks = r.entry.Remarks
 	}
 	if vis.RingCounts {
 		x := r.x
@@ -284,6 +287,6 @@ func resultsDNFRow(r rankedEntry, vis repository.Visibility) ResultsDNFRow {
 	}
 	return ResultsDNFRow{
 		LastName: row.LastName, FirstName: row.FirstName, WAID: row.WAID,
-		Club: row.Club, Country: row.Country, Segments: segments,
+		Club: row.Club, Country: row.Country, Remarks: row.Remarks, Segments: segments,
 	}
 }

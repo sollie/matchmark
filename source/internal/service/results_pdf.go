@@ -90,7 +90,7 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 func pdfRow(r ResultsRow) report.ResultsPDFRow {
 	row := report.ResultsPDFRow{
 		Rank: r.Rank, LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
-		Club: r.Club, Country: r.Country, Total: r.Total, XCount: r.XCount,
+		Club: r.Club, Country: r.Country, Remarks: r.Remarks, Total: r.Total, XCount: r.XCount,
 	}
 	for _, st := range r.Segments {
 		row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
@@ -101,7 +101,7 @@ func pdfRow(r ResultsRow) report.ResultsPDFRow {
 func pdfDNFRow(r ResultsDNFRow) report.ResultsPDFRow {
 	row := report.ResultsPDFRow{
 		LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
-		Club: r.Club, Country: r.Country, DNF: true,
+		Club: r.Club, Country: r.Country, Remarks: r.Remarks, DNF: true,
 	}
 	for _, st := range r.Segments {
 		row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})

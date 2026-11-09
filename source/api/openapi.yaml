@@ -1335,6 +1335,12 @@ paths:
                 lane:
                   type: integer
                   minimum: 1
+                remarks:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 200
+                  description: Free-text remarks; trimmed, blank means none, more than 200 characters answers 422
       responses:
         '201':
           $ref: '#/components/responses/Created'
@@ -1352,7 +1358,7 @@ paths:
       - $ref: '#/components/parameters/EntryID'
     put:
       operationId: updateEntry
-      description: A draft match allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409
+      description: A draft match allows any change; an active one only a category or remarks change (a lane change answers 409); a finished one only a remarks change (a category or lane change answers 409)
       tags: [entries]
       security:
         - adminCookie: []
@@ -1369,6 +1375,12 @@ paths:
                 lane:
                   type: integer
                   minimum: 1
+                remarks:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 200
+                  description: Trimmed; blank clears the remarks, absent or null keeps them, more than 200 characters answers 422. Audited as part of entry.update
       responses:
         '200':
           description: The updated entry
@@ -3353,7 +3365,7 @@ components:
           description: Standings view; true (default) shows one table per category in rulebook order with ranks within the category, false one combined table with the overall rank. A single-category match looks the same either way
     Entry:
       type: object
-      required: [id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country]
+      required: [id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country, remarks]
       properties:
         classification_at_match:
           description: The shooter's Classification frozen when the match went active; null until frozen, for other categories, or when never fetched
@@ -3375,6 +3387,12 @@ components:
             - string
             - 'null'
           description: Country frozen when the match went active; null until frozen
+        remarks:
+          type:
+            - string
+            - 'null'
+          maxLength: 200
+          description: Free-text remarks set by an admin; null when none
         id:
           type: integer
           format: int64
@@ -3781,6 +3799,9 @@ components:
         class:
           $ref: '#/components/schemas/Classification'
           description: The Class the shooter competed in; present when names are visible and the entry is frozen
+        remarks:
+          type: string
+          description: Present when names are visible and the entry has remarks
         segments:
           type: array
           items:
@@ -3812,6 +3833,9 @@ components:
           type: string
         country:
           type: string
+        remarks:
+          type: string
+          description: Present when names are visible and the entry has remarks
         segments:
           type: array
           items:

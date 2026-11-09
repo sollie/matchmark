@@ -92,6 +92,27 @@ test.describe("entries", () => {
     await entryRow.getByRole("button", { name: "Remove", exact: true }).click();
     await expect(row(page, entry.shooter.last_name)).toHaveCount(0);
   });
+
+  test("an admin can set and clear remarks on an entry", async ({
+    course,
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await openMatch(page, match.id);
+
+    const entryRow = row(page, entry.shooter.last_name);
+    await entryRow.getByRole("button", { name: /Edit remarks for/ }).click();
+    await entryRow.getByRole("textbox", { name: /Remarks for/ }).fill("Late arrival");
+    await entryRow.getByRole("button", { name: "Save remarks" }).click();
+    await expect(entryRow.locator("td.remarks")).toContainText("Late arrival");
+
+    await entryRow.getByRole("button", { name: /Edit remarks for/ }).click();
+    await entryRow.getByRole("textbox", { name: /Remarks for/ }).fill("");
+    await entryRow.getByRole("button", { name: "Save remarks" }).click();
+    await expect(entryRow.locator("td.remarks")).not.toContainText("Late arrival");
+  });
 });
 
 test.describe("entries layout", () => {

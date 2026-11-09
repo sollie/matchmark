@@ -653,7 +653,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description A draft match allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409 */
+        /** @description A draft match allows any change; an active one only a category or remarks change (a lane change answers 409); a finished one only a remarks change (a category or lane change answers 409) */
         put: operations["updateEntry"];
         post?: never;
         delete: operations["deleteEntry"];
@@ -1730,6 +1730,8 @@ export interface components {
             club: string | null;
             /** @description Country frozen when the match went active; null until frozen */
             country: string | null;
+            /** @description Free-text remarks set by an admin; null when none */
+            remarks: string | null;
             /** Format: int64 */
             id: number;
             /** Format: int64 */
@@ -1936,6 +1938,8 @@ export interface components {
             classification?: components["schemas"]["Classification"];
             /** @description The Class the shooter competed in; present when names are visible and the entry is frozen */
             class?: components["schemas"]["Classification"];
+            /** @description Present when names are visible and the entry has remarks */
+            remarks?: string;
             segments: {
                 segment: number;
                 /** @description Present for accepted segments when segment scores are visible */
@@ -1951,6 +1955,8 @@ export interface components {
             waid?: string;
             club?: string;
             country?: string;
+            /** @description Present when names are visible and the entry has remarks */
+            remarks?: string;
             segments: {
                 segment: number;
                 /** @description Present for accepted segments when segment scores are visible */
@@ -3488,6 +3494,8 @@ export interface operations {
                     shooter_id: number;
                     category: string;
                     lane: number;
+                    /** @description Free-text remarks; trimmed, blank means none, more than 200 characters answers 422 */
+                    remarks?: string | null;
                 };
             };
         };
@@ -3514,6 +3522,8 @@ export interface operations {
                 "application/json": {
                     category: string;
                     lane: number;
+                    /** @description Trimmed; blank clears the remarks, absent or null keeps them, more than 200 characters answers 422. Audited as part of entry.update */
+                    remarks?: string | null;
                 };
             };
         };

@@ -62,7 +62,7 @@ func (r *Repository) ListPublicMatches(ctx context.Context) ([]Match, error) {
 
 func (r *Repository) ListSpectatorEntries(ctx context.Context, matchID int64) ([]SpectatorEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT e.id, e.category, e.lane, e.withdrawn, e.classification_at_match, e.class, e.club, e.country, sh.last_name, sh.first_name, sh.club, sh.country,
+		`SELECT e.id, e.category, e.lane, e.withdrawn, e.classification_at_match, e.class, e.club, e.country, e.remarks, sh.last_name, sh.first_name, sh.club, sh.country,
 		        sh.class_revolver, sh.class_pistol, sh.class_revolver_os, sh.class_pistol_os, sh.class_carbine,
 		        st.segment_number, st.x, st.ten, st.nine, st.eight, st.seven, st.zero, st.miss, st.status
 		 FROM entries e
@@ -79,7 +79,7 @@ func (r *Repository) ListSpectatorEntries(ctx context.Context, matchID int64) ([
 		var e SpectatorEntry
 		var s SpectatorSegment
 		var classes classScan
-		dest := append([]any{&e.ID, &e.Category, &e.Lane, &e.Withdrawn, &e.ClassificationAtMatch, &e.Class, &e.Entry.Club, &e.Entry.Country, &e.LastName, &e.FirstName, &e.Club, &e.Country}, classes.dest()...)
+		dest := append([]any{&e.ID, &e.Category, &e.Lane, &e.Withdrawn, &e.ClassificationAtMatch, &e.Class, &e.Entry.Club, &e.Entry.Country, &e.Remarks, &e.LastName, &e.FirstName, &e.Club, &e.Country}, classes.dest()...)
 		if err := rows.Scan(append(dest,
 			&s.Number, &s.Counts.X, &s.Counts.Ten, &s.Counts.Nine, &s.Counts.Eight, &s.Counts.Seven, &s.Counts.Zero, &s.Counts.Miss, &s.Status)...); err != nil {
 			return nil, err

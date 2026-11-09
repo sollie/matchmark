@@ -47,6 +47,7 @@ type Entry struct {
 	Class                 *int
 	Club                  *string
 	Country               *string
+	Remarks               *string
 }
 
 type SegmentSeed struct {
@@ -158,8 +159,8 @@ func (r *Repository) CreateEntry(ctx context.Context, e Entry, segments []Segmen
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO entries (match_id, shooter_id, category, lane) VALUES (?, ?, ?, ?)`,
-		e.MatchID, e.ShooterID, e.Category, e.Lane)
+		`INSERT INTO entries (match_id, shooter_id, category, lane, remarks) VALUES (?, ?, ?, ?, ?)`,
+		e.MatchID, e.ShooterID, e.Category, e.Lane, e.Remarks)
 	if err != nil {
 		return 0, mapErr(err)
 	}

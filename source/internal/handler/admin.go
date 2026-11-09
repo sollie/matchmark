@@ -117,7 +117,7 @@ func entryJSON(e repository.Entry) map[string]any {
 		"id": e.ID, "match_id": e.MatchID, "shooter_id": e.ShooterID,
 		"category": e.Category, "lane": e.Lane, "withdrawn": e.Withdrawn,
 		"classification_at_match": classificationJSON(e.ClassificationAtMatch), "class": classificationJSON(e.Class),
-		"club": e.Club, "country": e.Country,
+		"club": e.Club, "country": e.Country, "remarks": e.Remarks,
 	}
 }
 
@@ -350,14 +350,15 @@ func (h *Handler) updateEntry(r *http.Request) (int, any, error) {
 	req := in(r)
 	compID, entryID := req.path("matchID"), req.path("entryID")
 	var body struct {
-		Category string `json:"category"`
-		Lane     int    `json:"lane"`
+		Category string  `json:"category"`
+		Lane     int     `json:"lane"`
+		Remarks  *string `json:"remarks"`
 	}
 	req.body(&body)
 	if req.err != nil {
 		return fail(req.err)
 	}
-	e, err := h.svc.UpdateEntry(r.Context(), compID, entryID, body.Category, body.Lane)
+	e, err := h.svc.UpdateEntry(r.Context(), compID, entryID, body.Category, body.Lane, body.Remarks)
 	if err != nil {
 		return fail(err)
 	}

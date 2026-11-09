@@ -91,6 +91,46 @@ describe("Results", () => {
     expect(screen.queryByRole("columnheader", { name: "S1" })).toBeNull();
   });
 
+  it("shows a remarks column only when a row has remarks", async () => {
+    navigate("/results/7");
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150 Course",
+          },
+          segments: [1],
+          categories: [
+            {
+              category: "Revolver 1500",
+              did_not_finish: [],
+              groups: [],
+              rows: [
+                {
+                  rank: 1,
+                  last_name: "Doe",
+                  first_name: "Jane",
+                  remarks: "Pistol change",
+                  segments: [{ segment: 1, score: 110 }],
+                  total: 110,
+                },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    expect(await screen.findByRole("columnheader", { name: "Remarks" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Pistol change" })).toBeTruthy();
+  });
+
   it("shows a score card per shooter with ring counts per segment", async () => {
     navigate("/results/7");
     const counts = (x: number) => ({ x, "10": 1, "9": 2, "8": 3, "7": 4, "0": 5, miss: 6 });

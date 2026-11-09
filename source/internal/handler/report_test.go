@@ -172,17 +172,17 @@ func TestResultsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,segment,segment_name,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name,classification_at_match,class,club,country"
+	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,segment,segment_name,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name,classification_at_match,class,club,country,remarks"
 	if strings.Join(rows[0], ",") != wantHeader {
 		t.Fatalf("header %v", rows[0])
 	}
 	if len(rows) != 13 {
 		t.Fatalf("rows %d, want 1 header + 2 entries x 6 segments", len(rows))
 	}
-	if got := strings.Join(rows[1], ","); got != "Revolver 1500,1,BERG,Ola,W100,false,1,Match 1,6,8,6,2,2,0,0,224,true,,"+apitest.AdminUsername+",,,Oslo PPC,NOR" {
+	if got := strings.Join(rows[1], ","); got != "Revolver 1500,1,BERG,Ola,W100,false,1,Match 1,6,8,6,2,2,0,0,224,true,,"+apitest.AdminUsername+",,,Oslo PPC,NOR," {
 		t.Fatalf("first row %q", got)
 	}
-	if got := strings.Join(rows[7], ","); got != "Pistol 1500,2,NYHUS,Kari,,false,1,Match 1,0,0,0,0,0,0,0,0,false,,,,,Oslo PPC,NOR" {
+	if got := strings.Join(rows[7], ","); got != "Pistol 1500,2,NYHUS,Kari,,false,1,Match 1,0,0,0,0,0,0,0,0,false,,,,,Oslo PPC,NOR," {
 		t.Fatalf("pistol row %q", got)
 	}
 }

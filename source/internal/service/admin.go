@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
@@ -369,9 +370,36 @@ func (s *Service) finishIfComplete(ctx context.Context, matchID int64, actor *Ac
 	_ = s.changeStatus(ctx, matchID, StatusActive, StatusFinished, actor)
 }
 
-func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int) (repository.Entry, error) {
+const maxRemarksLength = 200
+
+func sameRemarks(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func normalizeRemarks(v *string) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	t := strings.TrimSpace(*v)
+	if utf8.RuneCountInString(t) > maxRemarksLength {
+		return nil, ErrInvalid
+	}
+	if t == "" {
+		return nil, nil
+	}
+	return &t, nil
+}
+
+func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int, remarks *string) (repository.Entry, error) {
 	if lane < 1 {
 		return repository.Entry{}, ErrInvalid
+	}
+	newRemarks, err := normalizeRemarks(remarks)
+	if err != nil {
+		return repository.Entry{}, err
 	}
 	current, err := s.repo.GetEntry(ctx, matchID, entryID)
 	if err != nil {
@@ -391,16 +419,25 @@ func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, categ
 			return repository.Entry{}, ErrConflict
 		}
 	default:
-		return repository.Entry{}, ErrConflict
+		if lane != current.Lane || category != current.Category {
+			return repository.Entry{}, ErrConflict
+		}
+	}
+	if remarks == nil {
+		newRemarks = current.Remarks
 	}
 	unclassified, err := s.unclassifiedClass(ctx)
 	if err != nil {
 		return repository.Entry{}, err
 	}
-	if err := s.repo.UpdateEntry(ctx, matchID, entryID, category, lane, unclassified); err != nil {
+	if err := s.repo.UpdateEntry(ctx, matchID, entryID, category, lane, newRemarks, unclassified); err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: matchID, EntryID: entryID}})
+	details := ""
+	if remarks != nil && !sameRemarks(current.Remarks, newRemarks) {
+		details = "remarks=" + strings.TrimSpace(*remarks)
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(matchID, entryID), Details: details}, MatchID: matchID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: matchID, EntryID: entryID}})
 	e, err := s.repo.GetEntry(ctx, matchID, entryID)
 	return e, mapRepoErr(err)
 }

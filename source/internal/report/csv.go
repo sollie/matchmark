@@ -11,7 +11,7 @@ import (
 	"github.com/sollie/matchmark/internal/wa1500"
 )
 
-var csvHeader = []string{"category", "lane", "last_name", "first_name", "waid", "withdrawn", "segment", "segment_name", "X", "10", "9", "8", "7", "0", "miss", "total", "accepted", "scorer_lane", "scorer_name", "classification_at_match", "class", "club", "country"}
+var csvHeader = []string{"category", "lane", "last_name", "first_name", "waid", "withdrawn", "segment", "segment_name", "X", "10", "9", "8", "7", "0", "miss", "total", "accepted", "scorer_lane", "scorer_name", "classification_at_match", "class", "club", "country", "remarks"}
 
 func safeCell(v string) string {
 	if v != "" && strings.ContainsRune("=+-@\t\r", rune(v[0])) {
@@ -47,7 +47,7 @@ func CSV(d Data) ([]byte, error) {
 				strconv.Itoa(c.X), strconv.Itoa(c.Ten), strconv.Itoa(c.Nine), strconv.Itoa(c.Eight),
 				strconv.Itoa(c.Seven), strconv.Itoa(c.Zero), strconv.Itoa(c.Miss),
 				strconv.Itoa(c.Score()), strconv.FormatBool(s.Status == repository.StatusAccepted), scorerLane, safeCell(s.ScorerName),
-				classificationName(id.Classification), classificationName(id.Class), safeCell(id.Club), safeCell(id.Country),
+				classificationName(id.Classification), classificationName(id.Class), safeCell(id.Club), safeCell(id.Country), safeCell(remarksText(e.Remarks)),
 			}
 			if err := w.Write(rec); err != nil {
 				return nil, err
@@ -56,6 +56,13 @@ func CSV(d Data) ([]byte, error) {
 	}
 	w.Flush()
 	return buf.Bytes(), w.Error()
+}
+
+func remarksText(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }
 
 func classificationName(v *int) string {

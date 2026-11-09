@@ -260,13 +260,13 @@ func (r *Repository) CountEntries(ctx context.Context, matchID int64) (int, erro
 func (r *Repository) GetEntry(ctx context.Context, matchID, entryID int64) (Entry, error) {
 	var e Entry
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country FROM entries WHERE id = ? AND match_id = ?`,
+		`SELECT id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country, remarks FROM entries WHERE id = ? AND match_id = ?`,
 		entryID, matchID).Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn,
-		&e.ClassificationAtMatch, &e.Class, &e.Club, &e.Country)
+		&e.ClassificationAtMatch, &e.Class, &e.Club, &e.Country, &e.Remarks)
 	return e, mapErr(err)
 }
 
-func (r *Repository) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int, unclassifiedClass int) error {
+func (r *Repository) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int, remarks *string, unclassifiedClass int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -279,8 +279,8 @@ func (r *Repository) UpdateEntry(ctx context.Context, matchID, entryID int64, ca
 		return mapErr(err)
 	}
 	res, err := tx.ExecContext(ctx,
-		`UPDATE entries SET category = ?, lane = ? WHERE id = ? AND match_id = ?`,
-		category, lane, entryID, matchID)
+		`UPDATE entries SET category = ?, lane = ?, remarks = ? WHERE id = ? AND match_id = ?`,
+		category, lane, remarks, entryID, matchID)
 	if err := affected(res, err); err != nil {
 		return err
 	}
@@ -300,7 +300,7 @@ func (r *Repository) DeleteEntry(ctx context.Context, matchID, entryID int64) er
 
 func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWithSegments, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country FROM entries WHERE match_id = ? ORDER BY lane, id`,
+		`SELECT id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country, remarks FROM entries WHERE match_id = ? ORDER BY lane, id`,
 		matchID)
 	if err != nil {
 		return nil, err
@@ -310,7 +310,7 @@ func (r *Repository) ListEntries(ctx context.Context, matchID int64) ([]EntryWit
 	for rows.Next() {
 		var e EntryWithSegments
 		if err := rows.Scan(&e.ID, &e.MatchID, &e.ShooterID, &e.Category, &e.Lane, &e.Withdrawn,
-			&e.ClassificationAtMatch, &e.Class, &e.Club, &e.Country); err != nil {
+			&e.ClassificationAtMatch, &e.Class, &e.Club, &e.Country, &e.Remarks); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}

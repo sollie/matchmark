@@ -49,16 +49,17 @@ func (h *Handler) addEntry(r *http.Request) (int, any, error) {
 	req := in(r)
 	compID := req.path("matchID")
 	var body struct {
-		ShooterID int64  `json:"shooter_id"`
-		Category  string `json:"category"`
-		Lane      int    `json:"lane"`
+		ShooterID int64   `json:"shooter_id"`
+		Category  string  `json:"category"`
+		Lane      int     `json:"lane"`
+		Remarks   *string `json:"remarks"`
 	}
 	req.body(&body)
 	if req.err != nil {
 		return fail(req.err)
 	}
 	id, err := h.svc.AddEntry(r.Context(), repository.Entry{
-		MatchID: compID, ShooterID: body.ShooterID, Category: body.Category, Lane: body.Lane,
+		MatchID: compID, ShooterID: body.ShooterID, Category: body.Category, Lane: body.Lane, Remarks: body.Remarks,
 	})
 	if err != nil {
 		return fail(err)

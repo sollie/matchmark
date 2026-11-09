@@ -44,6 +44,7 @@ const entry = (overrides: Partial<EntryWithSegments> = {}): EntryWithSegments =>
   class: null,
   club: null,
   country: null,
+  remarks: null,
   segments: [
     {
       segment_number: 1,
@@ -222,6 +223,18 @@ describe("Entries", () => {
       "PUT /api/matches/5/entries/1/classification",
     ]);
     expect(calls[0].body).toEqual({ classification_at_match: 3, class: 3 });
+  });
+
+  it("sets remarks without touching lane or category", async () => {
+    const { calls, user } = setup([entry({ remarks: "Late" })]);
+    expect(screen.getByText("Late")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Edit remarks for Jane Doe" }));
+    const input = screen.getByRole("textbox", { name: "Remarks for Jane Doe" });
+    await user.clear(input);
+    await user.type(input, "Changed pistol");
+    await user.click(screen.getByRole("button", { name: "Save remarks" }));
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["PUT /api/matches/5/entries/1"]);
+    expect(calls[0].body).toEqual({ category: "Pistol 1500", lane: 1, remarks: "Changed pistol" });
   });
 
   it("offers no class correction before the entry is frozen", () => {

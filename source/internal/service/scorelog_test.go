@@ -460,7 +460,7 @@ func TestEntryEditReemitsLockedSegments(t *testing.T) {
 	}
 	before := f.lockedAt(t)
 	n := len(f.lines(t))
-	if _, err := f.svc.UpdateEntry(ctx, f.compID, f.entry2, "Revolver 1500", 5); err != nil {
+	if _, err := f.svc.UpdateEntry(ctx, f.compID, f.entry2, "Revolver 1500", 5, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(f.lines(t)) - n; got != 2 {

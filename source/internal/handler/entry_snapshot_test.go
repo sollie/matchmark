@@ -154,9 +154,9 @@ func TestResultsIgnoreReclassificationAfterActivation(t *testing.T) {
 	if err != nil || len(rows) < 2 {
 		t.Fatalf("csv: %v %v", err, rows)
 	}
-	tail := rows[1][len(rows[1])-4:]
+	tail := rows[1][len(rows[1])-5 : len(rows[1])-1]
 	if strings.Join(tail, "|") != "Expert|Expert|Old Club|Canada" {
-		t.Fatalf("csv tail %v header %v", tail, rows[0][len(rows[0])-4:])
+		t.Fatalf("csv tail %v header %v", tail, rows[0][len(rows[0])-5:len(rows[0])-1])
 	}
 }
 

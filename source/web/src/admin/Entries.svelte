@@ -47,6 +47,7 @@
   let chosenCategory = $state<string | null>(null);
   let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
+  let remarking = $state<{ id: number; text: string } | null>(null);
   let correcting = $state<{ id: number; classification: number; class: number } | null>(null);
   let scoring = $state<{
     entry: EntryWithSegments;
@@ -133,6 +134,18 @@
       commands.update(editing.id, { category: editing.category, lane: editing.lane }),
     );
     if (ok) editing = null;
+  }
+
+  async function saveRemarks(entry: EntryWithSegments) {
+    if (!remarking) return;
+    const ok = await run(
+      commands.update(entry.id, {
+        category: entry.category,
+        lane: entry.lane,
+        remarks: remarking.text,
+      }),
+    );
+    if (ok) remarking = null;
   }
 
   const classificationOptions = [
@@ -283,7 +296,7 @@
     <table class="entries">
       <thead>
         <tr>
-          <th>Lane</th><th>Shooter</th><th>Category</th><th>Class</th>
+          <th>Lane</th><th>Shooter</th><th>Category</th><th>Class</th><th>Remarks</th>
           {#each segmentNumbers as n (n)}<th title={segmentLabel(course, n)}
               >{segmentColumn(course, n)}</th
             >{/each}
@@ -346,6 +359,26 @@
                       classification: entry.classification_at_match?.value ?? 0,
                       class: entry.class?.value ?? 0,
                     })}>Correct</button
+                >
+              {/if}
+            </td>
+            <td class="remarks">
+              {#if remarking?.id === entry.id}
+                <input
+                  type="text"
+                  maxlength="200"
+                  aria-label={`Remarks for ${shooterName(entry.shooter_id)}`}
+                  bind:value={remarking.text}
+                />
+                <button class="primary" onclick={() => saveRemarks(entry)}>Save remarks</button>
+                <button class="secondary" onclick={() => (remarking = null)}>Cancel</button>
+              {:else}
+                {entry.remarks ?? ""}
+                <button
+                  class="secondary"
+                  aria-label={`Edit remarks for ${shooterName(entry.shooter_id)}`}
+                  onclick={() => (remarking = { id: entry.id, text: entry.remarks ?? "" })}
+                  >{entry.remarks ? "Edit" : "Add remarks"}</button
                 >
               {/if}
             </td>
@@ -442,7 +475,7 @@
           </tr>
         {:else}
           <tr class="empty"
-            ><td colspan={5 + segmentNumbers.length}
+            ><td colspan={6 + segmentNumbers.length}
               >No entries yet. Add a shooter above to get started.</td
             ></tr
           >
@@ -723,6 +756,11 @@
   }
   .entries .class {
     order: 3;
+    color: var(--text-muted);
+  }
+  .entries .remarks {
+    order: 3;
+    flex: 1 1 100%;
     color: var(--text-muted);
   }
   .entries .lane::before {

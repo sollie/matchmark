@@ -64,6 +64,9 @@
   const showCountries = $derived(
     results?.categories.some((c) => allRows(c).some((r) => r.country !== undefined)) ?? false,
   );
+  const showRemarks = $derived(
+    results?.categories.some((c) => allRows(c).some((r) => r.remarks !== undefined)) ?? false,
+  );
   const showSegments = $derived(
     results?.categories.some((c) =>
       allRows(c).some((r) => r.segments.some((s) => s.score !== undefined)),
@@ -157,6 +160,7 @@
                         >{/each}{/if}
                     <th class="num">Total</th>
                     {#if showX}<th class="num">X</th>{/if}
+                    {#if showRemarks}<th>Remarks</th>{/if}
                   </tr>
                 </thead>
                 <tbody>
@@ -178,6 +182,7 @@
                           >{/each}{/if}
                       <td class="num total">{row.total}</td>
                       {#if showX}<td class="num">{row.x_count}</td>{/if}
+                      {#if showRemarks}<td>{row.remarks ?? ""}</td>{/if}
                     </tr>
                   {/each}
                   {#each section.dnf as row, i (i)}
@@ -194,6 +199,7 @@
                           >{/each}{/if}
                       <td class="num total">DNF</td>
                       {#if showX}<td class="num"></td>{/if}
+                      {#if showRemarks}<td>{row.remarks ?? ""}</td>{/if}
                     </tr>
                   {/each}
                 </tbody>

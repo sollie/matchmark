@@ -266,6 +266,9 @@ The Classification frozen on an Entry when its Match goes active; results read i
 **Class**:
 The group an Entry competes in, frozen with the Classification at match and equal to it, except Unclassified, which maps to the club setting "Unclassified shooters compete as" (Master or Unclassified).
 
+**Remarks**:
+Free-text note on an Entry (the "Anm" column of the club PDF): at most 200 characters, set by an admin in any Match status, shown in results and the results PDF where names are visible, and in the CSV.
+
 **Classified match**:
 A per-Match toggle (`matches.classified`, default on; rulebook 1.x(c): classified matches give awards per Class). When on, results, standings and the results PDF split each classified Category into Class groups. Editable in any Match status. Not the `group_by_category` visibility flag, which only controls whether standings are grouped by Category.
 

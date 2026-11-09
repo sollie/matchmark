@@ -137,6 +137,10 @@ func (s *Service) AddEntry(ctx context.Context, e repository.Entry) (int64, erro
 	if e.Lane < 1 {
 		return 0, ErrInvalid
 	}
+	var err error
+	if e.Remarks, err = normalizeRemarks(e.Remarks); err != nil {
+		return 0, err
+	}
 	comp, err := s.requireDraft(ctx, e.MatchID)
 	if err != nil {
 		return 0, err

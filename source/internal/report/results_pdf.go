@@ -62,6 +62,7 @@ type ResultsPDFRow struct {
 	WAID      *string
 	Club      *string
 	Country   *string
+	Remarks   *string
 	Segments  []ResultsPDFSegment
 	Total     int
 	XCount    *int
@@ -211,6 +212,12 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	showCountries := found && first.Country != nil
 	showSegments := found && len(first.Segments) > 0 && first.Segments[0].Score != nil
 	showX := found && first.XCount != nil
+	showRemarks := false
+	for _, c := range d.Categories {
+		for _, r := range c.Rows {
+			showRemarks = showRemarks || r.Remarks != nil
+		}
+	}
 
 	columns := []pdfColumn{{title: "#", right: true}}
 	if showNames {
@@ -234,6 +241,9 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	columns = append(columns, pdfColumn{title: "Total", right: true})
 	if showX {
 		columns = append(columns, pdfColumn{title: "X", right: true})
+	}
+	if showRemarks {
+		columns = append(columns, pdfColumn{title: "Remarks", flex: true})
 	}
 	return columns, func(r ResultsPDFRow) []string {
 		cells := []string{strconv.Itoa(r.Rank)}
@@ -261,6 +271,9 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 		}
 		if showX {
 			cells = append(cells, derefInt(r.XCount))
+		}
+		if showRemarks {
+			cells = append(cells, derefString(r.Remarks))
 		}
 		return cells
 	}
