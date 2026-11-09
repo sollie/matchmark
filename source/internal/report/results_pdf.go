@@ -54,7 +54,6 @@ var (
 	pdfHeaderFill  = &props.Color{Red: 238, Green: 238, Blue: 238}
 	pdfMuted       = &props.Color{Red: 92, Green: 92, Blue: 92}
 	pdfSectionFill = &props.Color{Red: 184, Green: 224, Blue: 160}
-	pdfPodiumFill  = &props.Color{Red: 255, Green: 248, Blue: 225}
 )
 
 type ResultsPDFSegment struct {
@@ -190,7 +189,7 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 			}
 			flow.push(headerHeight, header)
 			for _, r := range g.Rows {
-				tr, height := tableRow(ms, columns, cells(r), grid, false, r.Rank >= 1 && r.Rank <= 3 && !r.DNF)
+				tr, height := tableRow(ms, columns, cells(r), grid, false)
 				flow.push(height, tr)
 			}
 			flow.push(pdfRowHeight, row.New(pdfRowHeight))
@@ -204,7 +203,7 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 		newHeader, _ := tableHeader(ms, newColumns, pdfGrid)
 		p.Add(sectionRow("New shooters", grid), newHeader)
 		for _, cells := range newRowCells {
-			tr, _ := tableRow(ms, newColumns, cells, grid, false, false)
+			tr, _ := tableRow(ms, newColumns, cells, grid, false)
 			p.Add(tr)
 		}
 		m.AddPages(p)
@@ -509,10 +508,10 @@ func tableHeader(ms *measurer, columns []pdfColumn, grid int) (core.Row, float64
 	for i, c := range columns {
 		titles[i] = c.title
 	}
-	return tableRow(ms, columns, titles, grid, true, false)
+	return tableRow(ms, columns, titles, grid, true)
 }
 
-func tableRow(ms *measurer, columns []pdfColumn, cells []string, grid int, header, podium bool) (core.Row, float64) {
+func tableRow(ms *measurer, columns []pdfColumn, cells []string, grid int, header bool) (core.Row, float64) {
 	cols := make([]core.Col, 0, len(columns))
 	lines := 1
 	for i, c := range columns {
@@ -547,8 +546,6 @@ func tableRow(ms *measurer, columns []pdfColumn, cells []string, grid int, heade
 	r := row.New(height).Add(cols...)
 	if header {
 		r.WithStyle(&props.Cell{BackgroundColor: pdfHeaderFill})
-	} else if podium {
-		r.WithStyle(&props.Cell{BackgroundColor: pdfPodiumFill})
 	}
 	return r, height
 }
