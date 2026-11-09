@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import MatchEdit from "./MatchEdit.svelte";
-import { stubFetch } from "../test/fetch";
+import { stubFetch, type Call } from "../test/fetch";
 import { loadRulebook } from "../lib/rulebook.svelte";
 
 const course = (key: string, label: string) => ({
@@ -32,10 +32,25 @@ const match = {
   status: "draft" as const,
   current_segment: 1,
   classified: true,
+  referees: [{ waid: "1001", name: "Rita Referee" }],
+  range_officers: [],
+  effective_referees: [{ waid: "1001", name: "Rita Referee" }],
+  effective_range_officers: [],
 };
 
+const candidates = [
+  { username: "rita", waid: "1001" },
+  { username: "ola", waid: "2002" },
+];
+
+function saves(calls: Call[]) {
+  return calls.filter((c) => c.method !== "GET");
+}
+
 function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0], draft = true) {
-  const calls = stubFetch(reply);
+  const calls = stubFetch((call) =>
+    call.path === "/api/officials/candidates" ? { body: { candidates } } : reply?.(call),
+  );
   const saved = vi.fn();
   const cancel = vi.fn();
   render(MatchEdit, { match, hasEntries, draft, saved, cancel });
@@ -55,16 +70,16 @@ describe("MatchEdit", () => {
     await user.type(screen.getByLabelText("Date"), "2026-10-19");
     await user.selectOptions(screen.getByLabelText("Course of fire"), "60");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(calls).toHaveLength(1);
-    expect(calls[0].method).toBe("PUT");
-    expect(calls[0].path).toBe("/api/matches/5");
-    expect(calls[0].body).toEqual({
+    expect(saves(calls)).toHaveLength(1);
+    expect(saves(calls)[0].method).toBe("PUT");
+    expect(saves(calls)[0].path).toBe("/api/matches/5");
+    expect(saves(calls)[0].body).toEqual({
       name: "Autumn",
       date: "2026-10-19",
       course: "60",
       classified: true,
-      referee_waid: "",
-      range_officer_waid: "",
+      referee_waids: ["1001"],
+      range_officer_waids: [],
     });
     expect(saved).toHaveBeenCalledOnce();
   });
@@ -82,21 +97,49 @@ describe("MatchEdit", () => {
     await user.clear(screen.getByLabelText("Name"));
     await user.type(screen.getByLabelText("Name"), "Renamed");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(calls[0].body).toEqual({
+    expect(saves(calls)[0].body).toEqual({
       name: "Renamed",
       date: match.date,
       course: match.course,
       classified: true,
-      referee_waid: "",
-      range_officer_waid: "",
+      referee_waids: ["1001"],
+      range_officer_waids: [],
     });
+  });
+
+  it("adds, removes and orders officials", async () => {
+    const { calls, user } = setup();
+    await user.click(screen.getByRole("button", { name: "Add referee" }));
+    await user.type(screen.getByLabelText("Referee WAID 2"), " 2002 ");
+    await user.click(screen.getByRole("button", { name: "Add range officer" }));
+    await user.type(screen.getByLabelText("Range officer WAID 1"), "3003");
+    await user.click(screen.getByRole("button", { name: "Add range officer" }));
+    await user.type(screen.getByLabelText("Range officer WAID 2"), "4004");
+    await user.click(screen.getByRole("button", { name: "Remove range officer 1" }));
+    await user.click(screen.getByRole("button", { name: "Remove referee 1" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(saves(calls)[0].body).toMatchObject({
+      referee_waids: ["2002"],
+      range_officer_waids: ["4004"],
+    });
+  });
+
+  it("picks officials from users that have a WAID, leaving out those already listed", async () => {
+    const { calls, user } = setup();
+    const picker = await screen.findByLabelText("Pick range officer from users");
+    expect(screen.getByLabelText("Pick referee from users").textContent).not.toContain("rita");
+    await user.selectOptions(picker, "2002");
+    expect((screen.getByLabelText("Range officer WAID 1") as HTMLInputElement).value).toBe("2002");
+    expect(picker.textContent).not.toContain("ola");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(saves(calls)[0].body).toMatchObject({ range_officer_waids: ["2002"] });
   });
 
   it("sends the Classified match toggle, also once the match has started", async () => {
     const { calls, user } = setup(false, () => ({ body: { ...match, classified: false } }), false);
     await user.click(screen.getByLabelText("Classified match"));
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(calls[0].body).toMatchObject({ classified: false });
+    expect(saves(calls)[0].body).toMatchObject({ classified: false });
   });
 
   it("blocks a date that is not ISO 8601", async () => {
@@ -104,7 +147,7 @@ describe("MatchEdit", () => {
     await user.clear(screen.getByLabelText("Date"));
     await user.type(screen.getByLabelText("Date"), "19/10/2026");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(calls).toHaveLength(0);
+    expect(saves(calls)).toHaveLength(0);
     expect((screen.getByLabelText("Date") as HTMLInputElement).validity.valid).toBe(false);
   });
 
@@ -119,6 +162,6 @@ describe("MatchEdit", () => {
     const { calls, cancel, user } = setup();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(cancel).toHaveBeenCalledOnce();
-    expect(calls).toHaveLength(0);
+    expect(saves(calls)).toHaveLength(0);
   });
 });

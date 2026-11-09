@@ -8,6 +8,7 @@
   import { courseLabel, is1500, loadRulebook, rulebook } from "../lib/rulebook.svelte";
   import { localDate } from "../lib/datetime";
   import CompetitionForm from "./CompetitionForm.svelte";
+  import OfficialsInput from "./OfficialsInput.svelte";
   import type { components } from "../lib/api/schema";
 
   type Match = components["schemas"]["Match"];
@@ -35,8 +36,8 @@
   let name = $state("");
   let date = $state(localDate(new Date()));
   let course = $state("150");
-  let refereeWaid = $state(admin.waid);
-  let rangeOfficerWaid = $state("");
+  let refereeWaids = $state<string[]>([]);
+  let rangeOfficerWaids = $state<string[]>([]);
   let error = $state("");
 
   async function load() {
@@ -86,8 +87,8 @@
       name,
       date,
       course,
-      referee_waid: refereeWaid.trim(),
-      range_officer_waid: rangeOfficerWaid.trim(),
+      referee_waids: refereeWaids.map((w) => w.trim()).filter(Boolean),
+      range_officer_waids: rangeOfficerWaids.map((w) => w.trim()).filter(Boolean),
     };
     if (competitionChoice === newCompetition) {
       body.competition = { name: compName, start_date: compStart, end_date: compEnd };
@@ -122,14 +123,9 @@
       {#each rulebook.courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
     </select>
   </label>
-  <label>
-    Referee WAID
-    <input bind:value={refereeWaid} maxlength="32" inputmode="numeric" size="10" />
-  </label>
-  <label>
-    Range officer WAID
-    <input bind:value={rangeOfficerWaid} maxlength="32" inputmode="numeric" size="10" />
-  </label>
+  <p class="muted">Leave a role empty to use the competition's officials.</p>
+  <OfficialsInput role="Referee" bind:waids={refereeWaids} />
+  <OfficialsInput role="Range officer" bind:waids={rangeOfficerWaids} />
   <label>
     Competition
     <select bind:value={competitionChoice}>

@@ -29,19 +29,29 @@ type Match struct {
 	Classified     bool
 	NewRangeID     *int64
 
-	RefereeWAID      string
-	RefereeName      string
-	RangeOfficerWAID string
-	RangeOfficerName string
+	Referees      []Official
+	RangeOfficers []Official
+
+	EffectiveReferees      []Official
+	EffectiveRangeOfficers []Official
+	NewCompetitionReferees []Official
 }
 
-const matchColumns = `id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, ''), classified,
-	COALESCE(referee_waid, ''), COALESCE(referee_name, ''), COALESCE(range_officer_waid, ''), COALESCE(range_officer_name, '')`
+type Official struct {
+	WAID string
+	Name string
+}
+
+const (
+	RoleReferee      = "referee"
+	RoleRangeOfficer = "range_officer"
+)
+
+const matchColumns = `id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, ''), classified`
 
 func scanMatch(s scanner) (Match, error) {
 	var c Match
-	err := s.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt, &c.Classified,
-		&c.RefereeWAID, &c.RefereeName, &c.RangeOfficerWAID, &c.RangeOfficerName)
+	err := s.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt, &c.Classified)
 	return c, mapErr(err)
 }
 
@@ -91,18 +101,21 @@ func (r *Repository) CreateMatch(ctx context.Context, c Match) (int64, error) {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	containerID, err := ensureContainer(ctx, tx, c.CompetitionID, c.Name, c.Date, c.NewRangeID)
+	containerID, err := ensureContainer(ctx, tx, c)
 	if err != nil {
 		return 0, err
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO matches (competition_id, name, date, course, referee_waid, referee_name, range_officer_waid, range_officer_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		containerID, c.Name, c.Date, c.Course, nullIfEmpty(c.RefereeWAID), nullIfEmpty(c.RefereeName), nullIfEmpty(c.RangeOfficerWAID), nullIfEmpty(c.RangeOfficerName))
+		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`,
+		containerID, c.Name, c.Date, c.Course)
 	if err != nil {
 		return 0, mapErr(err)
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
+		return 0, err
+	}
+	if err := replaceOfficials(ctx, tx, matchOfficialsTable, id, c.Referees, c.RangeOfficers); err != nil {
 		return 0, err
 	}
 	return id, tx.Commit()
@@ -123,9 +136,12 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 	if err != nil {
 		return 0, 0, err
 	}
+	if err := replaceOfficials(ctx, tx, competitionOfficialsTable, compID, comp.Referees, comp.RangeOfficers); err != nil {
+		return 0, 0, err
+	}
 	res, err = tx.ExecContext(ctx,
-		`INSERT INTO matches (competition_id, name, date, course, referee_waid, referee_name, range_officer_waid, range_officer_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		compID, c.Name, c.Date, c.Course, nullIfEmpty(c.RefereeWAID), nullIfEmpty(c.RefereeName), nullIfEmpty(c.RangeOfficerWAID), nullIfEmpty(c.RangeOfficerName))
+		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`,
+		compID, c.Name, c.Date, c.Course)
 	if err != nil {
 		return 0, 0, mapErr(err)
 	}
@@ -133,19 +149,26 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 	if err != nil {
 		return 0, 0, err
 	}
+	if err := replaceOfficials(ctx, tx, matchOfficialsTable, id, c.Referees, c.RangeOfficers); err != nil {
+		return 0, 0, err
+	}
 	return compID, id, tx.Commit()
 }
 
-func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string, rangeID *int64) (int64, error) {
-	if id != 0 {
-		return id, nil
+func ensureContainer(ctx context.Context, tx *sql.Tx, c Match) (int64, error) {
+	if c.CompetitionID != 0 {
+		return c.CompetitionID, nil
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, name, date, date, rangeID)
+		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, c.Name, c.Date, c.Date, c.NewRangeID)
 	if err != nil {
 		return 0, mapErr(err)
 	}
-	return res.LastInsertId()
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return id, replaceOfficials(ctx, tx, competitionOfficialsTable, id, c.NewCompetitionReferees, nil)
 }
 
 func (r *Repository) CompetitionName(ctx context.Context, id int64) (string, error) {
@@ -163,7 +186,128 @@ func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRa
 }
 
 func (r *Repository) GetMatch(ctx context.Context, id int64) (Match, error) {
-	return scanMatch(r.db.QueryRowContext(ctx, `SELECT `+matchColumns+` FROM matches WHERE id = ?`, id))
+	m, err := scanMatch(r.db.QueryRowContext(ctx, `SELECT `+matchColumns+` FROM matches WHERE id = ?`, id))
+	if err != nil {
+		return m, err
+	}
+	list := []Match{m}
+	if err := r.loadMatchOfficials(ctx, list); err != nil {
+		return m, err
+	}
+	return list[0], nil
+}
+
+type officialsTable struct {
+	table  string
+	parent string
+}
+
+var (
+	matchOfficialsTable       = officialsTable{"match_officials", "match_id"}
+	competitionOfficialsTable = officialsTable{"competition_officials", "competition_id"}
+)
+
+func replaceOfficials(ctx context.Context, tx *sql.Tx, t officialsTable, parentID int64, referees, rangeOfficers []Official) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM `+t.table+` WHERE `+t.parent+` = ?`, parentID); err != nil {
+		return mapErr(err)
+	}
+	for _, group := range []struct {
+		role      string
+		officials []Official
+	}{{RoleReferee, referees}, {RoleRangeOfficer, rangeOfficers}} {
+		for _, o := range group.officials {
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO `+t.table+` (`+t.parent+`, role, waid, name) VALUES (?, ?, ?, ?)`, parentID, group.role, o.WAID, o.Name); err != nil {
+				return mapErr(err)
+			}
+		}
+	}
+	return nil
+}
+
+type roleOfficials struct {
+	referees      []Official
+	rangeOfficers []Official
+}
+
+func (r *Repository) officialsByParent(ctx context.Context, t officialsTable) (map[int64]*roleOfficials, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+t.parent+`, role, waid, name FROM `+t.table+` ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[int64]*roleOfficials{}
+	for rows.Next() {
+		var parentID int64
+		var role string
+		var o Official
+		if err := rows.Scan(&parentID, &role, &o.WAID, &o.Name); err != nil {
+			return nil, err
+		}
+		g := out[parentID]
+		if g == nil {
+			g = &roleOfficials{}
+			out[parentID] = g
+		}
+		if role == RoleReferee {
+			g.referees = append(g.referees, o)
+		} else {
+			g.rangeOfficers = append(g.rangeOfficers, o)
+		}
+	}
+	return out, rows.Err()
+}
+
+func orEmpty(list []Official) []Official {
+	if list == nil {
+		return []Official{}
+	}
+	return list
+}
+
+func (r *Repository) loadCompetitionOfficials(ctx context.Context, comps []Competition) error {
+	own, err := r.officialsByParent(ctx, competitionOfficialsTable)
+	if err != nil {
+		return err
+	}
+	for i := range comps {
+		g := own[comps[i].ID]
+		if g == nil {
+			g = &roleOfficials{}
+		}
+		comps[i].Referees, comps[i].RangeOfficers = orEmpty(g.referees), orEmpty(g.rangeOfficers)
+	}
+	return nil
+}
+
+func (r *Repository) loadMatchOfficials(ctx context.Context, matches []Match) error {
+	own, err := r.officialsByParent(ctx, matchOfficialsTable)
+	if err != nil {
+		return err
+	}
+	inherited, err := r.officialsByParent(ctx, competitionOfficialsTable)
+	if err != nil {
+		return err
+	}
+	for i := range matches {
+		g, c := own[matches[i].ID], inherited[matches[i].CompetitionID]
+		if g == nil {
+			g = &roleOfficials{}
+		}
+		if c == nil {
+			c = &roleOfficials{}
+		}
+		m := &matches[i]
+		m.Referees, m.RangeOfficers = orEmpty(g.referees), orEmpty(g.rangeOfficers)
+		m.EffectiveReferees, m.EffectiveRangeOfficers = m.Referees, m.RangeOfficers
+		if len(g.referees) == 0 {
+			m.EffectiveReferees = orEmpty(c.referees)
+		}
+		if len(g.rangeOfficers) == 0 {
+			m.EffectiveRangeOfficers = orEmpty(c.rangeOfficers)
+		}
+	}
+	return nil
 }
 
 func (r *Repository) CreateEntry(ctx context.Context, e Entry, segments []SegmentSeed) (int64, error) {

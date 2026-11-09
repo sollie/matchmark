@@ -4,6 +4,7 @@
   import { failure } from "../lib/api/util";
   import { loadRulebook, rulebook } from "../lib/rulebook.svelte";
   import type { components } from "../lib/api/schema";
+  import OfficialsInput from "./OfficialsInput.svelte";
 
   type Match = components["schemas"]["Match"];
 
@@ -27,8 +28,8 @@
   let date = $state(untrack(() => match.date));
   let course = $state(untrack(() => match.course));
   let classified = $state(untrack(() => match.classified));
-  let refereeWaid = $state(untrack(() => match.referee_waid ?? ""));
-  let rangeOfficerWaid = $state(untrack(() => match.range_officer_waid ?? ""));
+  let refereeWaids = $state(untrack(() => match.referees.map((o) => o.waid)));
+  let rangeOfficerWaids = $state(untrack(() => match.range_officers.map((o) => o.waid)));
   let error = $state("");
 
   onMount(loadRulebook);
@@ -43,8 +44,8 @@
         date,
         course,
         classified,
-        referee_waid: refereeWaid.trim(),
-        range_officer_waid: rangeOfficerWaid.trim(),
+        referee_waids: refereeWaids.map((w) => w.trim()).filter(Boolean),
+        range_officer_waids: rangeOfficerWaids.map((w) => w.trim()).filter(Boolean),
       },
     });
     if (result.data) saved(result.data);
@@ -75,14 +76,9 @@
   <label class="check">
     <input type="checkbox" bind:checked={classified} /> Classified match
   </label>
-  <label>
-    Referee WAID
-    <input bind:value={refereeWaid} maxlength="32" inputmode="numeric" size="10" />
-  </label>
-  <label>
-    Range officer WAID
-    <input bind:value={rangeOfficerWaid} maxlength="32" inputmode="numeric" size="10" />
-  </label>
+  <p class="muted">Leave a role empty to use the competition's officials.</p>
+  <OfficialsInput role="Referee" bind:waids={refereeWaids} />
+  <OfficialsInput role="Range officer" bind:waids={rangeOfficerWaids} />
   {#if !draft}<p class="muted">
       Only the name, Classified match and officials can change once the match has started.
     </p>

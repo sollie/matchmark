@@ -41,6 +41,21 @@ func (h *Handler) listUsers(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"users": out})
 }
 
+func (h *Handler) officialCandidates(w http.ResponseWriter, _ *http.Request) {
+	users, err := h.auth.ListUsers()
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	out := []map[string]string{}
+	for _, u := range users {
+		if u.Active && u.WAID != "" {
+			out = append(out, map[string]string{"username": u.Username, "waid": u.WAID})
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"candidates": out})
+}
+
 func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Username string `json:"username"`

@@ -5,6 +5,8 @@
   import { localDate } from "../lib/datetime";
   import { onMount } from "svelte";
   import { club, refreshClub } from "../lib/club.svelte";
+  import { admin } from "../lib/session.svelte";
+  import OfficialsInput from "./OfficialsInput.svelte";
   import type { components } from "../lib/api/schema";
 
   type Competition = components["schemas"]["Competition"];
@@ -26,6 +28,12 @@
   let name = $state(untrack(() => competition?.name ?? ""));
   let startDate = $state(untrack(() => competition?.start_date ?? today));
   let endDate = $state(untrack(() => competition?.end_date ?? today));
+  let refereeWaids = $state(
+    untrack(() => competition?.referees.map((o) => o.waid) ?? (admin.waid ? [admin.waid] : [])),
+  );
+  let rangeOfficerWaids = $state(
+    untrack(() => competition?.range_officers.map((o) => o.waid) ?? []),
+  );
   let error = $state("");
   let ranges = $state<Range[]>([]);
   let rangeChoice = $state(
@@ -53,6 +61,8 @@
       start_date: startDate,
       end_date: endDate,
       range_id: rangeChoice === "" ? null : Number(rangeChoice),
+      referee_waids: refereeWaids.map((w) => w.trim()).filter(Boolean),
+      range_officer_waids: rangeOfficerWaids.map((w) => w.trim()).filter(Boolean),
     };
     const result = competition
       ? await api.PUT("/api/competitions/{competitionID}", {
@@ -102,6 +112,8 @@
       {/each}
     </select></label
   >
+  <OfficialsInput role="Referee" bind:waids={refereeWaids} />
+  <OfficialsInput role="Range officer" bind:waids={rangeOfficerWaids} />
   <button type="submit" class="primary">Save</button>
   <button type="button" onclick={cancel}>Cancel</button>
   {#if error}<p class="error" role="alert">{error}</p>{/if}

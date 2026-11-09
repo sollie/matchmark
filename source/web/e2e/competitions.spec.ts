@@ -1,4 +1,4 @@
-import { expect, test, uniqueName } from "./helpers";
+import { createMatch, expect, openMatch, test, uniqueName } from "./helpers";
 
 test.describe("competitions", () => {
   test("create a competition, group matches under it and enforce its date span", async ({
@@ -75,5 +75,120 @@ test.describe("competitions", () => {
     await page.goto("/admin");
     const group = page.getByRole("region", { name: `Competition ${competition}` });
     await expect(group.getByRole("row").filter({ hasText: match })).toHaveCount(1);
+  });
+
+  test("the competition form sends several officials in order and shows a failed lookup", async ({
+    adminPage: page,
+  }) => {
+    let body: Record<string, unknown> = {};
+    await page.route("**/api/competitions", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      body = route.request().postDataJSON();
+      await route.fulfill({
+        status: 422,
+        json: { error: "WAID not found in the WA1500 register" },
+      });
+    });
+
+    await page.getByRole("button", { name: "New competition" }).click();
+    const form = page.getByRole("form", { name: "New competition" });
+    await form.getByLabel("Competition name").fill(uniqueName("Officials"));
+    await form.getByRole("button", { name: "Add referee" }).click();
+    await form.getByLabel("Referee WAID 1").fill("2002");
+    await form.getByRole("button", { name: "Add referee" }).click();
+    await form.getByLabel("Referee WAID 2").fill("1001");
+    await form.getByRole("button", { name: "Add range officer" }).click();
+    await form.getByLabel("Range officer WAID 1").fill("3003");
+    await form.getByRole("button", { name: "Save" }).click();
+
+    await expect(form.getByRole("alert")).toHaveText("WAID not found in the WA1500 register");
+    expect(body).toMatchObject({
+      referee_waids: ["2002", "1001"],
+      range_officer_waids: ["3003"],
+    });
+  });
+
+  test("a match shows the officials it inherits and its edit form leaves its own empty", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    await page.route(`**/api/matches/${match.id}`, async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const real = await route.fetch();
+      const json = await real.json();
+      await route.fulfill({
+        response: real,
+        json: {
+          ...json,
+          effective_referees: [{ waid: "1001", name: "Rita Referee" }],
+          effective_range_officers: [
+            { waid: "2002", name: "Ron Range" },
+            { waid: "3003", name: "Ola Officer" },
+          ],
+        },
+      });
+    });
+
+    await openMatch(page, match.id);
+    await expect(page.getByText("Referee: Rita Referee (1001)")).toBeVisible();
+    await expect(
+      page.getByText("Range officers: Ron Range (2002), Ola Officer (3003)"),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Edit match" }).click();
+    const edit = page.getByRole("form", { name: "Edit match" });
+    await expect(edit.getByLabel(/^Referee WAID/)).toHaveCount(0);
+    await expect(
+      edit.getByText("Leave a role empty to use the competition's officials."),
+    ).toBeVisible();
+  });
+
+  test("officials are picked from users with a WAID and the signed-in user is the default Referee", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const username = uniqueName("official").replace(" ", "-");
+    const ownWaid = String(Math.floor(1e8 + Math.random() * 9e8));
+    const otherWaid = String(Math.floor(1e8 + Math.random() * 9e8));
+    const created = await admin.post("/api/users", {
+      data: { username, role: "user", password: "e2e-temporary-password-1" },
+    });
+    const { id } = await created.json();
+    await admin.put(`/api/users/${id}/waid`, { data: { waid: otherWaid } });
+    await admin.put("/api/admin/waid", { data: { waid: ownWaid } });
+
+    try {
+      await page.goto("/admin");
+      let body: Record<string, unknown> = {};
+      await page.route("**/api/competitions", async (route) => {
+        if (route.request().method() !== "POST") return route.fallback();
+        body = route.request().postDataJSON();
+        await route.fulfill({ status: 422, json: { error: "stubbed" } });
+      });
+
+      await page.getByRole("button", { name: "New competition" }).click();
+      const form = page.getByRole("form", { name: "New competition" });
+      await expect(form.getByLabel("Referee WAID 1")).toHaveValue(ownWaid);
+      await expect(form.getByLabel("Pick referee from users")).not.toContainText(`(${ownWaid})`);
+      await form
+        .getByLabel("Pick referee from users")
+        .selectOption({ label: `${username} (${otherWaid})` });
+      await expect(form.getByLabel("Referee WAID 2")).toHaveValue(otherWaid);
+      await form
+        .getByLabel("Pick range officer from users")
+        .selectOption({ label: `${username} (${otherWaid})` });
+      await expect(form.getByLabel("Range officer WAID 1")).toHaveValue(otherWaid);
+
+      await form.getByLabel("Competition name").fill(uniqueName("Picked"));
+      await form.getByRole("button", { name: "Save" }).click();
+      await expect(form.getByRole("alert")).toHaveText("stubbed");
+      expect(body).toMatchObject({
+        referee_waids: [ownWaid, otherWaid],
+        range_officer_waids: [otherWaid],
+      });
+    } finally {
+      await admin.put("/api/admin/waid", { data: { waid: "" } });
+    }
   });
 });

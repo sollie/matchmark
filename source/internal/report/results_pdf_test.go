@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -247,22 +248,21 @@ func TestResultsColumnsHideClassificationRemarksAndSums(t *testing.T) {
 	}
 }
 
-func TestResultsPDFHeaderLines(t *testing.T) {
+func TestResultsPDFHeaderBlocks(t *testing.T) {
 	d := sampleResults()
-	if got := d.headerLines(); len(got) != 1 {
-		t.Fatalf("lines %q, want only the match line", got)
+	blocks := d.headerBlocks()
+	if len(blocks[1]) != 0 {
+		t.Fatalf("officials %v, want none when unset", blocks[1])
 	}
-	d.Referee, d.RangeOfficer, d.Range = "Rita Ref", "Ola Officer", "Åsane Range"
-	got := d.headerLines()
-	if len(got) != 2 || got[1] != "Referee: Rita Ref  ·  Range officer: Ola Officer  ·  Range: Åsane Range" {
-		t.Fatalf("lines %q", got)
+	d.Competition, d.Referees, d.RangeOfficers, d.Range = "Autumn Open", []string{"Rita Ref", "Per Pace"}, []string{"Ola Officer"}, "Åsane Range"
+	blocks = d.headerBlocks()
+	want := [][]headerField{
+		{{"Competition", "Autumn Open"}, {"Match", "Autumn Match"}, {"Course", "WA1500 150"}},
+		{{"Referees", "Rita Ref, Per Pace"}, {"Range officer", "Ola Officer"}, {"Range", "Åsane Range"}},
+		{{"Match date", "2026-10-24"}, {"Participants", "3"}},
 	}
-	if want := "Autumn Match  ·  2026-10-24  ·  WA1500 150  ·  3 shooters"; got[0] != want {
-		t.Fatalf("line %q, want %q", got[0], want)
-	}
-	d.Referee = ""
-	if got := d.headerLines(); got[1] != "Range officer: Ola Officer  ·  Range: Åsane Range" {
-		t.Fatalf("lines %q", got)
+	if !reflect.DeepEqual(blocks, want) {
+		t.Fatalf("blocks %v, want %v", blocks, want)
 	}
 }
 

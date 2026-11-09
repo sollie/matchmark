@@ -9,7 +9,7 @@ An organisation that runs competitions and owns its own users, shooters and resu
 _Avoid_: Tenant, organisation
 
 **Competition**:
-An announced event of one or more days run by a club, holding one or more Matches. It has a name, a start and end date (its date span), an optional Range and no status of its own.
+An announced event of one or more days run by a club, holding one or more Matches. It has a name, a start and end date (its date span), an optional Range, any number of Referees and Range officers and no status of its own.
 _Avoid_: Tournament, event
 
 **Range**:
@@ -17,11 +17,11 @@ A shooting range the club uses, identified by its name and an archived flag. Clu
 _Avoid_: Venue, location, date range (use date span for dates)
 
 **Referee**:
-The official who judges a Match (rulebook term). Stored on the Match as a WAID with the name snapshotted from the WA1500 register when it was set; optional, and by default the signed-in admin who creates the Match when that user has a WAID. Shown in the results PDF header only when set.
+An official who judges a Match (rulebook term). A Competition and a Match can each have any number of Referees, each a WAID with the name snapshotted from the WA1500 register when it was set. A Match with no Referees of its own uses its Competition's, resolved live; an admin can edit them in any status. A new Competition has its signed-in creator as Referee when that user has a WAID. Shown in the results PDF header only when there are any.
 _Avoid_: Judge, Dommer
 
 **Range officer**:
-The official in charge of the range during a Match (rulebook term). Stored on the Match like the Referee, but empty by default. Not the same thing as the Range (the place).
+An official in charge of the range during a Match (rulebook term). Held like Referees, any number per Competition or Match, with the same inheritance, but empty by default. Not the same thing as the Range (the place).
 _Avoid_: Standplassleder, range master
 
 **Match**:

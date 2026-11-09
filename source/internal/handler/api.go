@@ -29,13 +29,14 @@ func (h *Handler) createMatch(r *http.Request) (int, any, error) {
 		return fail(req.err)
 	}
 	m := repository.Match{CompetitionID: body.CompetitionID, Name: body.Name, Date: body.Date, Course: body.Course}
-	if body.RefereeWAID != nil {
-		m.RefereeWAID = *body.RefereeWAID
-	} else {
-		m.RefereeWAID = currentUser(r).WAID
+	if body.RefereeWAIDs != nil {
+		m.Referees = officialsFromWAIDs(*body.RefereeWAIDs)
 	}
-	if body.RangeOfficerWAID != nil {
-		m.RangeOfficerWAID = *body.RangeOfficerWAID
+	if body.RangeOfficerWAIDs != nil {
+		m.RangeOfficers = officialsFromWAIDs(*body.RangeOfficerWAIDs)
+	}
+	if waid := currentUser(r).WAID; waid != "" {
+		m.NewCompetitionReferees = officialsFromWAIDs([]string{waid})
 	}
 	var id int64
 	var err error
@@ -43,7 +44,7 @@ func (h *Handler) createMatch(r *http.Request) (int, any, error) {
 	case body.Competition != nil && body.CompetitionID != 0:
 		err = service.ErrInvalid
 	case body.Competition != nil:
-		id, err = h.svc.CreateMatchInNewCompetition(r.Context(), body.Competition.competition(0), body.Competition.RangeID, m)
+		id, err = h.svc.CreateMatchInNewCompetition(r.Context(), body.Competition.competition(0, repository.Competition{}, currentUser(r).WAID), body.Competition.RangeID, m)
 	default:
 		id, err = h.svc.CreateMatch(r.Context(), m)
 	}

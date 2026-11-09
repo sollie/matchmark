@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sollie/matchmark/internal/report"
+	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
@@ -46,8 +47,11 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 	if err != nil {
 		return Download{}, mapRepoErr(err)
 	}
-	data.Referee = officialDisplay(match.RefereeName, match.RefereeWAID)
-	data.RangeOfficer = officialDisplay(match.RangeOfficerName, match.RangeOfficerWAID)
+	if data.Competition, err = s.repo.CompetitionName(ctx, match.CompetitionID); err != nil {
+		return Download{}, mapRepoErr(err)
+	}
+	data.Referees = officialNames(match.EffectiveReferees)
+	data.RangeOfficers = officialNames(match.EffectiveRangeOfficers)
 	var logo ClubLogo
 	if data.ClubName, logo, err = s.clubBranding(ctx); err != nil {
 		return Download{}, err
@@ -120,11 +124,16 @@ func pdfRow(r ResultsRow) report.ResultsPDFRow {
 	return row
 }
 
-func officialDisplay(name, waid string) string {
-	if name != "" {
-		return name
+func officialNames(list []repository.Official) []string {
+	out := make([]string, 0, len(list))
+	for _, o := range list {
+		if o.Name != "" {
+			out = append(out, o.Name)
+		} else {
+			out = append(out, o.WAID)
+		}
 	}
-	return waid
+	return out
 }
 
 func pdfDNFRow(r ResultsDNFRow) report.ResultsPDFRow {

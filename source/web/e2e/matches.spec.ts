@@ -374,4 +374,39 @@ test.describe("matches", () => {
     await expect(reloaded.getByLabel("X count")).toBeChecked();
     await expect(reloaded.getByLabel("Group standings by category")).not.toBeChecked();
   });
+
+  test("the create form sends several officials in order and shows a failed lookup", async ({
+    adminPage: page,
+  }) => {
+    let body: Record<string, unknown> = {};
+    await page.route("**/api/matches", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      body = route.request().postDataJSON();
+      await route.fulfill({
+        status: 422,
+        json: { error: "WAID not found in the WA1500 register" },
+      });
+    });
+
+    await page.goto("/admin");
+    await page.getByLabel("Name", { exact: true }).fill(uniqueName("Officials"));
+    await page.getByRole("button", { name: "Add referee" }).click();
+    await page.getByLabel("Referee WAID 1").fill("2002");
+    await page.getByRole("button", { name: "Add referee" }).click();
+    await page.getByLabel("Referee WAID 2").fill("1001");
+    await page.getByRole("button", { name: "Add referee" }).click();
+    await page.getByLabel("Referee WAID 3").fill("9999");
+    await page.getByRole("button", { name: "Remove referee 3" }).click();
+    await page.getByRole("button", { name: "Add range officer" }).click();
+    await page.getByLabel("Range officer WAID 1").fill("3003");
+    await page.getByRole("button", { name: "Create match" }).click();
+
+    await expect(page.getByRole("alert")).toHaveText("WAID not found in the WA1500 register");
+    expect(body).toMatchObject({
+      referee_waids: expect.arrayContaining(["2002", "1001"]),
+      range_officer_waids: ["3003"],
+    });
+    expect((body.referee_waids as string[]).slice(-2)).toEqual(["2002", "1001"]);
+    await expect(page).toHaveURL(/\/admin\/?$/);
+  });
 });

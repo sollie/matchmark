@@ -69,8 +69,8 @@ type matchBody struct {
 	Competition   *competitionBody `json:"competition"`
 	Classified    *bool            `json:"classified"`
 
-	RefereeWAID      *string `json:"referee_waid"`
-	RangeOfficerWAID *string `json:"range_officer_waid"`
+	RefereeWAIDs      *[]string `json:"referee_waids"`
+	RangeOfficerWAIDs *[]string `json:"range_officer_waids"`
 }
 
 func matchesJSON(comps []repository.Match) []map[string]any {
@@ -107,8 +107,24 @@ func shooterJSON(s repository.Shooter) map[string]any {
 
 func matchJSON(c repository.Match) map[string]any {
 	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt), "classified": c.Classified,
-		"referee_waid": nullable(c.RefereeWAID), "referee_name": nullable(c.RefereeName),
-		"range_officer_waid": nullable(c.RangeOfficerWAID), "range_officer_name": nullable(c.RangeOfficerName)}
+		"referees": officialsJSON(c.Referees), "range_officers": officialsJSON(c.RangeOfficers),
+		"effective_referees": officialsJSON(c.EffectiveReferees), "effective_range_officers": officialsJSON(c.EffectiveRangeOfficers)}
+}
+
+func officialsJSON(list []repository.Official) []map[string]string {
+	out := make([]map[string]string, 0, len(list))
+	for _, o := range list {
+		out = append(out, map[string]string{"waid": o.WAID, "name": o.Name})
+	}
+	return out
+}
+
+func officialsFromWAIDs(waids []string) []repository.Official {
+	out := make([]repository.Official, 0, len(waids))
+	for _, w := range waids {
+		out = append(out, repository.Official{WAID: w})
+	}
+	return out
 }
 
 func nullable(s string) any {
@@ -262,15 +278,15 @@ func (h *Handler) updateMatch(r *http.Request) (int, any, error) {
 		return fail(err)
 	}
 	m := repository.Match{ID: id, Name: body.Name, Date: body.Date, Course: body.Course, Classified: current.Classified,
-		RefereeWAID: current.RefereeWAID, RangeOfficerWAID: current.RangeOfficerWAID}
+		Referees: current.Referees, RangeOfficers: current.RangeOfficers}
 	if body.Classified != nil {
 		m.Classified = *body.Classified
 	}
-	if body.RefereeWAID != nil {
-		m.RefereeWAID = *body.RefereeWAID
+	if body.RefereeWAIDs != nil {
+		m.Referees = officialsFromWAIDs(*body.RefereeWAIDs)
 	}
-	if body.RangeOfficerWAID != nil {
-		m.RangeOfficerWAID = *body.RangeOfficerWAID
+	if body.RangeOfficerWAIDs != nil {
+		m.RangeOfficers = officialsFromWAIDs(*body.RangeOfficerWAIDs)
 	}
 	if err := h.svc.UpdateMatch(r.Context(), m); err != nil {
 		return fail(err)
