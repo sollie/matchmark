@@ -17,6 +17,8 @@
   let created = $state("");
   let resetFor = $state<number | null>(null);
   let resetPassword = $state("");
+  let waidFor = $state<number | null>(null);
+  let waidValue = $state("");
 
   async function load() {
     const result = await api.GET("/api/users");
@@ -83,6 +85,18 @@
       `User ${u.username} is now ${next === "admin" ? "an admin" : "a user"}.`,
     );
 
+  async function saveWaid(e: SubmitEvent, u: User) {
+    e.preventDefault();
+    await act(
+      api.PUT("/api/users/{userID}/waid", {
+        params: { path: { userID: u.id } },
+        body: { waid: waidValue },
+      }),
+      `WAID for ${u.username} saved.`,
+    );
+    if (!error) waidFor = null;
+  }
+
   async function reset(e: SubmitEvent, u: User) {
     e.preventDefault();
     await act(
@@ -140,13 +154,17 @@
 <div class="card scroll">
   <table class="stacked">
     <thead>
-      <tr><th>Username</th><th>Role</th><th>Status</th><th>Backup</th><th>Actions</th></tr>
+      <tr
+        ><th>Username</th><th>Role</th><th>WAID</th><th>Status</th><th>Backup</th><th>Actions</th
+        ></tr
+      >
     </thead>
     <tbody>
       {#each users as u (u.id)}
         <tr>
           <td>{u.username}</td>
           <td data-label="Role">{u.role === "admin" ? "Admin" : "User"}</td>
+          <td data-label="WAID">{u.waid ?? "-"}</td>
           <td data-label="Status"
             >{!u.active
               ? "Deactivated"
@@ -158,7 +176,16 @@
             >{u.role !== "admin" ? "-" : u.can_download_backup ? "Allowed" : "Not allowed"}</td
           >
           <td data-label="Actions">
-            {#if resetFor === u.id}
+            {#if waidFor === u.id}
+              <form class="row" onsubmit={(e) => saveWaid(e, u)}>
+                <label>
+                  WAID for {u.username}
+                  <input bind:value={waidValue} maxlength="32" inputmode="numeric" />
+                </label>
+                <button type="submit" class="primary">Save WAID</button>
+                <button type="button" onclick={() => (waidFor = null)}>Cancel</button>
+              </form>
+            {:else if resetFor === u.id}
               <form class="row" onsubmit={(e) => reset(e, u)}>
                 <PasswordInput
                   label="Temporary password for {u.username}"
@@ -186,6 +213,13 @@
                   {u.can_download_backup ? "Forbid backup" : "Allow backup"}
                 </button>
               {/if}
+              <button
+                type="button"
+                onclick={() => {
+                  waidFor = u.id;
+                  waidValue = u.waid ?? "";
+                }}>Set WAID</button
+              >
               <button
                 type="button"
                 onclick={() => {

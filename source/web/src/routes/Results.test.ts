@@ -66,8 +66,9 @@ describe("Results", () => {
           segments: [1, 2],
           categories: [
             {
-              category: "Revolver",
+              category: "Revolver 1500",
               did_not_finish: [],
+              groups: [],
               rows: [
                 {
                   rank: 1,
@@ -90,6 +91,46 @@ describe("Results", () => {
     expect(screen.queryByRole("columnheader", { name: "S1" })).toBeNull();
   });
 
+  it("shows a remarks column only when a row has remarks", async () => {
+    navigate("/results/7");
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150 Course",
+          },
+          segments: [1],
+          categories: [
+            {
+              category: "Revolver 1500",
+              did_not_finish: [],
+              groups: [],
+              rows: [
+                {
+                  rank: 1,
+                  last_name: "Doe",
+                  first_name: "Jane",
+                  remarks: "Pistol change",
+                  segments: [{ segment: 1, score: 110 }],
+                  total: 110,
+                },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    expect(await screen.findByRole("columnheader", { name: "Remarks" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Pistol change" })).toBeTruthy();
+  });
+
   it("shows a score card per shooter with ring counts per segment", async () => {
     navigate("/results/7");
     const counts = (x: number) => ({ x, "10": 1, "9": 2, "8": 3, "7": 4, "0": 5, miss: 6 });
@@ -107,8 +148,9 @@ describe("Results", () => {
           segments: [1, 2],
           categories: [
             {
-              category: "Revolver",
+              category: "Revolver 1500",
               did_not_finish: [],
+              groups: [],
               rows: [
                 {
                   rank: 1,
@@ -155,7 +197,7 @@ describe("Results", () => {
           segments: [1],
           categories: [
             {
-              category: "Revolver",
+              category: "Revolver 1500",
               rows: [
                 {
                   rank: 1,
@@ -165,6 +207,7 @@ describe("Results", () => {
                   total: 110,
                 },
               ],
+              groups: [],
               did_not_finish: [
                 {
                   last_name: "Slow",
@@ -212,8 +255,9 @@ describe("Results", () => {
               segments: [1, 2],
               categories: [
                 {
-                  category: "Revolver",
+                  category: "Revolver 1500",
                   did_not_finish: [],
+                  groups: [],
                   rows: [
                     {
                       rank: 1,
@@ -253,7 +297,7 @@ describe("Results", () => {
     expect(await screen.findByText("Results are not available for this match.")).toBeTruthy();
   });
 
-  it("shows a Class column with the Classification name, hiding Unclassified", async () => {
+  it("shows a Classification column with the Classification name, hiding Unclassified", async () => {
     navigate("/results/7");
     stubFetch((call) => {
       if (!call.path.endsWith("/results")) return { body: { matches } };
@@ -277,8 +321,9 @@ describe("Results", () => {
           segments: [1],
           categories: [
             {
-              category: "Pistol",
+              category: "Pistol 1500",
               did_not_finish: [],
+              groups: [],
               rows: [
                 row(1, "Berg", { value: 4, name: "Master" }),
                 row(2, "Dahl", { value: 0, name: "Unclassified" }),
@@ -291,7 +336,7 @@ describe("Results", () => {
       };
     });
     render(Results);
-    expect(await screen.findByRole("columnheader", { name: "Class" })).toBeTruthy();
+    expect(await screen.findByRole("columnheader", { name: "Classification" })).toBeTruthy();
     const cells = (name: RegExp) =>
       within(screen.getByRole("row", { name }))
         .getAllByRole("cell")
@@ -301,7 +346,7 @@ describe("Results", () => {
     expect(cells(/Dahl/)).toHaveLength(cells(/Berg/).length);
   });
 
-  it("omits the Class column when no row has a Classification", async () => {
+  it("omits the Classification column when no row has a Classification", async () => {
     navigate("/results/7");
     stubFetch((call) => {
       if (!call.path.endsWith("/results")) return { body: { matches } };
@@ -317,8 +362,9 @@ describe("Results", () => {
           segments: [1],
           categories: [
             {
-              category: "Pistol",
+              category: "Pistol 1500",
               did_not_finish: [],
+              groups: [],
               rows: [
                 {
                   rank: 1,
@@ -337,6 +383,51 @@ describe("Results", () => {
     });
     render(Results);
     expect(await screen.findByRole("columnheader", { name: "Total" })).toBeTruthy();
-    expect(screen.queryByRole("columnheader", { name: "Class" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Classification" })).toBeNull();
+  });
+
+  it("renders one ranked table per Class group under the category heading", async () => {
+    navigate("/results/7");
+    const row = (rank: number, total: number) => ({
+      rank,
+      segments: [{ segment: 1, score: total }],
+      total,
+    });
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150",
+          },
+          segments: [1],
+          categories: [
+            {
+              category: "Revolver 1500",
+              did_not_finish: [],
+              rows: [],
+              groups: [
+                { class: { value: 4, name: "Master" }, rows: [row(1, 230), row(2, 220)] },
+                { class: { value: 1, name: "Marksman" }, rows: [row(1, 200)] },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    await screen.findByRole("heading", { name: "Master" });
+    expect(screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent)).toEqual([
+      "Master",
+      "Marksman",
+    ]);
+    const tables = screen.getAllByRole("table");
+    expect(tables).toHaveLength(2);
+    expect(within(tables[1]).getAllByRole("row")[1].textContent).toContain("1200");
   });
 });

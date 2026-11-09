@@ -33,10 +33,10 @@ func TestActivatedAtAndDefaultMatch(t *testing.T) {
 		t.Fatalf("draft activated_at = %q", m.ActivatedAt)
 	}
 
-	if err := repo.SetMatchStatus(ctx, first, "draft", "active"); err != nil {
+	if err := repo.SetMatchStatus(ctx, first, "draft", "active", 4); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.SetMatchStatus(ctx, second, "draft", "active"); err != nil {
+	if err := repo.SetMatchStatus(ctx, second, "draft", "active", 4); err != nil {
 		t.Fatal(err)
 	}
 	if m, _ := repo.GetMatch(ctx, first); m.ActivatedAt == "" {
@@ -46,7 +46,7 @@ func TestActivatedAtAndDefaultMatch(t *testing.T) {
 		t.Fatalf("default = %d, %v; want %d", id, err, second)
 	}
 
-	if err := repo.SetMatchStatus(ctx, second, "active", "finished"); err != nil {
+	if err := repo.SetMatchStatus(ctx, second, "active", "finished", 4); err != nil {
 		t.Fatal(err)
 	}
 	if m, _ := repo.GetMatch(ctx, second); m.ActivatedAt == "" {

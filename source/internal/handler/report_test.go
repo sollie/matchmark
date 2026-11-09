@@ -75,11 +75,11 @@ func cell(t *testing.T, f *excelize.File, sheet, ref string) string {
 func TestResultsWorkbook(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	comp := seedReport(t, env, "Spring Match", []reportShooter{
-		{"BERG", "Ola", "W100", "Revolver", 1, counts112},
-		{"DAHL", "Eva", "W200", "Revolver", 2, nil},
-		{"NYHUS", "Kari", "", "Revolver", 3, counts112},
-		{"MOE", "Per", "W300", "Pistol", 4, counts112},
-		{"LIE", "Tor", "W400", "Carbine", 5, counts112},
+		{"BERG", "Ola", "W100", "Revolver 1500", 1, counts112},
+		{"DAHL", "Eva", "W200", "Revolver 1500", 2, nil},
+		{"NYHUS", "Kari", "", "Revolver 1500", 3, counts112},
+		{"MOE", "Per", "W300", "Pistol 1500", 4, counts112},
+		{"LIE", "Tor", "W400", "Carbine 1500", 5, counts112},
 	})
 	f := openReport(t, env, comp)
 
@@ -131,10 +131,10 @@ func TestResultsWorkbookInsertsRows(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	var shooters []reportShooter
 	for i := 1; i <= 10; i++ {
-		shooters = append(shooters, reportShooter{fmt.Sprintf("K%02d", i), "A", fmt.Sprintf("W%03d", i), "Revolver", i, counts112})
+		shooters = append(shooters, reportShooter{fmt.Sprintf("K%02d", i), "A", fmt.Sprintf("W%03d", i), "Revolver 1500", i, counts112})
 	}
 	for i := 1; i <= 4; i++ {
-		shooters = append(shooters, reportShooter{fmt.Sprintf("N%02d", i), "B", "", "Revolver", 10 + i, counts112})
+		shooters = append(shooters, reportShooter{fmt.Sprintf("N%02d", i), "B", "", "Revolver 1500", 10 + i, counts112})
 	}
 	comp := seedReport(t, env, "Big", shooters)
 	f := openReport(t, env, comp)
@@ -158,8 +158,8 @@ func TestResultsWorkbookInsertsRows(t *testing.T) {
 func TestResultsCSV(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	comp := seedReport(t, env, "Spring Match", []reportShooter{
-		{"BERG", "Ola", "W100", "Revolver", 1, counts112},
-		{"NYHUS", "Kari", "", "Pistol", 2, nil},
+		{"BERG", "Ola", "W100", "Revolver 1500", 1, counts112},
+		{"NYHUS", "Kari", "", "Pistol 1500", 2, nil},
 	})
 	status, header, body := env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", comp))
 	if status != http.StatusOK || !strings.HasPrefix(header.Get("Content-Type"), "text/csv") {
@@ -172,17 +172,17 @@ func TestResultsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,segment,segment_name,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name"
+	wantHeader := "category,lane,last_name,first_name,waid,withdrawn,segment,segment_name,X,10,9,8,7,0,miss,total,accepted,scorer_lane,scorer_name,classification_at_match,class,club,country,remarks"
 	if strings.Join(rows[0], ",") != wantHeader {
 		t.Fatalf("header %v", rows[0])
 	}
 	if len(rows) != 13 {
 		t.Fatalf("rows %d, want 1 header + 2 entries x 6 segments", len(rows))
 	}
-	if got := strings.Join(rows[1], ","); got != "Revolver,1,BERG,Ola,W100,false,1,Match 1,6,8,6,2,2,0,0,224,true,,"+apitest.AdminUsername {
+	if got := strings.Join(rows[1], ","); got != "Revolver 1500,1,BERG,Ola,W100,false,1,Match 1,6,8,6,2,2,0,0,224,true,,"+apitest.AdminUsername+",,,Oslo PPC,NOR," {
 		t.Fatalf("first row %q", got)
 	}
-	if got := strings.Join(rows[7], ","); got != "Pistol,2,NYHUS,Kari,,false,1,Match 1,0,0,0,0,0,0,0,0,false,," {
+	if got := strings.Join(rows[7], ","); got != "Pistol 1500,2,NYHUS,Kari,,false,1,Match 1,0,0,0,0,0,0,0,0,false,,,,,Oslo PPC,NOR," {
 		t.Fatalf("pistol row %q", got)
 	}
 }
@@ -190,8 +190,8 @@ func TestResultsCSV(t *testing.T) {
 func TestResultsCSVNeutralisesFormulas(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	comp := seedReport(t, env, "Spring Match", []reportShooter{
-		{"=HYPERLINK(\"X\")", "+1", "", "Revolver", 1, nil},
-		{"-2", "@sum", "", "Revolver", 2, nil},
+		{"=HYPERLINK(\"X\")", "+1", "", "Revolver 1500", 1, nil},
+		{"-2", "@sum", "", "Revolver 1500", 2, nil},
 	})
 	_, _, body := env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", comp))
 	rows, err := csv.NewReader(bytes.NewReader(bytes.TrimPrefix(body, []byte("\xef\xbb\xbf")))).ReadAll()
@@ -213,8 +213,8 @@ func TestResultsCSVNeutralisesFormulas(t *testing.T) {
 func TestResultsKeepNonASCIINames(t *testing.T) {
 	env := apitest.NewAdmin(t)
 	comp := seedReport(t, env, "Spring Match", []reportShooter{
-		{"HANSEN", "Pål", "W100", "Revolver", 1, nil},
-		{"ÅSEN", "Östen", "", "Revolver", 2, nil},
+		{"HANSEN", "Pål", "W100", "Revolver 1500", 1, nil},
+		{"ÅSEN", "Östen", "", "Revolver 1500", 2, nil},
 	})
 	_, _, body := env.Raw("GET", fmt.Sprintf("/api/matches/%d/results.csv", comp))
 	if !bytes.HasPrefix(body, []byte("\xef\xbb\xbf")) || !bytes.Contains(body, []byte("HANSEN,Pål,W100")) || !bytes.Contains(body, []byte("ÅSEN,Östen,")) {

@@ -18,7 +18,7 @@ type ReportEntry struct {
 
 func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]ReportEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT e.id, e.category, e.lane, e.withdrawn,
+		`SELECT e.id, e.category, e.lane, e.withdrawn, e.classification_at_match, e.class, e.club, e.country, e.remarks,
 		        sh.id, sh.last_name, sh.first_name, sh.country, sh.club, COALESCE(sh.waid, ''),
 		        sh.class_revolver, sh.class_pistol, sh.class_revolver_os, sh.class_pistol_os, sh.class_carbine,
 		        s.segment_number, s.x, s.ten, s.nine, s.eight, s.seven, s.zero, s.miss, s.status, s.scorer_lane, COALESCE(s.scorer_name, '')
@@ -38,7 +38,7 @@ func (r *Repository) ReportEntries(ctx context.Context, matchID int64) ([]Report
 		var st ReportSegment
 		var withdrawn int
 		var classes classScan
-		dest := append([]any{&e.ID, &e.Category, &e.Lane, &withdrawn,
+		dest := append([]any{&e.ID, &e.Category, &e.Lane, &withdrawn, &e.ClassificationAtMatch, &e.Class, &e.Club, &e.Country, &e.Remarks,
 			&sh.ID, &sh.LastName, &sh.FirstName, &sh.Country, &sh.Club, &sh.WAID}, classes.dest()...)
 		if err := rows.Scan(append(dest,
 			&st.Number, &st.Counts.X, &st.Counts.Ten, &st.Counts.Nine, &st.Counts.Eight, &st.Counts.Seven, &st.Counts.Zero, &st.Counts.Miss,

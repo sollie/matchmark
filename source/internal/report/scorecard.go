@@ -125,6 +125,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	hline(img, cardMargin, cardWidth-cardMargin, headerBottom)
 
 	shooter := d.Entry.Shooter
+	shooterClub := d.Entry.Identity(shooter.Club, shooter.Country, shooter.Classes).Club
 	name := shooter.FirstName + " " + shooter.LastName
 	waid := shooter.WAID
 	if waid == "" {
@@ -134,7 +135,7 @@ func ScorecardPNG(d ScorecardData) ([]byte, error) {
 	infoLines := []struct{ label, value string }{
 		{"Shooter", name}, {"WAID", waid},
 		{"Category", d.Entry.Category}, {"Course", d.Course.Label},
-		{"Lane", strconv.Itoa(d.Entry.Lane)}, {"Club", shooter.Club},
+		{"Lane", strconv.Itoa(d.Entry.Lane)}, {"Club", shooterClub},
 	}
 	for i, line := range infoLines {
 		x := cardMargin + (i%2)*half

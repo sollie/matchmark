@@ -15,6 +15,7 @@ type ResultsMatch struct {
 	Date        string `json:"date"`
 	Course      string `json:"course"`
 	CourseLabel string `json:"course_label"`
+	Range       string `json:"range,omitempty"`
 }
 
 type ResultsSegment struct {
@@ -31,6 +32,8 @@ type ResultsRow struct {
 	Club      *string                `json:"club,omitempty"`
 	Country   *string                `json:"country,omitempty"`
 	Class     *wa1500.Classification `json:"classification,omitempty"`
+	CompeteAs *wa1500.Classification `json:"class,omitempty"`
+	Remarks   *string                `json:"remarks,omitempty"`
 	Segments  []ResultsSegment       `json:"segments"`
 	Total     int                    `json:"total"`
 	XCount    *int                   `json:"x_count,omitempty"`
@@ -42,12 +45,19 @@ type ResultsDNFRow struct {
 	WAID      *string          `json:"waid,omitempty"`
 	Club      *string          `json:"club,omitempty"`
 	Country   *string          `json:"country,omitempty"`
+	Remarks   *string          `json:"remarks,omitempty"`
 	Segments  []ResultsSegment `json:"segments"`
+}
+
+type ResultsGroup struct {
+	Class wa1500.Classification `json:"class"`
+	Rows  []ResultsRow          `json:"rows"`
 }
 
 type ResultsCategory struct {
 	Category     string          `json:"category"`
 	Rows         []ResultsRow    `json:"rows"`
+	Groups       []ResultsGroup  `json:"groups"`
 	DidNotFinish []ResultsDNFRow `json:"did_not_finish"`
 }
 
@@ -109,8 +119,12 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 	if err != nil {
 		return ResultsView{}, err
 	}
+	competition, err := s.repo.GetCompetition(ctx, comp.CompetitionID)
+	if err != nil {
+		return ResultsView{}, err
+	}
 	out := ResultsView{
-		Match:       ResultsMatch{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: course.Label},
+		Match:       ResultsMatch{ID: comp.ID, Name: comp.Name, Date: comp.Date, Course: comp.Course, CourseLabel: course.Label, Range: competition.RangeName},
 		Segments:    make([]int, len(course.Segments)),
 		Categories:  []ResultsCategory{},
 		NewShooters: []ResultsNewShooter{},
@@ -150,19 +164,20 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 		if len(ranked) == 0 && len(dnf) == 0 {
 			continue
 		}
-		sort.SliceStable(ranked, func(i, j int) bool {
-			if ranked[i].total != ranked[j].total {
-				return ranked[i].total > ranked[j].total
+		sortRanked(ranked)
+		cat := ResultsCategory{Category: category, Rows: []ResultsRow{}, Groups: []ResultsGroup{}, DidNotFinish: make([]ResultsDNFRow, len(dnf))}
+		if groups, ok := classGroups(comp.Classified, category, ranked); ok {
+			for _, class := range classOrder {
+				members := groups[class]
+				if len(members) == 0 {
+					continue
+				}
+				cat.Groups = append(cat.Groups, ResultsGroup{Class: class, Rows: rankRows(members, vis)})
 			}
-			return ranked[i].x > ranked[j].x
-		})
-		cat := ResultsCategory{Category: category, Rows: make([]ResultsRow, len(ranked)), DidNotFinish: make([]ResultsDNFRow, len(dnf))}
-		rank := 0
-		for i, r := range ranked {
-			if i == 0 || r.total != ranked[i-1].total || r.x != ranked[i-1].x {
-				rank = i + 1
-			}
-			cat.Rows[i] = resultsRow(r, rank, vis)
+		} else {
+			cat.Rows = rankRows(ranked, vis)
+		}
+		for _, r := range ranked {
 			if vis.Names && r.entry.Shooter.WAID == "" {
 				out.NewShooters = append(out.NewShooters, resultsNewShooter(r, category, vis))
 			}
@@ -175,6 +190,56 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 	return out, nil
 }
 
+var classOrder = []wa1500.Classification{wa1500.HighMaster, wa1500.Master, wa1500.Expert, wa1500.Sharpshooter, wa1500.Marksman, wa1500.Unclassified}
+
+func sortRanked(ranked []rankedEntry) {
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].total != ranked[j].total {
+			return ranked[i].total > ranked[j].total
+		}
+		return ranked[i].x > ranked[j].x
+	})
+}
+
+func rankRows(ranked []rankedEntry, vis repository.Visibility) []ResultsRow {
+	rows := make([]ResultsRow, len(ranked))
+	rank := 0
+	for i, r := range ranked {
+		if i == 0 || r.total != ranked[i-1].total || r.x != ranked[i-1].x {
+			rank = i + 1
+		}
+		rows[i] = resultsRow(r, rank, vis)
+	}
+	return rows
+}
+
+func entryClass(e repository.ReportEntry) (wa1500.Classification, bool) {
+	id := e.Identity(e.Shooter.Club, e.Shooter.Country, e.Shooter.Classes)
+	class := id.Class
+	if class == nil && !e.Frozen() {
+		class = id.Classification
+	}
+	if class == nil {
+		return 0, false
+	}
+	return wa1500.Classification(*class), true
+}
+
+func classGroups(classified bool, category string, ranked []rankedEntry) (map[wa1500.Classification][]rankedEntry, bool) {
+	if !classified || !rulebook.IsClassified(category) || len(ranked) == 0 {
+		return nil, false
+	}
+	groups := map[wa1500.Classification][]rankedEntry{}
+	for _, r := range ranked {
+		class, ok := entryClass(r.entry)
+		if !ok {
+			return nil, false
+		}
+		groups[class] = append(groups[class], r)
+	}
+	return groups, true
+}
+
 func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
 	sh := r.entry.Shooter
 	row := ResultsRow{Rank: rank, Segments: r.view, Total: r.total}
@@ -184,17 +249,16 @@ func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
 			row.WAID = &sh.WAID
 		}
 	}
+	id := r.entry.Identity(sh.Club, sh.Country, sh.Classes)
 	if vis.Clubs {
-		row.Club = &sh.Club
+		row.Club = &id.Club
 	}
 	if vis.Countries {
-		row.Country = &sh.Country
+		row.Country = &id.Country
 	}
 	if vis.Names {
-		if v, ok := sh.Classes[r.entry.Category]; ok {
-			class := wa1500.Classification(v)
-			row.Class = &class
-		}
+		row.Class, row.CompeteAs = classificationPtr(id.Classification), classificationPtr(id.Class)
+		row.Remarks = r.entry.Remarks
 	}
 	if vis.RingCounts {
 		x := r.x
@@ -206,11 +270,12 @@ func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {
 func resultsNewShooter(r rankedEntry, category string, vis repository.Visibility) ResultsNewShooter {
 	sh := r.entry.Shooter
 	n := ResultsNewShooter{LastName: sh.LastName, FirstName: sh.FirstName, Category: category, Total: r.total}
+	id := r.entry.Identity(sh.Club, sh.Country, sh.Classes)
 	if vis.Clubs {
-		n.Club = &sh.Club
+		n.Club = &id.Club
 	}
 	if vis.Countries {
-		n.Country = &sh.Country
+		n.Country = &id.Country
 	}
 	if vis.RingCounts {
 		x := r.x
@@ -227,6 +292,6 @@ func resultsDNFRow(r rankedEntry, vis repository.Visibility) ResultsDNFRow {
 	}
 	return ResultsDNFRow{
 		LastName: row.LastName, FirstName: row.FirstName, WAID: row.WAID,
-		Club: row.Club, Country: row.Country, Segments: segments,
+		Club: row.Club, Country: row.Country, Remarks: row.Remarks, Segments: segments,
 	}
 }

@@ -28,7 +28,7 @@ func (m *mergeFixture) match(t *testing.T, name string) int {
 
 func (m *mergeFixture) enter(t *testing.T, match, shooter, lane int) int {
 	t.Helper()
-	return m.env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", match), map[string]any{"shooter_id": shooter, "category": "Revolver", "lane": lane})
+	return m.env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", match), map[string]any{"shooter_id": shooter, "category": "Revolver 1500", "lane": lane})
 }
 
 func mergePaths(source int) (preview, execute string) {
@@ -171,7 +171,7 @@ func TestMergeRefreshesStoredNamesOnFinishedMatch(t *testing.T) {
 	f := newFixture(t, "150")
 	source := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "DUPE", "first_name": "Ann", "country": "NOR", "club": "Club"})
 	target := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "REAL", "first_name": "Bea", "country": "NOR", "club": "Club"})
-	entry := f.env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", f.comp), map[string]any{"shooter_id": source, "category": "Revolver", "lane": 1})
+	entry := f.env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", f.comp), map[string]any{"shooter_id": source, "category": "Revolver 1500", "lane": 1})
 	f.activate(t)
 	f.scoreAccepted(t, entry, 1, counts(10, 2))
 	f.finishActive(t)

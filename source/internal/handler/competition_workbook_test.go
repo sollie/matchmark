@@ -9,13 +9,18 @@ import (
 	"github.com/xuri/excelize/v2"
 
 	"github.com/sollie/matchmark/internal/apitest"
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 func seedCompetitionMatch(t *testing.T, env *apitest.Env, comp int, name, date, course string, finish bool, shooterIDs map[string]int, names ...string) {
 	t.Helper()
+	categories, err := rulebook.CategoriesForCourse(course)
+	if err != nil {
+		t.Fatal(err)
+	}
 	id := env.ID("POST", "/api/matches", map[string]any{"name": name, "date": date, "course": course, "competition_id": comp})
 	for i, n := range names {
-		entry := env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", id), map[string]any{"shooter_id": shooterIDs[n], "category": "Revolver", "lane": i + 1})
+		entry := env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", id), map[string]any{"shooter_id": shooterIDs[n], "category": categories[0], "lane": i + 1})
 		if course != "150" {
 			continue
 		}

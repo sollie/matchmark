@@ -107,7 +107,7 @@ func TestSegmentLockedLines(t *testing.T) {
 		l.Match.CourseOfFire.Key != "150" || l.Match.CourseOfFire.Discipline != "1500" || l.Match.CourseOfFire.TotalShots != 150 {
 		t.Fatalf("match = %+v", l.Match)
 	}
-	if l.Entry.ID != f.entry2 || l.Entry.Lane != 2 || l.Entry.Category != "Pistol" ||
+	if l.Entry.ID != f.entry2 || l.Entry.Lane != 2 || l.Entry.Category != "Pistol 1500" ||
 		l.Entry.Shooter.WAID != "W2" || l.Entry.Shooter.FirstName != "Bo" || l.Entry.Shooter.LastName != "BERG" || l.Entry.Shooter.Club != "Club B" {
 		t.Fatalf("entry = %+v", l.Entry)
 	}
@@ -329,11 +329,11 @@ func buildDraftFixture(t *testing.T, repo *repository.Repository, buf *bytes.Buf
 	if err != nil {
 		t.Fatal(err)
 	}
-	e1, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: s1, Category: "Revolver", Lane: 1})
+	e1, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: s1, Category: "Revolver 1500", Lane: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e2, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: s2, Category: "Pistol", Lane: 2})
+	e2, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: s2, Category: "Pistol 1500", Lane: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +460,7 @@ func TestEntryEditReemitsLockedSegments(t *testing.T) {
 	}
 	before := f.lockedAt(t)
 	n := len(f.lines(t))
-	if _, err := f.svc.UpdateEntry(ctx, f.compID, f.entry2, "Revolver", 5); err != nil {
+	if _, err := f.svc.UpdateEntry(ctx, f.compID, f.entry2, "Revolver 1500", 5, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(f.lines(t)) - n; got != 2 {
@@ -477,7 +477,7 @@ func TestEntryEditReemitsLockedSegments(t *testing.T) {
 			}
 			continue
 		}
-		if l.Entry.Lane != 5 || l.Entry.Category != "Revolver" {
+		if l.Entry.Lane != 5 || l.Entry.Category != "Revolver 1500" {
 			t.Fatalf("context = %+v", l.Entry)
 		}
 		if l.LockedBy != before[k].LockedBy || l.LockedAt != before[k].LockedAt || l.ScorerName != before[k].ScorerName {
@@ -537,7 +537,7 @@ func TestMatchEditReemitsLockedSegments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e1, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: sh, Category: "Revolver", Lane: 1})
+	e1, err := svc.AddEntry(ctx, repository.Entry{MatchID: compID, ShooterID: sh, Category: "Revolver 1500", Lane: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

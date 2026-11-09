@@ -62,7 +62,7 @@ func TestEveryEventTypeIsAuditedInTableAndStdout(t *testing.T) {
 	env.Do("DELETE", fmt.Sprintf("/api/shooters/%d", extra), nil)
 	env.Do("PUT", fmt.Sprintf("/api/matches/%d", comp), map[string]any{"name": "Renamed", "date": "2026-05-02", "course": "150"})
 	env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", comp), map[string]any{"names": true})
-	env.Do("PUT", fmt.Sprintf("/api/matches/%d/entries/%d", comp, e1), map[string]any{"category": "Pistol", "lane": 1})
+	env.Do("PUT", fmt.Sprintf("/api/matches/%d/entries/%d", comp, e1), map[string]any{"category": "Pistol 1500", "lane": 1})
 	env.Do("POST", fmt.Sprintf("/api/matches/%d/entries/%d/withdraw", comp, e4), nil)
 	env.Do("DELETE", fmt.Sprintf("/api/matches/%d/entries/%d", comp, e5), nil)
 	doomed := env.ID("POST", "/api/matches", map[string]any{"name": "Doomed", "date": "2026-05-01", "course": "150"})

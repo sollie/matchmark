@@ -29,13 +29,21 @@ func (h *Handler) createMatch(r *http.Request) (int, any, error) {
 		return fail(req.err)
 	}
 	m := repository.Match{CompetitionID: body.CompetitionID, Name: body.Name, Date: body.Date, Course: body.Course}
+	if body.RefereeWAID != nil {
+		m.RefereeWAID = *body.RefereeWAID
+	} else {
+		m.RefereeWAID = currentUser(r).WAID
+	}
+	if body.RangeOfficerWAID != nil {
+		m.RangeOfficerWAID = *body.RangeOfficerWAID
+	}
 	var id int64
 	var err error
 	switch {
 	case body.Competition != nil && body.CompetitionID != 0:
 		err = service.ErrInvalid
 	case body.Competition != nil:
-		id, err = h.svc.CreateMatchInNewCompetition(r.Context(), body.Competition.competition(0), m)
+		id, err = h.svc.CreateMatchInNewCompetition(r.Context(), body.Competition.competition(0), body.Competition.RangeID, m)
 	default:
 		id, err = h.svc.CreateMatch(r.Context(), m)
 	}
@@ -49,16 +57,17 @@ func (h *Handler) addEntry(r *http.Request) (int, any, error) {
 	req := in(r)
 	compID := req.path("matchID")
 	var body struct {
-		ShooterID int64  `json:"shooter_id"`
-		Category  string `json:"category"`
-		Lane      int    `json:"lane"`
+		ShooterID int64   `json:"shooter_id"`
+		Category  string  `json:"category"`
+		Lane      int     `json:"lane"`
+		Remarks   *string `json:"remarks"`
 	}
 	req.body(&body)
 	if req.err != nil {
 		return fail(req.err)
 	}
 	id, err := h.svc.AddEntry(r.Context(), repository.Entry{
-		MatchID: compID, ShooterID: body.ShooterID, Category: body.Category, Lane: body.Lane,
+		MatchID: compID, ShooterID: body.ShooterID, Category: body.Category, Lane: body.Lane, Remarks: body.Remarks,
 	})
 	if err != nil {
 		return fail(err)

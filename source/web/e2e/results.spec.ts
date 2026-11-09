@@ -38,7 +38,7 @@ test.describe("results", () => {
     await expect(page).toHaveURL(`/results/${match.id}`);
 
     await expect(page.getByRole("heading", { name: match.name })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Revolver" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Revolver 1500" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "New shooters" })).toBeVisible();
     await expect(row(page, known.last_name).first().getByRole("cell").first()).toHaveText("2");
     await expect(row(page, fresh.last_name).first().getByRole("cell").first()).toHaveText("1");
@@ -53,12 +53,16 @@ test.describe("results", () => {
     expect(download.suggestedFilename()).toMatch(/-results\.pdf$/);
   });
 
-  test("the Class column shows the Classification and hides Unclassified", async ({
+  test("the Classification column shows the Classification and hides Unclassified", async ({
     page,
     admin,
   }) => {
     const course = await defaultCourse(admin);
     const match = await createMatch(admin, { name: uniqueName("Class") });
+    const unclassify = await admin.put(`/api/matches/${match.id}`, {
+      data: { name: match.name, date: match.date, course: match.course, classified: false },
+    });
+    expect(unclassify.ok()).toBe(true);
     const classed = await createShooter(admin);
     const unclassed = await createShooter(admin);
     const first = await addEntry(admin, match.id, classed.id, 1);
@@ -79,7 +83,7 @@ test.describe("results", () => {
     });
     await page.goto(`/results/${match.id}`);
 
-    await expect(page.getByRole("columnheader", { name: "Class" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Classification" })).toBeVisible();
     await expect(
       row(page, classed.last_name).first().getByRole("cell", { name: "Master" }),
     ).toBeVisible();

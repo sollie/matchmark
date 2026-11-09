@@ -17,6 +17,14 @@ var template []byte
 
 var categories = rulebook.Categories()
 
+var workbookCategories = func() []string {
+	var out []string
+	for _, c := range rulebook.ClassifiedCategories() {
+		out = append(out, c.Name)
+	}
+	return out
+}()
+
 const (
 	firstKnownRow     = 3
 	knownCapacity     = 8
@@ -83,11 +91,11 @@ func build(h header, all []repository.ReportEntry) ([]byte, error) {
 	}
 	defer func() { _ = f.Close() }()
 	sheets := f.GetSheetList()
-	if len(sheets) < len(categories) {
-		return nil, fmt.Errorf("template has %d sheets, need %d", len(sheets), len(categories))
+	if len(sheets) < len(workbookCategories) {
+		return nil, fmt.Errorf("template has %d sheets, need %d", len(sheets), len(workbookCategories))
 	}
 	entries := sortedEntries(all)
-	for i, category := range categories {
+	for i, category := range workbookCategories {
 		var known, fresh []repository.ReportEntry
 		for _, e := range entries {
 			if e.Category != category {
@@ -144,7 +152,8 @@ func fillSheet(f *excelize.File, sheet string, h header, known, fresh []reposito
 		}
 	}
 	for i, e := range fresh {
-		if err := setRow(f, sheet, firstNewRow+i, 1, e.Shooter.LastName, e.Shooter.FirstName, "", e.Shooter.Country, e.Shooter.Club, "nn", total(e)); err != nil {
+		id := e.Identity(e.Shooter.Club, e.Shooter.Country, e.Shooter.Classes)
+		if err := setRow(f, sheet, firstNewRow+i, 1, e.Shooter.LastName, e.Shooter.FirstName, "", id.Country, id.Club, "nn", total(e)); err != nil {
 			return err
 		}
 	}

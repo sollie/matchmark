@@ -274,6 +274,22 @@ func (a *Auth) ResetUserPassword(ctx context.Context, id int, password string) e
 	return nil
 }
 
+func (a *Auth) SetWAID(ctx context.Context, id int, waid string) (User, error) {
+	waid = strings.TrimSpace(waid)
+	if len(waid) > maxWAIDLength {
+		return User{}, ErrInvalid
+	}
+	user, err := a.lifecycleUser(id)
+	if err != nil {
+		return User{}, err
+	}
+	if err := a.repo.SetUserWAID(id, waid); err != nil {
+		return User{}, mapRepoErr(err)
+	}
+	a.audit.Record(ctx, AuditEvent{Action: "user.set_waid", Target: userTarget(id), Details: joinDetails(user.Username, officialLabel(waid))})
+	return a.repo.UserByID(id)
+}
+
 func userTarget(id int) string {
 	return "user:" + strconv.Itoa(id)
 }

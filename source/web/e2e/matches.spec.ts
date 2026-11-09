@@ -51,7 +51,7 @@ test.describe("matches", () => {
         await expect(page.getByText("draft", { exact: true })).toBeVisible();
 
         const id = Number(page.url().split("/").pop());
-        await seedEntry(admin, id, 1);
+        await seedEntry(admin, id, 1, course.categories[0]);
         await openMatch(page, id);
         await expect(segmentHeaders(page)).toHaveCount(course.segments);
         await expect(segmentHeaders(page)).toHaveText(
@@ -251,7 +251,7 @@ test.describe("matches", () => {
 
     await expect(page.getByRole("form", { name: "Add entry" })).toHaveCount(0);
     const refused = await admin.post(`/api/matches/${match.id}/entries`, {
-      data: { shooter_id: extra.id, category: "Revolver", lane: 3 },
+      data: { shooter_id: extra.id, category: "Revolver 1500", lane: 3 },
     });
     expect(refused.status()).toBe(409);
     await expect(row(page, extra.last_name)).toHaveCount(0);
@@ -274,7 +274,7 @@ test.describe("matches", () => {
     await expect(page.getByText("2026-10-19")).toBeVisible();
     await expect(page.getByText(target.label, { exact: false }).first()).toBeVisible();
 
-    await seedEntry(admin, match.id, 1);
+    await seedEntry(admin, match.id, 1, target.categories[0]);
     await openMatch(page, match.id);
     await expect(segmentHeaders(page)).toHaveCount(target.segments);
 

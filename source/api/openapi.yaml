@@ -10,6 +10,7 @@ tags:
   - name: users
   - name: audit
   - name: club
+  - name: ranges
   - name: shooters
   - name: competitions
   - name: matches
@@ -108,6 +109,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/admin/waid:
+    put:
+      operationId: setOwnWAID
+      tags: [admin-auth]
+      summary: Set or clear the signed-in user's own WAID
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWAIDRequest'
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The user must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/admin/backup:
     get:
       operationId: adminBackup
@@ -210,7 +243,7 @@ paths:
     put:
       operationId: setClub
       tags: [club]
-      summary: Set the club name (trimmed, at most 100 characters) and/or palette; omitted fields are unchanged (admin only)
+      summary: Set the club name (trimmed, at most 100 characters), palette and/or unclassified class; omitted fields are unchanged (admin only)
       security:
         - adminCookie: []
       requestBody:
@@ -226,6 +259,15 @@ paths:
                 palette:
                   type: string
                   description: Palette id, one of the catalogue
+                unclassified_class:
+                  type: string
+                  enum: [Master, Unclassified]
+                  description: The Class an Unclassified shooter competes in when a match goes active (rule 20.2)
+                default_range_id:
+                  type: integer
+                  format: int64
+                  nullable: true
+                  description: The range pre-filled on new competitions; null clears it. It must be an active range
       responses:
         '200':
           description: Updated club settings
@@ -479,6 +521,42 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SetRoleRequest'
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The caller is not an admin, or must change their password first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/users/{userID}/waid:
+    parameters:
+      - $ref: '#/components/parameters/UserID'
+    put:
+      operationId: setUserWAID
+      tags: [users]
+      summary: Set or clear a user's WAID (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWAIDRequest'
       responses:
         '200':
           description: The updated user
@@ -862,6 +940,148 @@ paths:
                   - $ref: '#/components/schemas/Error'
         '422':
           $ref: '#/components/responses/Invalid'
+  /api/ranges:
+    get:
+      operationId: listRanges
+      tags: [ranges]
+      summary: All ranges including archived ones, by name
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The club's ranges
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ranges]
+                properties:
+                  ranges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Range'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createRange
+      tags: [ranges]
+      summary: Add a range; names are unique ignoring case (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RangeInput'
+      responses:
+        '201':
+          $ref: '#/components/responses/Created'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+  /api/ranges/{rangeID}:
+    parameters:
+      - $ref: '#/components/parameters/RangeID'
+    put:
+      operationId: updateRange
+      tags: [ranges]
+      summary: Rename a range (admin only)
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RangeInput'
+      responses:
+        '200':
+          description: The updated range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Range'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
+    delete:
+      operationId: deleteRange
+      tags: [ranges]
+      summary: Delete a range (admin only)
+      description: Answers 409 for a range used by a competition or set as the club default; archive it instead
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Deleted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ranges/{rangeID}/archive:
+    parameters:
+      - $ref: '#/components/parameters/RangeID'
+    post:
+      operationId: archiveRange
+      tags: [ranges]
+      summary: Hide a range from pickers; past competitions keep it (admin only)
+      description: Answers 409 for the club default range
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The archived range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Range'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/ranges/{rangeID}/unarchive:
+    parameters:
+      - $ref: '#/components/parameters/RangeID'
+    post:
+      operationId: unarchiveRange
+      tags: [ranges]
+      summary: Make an archived range selectable again (admin only)
+      security:
+        - adminCookie: []
+      responses:
+        '200':
+          description: The range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Range'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/competitions:
     get:
       operationId: listCompetitions
@@ -925,7 +1145,7 @@ paths:
       tags: [competitions]
       security:
         - adminCookie: []
-      description: Rejected with 422 when the new range would leave a match of the competition outside it
+      description: Rejected with 422 when the new date span would leave a match of the competition outside it
       requestBody:
         required: true
         content:
@@ -999,6 +1219,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/Invalid'
+        '503':
+          description: The WA1500 register is unreachable, so an official's WAID could not be looked up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/matches/{matchID}:
     parameters:
       - $ref: '#/components/parameters/MatchID'
@@ -1044,6 +1270,12 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Invalid'
+        '503':
+          description: The WA1500 register is unreachable, so an official's WAID could not be looked up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       operationId: deleteMatch
       tags: [matches]
@@ -1331,6 +1563,12 @@ paths:
                 lane:
                   type: integer
                   minimum: 1
+                remarks:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 200
+                  description: Free-text remarks; trimmed, blank means none, more than 200 characters answers 422
       responses:
         '201':
           $ref: '#/components/responses/Created'
@@ -1348,7 +1586,7 @@ paths:
       - $ref: '#/components/parameters/EntryID'
     put:
       operationId: updateEntry
-      description: A draft match allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409
+      description: A draft match allows any change; an active one only a category or remarks change (a lane change answers 409); a finished one only a remarks change (a category or lane change answers 409)
       tags: [entries]
       security:
         - adminCookie: []
@@ -1365,6 +1603,12 @@ paths:
                 lane:
                   type: integer
                   minimum: 1
+                remarks:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 200
+                  description: Trimmed; blank clears the remarks, absent or null keeps them, more than 200 characters answers 422. Audited as part of entry.update
       responses:
         '200':
           description: The updated entry
@@ -1394,6 +1638,47 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/matches/{matchID}/entries/{entryID}/classification:
+    parameters:
+      - $ref: '#/components/parameters/MatchID'
+      - $ref: '#/components/parameters/EntryID'
+    put:
+      operationId: setEntryClassification
+      description: Corrects the frozen Classification at match and Class of a 1500 entry (rule 20.6); audited. Answers 409 for an entry that is not frozen or is not in a 1500 category
+      tags: [entries]
+      security:
+        - adminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classification_at_match, class]
+              properties:
+                classification_at_match:
+                  type: integer
+                  minimum: 0
+                  maximum: 5
+                class:
+                  type: integer
+                  minimum: 0
+                  maximum: 5
+      responses:
+        '200':
+          description: The updated entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Invalid'
   /api/matches/{matchID}/entries/{entryID}/withdraw:
     parameters:
       - $ref: '#/components/parameters/MatchID'
@@ -2659,6 +2944,13 @@ components:
       type: http
       scheme: bearer
   parameters:
+    RangeID:
+      name: rangeID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     MatchID:
       name: matchID
       in: path
@@ -2794,8 +3086,17 @@ components:
           format: date-time
     Club:
       type: object
-      required: [name, palette, has_logo, version]
+      required: [name, palette, has_logo, version, unclassified_class, default_range_id]
       properties:
+        default_range_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: The range pre-filled on new competitions; null when unset
+        unclassified_class:
+          type: string
+          enum: [Master, Unclassified]
+          description: The Class an Unclassified shooter competes in; Master by default
         name:
           type: string
           description: Empty when no name is set
@@ -2926,7 +3227,7 @@ components:
           maxLength: 128
     SessionUser:
       type: object
-      required: [username, role, can_download_backup]
+      required: [username, role, can_download_backup, waid]
       properties:
         username:
           type: string
@@ -2934,12 +3235,16 @@ components:
           $ref: '#/components/schemas/UserRole'
         can_download_backup:
           type: boolean
+        waid:
+          type: string
+          nullable: true
+          description: The user's WAID; null when not set
     UserRole:
       type: string
       enum: [admin, user]
     User:
       type: object
-      required: [id, username, role, active, can_download_backup, must_change_password]
+      required: [id, username, role, active, can_download_backup, must_change_password, waid]
       properties:
         id:
           type: integer
@@ -2953,6 +3258,10 @@ components:
           type: boolean
         must_change_password:
           type: boolean
+        waid:
+          type: string
+          nullable: true
+          description: The user's WAID, unique when set; null when not set
     AuditEntry:
       type: object
       required: [id, time, user_id, username, action, target, details, ip]
@@ -3012,6 +3321,14 @@ components:
       properties:
         can_download_backup:
           type: boolean
+    SetWAIDRequest:
+      type: object
+      required: [waid]
+      properties:
+        waid:
+          type: string
+          maxLength: 32
+          description: WAID, trimmed; an empty string clears it. Unique across users
     CreateUserRequest:
       type: object
       required: [username, role, password]
@@ -3054,9 +3371,9 @@ components:
               type: boolean
             classifications:
               type: object
-              description: Classification per Category, refreshed from the WA1500 register; a Category is absent until it has been fetched
+              description: Classification per classified Category (the five 1500 categories), refreshed from the WA1500 register; a Category is absent until it has been fetched
               propertyNames:
-                enum: [Revolver, Pistol, Revolver OS, Pistol OS, Carbine]
+                enum: [Revolver 1500, Pistol 1500, Revolver Optical Sight 1500, Pistol Optical Sight 1500, Carbine 1500]
               additionalProperties:
                 $ref: '#/components/schemas/Classification'
             wa1500_synced_at:
@@ -3229,6 +3546,29 @@ components:
         end_date:
           type: string
           description: ISO 8601 calendar date, YYYY-MM-DD, not before start_date
+        range_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: The range of the competition. Omitted on create it defaults to the club default range, else the only active range; omitted on update it is unchanged; null clears it. Archived ranges are rejected unless already set
+    Range:
+      allOf:
+        - type: object
+          required: [id, archived]
+          properties:
+            id:
+              type: integer
+              format: int64
+            archived:
+              type: boolean
+        - $ref: '#/components/schemas/RangeInput'
+    RangeInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
     Competition:
       allOf:
         - type: object
@@ -3240,6 +3580,10 @@ components:
             match_count:
               type: integer
               description: Number of matches in the competition
+            range_name:
+              type: string
+              nullable: true
+              description: Name of the competition's range; null when it has none
         - $ref: '#/components/schemas/CompetitionInput'
     MatchInput:
       type: object
@@ -3261,10 +3605,23 @@ components:
         course:
           type: string
           description: Course of fire key from the rulebook
+        classified:
+          type: boolean
+          description: Classified match. When on (the default), results and standings group each classified Category's rows by Class. Optional on update; omitting it keeps the current value. Editable in any status
+        referee_waid:
+          type: string
+          nullable: true
+          maxLength: 32
+          description: WAID of the Referee, looked up in the WA1500 register when it changes; an empty string clears it. On create, omitting it defaults to the signed-in user's WAID when set. On update, omitting it keeps the current value. Fails with 422 when the WAID is not in the register and 503 when the register is unreachable, storing nothing. Editable in any status
+        range_officer_waid:
+          type: string
+          nullable: true
+          maxLength: 32
+          description: WAID of the Range officer, same rules as referee_waid except that it is empty by default
     Match:
       allOf:
         - type: object
-          required: [id, competition_id, status, current_segment]
+          required: [id, competition_id, status, current_segment, classified]
           properties:
             id:
               type: integer
@@ -3281,6 +3638,14 @@ components:
               type: string
               nullable: true
               description: UTC time the match left draft, backfilled with the match date for matches activated before this field existed. Null for drafts. Admin responses only
+            referee_name:
+              type: string
+              nullable: true
+              description: Referee name snapshotted from the WA1500 register when the WAID was set. Admin responses only
+            range_officer_name:
+              type: string
+              nullable: true
+              description: Range officer name snapshotted from the WA1500 register when the WAID was set. Admin responses only
         - $ref: '#/components/schemas/MatchInput'
     Visibility:
       type: object
@@ -3301,8 +3666,34 @@ components:
           description: Standings view; true (default) shows one table per category in rulebook order with ranks within the category, false one combined table with the overall rank. A single-category match looks the same either way
     Entry:
       type: object
-      required: [id, match_id, shooter_id, category, lane, withdrawn]
+      required: [id, match_id, shooter_id, category, lane, withdrawn, classification_at_match, class, club, country, remarks]
       properties:
+        classification_at_match:
+          description: The shooter's Classification frozen when the match went active; null until frozen, for other categories, or when never fetched
+          oneOf:
+            - $ref: '#/components/schemas/Classification'
+            - type: 'null'
+        class:
+          description: The Class the shooter competes in, frozen with the Classification at match; an Unclassified shooter gets the club setting. Null when not frozen
+          oneOf:
+            - $ref: '#/components/schemas/Classification'
+            - type: 'null'
+        club:
+          type:
+            - string
+            - 'null'
+          description: Club frozen when the match went active; null until frozen
+        country:
+          type:
+            - string
+            - 'null'
+          description: Country frozen when the match went active; null until frozen
+        remarks:
+          type:
+            - string
+            - 'null'
+          maxLength: 200
+          description: Free-text remarks set by an admin; null when none
         id:
           type: integer
           format: int64
@@ -3609,7 +4000,13 @@ components:
           type: string
         classification:
           $ref: '#/components/schemas/Classification'
-          description: The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched
+          description: Classification at match for frozen entries, otherwise the shooter's live Classification for the entry's Category; present when names are visible and known
+        class:
+          $ref: '#/components/schemas/Classification'
+          description: The Class the shooter competed in; present when names are visible and the entry is frozen
+        class_group:
+          $ref: '#/components/schemas/Classification'
+          description: Class group the row belongs to; present for every entry of a Category only when the match is classified and all its entries have a Class
         x_count:
           type: integer
         ring_counts:
@@ -3638,6 +4035,9 @@ components:
               description: Course of fire key from the rulebook
             course_label:
               type: string
+            range:
+              type: string
+              description: Name of the competition's range; absent when it has none
         segments:
           type: array
           items:
@@ -3648,14 +4048,28 @@ components:
           description: Categories with at least one entry, in rulebook order
           items:
             type: object
-            required: [category, rows, did_not_finish]
+            required: [category, rows, groups, did_not_finish]
             properties:
               category:
                 type: string
               rows:
                 type: array
+                description: Ranked rows of the Category; empty when the Category is grouped by Class
                 items:
                   $ref: '#/components/schemas/ResultsRow'
+              groups:
+                type: array
+                description: Class groups in the order High Master, Master, Expert, Sharpshooter, Marksman, Unclassified, empty groups omitted; rank restarts within each group. Empty (use rows) when the match is not classified, the Category is not a WA1500 1500 Category, or any ranked entry has no Class
+                items:
+                  type: object
+                  required: [class, rows]
+                  properties:
+                    class:
+                      $ref: '#/components/schemas/Classification'
+                    rows:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ResultsRow'
               did_not_finish:
                 type: array
                 description: Entries withdrawn during the match, unranked, with the scores of their accepted segments
@@ -3685,7 +4099,13 @@ components:
           type: string
         classification:
           $ref: '#/components/schemas/Classification'
-          description: The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched
+          description: Classification at match for frozen entries, otherwise the shooter's live Classification for the entry's Category; present when names are visible and known
+        class:
+          $ref: '#/components/schemas/Classification'
+          description: The Class the shooter competed in; present when names are visible and the entry is frozen
+        remarks:
+          type: string
+          description: Present when names are visible and the entry has remarks
         segments:
           type: array
           items:
@@ -3717,6 +4137,9 @@ components:
           type: string
         country:
           type: string
+        remarks:
+          type: string
+          description: Present when names are visible and the entry has remarks
         segments:
           type: array
           items:

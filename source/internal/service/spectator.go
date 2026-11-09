@@ -45,7 +45,9 @@ func (s *Service) standings(ctx context.Context, comp repository.Match) (views [
 	if err != nil {
 		return nil, false, err
 	}
-	return projectStandings(comp.CurrentSegment, vis, entries), vis.GroupByCategory, nil
+	views = projectStandings(comp.CurrentSegment, vis, entries)
+	applyClassGroups(views, comp.Classified)
+	return views, vis.GroupByCategory, nil
 }
 
 type SpectatorSnapshot struct {

@@ -13,6 +13,7 @@ type userResponse struct {
 	Active             bool   `json:"active"`
 	CanDownloadBackup  bool   `json:"can_download_backup"`
 	MustChangePassword bool   `json:"must_change_password"`
+	WAID               any    `json:"waid"`
 }
 
 func toUserResponse(u service.User) userResponse {
@@ -23,6 +24,7 @@ func toUserResponse(u service.User) userResponse {
 		Active:             u.Active,
 		CanDownloadBackup:  u.CanDownloadBackup,
 		MustChangePassword: u.MustChangePassword,
+		WAID:               nullable(u.WAID),
 	}
 }
 
@@ -134,6 +136,35 @@ func (h *Handler) setBackupPermission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u, err := h.auth.SetCanDownloadBackup(r.Context(), int(id), body.CanDownloadBackup)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toUserResponse(u))
+}
+
+func (h *Handler) setUserWAID(w http.ResponseWriter, r *http.Request) {
+	id, err := pathInt(r, "userID")
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	h.updateWAID(w, r, int(id))
+}
+
+func (h *Handler) setOwnWAID(w http.ResponseWriter, r *http.Request) {
+	h.updateWAID(w, r, currentUser(r).ID)
+}
+
+func (h *Handler) updateWAID(w http.ResponseWriter, r *http.Request, id int) {
+	var body struct {
+		WAID string `json:"waid"`
+	}
+	if err := decode(r, &body); err != nil {
+		writeError(w, err)
+		return
+	}
+	u, err := h.auth.SetWAID(r.Context(), id, body.WAID)
 	if err != nil {
 		writeError(w, err)
 		return

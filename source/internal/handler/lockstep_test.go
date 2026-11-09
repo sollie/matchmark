@@ -213,11 +213,11 @@ func TestEntryChangesAreFrozenOnceActiveAndWithdrawalOnlyAtTheGate(t *testing.T)
 	f := newScoringFixture(t, 1, 2, 3)
 	base := fmt.Sprintf("/api/matches/%d", f.comp)
 	shooter := f.env.ID("POST", "/api/shooters", shooterBody("LATE"))
-	if status, _ := f.env.Do("POST", base+"/entries", map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 9}); status != http.StatusConflict {
+	if status, _ := f.env.Do("POST", base+"/entries", map[string]any{"shooter_id": shooter, "category": "Pistol 1500", "lane": 9}); status != http.StatusConflict {
 		t.Fatalf("add entry: %d", status)
 	}
 	update := fmt.Sprintf("%s/entries/%d", base, f.entries[2])
-	if status, _ := f.env.Do("PUT", update, map[string]any{"category": "Pistol", "lane": 8}); status != http.StatusConflict {
+	if status, _ := f.env.Do("PUT", update, map[string]any{"category": "Pistol 1500", "lane": 8}); status != http.StatusConflict {
 		t.Fatalf("lane change: %d", status)
 	}
 	withdraw := fmt.Sprintf("%s/entries/%d/withdraw", base, f.entries[3])
@@ -308,10 +308,10 @@ func TestAdminAcceptanceOfTheLastSegmentFinishesTheMatch(t *testing.T) {
 func TestCategoryCanBeEditedOnceActiveButTheLaneStaysFrozen(t *testing.T) {
 	f := newScoringFixture(t, 1, 2, 3)
 	update := fmt.Sprintf("/api/matches/%d/entries/%d", f.comp, f.entries[2])
-	if status, out := f.env.Do("PUT", update, map[string]any{"category": "Revolver", "lane": 2}); status != http.StatusOK {
+	if status, out := f.env.Do("PUT", update, map[string]any{"category": "Revolver 1500", "lane": 2}); status != http.StatusOK {
 		t.Fatalf("category change: %d %v", status, out)
 	}
-	if status, _ := f.env.Do("PUT", update, map[string]any{"category": "Revolver", "lane": 8}); status != http.StatusConflict {
+	if status, _ := f.env.Do("PUT", update, map[string]any{"category": "Revolver 1500", "lane": 8}); status != http.StatusConflict {
 		t.Fatalf("lane change: %d", status)
 	}
 }

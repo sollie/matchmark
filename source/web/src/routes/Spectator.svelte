@@ -97,7 +97,7 @@
     return () => stream.close();
   });
 
-  type Group = { category: string | null; rows: Standing[] };
+  type Group = { category: string | null; classGroup?: string; rows: Standing[] };
 
   const withdrawnLast = (rows: Standing[]) =>
     [...rows].sort((a, b) => Number(a.withdrawn) - Number(b.withdrawn));
@@ -108,20 +108,25 @@
     const present = [...new Set(standings.map((s) => s.category))];
     const known = order.filter((c) => present.includes(c));
     const categories = [...known, ...present.filter((c) => !known.includes(c))];
-    if (categories.length <= 1) return [{ category: null, rows: withdrawnLast(standings) }];
-    return categories.map((category) => ({
-      category,
-      rows: standings
-        .filter((s) => s.category === category)
-        .sort(
-          (a, b) =>
-            Number(a.withdrawn) - Number(b.withdrawn) ||
-            b.total - a.total ||
-            (b.x_count ?? 0) - (a.x_count ?? 0),
-        ),
-    }));
+    const byScore = (a: Standing, b: Standing) =>
+      Number(a.withdrawn) - Number(b.withdrawn) ||
+      b.total - a.total ||
+      (b.x_count ?? 0) - (a.x_count ?? 0);
+    const result = categories.flatMap((category): Group[] => {
+      const rows = standings.filter((s) => s.category === category).sort(byScore);
+      if (rows.some((s) => s.class_group === undefined)) return [{ category, rows }];
+      const classes = [...new Set(rows.map((s) => s.class_group!.value))].sort((a, b) => b - a);
+      return classes.map((value) => {
+        const members = rows.filter((s) => s.class_group!.value === value);
+        return { category, classGroup: members[0].class_group!.name, rows: members };
+      });
+    });
+    if (categories.length <= 1 && result.every((g) => g.classGroup === undefined)) {
+      return [{ category: null, rows: withdrawnLast(standings) }];
+    }
+    return result;
   });
-  const headingHidden = $derived(new Set(standings.map((s) => s.category)).size <= 1);
+  const headingHidden = $derived(groups.length <= 1 && groups[0]?.category === null);
 
   function rank(rows: Standing[], i: number): number {
     const tied = (a: Standing, b: Standing) =>
@@ -140,7 +145,7 @@
           <th class="num">#</th>
           <th class="num">Lane</th>
           {#if showNames}<th>Name</th>{/if}
-          {#if showClass}<th class="optional">Class</th>{/if}
+          {#if showClass}<th class="optional">Classification</th>{/if}
           {#if showClubs}<th class="optional">Club</th>{/if}
           {#if showCountries}<th class="optional">Country</th>{/if}
           <th class="optional">Category</th>
@@ -253,8 +258,10 @@
       </div>
     {:else}
       <div class="standings" use:autoScroll>
-        {#each groups as group (group.category ?? "")}
-          {#if group.category !== null}<h3>{group.category}</h3>{/if}
+        {#each groups as group (`${group.category ?? ""}/${group.classGroup ?? ""}`)}
+          {#if group.category !== null}<h3>
+              {group.classGroup ? `${group.category} - ${group.classGroup}` : group.category}
+            </h3>{/if}
           {@render standingsTable(group.rows)}
         {/each}
       </div>

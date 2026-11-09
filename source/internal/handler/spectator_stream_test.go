@@ -127,7 +127,7 @@ func TestSpectatorStreamHiddenForDraftMatch(t *testing.T) {
 
 func TestSpectatorStreamSendsHeartbeat(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(50*time.Millisecond, time.Minute, 10, 10, 10))
-	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
+	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"}), category: "Revolver 1500"}
 	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	s := env.OpenStream(streamPath(f), nil)
@@ -144,7 +144,7 @@ func TestSpectatorStreamSendsHeartbeat(t *testing.T) {
 
 func TestSpectatorStreamEndsAtLifetime(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, 100*time.Millisecond, 10, 10, 10))
-	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
+	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"}), category: "Revolver 1500"}
 	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	s := env.OpenStream(streamPath(f), nil)
@@ -155,7 +155,7 @@ func TestSpectatorStreamEndsAtLifetime(t *testing.T) {
 
 func TestSpectatorStreamCapsConcurrentStreams(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
-	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
+	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"}), category: "Revolver 1500"}
 	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	first := env.OpenStream(streamPath(f), nil)
@@ -177,7 +177,7 @@ func TestSpectatorStreamCapsConcurrentStreams(t *testing.T) {
 
 func TestSpectatorFloodDoesNotBlockAdminOrScorerStreams(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
-	f := &scoringFixture{fixture: &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}, entries: map[int]int{}}
+	f := &scoringFixture{fixture: &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"}), category: "Revolver 1500"}, entries: map[int]int{}}
 	f.entries[1] = f.addEntry(t, "HANSEN", 1)
 	f.entries[2] = f.addEntry(t, "BERG", 2)
 	f.activate(t)
@@ -201,7 +201,7 @@ func TestSpectatorFloodDoesNotBlockAdminOrScorerStreams(t *testing.T) {
 
 func TestRejectedStreamRequestsConsumeNoCapacity(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
-	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
+	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"}), category: "Revolver 1500"}
 	for i := 0; i < 3; i++ {
 		if s := env.OpenStream(streamPath(f), nil); s.Status != http.StatusNotFound {
 			t.Fatalf("draft status %d", s.Status)
@@ -222,7 +222,7 @@ func TestRejectedStreamRequestsConsumeNoCapacity(t *testing.T) {
 
 func TestRejectedStreamRequestsDoNotConsumeCapAtCapacity(t *testing.T) {
 	env := apitest.NewAdmin(t, handler.WithStreamLimits(time.Minute, time.Minute, 1, 1, 1))
-	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"})}
+	f := &fixture{env: env, comp: env.ID("POST", "/api/matches", map[string]any{"name": "M", "date": "2026-05-01", "course": "150"}), category: "Revolver 1500"}
 	f.addEntry(t, "HANSEN", 1)
 	f.activate(t)
 	nextSnapshot(t, env.OpenStream(streamPath(f), nil))

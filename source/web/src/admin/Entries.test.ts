@@ -37,9 +37,14 @@ const entry = (overrides: Partial<EntryWithSegments> = {}): EntryWithSegments =>
   id: 1,
   match_id: 5,
   shooter_id: 7,
-  category: "Pistol",
+  category: "Pistol 1500",
   lane: 1,
   withdrawn: false,
+  classification_at_match: null,
+  class: null,
+  club: null,
+  country: null,
+  remarks: null,
   segments: [
     {
       segment_number: 1,
@@ -91,8 +96,13 @@ function setup(
   respond?: Parameters<typeof stubFetch>[0],
 ) {
   rulebook.courses = [
-    course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]),
-    course("40", ["Revolver"]),
+    course("150", [
+      "Revolver 1500",
+      "Pistol 1500",
+      "Revolver Optical Sight 1500",
+      "Pistol Optical Sight 1500",
+    ]),
+    course("40", ["Revolver 1500"]),
   ];
   const calls = stubFetch(respond);
   const reload = vi.fn(async () => {});
@@ -109,10 +119,10 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("Entries", () => {
   it("offers only the categories the course allows when adding and editing", async () => {
-    const { user } = setup([entry({ category: "Revolver" })], "40");
-    expect(options("Entry category")).toEqual(["Revolver"]);
+    const { user } = setup([entry({ category: "Revolver 1500" })], "40");
+    expect(options("Entry category")).toEqual(["Revolver 1500"]);
     await user.click(screen.getByRole("button", { name: "Move" }));
-    expect(options("Move category")).toEqual(["Revolver"]);
+    expect(options("Move category")).toEqual(["Revolver 1500"]);
   });
 
   it("titles segment columns with the rulebook segment name", () => {
@@ -124,19 +134,22 @@ describe("Entries", () => {
   });
 
   it("keeps the current category of a legacy entry selectable when editing", async () => {
-    const { user } = setup([entry({ category: "Pistol" })], "40");
+    const { user } = setup([entry({ category: "Pistol 1500" })], "40");
     await user.click(screen.getByRole("button", { name: "Move" }));
-    expect(options("Move category")).toEqual(["Pistol", "Revolver"]);
+    expect(options("Move category")).toEqual(["Pistol 1500", "Revolver 1500"]);
   });
 
   it("falls back to the first allowed category when the course changes", async () => {
     const { view, user } = setup([], "150");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Entry category" }), "Pistol OS");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Entry category" }),
+      "Pistol Optical Sight 1500",
+    );
     await view.rerender({ course: "40" });
-    expect(options("Entry category")).toEqual(["Revolver"]);
+    expect(options("Entry category")).toEqual(["Revolver 1500"]);
     expect(
       (screen.getByRole("combobox", { name: "Entry category" }) as HTMLSelectElement).value,
-    ).toBe("Revolver");
+    ).toBe("Revolver 1500");
   });
 
   it("labels each segment as Accepted or Open", () => {
@@ -188,6 +201,45 @@ describe("Entries", () => {
       "POST /api/matches/5/entries/1/segments/1/unlock",
     ]);
     expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("corrects the frozen classification and class of an entry", async () => {
+    const frozen = entry({
+      club: "Club",
+      country: "SWE",
+      classification_at_match: { value: 0, name: "Unclassified" },
+      class: { value: 4, name: "Master" },
+    });
+    const { calls, user } = setup([frozen]);
+    expect(screen.getByText("Unclassified / Master")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Correct class for Jane Doe" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Classification at match" }),
+      "Expert",
+    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "Class" }), "Expert");
+    await user.click(screen.getByRole("button", { name: "Save class" }));
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "PUT /api/matches/5/entries/1/classification",
+    ]);
+    expect(calls[0].body).toEqual({ classification_at_match: 3, class: 3 });
+  });
+
+  it("sets remarks without touching lane or category", async () => {
+    const { calls, user } = setup([entry({ remarks: "Late" })]);
+    expect(screen.getByText("Late")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Edit remarks for Jane Doe" }));
+    const input = screen.getByRole("textbox", { name: "Remarks for Jane Doe" });
+    await user.clear(input);
+    await user.type(input, "Changed pistol");
+    await user.click(screen.getByRole("button", { name: "Save remarks" }));
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["PUT /api/matches/5/entries/1"]);
+    expect(calls[0].body).toEqual({ category: "Pistol 1500", lane: 1, remarks: "Changed pistol" });
+  });
+
+  it("offers no class correction before the entry is frozen", () => {
+    setup();
+    expect(screen.queryByRole("button", { name: /Correct class/ })).toBeNull();
   });
 
   it("locks an open segment", async () => {

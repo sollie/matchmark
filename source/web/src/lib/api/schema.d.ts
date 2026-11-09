@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/waid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or clear the signed-in user's own WAID */
+        put: operations["setOwnWAID"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/backup": {
         parameters: {
             query?: never;
@@ -115,7 +132,7 @@ export interface paths {
         };
         /** Club name and logo state, shown on public pages */
         get: operations["getClub"];
-        /** Set the club name (trimmed, at most 100 characters) and/or palette; omitted fields are unchanged (admin only) */
+        /** Set the club name (trimmed, at most 100 characters), palette and/or unclassified class; omitted fields are unchanged (admin only) */
         put: operations["setClub"];
         post?: never;
         delete?: never;
@@ -230,6 +247,25 @@ export interface paths {
         get?: never;
         /** Promote to admin or demote to user; demotion ends sessions and the last active admin is refused (admin only) */
         put: operations["setUserRole"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{userID}/waid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or clear a user's WAID (admin only) */
+        put: operations["setUserWAID"];
         post?: never;
         delete?: never;
         options?: never;
@@ -410,6 +446,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ranges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All ranges including archived ones, by name */
+        get: operations["listRanges"];
+        put?: never;
+        /** Add a range; names are unique ignoring case (admin only) */
+        post: operations["createRange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ranges/{rangeID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rangeID: components["parameters"]["RangeID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Rename a range (admin only) */
+        put: operations["updateRange"];
+        post?: never;
+        /**
+         * Delete a range (admin only)
+         * @description Answers 409 for a range used by a competition or set as the club default; archive it instead
+         */
+        delete: operations["deleteRange"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ranges/{rangeID}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rangeID: components["parameters"]["RangeID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hide a range from pickers; past competitions keep it (admin only)
+         * @description Answers 409 for the club default range
+         */
+        post: operations["archiveRange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ranges/{rangeID}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rangeID: components["parameters"]["RangeID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make an archived range selectable again (admin only) */
+        post: operations["unarchiveRange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/competitions": {
         parameters: {
             query?: never;
@@ -436,7 +554,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getCompetition"];
-        /** @description Rejected with 422 when the new range would leave a match of the competition outside it */
+        /** @description Rejected with 422 when the new date span would leave a match of the competition outside it */
         put: operations["updateCompetition"];
         post?: never;
         /** @description A competition with matches cannot be deleted */
@@ -653,10 +771,30 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description A draft match allows any change; an active one only a category change (a lane change answers 409); a finished one answers 409 */
+        /** @description A draft match allows any change; an active one only a category or remarks change (a lane change answers 409); a finished one only a remarks change (a category or lane change answers 409) */
         put: operations["updateEntry"];
         post?: never;
         delete: operations["deleteEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matches/{matchID}/entries/{entryID}/classification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchID: components["parameters"]["MatchID"];
+                entryID: components["parameters"]["EntryID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Corrects the frozen Classification at match and Class of a 1500 entry (rule 20.6); audited. Answers 409 for an entry that is not frozen or is not in a 1500 category */
+        put: operations["setEntryClassification"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1431,6 +1569,16 @@ export interface components {
             last_seen_at: string;
         };
         Club: {
+            /**
+             * Format: int64
+             * @description The range pre-filled on new competitions; null when unset
+             */
+            default_range_id: number | null;
+            /**
+             * @description The Class an Unclassified shooter competes in; Master by default
+             * @enum {string}
+             */
+            unclassified_class: "Master" | "Unclassified";
             /** @description Empty when no name is set */
             name: string;
             /** @description Palette id; matchmark by default */
@@ -1497,6 +1645,8 @@ export interface components {
             username: string;
             role: components["schemas"]["UserRole"];
             can_download_backup: boolean;
+            /** @description The user's WAID; null when not set */
+            waid: string | null;
         };
         /** @enum {string} */
         UserRole: "admin" | "user";
@@ -1507,6 +1657,8 @@ export interface components {
             active: boolean;
             can_download_backup: boolean;
             must_change_password: boolean;
+            /** @description The user's WAID, unique when set; null when not set */
+            waid: string | null;
         };
         AuditEntry: {
             /** Format: int64 */
@@ -1537,6 +1689,10 @@ export interface components {
         SetBackupPermissionRequest: {
             can_download_backup: boolean;
         };
+        SetWAIDRequest: {
+            /** @description WAID, trimmed; an empty string clears it. Unique across users */
+            waid: string;
+        };
         CreateUserRequest: {
             username: string;
             role: components["schemas"]["UserRole"];
@@ -1554,7 +1710,7 @@ export interface components {
             /** Format: int64 */
             id: number;
             archived: boolean;
-            /** @description Classification per Category, refreshed from the WA1500 register; a Category is absent until it has been fetched */
+            /** @description Classification per classified Category (the five 1500 categories), refreshed from the WA1500 register; a Category is absent until it has been fetched */
             classifications: {
                 [key: string]: components["schemas"]["Classification"];
             };
@@ -1653,12 +1809,27 @@ export interface components {
             start_date: string;
             /** @description ISO 8601 calendar date, YYYY-MM-DD, not before start_date */
             end_date: string;
+            /**
+             * Format: int64
+             * @description The range of the competition. Omitted on create it defaults to the club default range, else the only active range; omitted on update it is unchanged; null clears it. Archived ranges are rejected unless already set
+             */
+            range_id?: number | null;
+        };
+        Range: {
+            /** Format: int64 */
+            id: number;
+            archived: boolean;
+        } & components["schemas"]["RangeInput"];
+        RangeInput: {
+            name: string;
         };
         Competition: {
             /** Format: int64 */
             id: number;
             /** @description Number of matches in the competition */
             match_count: number;
+            /** @description Name of the competition's range; null when it has none */
+            range_name?: string | null;
         } & components["schemas"]["CompetitionInput"];
         MatchInput: {
             /**
@@ -1673,6 +1844,12 @@ export interface components {
             date: string;
             /** @description Course of fire key from the rulebook */
             course: string;
+            /** @description Classified match. When on (the default), results and standings group each classified Category's rows by Class. Optional on update; omitting it keeps the current value. Editable in any status */
+            classified?: boolean;
+            /** @description WAID of the Referee, looked up in the WA1500 register when it changes; an empty string clears it. On create, omitting it defaults to the signed-in user's WAID when set. On update, omitting it keeps the current value. Fails with 422 when the WAID is not in the register and 503 when the register is unreachable, storing nothing. Editable in any status */
+            referee_waid?: string | null;
+            /** @description WAID of the Range officer, same rules as referee_waid except that it is empty by default */
+            range_officer_waid?: string | null;
         };
         Match: {
             /** Format: int64 */
@@ -1684,6 +1861,10 @@ export interface components {
             current_segment: number;
             /** @description UTC time the match left draft, backfilled with the match date for matches activated before this field existed. Null for drafts. Admin responses only */
             activated_at?: string | null;
+            /** @description Referee name snapshotted from the WA1500 register when the WAID was set. Admin responses only */
+            referee_name?: string | null;
+            /** @description Range officer name snapshotted from the WA1500 register when the WAID was set. Admin responses only */
+            range_officer_name?: string | null;
         } & components["schemas"]["MatchInput"];
         Visibility: {
             show_names: boolean;
@@ -1695,6 +1876,16 @@ export interface components {
             group_by_category: boolean;
         };
         Entry: {
+            /** @description The shooter's Classification frozen when the match went active; null until frozen, for other categories, or when never fetched */
+            classification_at_match: components["schemas"]["Classification"] | null;
+            /** @description The Class the shooter competes in, frozen with the Classification at match; an Unclassified shooter gets the club setting. Null when not frozen */
+            class: components["schemas"]["Classification"] | null;
+            /** @description Club frozen when the match went active; null until frozen */
+            club: string | null;
+            /** @description Country frozen when the match went active; null until frozen */
+            country: string | null;
+            /** @description Free-text remarks set by an admin; null when none */
+            remarks: string | null;
             /** Format: int64 */
             id: number;
             /** Format: int64 */
@@ -1851,8 +2042,12 @@ export interface components {
             first_name?: string;
             club?: string;
             country?: string;
-            /** @description The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched */
+            /** @description Classification at match for frozen entries, otherwise the shooter's live Classification for the entry's Category; present when names are visible and known */
             classification?: components["schemas"]["Classification"];
+            /** @description The Class the shooter competed in; present when names are visible and the entry is frozen */
+            class?: components["schemas"]["Classification"];
+            /** @description Class group the row belongs to; present for every entry of a Category only when the match is classified and all its entries have a Class */
+            class_group?: components["schemas"]["Classification"];
             x_count?: number;
             ring_counts?: components["schemas"]["RingCounts"];
             segments?: components["schemas"]["SegmentScore"][];
@@ -1866,13 +2061,21 @@ export interface components {
                 /** @description Course of fire key from the rulebook */
                 course: string;
                 course_label: string;
+                /** @description Name of the competition's range; absent when it has none */
+                range?: string;
             };
             /** @description Segment numbers of the course of fire, in order */
             segments: number[];
             /** @description Categories with at least one entry, in rulebook order */
             categories: {
                 category: string;
+                /** @description Ranked rows of the Category; empty when the Category is grouped by Class */
                 rows: components["schemas"]["ResultsRow"][];
+                /** @description Class groups in the order High Master, Master, Expert, Sharpshooter, Marksman, Unclassified, empty groups omitted; rank restarts within each group. Empty (use rows) when the match is not classified, the Category is not a WA1500 1500 Category, or any ranked entry has no Class */
+                groups: {
+                    class: components["schemas"]["Classification"];
+                    rows: components["schemas"]["ResultsRow"][];
+                }[];
                 /** @description Entries withdrawn during the match, unranked, with the scores of their accepted segments */
                 did_not_finish: components["schemas"]["ResultsDnfRow"][];
             }[];
@@ -1887,8 +2090,12 @@ export interface components {
             waid?: string;
             club?: string;
             country?: string;
-            /** @description The shooter's Classification for the entry's Category; present when names are visible and the Classification has been fetched */
+            /** @description Classification at match for frozen entries, otherwise the shooter's live Classification for the entry's Category; present when names are visible and known */
             classification?: components["schemas"]["Classification"];
+            /** @description The Class the shooter competed in; present when names are visible and the entry is frozen */
+            class?: components["schemas"]["Classification"];
+            /** @description Present when names are visible and the entry has remarks */
+            remarks?: string;
             segments: {
                 segment: number;
                 /** @description Present for accepted segments when segment scores are visible */
@@ -1904,6 +2111,8 @@ export interface components {
             waid?: string;
             club?: string;
             country?: string;
+            /** @description Present when names are visible and the entry has remarks */
+            remarks?: string;
             segments: {
                 segment: number;
                 /** @description Present for accepted segments when segment scores are visible */
@@ -2019,6 +2228,7 @@ export interface components {
         };
     };
     parameters: {
+        RangeID: number;
         MatchID: number;
         CompetitionID: number;
         UserID: number;
@@ -2148,6 +2358,42 @@ export interface operations {
             };
         };
     };
+    setOwnWAID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetWAIDRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The user must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
     adminBackup: {
         parameters: {
             query?: never;
@@ -2261,6 +2507,16 @@ export interface operations {
                     name?: string;
                     /** @description Palette id, one of the catalogue */
                     palette?: string;
+                    /**
+                     * @description The Class an Unclassified shooter competes in when a match goes active (rule 20.2)
+                     * @enum {string}
+                     */
+                    unclassified_class?: "Master" | "Unclassified";
+                    /**
+                     * Format: int64
+                     * @description The range pre-filled on new competitions; null clears it. It must be an active range
+                     */
+                    default_range_id?: number | null;
                 };
             };
         };
@@ -2554,6 +2810,45 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SetRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The caller is not an admin, or must change their password first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    setUserWAID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetWAIDRequest"];
             };
         };
         responses: {
@@ -2947,6 +3242,149 @@ export interface operations {
             422: components["responses"]["Invalid"];
         };
     };
+    listRanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The club's ranges */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ranges: components["schemas"]["Range"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createRange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RangeInput"];
+            };
+        };
+        responses: {
+            201: components["responses"]["Created"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    updateRange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rangeID: components["parameters"]["RangeID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RangeInput"];
+            };
+        };
+        responses: {
+            /** @description The updated range */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Range"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
+        };
+    };
+    deleteRange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rangeID: components["parameters"]["RangeID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Deleted"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    archiveRange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rangeID: components["parameters"]["RangeID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The archived range */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Range"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    unarchiveRange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rangeID: components["parameters"]["RangeID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The range */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Range"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listCompetitions: {
         parameters: {
             query?: never;
@@ -3097,6 +3535,15 @@ export interface operations {
             201: components["responses"]["Created"];
             401: components["responses"]["Unauthorized"];
             422: components["responses"]["Invalid"];
+            /** @description The WA1500 register is unreachable, so an official's WAID could not be looked up */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     getMatch: {
@@ -3151,6 +3598,15 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["Invalid"];
+            /** @description The WA1500 register is unreachable, so an official's WAID could not be looked up */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     deleteMatch: {
@@ -3436,6 +3892,8 @@ export interface operations {
                     shooter_id: number;
                     category: string;
                     lane: number;
+                    /** @description Free-text remarks; trimmed, blank means none, more than 200 characters answers 422 */
+                    remarks?: string | null;
                 };
             };
         };
@@ -3462,6 +3920,8 @@ export interface operations {
                 "application/json": {
                     category: string;
                     lane: number;
+                    /** @description Trimmed; blank clears the remarks, absent or null keeps them, more than 200 characters answers 422. Audited as part of entry.update */
+                    remarks?: string | null;
                 };
             };
         };
@@ -3497,6 +3957,40 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    setEntryClassification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchID: components["parameters"]["MatchID"];
+                entryID: components["parameters"]["EntryID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    classification_at_match: number;
+                    class: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The updated entry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Invalid"];
         };
     };
     withdrawEntry: {

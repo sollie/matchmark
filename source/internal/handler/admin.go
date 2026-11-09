@@ -22,6 +22,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Post("/shooters/{shooterID}/unarchive", serve(h.unarchiveShooter))
 	r.Get("/shooters/{shooterID}/merge-preview", serve(h.previewShooterMerge))
 	r.Post("/shooters/{shooterID}/merge", serve(h.mergeShooter))
+	r.Get("/ranges", serve(h.listRanges))
 	r.Get("/competitions", serve(h.listCompetitions))
 	r.Post("/competitions", serve(h.createCompetition))
 	r.Get("/competitions/{competitionID}", serve(h.getCompetition))
@@ -43,6 +44,7 @@ func (h *Handler) adminRoutes(r chi.Router) {
 	r.Get("/matches/{matchID}/entries", serve(h.listEntries))
 	r.Post("/matches/{matchID}/entries", serve(h.addEntry))
 	r.Put("/matches/{matchID}/entries/{entryID}", serve(h.updateEntry))
+	r.Put("/matches/{matchID}/entries/{entryID}/classification", serve(h.setEntryClassification))
 	r.Delete("/matches/{matchID}/entries/{entryID}", serve(h.deleteEntry))
 	r.Post("/matches/{matchID}/entries/{entryID}/withdraw", serve(h.withdrawEntry))
 	r.Get("/matches/{matchID}/lanes/{lane}/score-lane", serve(h.scoreLane))
@@ -65,6 +67,10 @@ type matchBody struct {
 	Course        string           `json:"course"`
 	CompetitionID int64            `json:"competition_id"`
 	Competition   *competitionBody `json:"competition"`
+	Classified    *bool            `json:"classified"`
+
+	RefereeWAID      *string `json:"referee_waid"`
+	RangeOfficerWAID *string `json:"range_officer_waid"`
 }
 
 func matchesJSON(comps []repository.Match) []map[string]any {
@@ -100,7 +106,9 @@ func shooterJSON(s repository.Shooter) map[string]any {
 }
 
 func matchJSON(c repository.Match) map[string]any {
-	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt)}
+	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt), "classified": c.Classified,
+		"referee_waid": nullable(c.RefereeWAID), "referee_name": nullable(c.RefereeName),
+		"range_officer_waid": nullable(c.RangeOfficerWAID), "range_officer_name": nullable(c.RangeOfficerName)}
 }
 
 func nullable(s string) any {
@@ -114,7 +122,16 @@ func entryJSON(e repository.Entry) map[string]any {
 	return map[string]any{
 		"id": e.ID, "match_id": e.MatchID, "shooter_id": e.ShooterID,
 		"category": e.Category, "lane": e.Lane, "withdrawn": e.Withdrawn,
+		"classification_at_match": classificationJSON(e.ClassificationAtMatch), "class": classificationJSON(e.Class),
+		"club": e.Club, "country": e.Country, "remarks": e.Remarks,
 	}
+}
+
+func classificationJSON(v *int) any {
+	if v == nil {
+		return nil
+	}
+	return wa1500.Classification(*v)
 }
 
 func (h *Handler) listShooters(r *http.Request) (int, any, error) {
@@ -240,7 +257,22 @@ func (h *Handler) updateMatch(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	if err := h.svc.UpdateMatch(r.Context(), repository.Match{ID: id, Name: body.Name, Date: body.Date, Course: body.Course}); err != nil {
+	current, err := h.repo.GetMatch(r.Context(), id)
+	if err != nil {
+		return fail(err)
+	}
+	m := repository.Match{ID: id, Name: body.Name, Date: body.Date, Course: body.Course, Classified: current.Classified,
+		RefereeWAID: current.RefereeWAID, RangeOfficerWAID: current.RangeOfficerWAID}
+	if body.Classified != nil {
+		m.Classified = *body.Classified
+	}
+	if body.RefereeWAID != nil {
+		m.RefereeWAID = *body.RefereeWAID
+	}
+	if body.RangeOfficerWAID != nil {
+		m.RangeOfficerWAID = *body.RangeOfficerWAID
+	}
+	if err := h.svc.UpdateMatch(r.Context(), m); err != nil {
 		return fail(err)
 	}
 	c, err := h.repo.GetMatch(r.Context(), id)
@@ -331,14 +363,37 @@ func (h *Handler) updateEntry(r *http.Request) (int, any, error) {
 	req := in(r)
 	compID, entryID := req.path("matchID"), req.path("entryID")
 	var body struct {
-		Category string `json:"category"`
-		Lane     int    `json:"lane"`
+		Category string  `json:"category"`
+		Lane     int     `json:"lane"`
+		Remarks  *string `json:"remarks"`
 	}
 	req.body(&body)
 	if req.err != nil {
 		return fail(req.err)
 	}
-	e, err := h.svc.UpdateEntry(r.Context(), compID, entryID, body.Category, body.Lane)
+	e, err := h.svc.UpdateEntry(r.Context(), compID, entryID, body.Category, body.Lane, body.Remarks)
+	if err != nil {
+		return fail(err)
+	}
+	return okJSON(entryJSON(e))
+}
+
+func (h *Handler) setEntryClassification(r *http.Request) (int, any, error) {
+	req := in(r)
+	compID, entryID := req.path("matchID"), req.path("entryID")
+	var body struct {
+		ClassificationAtMatch *int `json:"classification_at_match"`
+		Class                 *int `json:"class"`
+	}
+	req.body(&body)
+	if req.err != nil {
+		return fail(req.err)
+	}
+	if body.ClassificationAtMatch == nil || body.Class == nil {
+		return fail(service.ErrInvalid)
+	}
+	e, err := h.svc.SetEntryClassification(r.Context(), compID, entryID,
+		wa1500.Classification(*body.ClassificationAtMatch), wa1500.Classification(*body.Class))
 	if err != nil {
 		return fail(err)
 	}

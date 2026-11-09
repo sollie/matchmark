@@ -27,11 +27,18 @@ export function entryCommands(matchId: number, reload: () => Promise<void>) {
           body,
         }),
       ),
-    update: (entryID: number, body: { category: string; lane: number }) =>
+    update: (entryID: number, body: { category: string; lane: number; remarks?: string }) =>
       run(
         api.PUT("/api/matches/{matchID}/entries/{entryID}", {
           params: { path: entryPath(entryID) },
           body,
+        }),
+      ),
+    classify: (entryID: number, classification: number, entryClass: number) =>
+      run(
+        api.PUT("/api/matches/{matchID}/entries/{entryID}/classification", {
+          params: { path: entryPath(entryID) },
+          body: { classification_at_match: classification, class: entryClass },
         }),
       ),
     withdraw: (entryID: number) =>

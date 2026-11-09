@@ -14,4 +14,4 @@ Results and the shooter page show each shooter's WA1500 Classification. The regi
 
 ## Consequences
 
-Classification and club are live values: an old Match's results change when a shooter is promoted or moves club. Snapshotting both per entry is a follow-up. Refreshes now overwrite local name, country and club in the background, so local edits to a shooter with a WAID do not survive a refresh.
+Classification and club were live values here; ADR 0025 snapshots them per entry when a match goes active. Refreshes now overwrite local name, country and club in the background, so local edits to a shooter with a WAID do not survive a refresh.

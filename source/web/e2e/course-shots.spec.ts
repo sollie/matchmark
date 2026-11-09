@@ -20,7 +20,7 @@ test.describe("course shot counts", () => {
     for (const course of courses) {
       await test.step(`${course.key}-shot course`, async () => {
         const match = await createMatch(admin, { course: course.key });
-        const entry = await seedEntry(admin, match.id, 1);
+        const entry = await seedEntry(admin, match.id, 1, course.categories[0]);
         await setStatus(admin, match.id, "active");
         await openMatch(page, match.id);
         const entryRow = row(page, entry.shooter.last_name);

@@ -5,9 +5,11 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
+	"github.com/sollie/matchmark/internal/wa1500"
 )
 
 var ErrNotBetweenSegments = errors.New("entries can only change between segments")
@@ -148,10 +150,13 @@ func (s *Service) UpdateMatch(ctx context.Context, c repository.Match) error {
 			return ErrConflict
 		}
 	}
+	if err := s.resolveOfficials(ctx, &c, current); err != nil {
+		return err
+	}
 	if err := s.repo.UpdateMatch(ctx, c); err != nil {
 		return mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: matchUpdateDetails(current.Name, c.Name)}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: c.ID}})
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "match.update", Target: idTarget("match", c.ID), Details: joinDetails(matchUpdateDetails(current.Name, c.Name), officialsDetails(current, c))}, MatchID: c.ID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: c.ID}})
 	return nil
 }
 
@@ -190,7 +195,11 @@ func (s *Service) BackToDraft(ctx context.Context, id int64) error {
 }
 
 func (s *Service) changeStatus(ctx context.Context, id int64, from, status MatchStatus, actor *Actor) error {
-	if err := s.repo.SetMatchStatus(ctx, id, string(from), string(status)); err != nil {
+	unclassified, err := s.unclassifiedClass(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.SetMatchStatus(ctx, id, string(from), string(status), unclassified); err != nil {
 		return mapRepoErr(err)
 	}
 	record := Change{Audit: AuditEvent{Action: "match.status", Target: idTarget("match", id), Details: string(status)}, Actor: actor, MatchID: id, Live: LiveMatch, Screens: true}
@@ -364,9 +373,36 @@ func (s *Service) finishIfComplete(ctx context.Context, matchID int64, actor *Ac
 	_ = s.changeStatus(ctx, matchID, StatusActive, StatusFinished, actor)
 }
 
-func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int) (repository.Entry, error) {
+const maxRemarksLength = 200
+
+func sameRemarks(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func normalizeRemarks(v *string) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	t := strings.TrimSpace(*v)
+	if utf8.RuneCountInString(t) > maxRemarksLength {
+		return nil, ErrInvalid
+	}
+	if t == "" {
+		return nil, nil
+	}
+	return &t, nil
+}
+
+func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, category string, lane int, remarks *string) (repository.Entry, error) {
 	if lane < 1 {
 		return repository.Entry{}, ErrInvalid
+	}
+	newRemarks, err := normalizeRemarks(remarks)
+	if err != nil {
+		return repository.Entry{}, err
 	}
 	current, err := s.repo.GetEntry(ctx, matchID, entryID)
 	if err != nil {
@@ -386,12 +422,45 @@ func (s *Service) UpdateEntry(ctx context.Context, matchID, entryID int64, categ
 			return repository.Entry{}, ErrConflict
 		}
 	default:
-		return repository.Entry{}, ErrConflict
+		if lane != current.Lane || category != current.Category {
+			return repository.Entry{}, ErrConflict
+		}
 	}
-	if err := s.repo.UpdateEntry(ctx, matchID, entryID, category, lane); err != nil {
+	if remarks == nil {
+		newRemarks = current.Remarks
+	}
+	unclassified, err := s.unclassifiedClass(ctx)
+	if err != nil {
+		return repository.Entry{}, err
+	}
+	if err := s.repo.UpdateEntry(ctx, matchID, entryID, category, lane, newRemarks, unclassified); err != nil {
 		return repository.Entry{}, mapRepoErr(err)
 	}
-	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(matchID, entryID)}, MatchID: matchID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: matchID, EntryID: entryID}})
+	details := ""
+	if remarks != nil && !sameRemarks(current.Remarks, newRemarks) {
+		details = "remarks=" + strings.TrimSpace(*remarks)
+	}
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.update", Target: entryTarget(matchID, entryID), Details: details}, MatchID: matchID, Live: LiveMatch, Reemit: &repository.LockedSegmentFilter{MatchID: matchID, EntryID: entryID}})
+	e, err := s.repo.GetEntry(ctx, matchID, entryID)
+	return e, mapRepoErr(err)
+}
+
+func (s *Service) SetEntryClassification(ctx context.Context, matchID, entryID int64, classification, class wa1500.Classification) (repository.Entry, error) {
+	if !classification.Valid() || !class.Valid() {
+		return repository.Entry{}, ErrInvalid
+	}
+	entry, err := s.repo.GetEntry(ctx, matchID, entryID)
+	if err != nil {
+		return repository.Entry{}, mapRepoErr(err)
+	}
+	if !rulebook.IsClassified(entry.Category) || !entry.Frozen() {
+		return repository.Entry{}, ErrConflict
+	}
+	if err := s.repo.SetEntryClassification(ctx, matchID, entryID, int(classification), int(class)); err != nil {
+		return repository.Entry{}, mapRepoErr(err)
+	}
+	details := "classification_at_match=" + classification.Name() + ", class=" + class.Name()
+	s.changes.Record(ctx, Change{Audit: AuditEvent{Action: "entry.classification", Target: entryTarget(matchID, entryID), Details: details}, MatchID: matchID, Live: LiveMatch})
 	e, err := s.repo.GetEntry(ctx, matchID, entryID)
 	return e, mapRepoErr(err)
 }

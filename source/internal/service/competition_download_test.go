@@ -11,6 +11,7 @@ import (
 
 	"github.com/sollie/matchmark/internal/db"
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/rulebook"
 	"github.com/sollie/matchmark/internal/service"
 	"github.com/xuri/excelize/v2"
 )
@@ -24,7 +25,7 @@ func TestCompetitionDownloadNamesAndSkips(t *testing.T) {
 	svc := service.New(repository.New(conn))
 	ctx := context.Background()
 
-	comp, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Nationals", StartDate: "2026-10-19", EndDate: "2026-10-19"})
+	comp, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Nationals", StartDate: "2026-10-19", EndDate: "2026-10-19"}, service.OptionalID{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +74,7 @@ func TestCompetitionWorkbook1500SelectionAndRepeatShooters(t *testing.T) {
 	svc := service.New(repository.New(conn))
 	ctx := context.Background()
 
-	comp, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Nationals", StartDate: "2026-10-19", EndDate: "2026-10-20"})
+	comp, err := svc.CreateCompetition(ctx, repository.Competition{Name: "Nationals", StartDate: "2026-10-19", EndDate: "2026-10-20"}, service.OptionalID{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +94,11 @@ func TestCompetitionWorkbook1500SelectionAndRepeatShooters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := svc.AddEntry(ctx, repository.Entry{MatchID: id, ShooterID: shooter, Category: "Revolver", Lane: 1}); err != nil {
+		categories, err := rulebook.CategoriesForCourse(course)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := svc.AddEntry(ctx, repository.Entry{MatchID: id, ShooterID: shooter, Category: categories[0], Lane: 1}); err != nil {
 			t.Fatal(err)
 		}
 		if !finish {

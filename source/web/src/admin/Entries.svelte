@@ -47,6 +47,8 @@
   let chosenCategory = $state<string | null>(null);
   let laneInput = $state<number | null>(null);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
+  let remarking = $state<{ id: number; text: string } | null>(null);
+  let correcting = $state<{ id: number; classification: number; class: number } | null>(null);
   let scoring = $state<{
     entry: EntryWithSegments;
     segment: number;
@@ -132,6 +134,34 @@
       commands.update(editing.id, { category: editing.category, lane: editing.lane }),
     );
     if (ok) editing = null;
+  }
+
+  async function saveRemarks(entry: EntryWithSegments) {
+    if (!remarking) return;
+    const ok = await run(
+      commands.update(entry.id, {
+        category: entry.category,
+        lane: entry.lane,
+        remarks: remarking.text,
+      }),
+    );
+    if (ok) remarking = null;
+  }
+
+  const classificationOptions = [
+    { value: 0, name: "Unclassified" },
+    { value: 1, name: "Marksman" },
+    { value: 2, name: "Sharpshooter" },
+    { value: 3, name: "Expert" },
+    { value: 4, name: "Master" },
+    { value: 5, name: "High Master" },
+  ];
+
+  async function saveCorrection() {
+    if (!correcting) return;
+    const { id, classification, class: competed } = correcting;
+    const ok = await run(commands.classify(id, classification, competed));
+    if (ok) correcting = null;
   }
 
   async function withdraw(entry: EntryWithSegments) {
@@ -266,7 +296,7 @@
     <table class="entries">
       <thead>
         <tr>
-          <th>Lane</th><th>Shooter</th><th>Category</th>
+          <th>Lane</th><th>Shooter</th><th>Category</th><th>Class</th><th>Remarks</th>
           {#each segmentNumbers as n (n)}<th title={segmentLabel(course, n)}
               >{segmentColumn(course, n)}</th
             >{/each}
@@ -302,6 +332,56 @@
               </td>
               <td class="category">{entry.category}</td>
             {/if}
+            <td class="class">
+              {#if correcting?.id === entry.id}
+                <select aria-label="Classification at match" bind:value={correcting.classification}>
+                  {#each classificationOptions as o (o.value)}<option value={o.value}
+                      >{o.name}</option
+                    >{/each}
+                </select>
+                <select aria-label="Class" bind:value={correcting.class}>
+                  {#each classificationOptions as o (o.value)}<option value={o.value}
+                      >{o.name}</option
+                    >{/each}
+                </select>
+                <button class="primary" onclick={saveCorrection}>Save class</button>
+                <button class="secondary" onclick={() => (correcting = null)}>Cancel</button>
+              {:else if entry.class}
+                {entry.classification_at_match?.name ?? "-"} / {entry.class.name}
+              {/if}
+              {#if correcting?.id !== entry.id && entry.club !== null && course === "150"}
+                <button
+                  class="secondary"
+                  aria-label={`Correct class for ${shooterName(entry.shooter_id)}`}
+                  onclick={() =>
+                    (correcting = {
+                      id: entry.id,
+                      classification: entry.classification_at_match?.value ?? 0,
+                      class: entry.class?.value ?? 0,
+                    })}>Correct</button
+                >
+              {/if}
+            </td>
+            <td class="remarks">
+              {#if remarking?.id === entry.id}
+                <input
+                  type="text"
+                  maxlength="200"
+                  aria-label={`Remarks for ${shooterName(entry.shooter_id)}`}
+                  bind:value={remarking.text}
+                />
+                <button class="primary" onclick={() => saveRemarks(entry)}>Save remarks</button>
+                <button class="secondary" onclick={() => (remarking = null)}>Cancel</button>
+              {:else}
+                {entry.remarks ?? ""}
+                <button
+                  class="secondary"
+                  aria-label={`Edit remarks for ${shooterName(entry.shooter_id)}`}
+                  onclick={() => (remarking = { id: entry.id, text: entry.remarks ?? "" })}
+                  >{entry.remarks ? "Edit" : "Add remarks"}</button
+                >
+              {/if}
+            </td>
             {#each entry.segments as st (st.segment_number)}
               <td
                 class="segment"
@@ -395,7 +475,7 @@
           </tr>
         {:else}
           <tr class="empty"
-            ><td colspan={4 + segmentNumbers.length}
+            ><td colspan={6 + segmentNumbers.length}
               >No entries yet. Add a shooter above to get started.</td
             ></tr
           >
@@ -672,6 +752,15 @@
   }
   .entries .category {
     order: 3;
+    color: var(--text-muted);
+  }
+  .entries .class {
+    order: 3;
+    color: var(--text-muted);
+  }
+  .entries .remarks {
+    order: 3;
+    flex: 1 1 100%;
     color: var(--text-muted);
   }
   .entries .lane::before {

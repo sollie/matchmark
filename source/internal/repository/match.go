@@ -26,6 +26,23 @@ type Match struct {
 	Status         string
 	CurrentSegment int
 	ActivatedAt    string
+	Classified     bool
+	NewRangeID     *int64
+
+	RefereeWAID      string
+	RefereeName      string
+	RangeOfficerWAID string
+	RangeOfficerName string
+}
+
+const matchColumns = `id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, ''), classified,
+	COALESCE(referee_waid, ''), COALESCE(referee_name, ''), COALESCE(range_officer_waid, ''), COALESCE(range_officer_name, '')`
+
+func scanMatch(s scanner) (Match, error) {
+	var c Match
+	err := s.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt, &c.Classified,
+		&c.RefereeWAID, &c.RefereeName, &c.RangeOfficerWAID, &c.RangeOfficerName)
+	return c, mapErr(err)
 }
 
 type DateRange struct {
@@ -41,6 +58,12 @@ type Entry struct {
 	Category  string
 	Lane      int
 	Withdrawn bool
+
+	ClassificationAtMatch *int
+	Class                 *int
+	Club                  *string
+	Country               *string
+	Remarks               *string
 }
 
 type SegmentSeed struct {
@@ -68,12 +91,13 @@ func (r *Repository) CreateMatch(ctx context.Context, c Match) (int64, error) {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	containerID, err := ensureContainer(ctx, tx, c.CompetitionID, c.Name, c.Date)
+	containerID, err := ensureContainer(ctx, tx, c.CompetitionID, c.Name, c.Date, c.NewRangeID)
 	if err != nil {
 		return 0, err
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`, containerID, c.Name, c.Date, c.Course)
+		`INSERT INTO matches (competition_id, name, date, course, referee_waid, referee_name, range_officer_waid, range_officer_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		containerID, c.Name, c.Date, c.Course, nullIfEmpty(c.RefereeWAID), nullIfEmpty(c.RefereeName), nullIfEmpty(c.RangeOfficerWAID), nullIfEmpty(c.RangeOfficerName))
 	if err != nil {
 		return 0, mapErr(err)
 	}
@@ -91,7 +115,7 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO competitions (name, start_date, end_date) VALUES (?, ?, ?)`, comp.Name, comp.StartDate, comp.EndDate)
+		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, comp.Name, comp.StartDate, comp.EndDate, comp.RangeID)
 	if err != nil {
 		return 0, 0, mapErr(err)
 	}
@@ -100,7 +124,8 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 		return 0, 0, err
 	}
 	res, err = tx.ExecContext(ctx,
-		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`, compID, c.Name, c.Date, c.Course)
+		`INSERT INTO matches (competition_id, name, date, course, referee_waid, referee_name, range_officer_waid, range_officer_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		compID, c.Name, c.Date, c.Course, nullIfEmpty(c.RefereeWAID), nullIfEmpty(c.RefereeName), nullIfEmpty(c.RangeOfficerWAID), nullIfEmpty(c.RangeOfficerName))
 	if err != nil {
 		return 0, 0, mapErr(err)
 	}
@@ -111,12 +136,12 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 	return compID, id, tx.Commit()
 }
 
-func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string) (int64, error) {
+func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string, rangeID *int64) (int64, error) {
 	if id != 0 {
 		return id, nil
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO competitions (name, start_date, end_date) VALUES (?, ?, ?)`, name, date, date)
+		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, name, date, date, rangeID)
 	if err != nil {
 		return 0, mapErr(err)
 	}
@@ -138,11 +163,7 @@ func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRa
 }
 
 func (r *Repository) GetMatch(ctx context.Context, id int64) (Match, error) {
-	var c Match
-	err := r.db.QueryRowContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, '') FROM matches WHERE id = ?`, id).
-		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt)
-	return c, mapErr(err)
+	return scanMatch(r.db.QueryRowContext(ctx, `SELECT `+matchColumns+` FROM matches WHERE id = ?`, id))
 }
 
 func (r *Repository) CreateEntry(ctx context.Context, e Entry, segments []SegmentSeed) (int64, error) {
@@ -152,8 +173,8 @@ func (r *Repository) CreateEntry(ctx context.Context, e Entry, segments []Segmen
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO entries (match_id, shooter_id, category, lane) VALUES (?, ?, ?, ?)`,
-		e.MatchID, e.ShooterID, e.Category, e.Lane)
+		`INSERT INTO entries (match_id, shooter_id, category, lane, remarks) VALUES (?, ?, ?, ?, ?)`,
+		e.MatchID, e.ShooterID, e.Category, e.Lane, e.Remarks)
 	if err != nil {
 		return 0, mapErr(err)
 	}

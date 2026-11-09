@@ -9,11 +9,23 @@ An organisation that runs competitions and owns its own users, shooters and resu
 _Avoid_: Tenant, organisation
 
 **Competition**:
-An announced event of one or more days run by a club, holding one or more Matches. It has a name and a start and end date and no status of its own.
+An announced event of one or more days run by a club, holding one or more Matches. It has a name, a start and end date (its date span), an optional Range and no status of its own.
 _Avoid_: Tournament, event
 
+**Range**:
+A shooting range the club uses, identified by its name and an archived flag. Club settings hold the list and an optional default Range; a Competition has at most one Range, pre-filled with the default (or the only active Range) when created and editable afterwards. A Range used by a Competition cannot be deleted, only archived; archived Ranges are hidden from pickers but stay on past Competitions, and the default cannot be archived. The Range name appears on the results header.
+_Avoid_: Venue, location, date range (use date span for dates)
+
+**Referee**:
+The official who judges a Match (rulebook term). Stored on the Match as a WAID with the name snapshotted from the WA1500 register when it was set; optional, and by default the signed-in admin who creates the Match when that user has a WAID. Shown in the results PDF header only when set.
+_Avoid_: Judge, Dommer
+
+**Range officer**:
+The official in charge of the range during a Match (rulebook term). Stored on the Match like the Referee, but empty by default. Not the same thing as the Range (the place).
+_Avoid_: Standplassleder, range master
+
 **Match**:
-One course shot by the shooters of a Competition, on one date inside the Competition's range. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name can be edited in any status; its date and course only while it is a draft, and the course is fixed once it has entries. A shooter has at most one entry per Match.
+One course shot by the shooters of a Competition, on one date inside the Competition's date span. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name can be edited in any status; its date and course only while it is a draft, and the course is fixed once it has entries. A shooter has at most one entry per Match.
 _Avoid_: Competition (for a single course), event
 
 **Back to draft**:
@@ -61,11 +73,11 @@ Did not finish: an Entry withdrawn during a Match. The Results view lists it unr
 _Avoid_: WD, DNS, DSQ
 
 **Category**:
-The class a shooter competes in: Revolver, Pistol, Revolver OS, Pistol OS or Carbine; the rulebook limits which ones a course allows. Each category is one sheet of the results report.
+The equipment class a shooter competes in, named as in the rulebook: Revolver 1500, Pistol 1500, Revolver Optical Sight 1500, Pistol Optical Sight 1500, Open, Distinguished Revolver, Distinguished Pistol, Standard Revolver 4,25", Standard Revolver 2,75", Standard Revolver 2,75" 5 Shot, three Standard Semi-Automatic Pistol classes (5,5" Production, 5,5", 3,7") and Carbine 1500, in that rulebook order everywhere. The course of the Match limits which ones an Entry may have. Only the five 1500 categories are classified, reported to the register and exported to the results `.xlsx` (one sheet each).
 _Avoid_: Weapon class, class, division
 
 **Carbine**:
-The category for Carbine 1500, shot over the 150-shot course on reduced WA1500-29 targets at the same distances; ring values and scoring are unchanged. It is not the Rifle 1500 the rulebook reserves for a future match.
+The Carbine 1500 category (Carbine rulebook 1.0), shot over the 150-shot course on reduced WA1500-29 targets at the same distances; ring values and scoring are unchanged. It is not the Rifle 1500 the rulebook reserves for a future match.
 _Avoid_: Rifle
 
 **Lane**:
@@ -174,7 +186,7 @@ The printable, public page of a finished match's standings, chosen from a picker
 _Avoid_: Results page, leaderboard
 
 **Results PDF**:
-The Results view rendered as a PDF on demand and never stored, as standings per category only (no per-shooter ring counts). The public one honours visibility flags; the admin one, downloaded from the match list, shows everything.
+The Results view rendered as a landscape A4 PDF on demand and never stored, as standings per category (one table per Class group when the match is classified) with the club and WA1500 logos, short segment headings, Match Sum columns for the 150 course, Classification at match and Remarks, and no per-shooter ring counts. The public one honours visibility flags; the admin one, downloaded from the match list, shows everything.
 _Avoid_: Results report (that is the `.xlsx`)
 
 **Club settings**:
@@ -260,6 +272,24 @@ The module that decides whether a login attempt is allowed: it limits failures p
 The record of who did what: every change by a user, plus logins, failed logins, failed password changes, report downloads, backup downloads and `reset-password` command runs. Counts entered and locks made by a paired device are recorded with the actor `device`; the command is recorded with the actor `cli`. It is append-only, kept forever and readable only by admins. It is separate from the Score log, which records segment status changes, and from the Dispute history.
 _Avoid_: Activity log, history
 
+**Classification at match**:
+The Classification frozen on an Entry when its Match goes active; results read it instead of the shooter's current value. Admins can correct it. See ADR 0025.
+
+**Class**:
+The group an Entry competes in, frozen with the Classification at match and equal to it, except Unclassified, which maps to the club setting "Unclassified shooters compete as" (Master or Unclassified).
+
+**Remarks**:
+Free-text note on an Entry (the "Anm" column of the club PDF): at most 200 characters, set by an admin in any Match status, shown in results and the results PDF where names are visible, and in the CSV.
+
+**Classified match**:
+A per-Match toggle (`matches.classified`, default on; rulebook 1.x(c): classified matches give awards per Class). When on, results, standings and the results PDF split each classified Category into Class groups. Editable in any Match status. Not the `group_by_category` visibility flag, which only controls whether standings are grouped by Category.
+
+**Class group**:
+The rows of one Category that share a Class, shown as one table under the heading of the Class. Ordered High Master, Master, Expert, Sharpshooter, Marksman, Unclassified; empty groups are omitted. Used only when the Match is a Classified match, the Category is one of the five 1500 Categories and every ranked Entry has a Class (the entry snapshot, or the live Classification for entries not yet frozen); otherwise the Category is one flat list.
+
+**Rank**:
+An Entry's placement within its Class group (or within its Category when not grouped), restarting at 1 in each group. Equal total and X count share a Rank.
+
 **Classification**:
-A shooter's WA1500 skill level in one Category: Unclassified, Marksman, Sharpshooter, Expert, Master or High Master, in rising order. A shooter holds one Classification per Category (Revolver, Pistol, Revolver OS, Pistol OS, Carbine). Unclassified means the shooter has not competed in that Category; no value means it has not been fetched yet. Only shooters with a WAID have one. It is the current value, not the value at the time of a Match.
+A shooter's WA1500 skill level in one Category: Unclassified, Marksman, Sharpshooter, Expert, Master or High Master, in rising order. A shooter holds one Classification per classified Category (the five 1500 categories: Revolver 1500, Pistol 1500, Revolver Optical Sight 1500, Pistol Optical Sight 1500, Carbine 1500). Unclassified means the shooter has not competed in that Category; no value means it has not been fetched yet. Only shooters with a WAID have one. It is the current value, not the value at the time of a Match.
 _Avoid_: Rank, class, level

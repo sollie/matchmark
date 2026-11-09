@@ -12,6 +12,8 @@ type competitionBody struct {
 	Name      string `json:"name"`
 	StartDate string `json:"start_date"`
 	EndDate   string `json:"end_date"`
+
+	RangeID service.OptionalID `json:"range_id"`
 }
 
 func (b competitionBody) competition(id int64) repository.Competition {
@@ -19,7 +21,7 @@ func (b competitionBody) competition(id int64) repository.Competition {
 }
 
 func competitionJSON(c repository.Competition) map[string]any {
-	return map[string]any{"id": c.ID, "name": c.Name, "start_date": c.StartDate, "end_date": c.EndDate, "match_count": c.MatchCount}
+	return map[string]any{"id": c.ID, "name": c.Name, "start_date": c.StartDate, "end_date": c.EndDate, "match_count": c.MatchCount, "range_id": c.RangeID, "range_name": nullable(c.RangeName)}
 }
 
 func (h *Handler) listCompetitions(r *http.Request) (int, any, error) {
@@ -41,7 +43,7 @@ func (h *Handler) createCompetition(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	id, err := h.svc.CreateCompetition(r.Context(), body.competition(0))
+	id, err := h.svc.CreateCompetition(r.Context(), body.competition(0), body.RangeID)
 	if err != nil {
 		return fail(err)
 	}
@@ -69,7 +71,7 @@ func (h *Handler) updateCompetition(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	if err := h.svc.UpdateCompetition(r.Context(), body.competition(id)); err != nil {
+	if err := h.svc.UpdateCompetition(r.Context(), body.competition(id), body.RangeID); err != nil {
 		return fail(err)
 	}
 	c, err := h.repo.GetCompetition(r.Context(), id)

@@ -46,8 +46,8 @@ test.describe("shooters", () => {
       for (const s of body.shooters) {
         if (s.last_name === lastName) {
           s.classifications = {
-            Revolver: { value: 3, name: "Expert" },
-            Pistol: { value: 0, name: "Unclassified" },
+            "Revolver 1500": { value: 3, name: "Expert" },
+            "Pistol 1500": { value: 0, name: "Unclassified" },
           };
         }
       }
@@ -59,7 +59,7 @@ test.describe("shooters", () => {
 
     const chips = row(page, lastName).getByRole("list", { name: "Classifications" });
     await expect(chips.getByRole("listitem")).toHaveCount(1);
-    await expect(chips).toContainText("Revolver Expert");
+    await expect(chips).toContainText("Revolver 1500 Expert");
   });
 
   test("first name comes before last name and typing shows the normalized form", async ({

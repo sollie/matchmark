@@ -2,7 +2,9 @@ package report
 
 import (
 	_ "embed"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/johnfercher/maroto/v2"
@@ -26,23 +28,27 @@ import (
 
 const (
 	pdfFamily        = "go"
-	pdfFontSize      = 7.0
-	pdfMutedSize     = 6.0
-	pdfLineHeight    = 3.0
+	pdfFontSize      = 8.0
+	pdfMutedSize     = 7.0
+	pdfLineHeight    = 3.4
 	pdfPadY          = 0.6
-	pdfRowHeight     = 4.2
+	pdfRowHeight     = 4.6
 	pdfSectionHeight = 8.0
-	pdfLogoHeight    = 18.0
+	pdfGroupHeight   = 6.0
+	pdfLogoHeight    = 20.0
 	pdfHeadGap       = 2.0
 	pdfMargin        = 12.0
 	pdfFooterHeight  = 8.0
-	pdfPageHeight    = 297.0 - 2*pdfMargin
+	pdfPageHeight    = 210.0 - 2*pdfMargin
 	pdfKeepRows      = 2
 	pdfDNF           = "DNF"
 )
 
 //go:embed matchmark-icon.png
 var matchMarkIcon []byte
+
+//go:embed wa1500-logo.png
+var wa1500Logo []byte
 
 var (
 	pdfHeaderFill = &props.Color{Red: 238, Green: 238, Blue: 238}
@@ -56,21 +62,33 @@ type ResultsPDFSegment struct {
 }
 
 type ResultsPDFRow struct {
-	Rank      int
-	LastName  *string
-	FirstName *string
-	WAID      *string
-	Club      *string
-	Country   *string
-	Segments  []ResultsPDFSegment
-	Total     int
-	XCount    *int
-	DNF       bool
+	Rank           int
+	LastName       *string
+	FirstName      *string
+	WAID           *string
+	Club           *string
+	Country        *string
+	Remarks        *string
+	Classification *string
+	Segments       []ResultsPDFSegment
+	Total          int
+	XCount         *int
+	DNF            bool
+}
+
+type ResultsPDFGroup struct {
+	Class string
+	Rows  []ResultsPDFRow
 }
 
 type ResultsPDFCategory struct {
 	Category string
-	Rows     []ResultsPDFRow
+	Groups   []ResultsPDFGroup
+}
+
+type ResultsPDFSumGroup struct {
+	Heading  string
+	Segments []int
 }
 
 type ResultsPDFNewShooter struct {
@@ -91,8 +109,12 @@ type ResultsPDFData struct {
 	Name         string
 	Date         string
 	CourseLabel  string
+	Referee      string
+	RangeOfficer string
+	Range        string
 	Segments     []int
-	SegmentNames []string
+	Headings     []string
+	SumGroups    []ResultsPDFSumGroup
 	Categories   []ResultsPDFCategory
 	NewShooters  []ResultsPDFNewShooter
 }
@@ -120,10 +142,8 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	}
 	columns, cells := resultsColumns(d)
 	var rowCells [][]string
-	for _, c := range d.Categories {
-		for _, r := range c.Rows {
-			rowCells = append(rowCells, cells(r))
-		}
+	for _, r := range d.allRows() {
+		rowCells = append(rowCells, cells(r))
 	}
 	ms.sizeColumns(columns, rowCells)
 	newColumns, newCells := newShooterColumns(d)
@@ -135,7 +155,7 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	grid := pdfGrid
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
-		WithOrientation(orientation.Vertical).
+		WithOrientation(orientation.Horizontal).
 		WithLeftMargin(12).WithRightMargin(12).WithTopMargin(12).WithBottomMargin(12).
 		WithMaxGridSize(grid).
 		WithCustomFonts(fonts).
@@ -159,14 +179,20 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 	flow := &pdfFlow{add: m.AddRows, used: pdfLogoHeight + pdfHeadGap}
 	header, headerHeight := tableHeader(ms, columns, grid)
 	for _, c := range d.Categories {
-		flow.keep(pdfSectionHeight + headerHeight + pdfKeepRows*pdfRowHeight)
+		flow.keep(pdfSectionHeight + pdfGroupHeight + headerHeight + pdfKeepRows*pdfRowHeight)
 		flow.push(pdfSectionHeight, sectionRow(categoryTitle(c), grid))
-		flow.push(headerHeight, header)
-		for _, r := range c.Rows {
-			tr, height := tableRow(ms, columns, cells(r), grid, false, r.Rank >= 1 && r.Rank <= 3 && !r.DNF)
-			flow.push(height, tr)
+		for _, g := range c.Groups {
+			if g.Class != "" {
+				flow.keep(pdfGroupHeight + headerHeight + pdfKeepRows*pdfRowHeight)
+				flow.push(pdfGroupHeight, groupRow(g.Class, grid))
+			}
+			flow.push(headerHeight, header)
+			for _, r := range g.Rows {
+				tr, height := tableRow(ms, columns, cells(r), grid, false, r.Rank >= 1 && r.Rank <= 3 && !r.DNF)
+				flow.push(height, tr)
+			}
+			flow.push(pdfRowHeight, row.New(pdfRowHeight))
 		}
-		flow.push(pdfRowHeight, row.New(pdfRowHeight))
 	}
 	if len(d.Categories) == 0 {
 		m.AddPages(page.New().Add(textRow("No results.", grid, props.Text{Size: pdfFontSize, Color: pdfMuted})))
@@ -191,19 +217,15 @@ func ResultsPDF(d ResultsPDFData) ([]byte, error) {
 
 func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string) {
 	var first ResultsPDFRow
-	found := false
-	for _, c := range d.Categories {
-		if len(c.Rows) > 0 {
-			first, found = c.Rows[0], true
-			break
-		}
+	rows := d.allRows()
+	found := len(rows) > 0
+	if found {
+		first = rows[0]
 	}
-	for _, c := range d.Categories {
-		for _, r := range c.Rows {
-			if !r.DNF {
-				first = r
-				break
-			}
+	for _, r := range rows {
+		if !r.DNF {
+			first = r
+			break
 		}
 	}
 	showNames := found && first.LastName != nil
@@ -211,10 +233,16 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	showCountries := found && first.Country != nil
 	showSegments := found && len(first.Segments) > 0 && first.Segments[0].Score != nil
 	showX := found && first.XCount != nil
+	showRemarks, showClassification := false, false
+	for _, r := range rows {
+		showRemarks = showRemarks || r.Remarks != nil
+		showClassification = showClassification || r.Classification != nil
+	}
+	showSums := showSegments && len(d.SumGroups) > 0
 
-	columns := []pdfColumn{{title: "#", right: true}}
+	columns := []pdfColumn{{title: "Rank", right: true}}
 	if showNames {
-		columns = append(columns, pdfColumn{title: "Shooter", flex: true}, pdfColumn{title: "WAID", muted: true})
+		columns = append(columns, pdfColumn{title: "WAID", muted: true}, pdfColumn{title: "Name", flex: true})
 	}
 	if showClubs {
 		columns = append(columns, pdfColumn{title: "Club", flex: true})
@@ -222,18 +250,29 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 	if showCountries {
 		columns = append(columns, pdfColumn{title: "Country"})
 	}
+	if showClassification {
+		columns = append(columns, pdfColumn{title: "Classification"})
+	}
 	if showSegments {
 		for i, n := range d.Segments {
 			title := "S" + strconv.Itoa(n)
-			if i < len(d.SegmentNames) {
-				title = d.SegmentNames[i]
+			if i < len(d.Headings) {
+				title = d.Headings[i]
 			}
 			columns = append(columns, pdfColumn{title: title, right: true, equal: true})
 		}
 	}
-	columns = append(columns, pdfColumn{title: "Total", right: true})
+	if showSums {
+		for _, g := range d.SumGroups {
+			columns = append(columns, pdfColumn{title: "Match Sum " + g.Heading, right: true, equal: true})
+		}
+	}
 	if showX {
 		columns = append(columns, pdfColumn{title: "X", right: true})
+	}
+	columns = append(columns, pdfColumn{title: "Total", right: true})
+	if showRemarks {
+		columns = append(columns, pdfColumn{title: "Remarks", flex: true})
 	}
 	return columns, func(r ResultsPDFRow) []string {
 		cells := []string{strconv.Itoa(r.Rank)}
@@ -241,7 +280,7 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 			cells[0] = ""
 		}
 		if showNames {
-			cells = append(cells, derefString(r.FirstName)+" "+derefString(r.LastName), derefString(r.WAID))
+			cells = append(cells, derefString(r.WAID), derefString(r.FirstName)+" "+derefString(r.LastName))
 		}
 		if showClubs {
 			cells = append(cells, derefString(r.Club))
@@ -249,18 +288,29 @@ func resultsColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFRow) []string
 		if showCountries {
 			cells = append(cells, derefString(r.Country))
 		}
+		if showClassification {
+			cells = append(cells, derefString(r.Classification))
+		}
 		if showSegments {
 			for _, s := range r.Segments {
 				cells = append(cells, derefInt(s.Score))
 			}
+		}
+		if showSums {
+			for _, g := range d.SumGroups {
+				cells = append(cells, sumCell(r.Segments, g.Segments))
+			}
+		}
+		if showX {
+			cells = append(cells, derefInt(r.XCount))
 		}
 		if r.DNF {
 			cells = append(cells, pdfDNF)
 		} else {
 			cells = append(cells, strconv.Itoa(r.Total))
 		}
-		if showX {
-			cells = append(cells, derefInt(r.XCount))
+		if showRemarks {
+			cells = append(cells, derefString(r.Remarks))
 		}
 		return cells
 	}
@@ -297,6 +347,20 @@ func newShooterColumns(d ResultsPDFData) ([]pdfColumn, func(ResultsPDFNewShooter
 	}
 }
 
+func sumCell(segments []ResultsPDFSegment, group []int) string {
+	sum, any := 0, false
+	for _, s := range segments {
+		if s.Score != nil && slices.Contains(group, s.Segment) {
+			sum += *s.Score
+			any = true
+		}
+	}
+	if !any {
+		return ""
+	}
+	return strconv.Itoa(sum)
+}
+
 func derefString(s *string) string {
 	if s == nil {
 		return ""
@@ -312,28 +376,65 @@ func derefInt(n *int) string {
 }
 
 func headerRows(d ResultsPDFData, grid int) []core.Row {
-	logoCols := 0
-	var cols []core.Col
-	logoCols = max(grid/6, 1)
+	logoCols := max(grid/8, 1)
 	logo, logoExt := matchMarkIcon, extension.Png
 	if ext, ok := logoExtension(d.LogoType); ok && len(d.Logo) > 0 {
 		logo, logoExt = d.Logo, ext
 	}
-	cols = append(cols, image.NewFromBytesCol(logoCols, logo, logoExt, props.Rect{Center: true, Percent: 100}))
 	title := d.ClubName
 	if title == "" {
 		title = "MatchMark"
 	}
-	info := d.Name + "  ·  " + d.Date + "  ·  " + d.CourseLabel + "  ·  " + shooterCount(d.participants())
-	textCol := col.New(grid-logoCols).Add(
-		text.New(title, props.Text{Size: 16, Style: fontstyle.Bold, Top: 2, Left: 2}),
-		text.New(info, props.Text{Size: 10, Top: 10, Left: 2, Color: pdfMuted}),
-	)
-	cols = append(cols, textCol)
+	lines := d.headerLines()
+	texts := []core.Component{
+		text.New(title, props.Text{Size: 16, Style: fontstyle.Bold, Top: 1, Left: 2}),
+		text.New(lines[0], props.Text{Size: 10, Top: 8.5, Left: 2, Color: pdfMuted}),
+	}
+	if len(lines) > 1 {
+		texts = append(texts, text.New(lines[1], props.Text{Size: 9, Top: 14, Left: 2, Color: pdfMuted}))
+	}
 	return []core.Row{
-		row.New(pdfLogoHeight).Add(cols...),
+		row.New(pdfLogoHeight).Add(
+			image.NewFromBytesCol(logoCols, logo, logoExt, props.Rect{Center: true, Percent: 100}),
+			col.New(grid-2*logoCols).Add(texts...),
+			image.NewFromBytesCol(logoCols, wa1500Logo, extension.Png, props.Rect{Center: true, Percent: 100}),
+		),
 		row.New(pdfHeadGap),
 	}
+}
+
+func (d ResultsPDFData) headerLines() []string {
+	lines := []string{d.Name + "  ·  " + d.Date + "  ·  " + d.CourseLabel + "  ·  " + shooterCount(d.participants())}
+	var parts []string
+	if d.Referee != "" {
+		parts = append(parts, "Referee: "+d.Referee)
+	}
+	if d.RangeOfficer != "" {
+		parts = append(parts, "Range officer: "+d.RangeOfficer)
+	}
+	if d.Range != "" {
+		parts = append(parts, "Range: "+d.Range)
+	}
+	if len(parts) > 0 {
+		lines = append(lines, strings.Join(parts, "  ·  "))
+	}
+	return lines
+}
+
+func (d ResultsPDFData) allRows() []ResultsPDFRow {
+	var rows []ResultsPDFRow
+	for _, c := range d.Categories {
+		rows = append(rows, c.rows()...)
+	}
+	return rows
+}
+
+func (c ResultsPDFCategory) rows() []ResultsPDFRow {
+	var rows []ResultsPDFRow
+	for _, g := range c.Groups {
+		rows = append(rows, g.Rows...)
+	}
+	return rows
 }
 
 const RepoURL = "https://github.com/sollie/matchmark"
@@ -371,6 +472,10 @@ func textRow(s string, grid int, p props.Text) core.Row {
 
 func sectionRow(title string, grid int) core.Row {
 	return row.New(pdfSectionHeight).Add(col.New(grid).Add(text.New(title, props.Text{Size: 10, Style: fontstyle.Bold, Top: 2})))
+}
+
+func groupRow(title string, grid int) core.Row {
+	return row.New(pdfGroupHeight).Add(col.New(grid).Add(text.New(title, props.Text{Size: 9, Style: fontstyle.Bold, Top: 1.2, Color: pdfMuted})))
 }
 
 func tableHeader(ms *measurer, columns []pdfColumn, grid int) (core.Row, float64) {
@@ -423,11 +528,7 @@ func tableRow(ms *measurer, columns []pdfColumn, cells []string, grid int, heade
 }
 
 func (d ResultsPDFData) participants() int {
-	n := 0
-	for _, c := range d.Categories {
-		n += len(c.Rows)
-	}
-	return n
+	return len(d.allRows())
 }
 
 func shooterCount(n int) string {
@@ -438,7 +539,7 @@ func shooterCount(n int) string {
 }
 
 func categoryTitle(c ResultsPDFCategory) string {
-	return c.Category + "  ·  " + shooterCount(len(c.Rows))
+	return c.Category + "  ·  " + shooterCount(len(c.rows()))
 }
 
 type pdfFlow struct {

@@ -33,13 +33,13 @@ test.describe("entries", () => {
     await expect(page.getByLabel("Entry lane")).toHaveValue("2");
     await form.getByRole("combobox", { name: "Shooter" }).fill(shooter.last_name);
     await page.getByRole("option", { name: new RegExp(shooter.last_name) }).click();
-    await form.getByLabel("Entry category").selectOption("Pistol");
+    await form.getByLabel("Entry category").selectOption("Pistol 1500");
     await form.getByRole("button", { name: "Add entry" }).click();
 
     const added = row(page, shooter.last_name);
     await expect(added).toBeVisible();
     await expect(added.locator("td.lane")).toHaveText("2");
-    await expect(added.locator("td.category")).toHaveText("Pistol");
+    await expect(added.locator("td.category")).toHaveText("Pistol 1500");
   });
 
   test("a taken lane is rejected and an entered shooter is not offered again", async ({
@@ -80,10 +80,10 @@ test.describe("entries", () => {
     const entryRow = row(page, entry.shooter.last_name);
     await entryRow.getByRole("button", { name: "Move", exact: true }).click();
     await entryRow.getByLabel("Move lane").fill("5");
-    await entryRow.getByLabel("Move category").selectOption("Pistol OS");
+    await entryRow.getByLabel("Move category").selectOption("Pistol Optical Sight 1500");
     await entryRow.getByRole("button", { name: "Save", exact: true }).click();
     await expect(entryRow.locator("td.lane")).toHaveText("5");
-    await expect(entryRow.locator("td.category")).toHaveText("Pistol OS");
+    await expect(entryRow.locator("td.category")).toHaveText("Pistol Optical Sight 1500");
 
     await entryRow.getByRole("button", { name: "Withdraw" }).click();
     await expect(entryRow.getByText("Withdrawn", { exact: true })).toBeVisible();
@@ -91,6 +91,27 @@ test.describe("entries", () => {
 
     await entryRow.getByRole("button", { name: "Remove", exact: true }).click();
     await expect(row(page, entry.shooter.last_name)).toHaveCount(0);
+  });
+
+  test("an admin can set and clear remarks on an entry", async ({
+    course,
+    adminPage: page,
+    admin,
+  }) => {
+    const match = await createMatch(admin);
+    const entry = await seedEntry(admin, match.id, 1);
+    await openMatch(page, match.id);
+
+    const entryRow = row(page, entry.shooter.last_name);
+    await entryRow.getByRole("button", { name: /Edit remarks for/ }).click();
+    await entryRow.getByRole("textbox", { name: /Remarks for/ }).fill("Late arrival");
+    await entryRow.getByRole("button", { name: "Save remarks" }).click();
+    await expect(entryRow.locator("td.remarks")).toContainText("Late arrival");
+
+    await entryRow.getByRole("button", { name: /Edit remarks for/ }).click();
+    await entryRow.getByRole("textbox", { name: /Remarks for/ }).fill("");
+    await entryRow.getByRole("button", { name: "Save remarks" }).click();
+    await expect(entryRow.locator("td.remarks")).not.toContainText("Late arrival");
   });
 });
 
@@ -381,9 +402,11 @@ test.describe("admin ring counts", () => {
     admin,
   }) => {
     const match = await createMatch(admin, { course: "150" });
-    const entry = await seedEntry(admin, match.id, 1, "Carbine");
+    const entry = await seedEntry(admin, match.id, 1, "Carbine 1500");
     await openMatch(page, match.id);
-    await expect(row(page, entry.shooter.last_name).locator("td.category")).toHaveText("Carbine");
+    await expect(row(page, entry.shooter.last_name).locator("td.category")).toHaveText(
+      "Carbine 1500",
+    );
   });
 
   test("an archived shooter is refused with an inline unarchive", async ({

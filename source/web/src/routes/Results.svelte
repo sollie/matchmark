@@ -20,6 +20,19 @@
     ["M", "miss"],
   ] as const;
 
+  type Category = Results["categories"][number];
+
+  const allRows = (c: Category): Row[] => [...c.rows, ...c.groups.flatMap((g) => g.rows)];
+
+  function sections(c: Category) {
+    if (c.groups.length === 0) return [{ heading: null, rows: c.rows, dnf: c.did_not_finish }];
+    return c.groups.map((g, i) => ({
+      heading: g.class.name,
+      rows: g.rows,
+      dnf: i === c.groups.length - 1 ? c.did_not_finish : [],
+    }));
+  }
+
   function hasCounts(row: Row): boolean {
     return row.segments.some((s) => s.ring_counts !== undefined);
   }
@@ -39,25 +52,28 @@
 
   const id = $derived(matchRoute("/results/:id", router.path)?.id ?? null);
   const showNames = $derived(
-    results?.categories.some((c) => c.rows.some((r) => r.last_name !== undefined)) ?? false,
+    results?.categories.some((c) => allRows(c).some((r) => r.last_name !== undefined)) ?? false,
   );
   const showClubs = $derived(
-    results?.categories.some((c) => c.rows.some((r) => r.club !== undefined)) ?? false,
+    results?.categories.some((c) => allRows(c).some((r) => r.club !== undefined)) ?? false,
   );
   const showClass = $derived(
-    results?.categories.some((c) => c.rows.some((r) => (r.classification?.value ?? 0) > 0)) ??
+    results?.categories.some((c) => allRows(c).some((r) => (r.classification?.value ?? 0) > 0)) ??
       false,
   );
   const showCountries = $derived(
-    results?.categories.some((c) => c.rows.some((r) => r.country !== undefined)) ?? false,
+    results?.categories.some((c) => allRows(c).some((r) => r.country !== undefined)) ?? false,
+  );
+  const showRemarks = $derived(
+    results?.categories.some((c) => allRows(c).some((r) => r.remarks !== undefined)) ?? false,
   );
   const showSegments = $derived(
     results?.categories.some((c) =>
-      c.rows.some((r) => r.segments.some((s) => s.score !== undefined)),
+      allRows(c).some((r) => r.segments.some((s) => s.score !== undefined)),
     ) ?? false,
   );
   const showX = $derived(
-    results?.categories.some((c) => c.rows.some((r) => r.x_count !== undefined)) ?? false,
+    results?.categories.some((c) => allRows(c).some((r) => r.x_count !== undefined)) ?? false,
   );
 
   $effect(() => {
@@ -128,85 +144,93 @@
       {#each results.categories as category (category.category)}
         <section class="category">
           <h3>{category.category}</h3>
-          <div class="scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th class="num">#</th>
-                  {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
-                  {#if showClass}<th>Class</th>{/if}
-                  {#if showClubs}<th>Club</th>{/if}
-                  {#if showCountries}<th>Country</th>{/if}
-                  {#if showSegments}{#each results.segments as n (n)}<th class="num"
-                        >{segmentLabel(results.match.course, n)}</th
-                      >{/each}{/if}
-                  <th class="num">Total</th>
-                  {#if showX}<th class="num">X</th>{/if}
-                </tr>
-              </thead>
-              <tbody>
-                {#each category.rows as row, i (i)}
-                  <tr>
-                    <td class="num">{row.rank}</td>
-                    {#if showNames}<td>{row.first_name} {row.last_name}</td><td>{row.waid ?? ""}</td
-                      >{/if}
-                    {#if showClass}<td
-                        >{row.classification && row.classification.value > 0
-                          ? row.classification.name
-                          : ""}</td
-                      >{/if}
-                    {#if showClubs}<td>{row.club}</td>{/if}
-                    {#if showCountries}<td>{row.country}</td>{/if}
-                    {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
-                          >{st.score ?? ""}</td
-                        >{/each}{/if}
-                    <td class="num total">{row.total}</td>
-                    {#if showX}<td class="num">{row.x_count}</td>{/if}
-                  </tr>
-                {/each}
-                {#each category.did_not_finish as row, i (i)}
-                  <tr class="dnf">
-                    <td class="num"></td>
-                    {#if showNames}<td>{row.first_name} {row.last_name}</td><td>{row.waid ?? ""}</td
-                      >{/if}
-                    {#if showClass}<td></td>{/if}
-                    {#if showClubs}<td>{row.club}</td>{/if}
-                    {#if showCountries}<td>{row.country}</td>{/if}
-                    {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
-                          >{st.score ?? ""}</td
-                        >{/each}{/if}
-                    <td class="num total">DNF</td>
-                    {#if showX}<td class="num"></td>{/if}
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-          {#each category.rows.filter(hasCounts) as row (row.rank + cardTitle(row))}
-            <div class="scroll score-card">
-              <table aria-label={`Score card for ${cardTitle(row)}`}>
+          {#each sections(category) as section (section.heading ?? "")}
+            {#if section.heading !== null}<h4>{section.heading}</h4>{/if}
+            <div class="scroll">
+              <table>
                 <thead>
                   <tr>
-                    <th>{cardTitle(row)}</th>
-                    {#each results.segments as n (n)}<th class="num"
-                        >{segmentLabel(results.match.course, n)}</th
-                      >{/each}
+                    <th class="num">#</th>
+                    {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
+                    {#if showClass}<th>Classification</th>{/if}
+                    {#if showClubs}<th>Club</th>{/if}
+                    {#if showCountries}<th>Country</th>{/if}
+                    {#if showSegments}{#each results.segments as n (n)}<th class="num"
+                          >{segmentLabel(results.match.course, n)}</th
+                        >{/each}{/if}
                     <th class="num">Total</th>
+                    {#if showX}<th class="num">X</th>{/if}
+                    {#if showRemarks}<th>Remarks</th>{/if}
                   </tr>
                 </thead>
                 <tbody>
-                  {#each rings as [label, key] (key)}
+                  {#each section.rows as row, i (i)}
                     <tr>
-                      <th scope="row">{label}</th>
-                      {#each row.segments as st (st.segment)}<td class="num"
-                          >{st.ring_counts?.[key] ?? ""}</td
-                        >{/each}
-                      <td class="num total">{ringTotal(row, key)}</td>
+                      <td class="num">{row.rank}</td>
+                      {#if showNames}<td>{row.first_name} {row.last_name}</td><td
+                          >{row.waid ?? ""}</td
+                        >{/if}
+                      {#if showClass}<td
+                          >{row.classification && row.classification.value > 0
+                            ? row.classification.name
+                            : ""}</td
+                        >{/if}
+                      {#if showClubs}<td>{row.club}</td>{/if}
+                      {#if showCountries}<td>{row.country}</td>{/if}
+                      {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
+                            >{st.score ?? ""}</td
+                          >{/each}{/if}
+                      <td class="num total">{row.total}</td>
+                      {#if showX}<td class="num">{row.x_count}</td>{/if}
+                      {#if showRemarks}<td>{row.remarks ?? ""}</td>{/if}
+                    </tr>
+                  {/each}
+                  {#each section.dnf as row, i (i)}
+                    <tr class="dnf">
+                      <td class="num"></td>
+                      {#if showNames}<td>{row.first_name} {row.last_name}</td><td
+                          >{row.waid ?? ""}</td
+                        >{/if}
+                      {#if showClass}<td></td>{/if}
+                      {#if showClubs}<td>{row.club}</td>{/if}
+                      {#if showCountries}<td>{row.country}</td>{/if}
+                      {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
+                            >{st.score ?? ""}</td
+                          >{/each}{/if}
+                      <td class="num total">DNF</td>
+                      {#if showX}<td class="num"></td>{/if}
+                      {#if showRemarks}<td>{row.remarks ?? ""}</td>{/if}
                     </tr>
                   {/each}
                 </tbody>
               </table>
             </div>
+            {#each section.rows.filter(hasCounts) as row (row.rank + cardTitle(row))}
+              <div class="scroll score-card">
+                <table aria-label={`Score card for ${cardTitle(row)}`}>
+                  <thead>
+                    <tr>
+                      <th>{cardTitle(row)}</th>
+                      {#each results.segments as n (n)}<th class="num"
+                          >{segmentLabel(results.match.course, n)}</th
+                        >{/each}
+                      <th class="num">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each rings as [label, key] (key)}
+                      <tr>
+                        <th scope="row">{label}</th>
+                        {#each row.segments as st (st.segment)}<td class="num"
+                            >{st.ring_counts?.[key] ?? ""}</td
+                          >{/each}
+                        <td class="num total">{ringTotal(row, key)}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            {/each}
           {/each}
         </section>
       {/each}

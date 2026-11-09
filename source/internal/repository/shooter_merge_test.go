@@ -32,7 +32,7 @@ func TestMergeShootersRechecksBlockersInsideTheTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i, id := range []int64{source, target} {
-		if _, err := repo.CreateEntry(ctx, repository.Entry{MatchID: matchID, ShooterID: id, Category: "Revolver", Lane: i + 1}, nil); err != nil {
+		if _, err := repo.CreateEntry(ctx, repository.Entry{MatchID: matchID, ShooterID: id, Category: "Revolver 1500", Lane: i + 1}, nil); err != nil {
 			t.Fatal(err)
 		}
 	}

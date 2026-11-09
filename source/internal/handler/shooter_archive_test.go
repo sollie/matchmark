@@ -100,7 +100,7 @@ func TestArchivedShooterKeepsEntriesAndCannotBeEnteredAgain(t *testing.T) {
 		t.Fatalf("existing entry changed %v", entries)
 	}
 	path := fmt.Sprintf("/api/matches/%d/entries", f.comp)
-	status, out := f.env.Do("POST", path, map[string]any{"shooter_id": other, "category": "Revolver", "lane": 2})
+	status, out := f.env.Do("POST", path, map[string]any{"shooter_id": other, "category": "Revolver 1500", "lane": 2})
 	if status != http.StatusConflict || out["error"] != "shooter_archived" {
 		t.Fatalf("got %d %v", status, out)
 	}
@@ -109,7 +109,7 @@ func TestArchivedShooterKeepsEntriesAndCannotBeEnteredAgain(t *testing.T) {
 	}
 
 	f.env.Do("POST", fmt.Sprintf("/api/shooters/%d/unarchive", other), nil)
-	if status, out := f.env.Do("POST", path, map[string]any{"shooter_id": other, "category": "Revolver", "lane": 2}); status != http.StatusCreated {
+	if status, out := f.env.Do("POST", path, map[string]any{"shooter_id": other, "category": "Revolver 1500", "lane": 2}); status != http.StatusCreated {
 		t.Fatalf("after unarchive %d %v", status, out)
 	}
 }

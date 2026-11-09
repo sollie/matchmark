@@ -93,9 +93,9 @@ test.describe("spectator", () => {
     const match = await createMatch(admin, { name: uniqueName("Grouped") });
     await setVisibility(admin, match.id, { group_by_category: true });
     const plans = [
-      { lane: 1, category: "Pistol" as const, counts: { "10": 24 } },
-      { lane: 2, category: "Revolver" as const, counts: { "9": 24 } },
-      { lane: 3, category: "Revolver" as const, counts: { "10": 24 } },
+      { lane: 1, category: "Pistol 1500" as const, counts: { "10": 24 } },
+      { lane: 2, category: "Revolver 1500" as const, counts: { "9": 24 } },
+      { lane: 3, category: "Revolver 1500" as const, counts: { "10": 24 } },
     ];
     const seeded = [];
     for (const plan of plans) {
@@ -107,9 +107,12 @@ test.describe("spectator", () => {
     }
     await openMatch(page, match.name);
 
-    const revolver = page.getByRole("heading", { name: "Revolver", level: 3 });
+    const revolver = page.getByRole("heading", { name: "Revolver 1500", level: 3 });
     await expect(revolver).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3 })).toHaveText(["Revolver", "Pistol"]);
+    await expect(page.getByRole("heading", { level: 3 })).toHaveText([
+      "Revolver 1500 - Master",
+      "Pistol 1500 - Master",
+    ]);
     const tables = page.getByRole("table");
     await expect(tables).toHaveCount(2);
     const first = tables.nth(0).locator("tbody tr");
@@ -233,7 +236,7 @@ test.describe("spectator", () => {
       ...(shown.names ? [`${shooter.first_name} ${shooter.last_name}`] : []),
       ...(shown.clubs ? [shooter.club] : []),
       ...(shown.countries ? [shooter.country] : []),
-      "Revolver",
+      "Revolver 1500",
       shown.segment ? "240" : "",
       ...Array<string>(course.segments - 1).fill(""),
       "240",

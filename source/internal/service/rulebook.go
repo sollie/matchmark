@@ -54,7 +54,7 @@ func (s *Service) Rulebook() (RulebookView, error) {
 			course.Stages = append(course.Stages, RulebookStage(st))
 		}
 		for _, sg := range c.Segments {
-			course.Segments = append(course.Segments, RulebookSegment(sg))
+			course.Segments = append(course.Segments, RulebookSegment{Number: sg.Number, Name: sg.Name, Stages: sg.Stages, Shots: sg.Shots})
 		}
 		view.Courses = append(view.Courses, course)
 	}

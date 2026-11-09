@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/rulebook"
 	"github.com/sollie/matchmark/internal/wa1500"
 )
 
@@ -57,13 +58,45 @@ type StandingView struct {
 	Club       *string                `json:"club,omitempty"`
 	Country    *string                `json:"country,omitempty"`
 	Class      *wa1500.Classification `json:"classification,omitempty"`
+	CompeteAs  *wa1500.Classification `json:"class,omitempty"`
+	ClassGroup *wa1500.Classification `json:"class_group,omitempty"`
 	XCount     *int                   `json:"x_count,omitempty"`
 	RingCounts *RingCountsView        `json:"ring_counts,omitempty"`
 	Segments   []SegmentScoreView     `json:"segments,omitempty"`
 }
 
+func classificationPtr(v *int) *wa1500.Classification {
+	if v == nil {
+		return nil
+	}
+	c := wa1500.Classification(*v)
+	return &c
+}
+
 func ringCountsView(c repository.RingCounts) RingCountsView {
 	return RingCountsView{X: c.X, Ten: c.Ten, Nine: c.Nine, Eight: c.Eight, Seven: c.Seven, Zero: c.Zero, Miss: c.Miss}
+}
+
+func standingClass(e repository.SpectatorEntry, id repository.EntryIdentity) *wa1500.Classification {
+	class := id.Class
+	if class == nil && !e.Frozen() {
+		class = id.Classification
+	}
+	return classificationPtr(class)
+}
+
+func applyClassGroups(views []StandingView, classified bool) {
+	incomplete := map[string]bool{}
+	for _, v := range views {
+		if v.ClassGroup == nil {
+			incomplete[v.Category] = true
+		}
+	}
+	for i := range views {
+		if !classified || incomplete[views[i].Category] {
+			views[i].ClassGroup = nil
+		}
+	}
 }
 
 func projectStandings(currentSegment int, vis repository.Visibility, entries []repository.SpectatorEntry) []StandingView {
@@ -102,17 +135,18 @@ func projectStandings(currentSegment int, vis repository.Visibility, entries []r
 		if vis.Names {
 			v.LastName, v.FirstName = &e.LastName, &e.FirstName
 		}
+		id := e.Identity(e.Club, e.Country, e.Classes)
+		if class := standingClass(e, id); class != nil && rulebook.IsClassified(e.Category) {
+			v.ClassGroup = class
+		}
 		if vis.Names {
-			if c, ok := e.Classes[e.Category]; ok {
-				class := wa1500.Classification(c)
-				v.Class = &class
-			}
+			v.Class, v.CompeteAs = classificationPtr(id.Classification), classificationPtr(id.Class)
 		}
 		if vis.Clubs {
-			v.Club = &e.Club
+			v.Club = &id.Club
 		}
 		if vis.Countries {
-			v.Country = &e.Country
+			v.Country = &id.Country
 		}
 		if vis.RingCounts {
 			c := ringCountsView(total)

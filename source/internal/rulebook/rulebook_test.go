@@ -102,10 +102,13 @@ func TestCourseLabelsAndKeys(t *testing.T) {
 
 func TestCategoriesPerCourse(t *testing.T) {
 	cases := map[string][]string{
-		"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Carbine"},
-		"60":  {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
-		"48":  {"Revolver", "Pistol"},
-		"40":  {"Revolver"},
+		"150": {"Revolver 1500", "Pistol 1500", "Revolver Optical Sight 1500", "Pistol Optical Sight 1500", "Carbine 1500"},
+		"60":  {"Open", "Distinguished Revolver", "Distinguished Pistol"},
+		"48": {
+			"Standard Revolver 4,25\"", "Standard Revolver 2,75\"",
+			"Standard Semi-Automatic Pistol 5,5\" Production", "Standard Semi-Automatic Pistol 5,5\"", "Standard Semi-Automatic Pistol 3,7\"",
+		},
+		"40": {"Standard Revolver 2,75\" 5 Shot"},
 	}
 	for key, want := range cases {
 		got, err := rulebook.CategoriesForCourse(key)
@@ -115,18 +118,42 @@ func TestCategoriesPerCourse(t *testing.T) {
 		if !slices.Equal(got, want) {
 			t.Errorf("CategoriesForCourse(%q) = %v, want %v", key, got, want)
 		}
-		if err := rulebook.ValidateCategory(key, "Carbine"); (err == nil) != (key == "150") {
-			t.Errorf("ValidateCategory(%q, Carbine) = %v", key, err)
+		if err := rulebook.ValidateCategory(key, "Carbine 1500"); (err == nil) != (key == "150") {
+			t.Errorf("ValidateCategory(%q, Carbine 1500) = %v", key, err)
 		}
 	}
 	if _, err := rulebook.CategoriesForCourse("99"); err == nil {
 		t.Error("unknown course accepted")
 	}
-	if err := rulebook.ValidateCategory("40", "Pistol"); err == nil {
-		t.Error("Pistol accepted for 40")
+	if err := rulebook.ValidateCategory("40", "Open"); err == nil {
+		t.Error("Open accepted for 40")
 	}
-	if err := rulebook.ValidateCategory("48", "Pistol"); err != nil {
-		t.Errorf("Pistol rejected for 48: %v", err)
+	if err := rulebook.ValidateCategory("150", "Revolver"); err == nil {
+		t.Error("legacy name accepted")
+	}
+}
+
+func TestCategoryOrder(t *testing.T) {
+	want := []string{
+		"Revolver 1500", "Pistol 1500", "Revolver Optical Sight 1500", "Pistol Optical Sight 1500",
+		"Open", "Distinguished Revolver", "Distinguished Pistol",
+		"Standard Revolver 4,25\"", "Standard Revolver 2,75\"", "Standard Revolver 2,75\" 5 Shot",
+		"Standard Semi-Automatic Pistol 5,5\" Production", "Standard Semi-Automatic Pistol 5,5\"", "Standard Semi-Automatic Pistol 3,7\"",
+		"Carbine 1500",
+	}
+	if got := rulebook.Categories(); !slices.Equal(got, want) {
+		t.Errorf("Categories() = %v", got)
+	}
+}
+
+func TestClassifiedCategories(t *testing.T) {
+	var names []string
+	for _, c := range rulebook.ClassifiedCategories() {
+		names = append(names, c.Name)
+	}
+	want := []string{"Revolver 1500", "Pistol 1500", "Revolver Optical Sight 1500", "Pistol Optical Sight 1500", "Carbine 1500"}
+	if !slices.Equal(names, want) {
+		t.Errorf("ClassifiedCategories() = %v", names)
 	}
 }
 
@@ -161,6 +188,39 @@ func TestStageParts(t *testing.T) {
 		}
 		if got := c.Stages[0].Label(); got != "Stage 1" {
 			t.Errorf("course %s Label() = %q", key, got)
+		}
+	}
+}
+
+func TestShortHeadingsAndSumGroups(t *testing.T) {
+	want := map[string][]string{
+		"150": {"1", "2", "3", "4", "5:1", "5:2"},
+		"60":  {"1-2", "3-4"},
+		"48":  {"1-2", "3-4"},
+		"40":  {"1-2", "3-4"},
+	}
+	for key, heads := range want {
+		course, err := rulebook.CourseByKey(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, s := range course.Segments {
+			got = append(got, s.Short)
+		}
+		if !slices.Equal(got, heads) {
+			t.Errorf("course %s short headings = %q, want %q", key, got, heads)
+		}
+	}
+	c150, _ := rulebook.CourseByKey("150")
+	if len(c150.SumGroups) != 2 || c150.SumGroups[0].Heading != "1-4" || !slices.Equal(c150.SumGroups[0].Segments, []int{1, 2, 3, 4}) ||
+		c150.SumGroups[1].Heading != "5" || !slices.Equal(c150.SumGroups[1].Segments, []int{5, 6}) {
+		t.Errorf("course 150 sum groups = %+v", c150.SumGroups)
+	}
+	for _, key := range []string{"60", "48", "40"} {
+		c, _ := rulebook.CourseByKey(key)
+		if len(c.SumGroups) != 0 {
+			t.Errorf("course %s has sum groups %+v", key, c.SumGroups)
 		}
 	}
 }

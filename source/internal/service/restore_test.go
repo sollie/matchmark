@@ -131,6 +131,7 @@ func normalizedReport(t *testing.T, repo *repository.Repository, compID int64) [
 		entries[i].Shooter.ID = 0
 		entries[i].ShooterID = 0
 		entries[i].Shooter.Country = ""
+		entries[i].ClassificationAtMatch, entries[i].Class, entries[i].Club, entries[i].Country = nil, nil, nil, nil
 	}
 	return entries
 }
@@ -143,7 +144,7 @@ func mergePlan(name string, counts [7]int, segments ...int) restore.Plan {
 	return restore.Plan{Matches: []restore.RestoredMatch{{
 		ID: 7, Name: name, Date: "2026-10-19", CourseOfFire: restore.CourseOfFire{Key: "150"},
 		Entries: []restore.RestoredEntry{{
-			ID: 1, Lane: 2, Category: "Pistol",
+			ID: 1, Lane: 2, Category: "Pistol 1500",
 			Shooter:  restore.Shooter{FirstName: "Ann", LastName: "Lee"},
 			Segments: scored,
 		}},
@@ -220,6 +221,10 @@ func reportOutputs(t *testing.T, repo *repository.Repository, compID int64) ([]b
 	entries, err := repo.ReportEntries(ctx, compID)
 	if err != nil {
 		t.Fatal(err)
+	}
+	for i := range entries {
+		entries[i].Shooter.Country = ""
+		entries[i].ClassificationAtMatch, entries[i].Class, entries[i].Club, entries[i].Country = nil, nil, nil, nil
 	}
 	data := report.Data{Match: comp, Entries: entries}
 	csvBytes, err := report.CSV(data)

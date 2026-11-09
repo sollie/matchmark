@@ -10,9 +10,10 @@ type User struct {
 	CanDownloadBackup  bool
 	MustChangePassword bool
 	PasswordHash       string
+	WAID               string
 }
 
-const userColumns = `id, username, role, active, can_download_backup, must_change_password, password_hash`
+const userColumns = `id, username, role, active, can_download_backup, must_change_password, password_hash, COALESCE(waid, '')`
 
 type scanner interface {
 	Scan(dest ...any) error
@@ -20,7 +21,7 @@ type scanner interface {
 
 func scanUser(s scanner) (User, error) {
 	var u User
-	err := s.Scan(&u.ID, &u.Username, &u.Role, &u.Active, &u.CanDownloadBackup, &u.MustChangePassword, &u.PasswordHash)
+	err := s.Scan(&u.ID, &u.Username, &u.Role, &u.Active, &u.CanDownloadBackup, &u.MustChangePassword, &u.PasswordHash, &u.WAID)
 	return u, mapErr(err)
 }
 
@@ -83,7 +84,7 @@ func (r *Repository) CreateSession(tokenHash string, userID int, expiresAt time.
 
 func (r *Repository) SessionUser(tokenHash string, now time.Time) (User, error) {
 	return scanUser(r.db.QueryRow(
-		`SELECT u.id, u.username, u.role, u.active, u.can_download_backup, u.must_change_password, u.password_hash
+		`SELECT u.id, u.username, u.role, u.active, u.can_download_backup, u.must_change_password, u.password_hash, COALESCE(u.waid, '')
 		 FROM user_sessions s JOIN users u ON u.id = s.user_id
 		 WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`,
 		tokenHash, now.UTC().Format(time.RFC3339),
@@ -186,4 +187,23 @@ func (r *Repository) SetRole(userID int, role string) error {
 		}
 	}
 	return mapErr(tx.Commit())
+}
+
+func (r *Repository) SetUserWAID(userID int, waid string) error {
+	var value any
+	if waid != "" {
+		value = waid
+	}
+	res, err := r.db.Exec(`UPDATE users SET waid = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, value, userID)
+	if err != nil {
+		return mapErr(err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

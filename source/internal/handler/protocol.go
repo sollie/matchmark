@@ -74,6 +74,7 @@ var errorRules = []errorRule{
 	{repository.ErrNotFound, http.StatusNotFound, "not found"},
 	{service.ErrGone, http.StatusGone, "gone"},
 	{service.ErrInvalid, http.StatusUnprocessableEntity, "invalid input"},
+	{service.ErrWAIDNotFound, http.StatusUnprocessableEntity, ""},
 	{service.ErrUnknownPalette, http.StatusBadRequest, "unknown palette"},
 	{service.ErrNothingToReport, http.StatusUnprocessableEntity, "nothing to report"},
 	{service.ErrInvalidUsername, http.StatusUnprocessableEntity, ""},

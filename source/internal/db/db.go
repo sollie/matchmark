@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,13 +20,22 @@ import (
 var migrationFiles embed.FS
 
 func Open(path string) (*sql.DB, error) {
+	conn, err := openConn(path)
+	if err != nil {
+		return nil, err
+	}
+	return finishOpen(conn)
+}
+
+func openConn(path string) (*sql.DB, error) {
 	probe, err := sql.Open("turso", path+"?_busy_timeout=5000")
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 	conn := sql.OpenDB(&connector{drv: probe.Driver(), dsn: path + "?_busy_timeout=5000"})
 	_ = probe.Close()
-	return finishOpen(conn)
+	conn.SetMaxOpenConns(1)
+	return conn, nil
 }
 
 func OpenReplicated(ctx context.Context, path, remoteURL string) (*sql.DB, *turso.TursoSyncDb, error) {
@@ -56,7 +66,7 @@ func OpenReplicated(ctx context.Context, path, remoteURL string) (*sql.DB, *turs
 
 func finishOpen(conn *sql.DB) (*sql.DB, error) {
 	conn.SetMaxOpenConns(1)
-	if err := migrate(conn); err != nil {
+	if err := migrate(conn, math.MaxInt); err != nil {
 		_ = conn.Close()
 		return nil, err
 	}
@@ -93,7 +103,7 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 
 func (c *connector) Driver() driver.Driver { return c.drv }
 
-func migrate(conn *sql.DB) error {
+func migrate(conn *sql.DB, maxVersion int) error {
 	if _, err := conn.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)`); err != nil {
 		return fmt.Errorf("create schema_migrations: %w", err)
 	}
@@ -110,6 +120,9 @@ func migrate(conn *sql.DB) error {
 		version, err := strconv.Atoi(strings.SplitN(name, "_", 2)[0])
 		if err != nil {
 			return fmt.Errorf("migration %s: invalid version prefix", name)
+		}
+		if version > maxVersion {
+			break
 		}
 		var applied int
 		if err := conn.QueryRow(`SELECT COUNT(*) FROM schema_migrations WHERE version = ?`, version).Scan(&applied); err != nil {
@@ -130,7 +143,17 @@ func migrate(conn *sql.DB) error {
 }
 
 func apply(conn *sql.DB, version int, body string) error {
-	tx, err := conn.Begin()
+	ctx := context.Background()
+	c, err := conn.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = c.Close() }()
+	if _, err := c.ExecContext(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
+		return err
+	}
+	defer func() { _, _ = c.ExecContext(ctx, `PRAGMA foreign_keys = ON`) }()
+	tx, err := c.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
