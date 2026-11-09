@@ -37,7 +37,7 @@ const entry = (overrides: Partial<EntryWithSegments> = {}): EntryWithSegments =>
   id: 1,
   match_id: 5,
   shooter_id: 7,
-  category: "Pistol",
+  category: "Pistol 1500",
   lane: 1,
   withdrawn: false,
   segments: [
@@ -91,8 +91,13 @@ function setup(
   respond?: Parameters<typeof stubFetch>[0],
 ) {
   rulebook.courses = [
-    course("150", ["Revolver", "Pistol", "Revolver OS", "Pistol OS"]),
-    course("40", ["Revolver"]),
+    course("150", [
+      "Revolver 1500",
+      "Pistol 1500",
+      "Revolver Optical Sight 1500",
+      "Pistol Optical Sight 1500",
+    ]),
+    course("40", ["Revolver 1500"]),
   ];
   const calls = stubFetch(respond);
   const reload = vi.fn(async () => {});
@@ -109,10 +114,10 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("Entries", () => {
   it("offers only the categories the course allows when adding and editing", async () => {
-    const { user } = setup([entry({ category: "Revolver" })], "40");
-    expect(options("Entry category")).toEqual(["Revolver"]);
+    const { user } = setup([entry({ category: "Revolver 1500" })], "40");
+    expect(options("Entry category")).toEqual(["Revolver 1500"]);
     await user.click(screen.getByRole("button", { name: "Move" }));
-    expect(options("Move category")).toEqual(["Revolver"]);
+    expect(options("Move category")).toEqual(["Revolver 1500"]);
   });
 
   it("titles segment columns with the rulebook segment name", () => {
@@ -124,19 +129,22 @@ describe("Entries", () => {
   });
 
   it("keeps the current category of a legacy entry selectable when editing", async () => {
-    const { user } = setup([entry({ category: "Pistol" })], "40");
+    const { user } = setup([entry({ category: "Pistol 1500" })], "40");
     await user.click(screen.getByRole("button", { name: "Move" }));
-    expect(options("Move category")).toEqual(["Pistol", "Revolver"]);
+    expect(options("Move category")).toEqual(["Pistol 1500", "Revolver 1500"]);
   });
 
   it("falls back to the first allowed category when the course changes", async () => {
     const { view, user } = setup([], "150");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Entry category" }), "Pistol OS");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Entry category" }),
+      "Pistol Optical Sight 1500",
+    );
     await view.rerender({ course: "40" });
-    expect(options("Entry category")).toEqual(["Revolver"]);
+    expect(options("Entry category")).toEqual(["Revolver 1500"]);
     expect(
       (screen.getByRole("combobox", { name: "Entry category" }) as HTMLSelectElement).value,
-    ).toBe("Revolver");
+    ).toBe("Revolver 1500");
   });
 
   it("labels each segment as Accepted or Open", () => {

@@ -96,7 +96,7 @@ func TestBackToDraftBehavesLikeDraft(t *testing.T) {
 	}
 
 	f.entries[2] = f.addEntry(t, "LATE", 2)
-	if status, _ := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/entries/%d", f.comp, f.entries[2]), map[string]any{"category": "Revolver", "lane": 4}); status != http.StatusOK {
+	if status, _ := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/entries/%d", f.comp, f.entries[2]), map[string]any{"category": "Revolver 1500", "lane": 4}); status != http.StatusOK {
 		t.Fatalf("lane edit: %d", status)
 	}
 	if status, _ := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d", f.comp), map[string]any{"name": "Club Match", "date": "2026-05-01", "course": "60"}); status != http.StatusConflict {

@@ -75,26 +75,26 @@ func classOf(t *testing.T, env *apitest.Env, shooter int, category string) any {
 func TestAddEntryRefreshesStaleShooterFromRegister(t *testing.T) {
 	fake := &fakeRegister{}
 	fake.set([]wa1500.Shooter{
-		registerShooter("33289", "DECOY", "Other", map[string]wa1500.Classification{"Revolver": wa1500.HighMaster}),
-		registerShooter("3289", "anderson", "CCSC", map[string]wa1500.Classification{"Revolver": wa1500.Master, "Carbine": wa1500.Unclassified}),
+		registerShooter("33289", "DECOY", "Other", map[string]wa1500.Classification{"Revolver 1500": wa1500.HighMaster}),
+		registerShooter("3289", "anderson", "CCSC", map[string]wa1500.Classification{"Revolver 1500": wa1500.Master, "Carbine 1500": wa1500.Unclassified}),
 	}, nil)
 	env := newRegisterEnv(t, fake)
 	shooter := createShooter(env, "3289")
 	match := newMatch(env)
 
-	if status, out := addToMatch(env, match, shooter, "Revolver", 1); status != http.StatusCreated {
+	if status, out := addToMatch(env, match, shooter, "Revolver 1500", 1); status != http.StatusCreated {
 		t.Fatalf("add: %d %v", status, out)
 	}
 	_, got := env.Do("GET", fmt.Sprintf("/api/shooters/%d", shooter), nil)
-	revolver := got["classifications"].(map[string]any)["Revolver"].(map[string]any)
+	revolver := got["classifications"].(map[string]any)["Revolver 1500"].(map[string]any)
 	if revolver["value"] != float64(4) || revolver["name"] != "Master" {
 		t.Fatalf("revolver %v", revolver)
 	}
-	carbine := got["classifications"].(map[string]any)["Carbine"].(map[string]any)
+	carbine := got["classifications"].(map[string]any)["Carbine 1500"].(map[string]any)
 	if carbine["value"] != float64(0) || carbine["name"] != "Unclassified" {
 		t.Fatalf("carbine %v", carbine)
 	}
-	if _, ok := got["classifications"].(map[string]any)["Pistol"]; ok {
+	if _, ok := got["classifications"].(map[string]any)["Pistol 1500"]; ok {
 		t.Fatalf("unfetched category present: %v", got["classifications"])
 	}
 	if got["club"] != "CCSC" || got["last_name"] != "ANDERSON" || got["country"] != "Canada" || got["wa1500_synced_at"] == nil {
@@ -109,17 +109,17 @@ func TestAddEntryDoesNotRefreshFreshShooter(t *testing.T) {
 	shooter := createShooter(env, "3289")
 	match := newMatch(env)
 	other := newMatch(env)
-	addToMatch(env, match, shooter, "Revolver", 1)
+	addToMatch(env, match, shooter, "Revolver 1500", 1)
 	env.Advance(23 * time.Hour)
 	env.Login()
-	addToMatch(env, other, shooter, "Revolver", 1)
+	addToMatch(env, other, shooter, "Revolver 1500", 1)
 	if fake.calls() != 1 {
 		t.Fatalf("calls %d", fake.calls())
 	}
 	env.Advance(2 * time.Hour)
 	env.Login()
 	third := newMatch(env)
-	addToMatch(env, third, shooter, "Revolver", 1)
+	addToMatch(env, third, shooter, "Revolver 1500", 1)
 	if fake.calls() != 2 {
 		t.Fatalf("calls after 25h %d", fake.calls())
 	}
@@ -131,7 +131,7 @@ func TestAddEntrySurvivesRegisterFailure(t *testing.T) {
 	env := newRegisterEnv(t, fake)
 	shooter := createShooter(env, "3289")
 	match := newMatch(env)
-	if status, out := addToMatch(env, match, shooter, "Revolver", 1); status != http.StatusCreated {
+	if status, out := addToMatch(env, match, shooter, "Revolver 1500", 1); status != http.StatusCreated {
 		t.Fatalf("add: %d %v", status, out)
 	}
 	_, got := env.Do("GET", fmt.Sprintf("/api/shooters/%d", shooter), nil)
@@ -142,34 +142,34 @@ func TestAddEntrySurvivesRegisterFailure(t *testing.T) {
 
 func TestRefreshWithoutExactWAIDMatchIsAFailure(t *testing.T) {
 	fake := &fakeRegister{}
-	fake.set([]wa1500.Shooter{registerShooter("32890", "OTHER", "X", map[string]wa1500.Classification{"Revolver": wa1500.Master})}, nil)
+	fake.set([]wa1500.Shooter{registerShooter("32890", "OTHER", "X", map[string]wa1500.Classification{"Revolver 1500": wa1500.Master})}, nil)
 	env := newRegisterEnv(t, fake)
 	shooter := createShooter(env, "3289")
-	if status, _ := addToMatch(env, newMatch(env), shooter, "Revolver", 1); status != http.StatusCreated {
+	if status, _ := addToMatch(env, newMatch(env), shooter, "Revolver 1500", 1); status != http.StatusCreated {
 		t.Fatalf("status %d", status)
 	}
 	_, got := env.Do("GET", fmt.Sprintf("/api/shooters/%d", shooter), nil)
-	if got["last_name"] != "ANDERSON" || got["wa1500_synced_at"] != nil || classOf(t, env, shooter, "Revolver") != nil {
+	if got["last_name"] != "ANDERSON" || got["wa1500_synced_at"] != nil || classOf(t, env, shooter, "Revolver 1500") != nil {
 		t.Fatalf("stored %v", got)
 	}
 }
 
 func TestRefreshKeepsOldValueForMissingOrUnknownClass(t *testing.T) {
 	fake := &fakeRegister{}
-	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", map[string]wa1500.Classification{"Revolver": wa1500.Expert, "Pistol": wa1500.Marksman})}, nil)
+	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", map[string]wa1500.Classification{"Revolver 1500": wa1500.Expert, "Pistol 1500": wa1500.Marksman})}, nil)
 	env := newRegisterEnv(t, fake)
 	shooter := createShooter(env, "3289")
-	addToMatch(env, newMatch(env), shooter, "Revolver", 1)
+	addToMatch(env, newMatch(env), shooter, "Revolver 1500", 1)
 
 	env.Advance(48 * time.Hour)
 	env.Login()
-	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", map[string]wa1500.Classification{"Revolver": wa1500.Master})}, nil)
-	addToMatch(env, newMatch(env), shooter, "Revolver", 1)
+	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", map[string]wa1500.Classification{"Revolver 1500": wa1500.Master})}, nil)
+	addToMatch(env, newMatch(env), shooter, "Revolver 1500", 1)
 
-	if v := classOf(t, env, shooter, "Revolver").(map[string]any)["value"]; v != float64(4) {
+	if v := classOf(t, env, shooter, "Revolver 1500").(map[string]any)["value"]; v != float64(4) {
 		t.Fatalf("revolver %v", v)
 	}
-	if v := classOf(t, env, shooter, "Pistol").(map[string]any)["value"]; v != float64(1) {
+	if v := classOf(t, env, shooter, "Pistol 1500").(map[string]any)["value"]; v != float64(1) {
 		t.Fatalf("pistol kept %v", v)
 	}
 }
@@ -179,7 +179,7 @@ func TestShooterWithoutWAIDIsNeverRefreshed(t *testing.T) {
 	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", nil)}, nil)
 	env := newRegisterEnv(t, fake)
 	shooter := createShooter(env, "")
-	if status, _ := addToMatch(env, newMatch(env), shooter, "Revolver", 1); status != http.StatusCreated || fake.calls() != 0 {
+	if status, _ := addToMatch(env, newMatch(env), shooter, "Revolver 1500", 1); status != http.StatusCreated || fake.calls() != 0 {
 		t.Fatalf("status %d calls %d", status, fake.calls())
 	}
 }
@@ -189,14 +189,14 @@ func TestFailedRefreshIsBackedOff(t *testing.T) {
 	fake.set(nil, errors.New("boom"))
 	env := newRegisterEnv(t, fake)
 	shooter := createShooter(env, "3289")
-	addToMatch(env, newMatch(env), shooter, "Revolver", 1)
-	addToMatch(env, newMatch(env), shooter, "Revolver", 1)
+	addToMatch(env, newMatch(env), shooter, "Revolver 1500", 1)
+	addToMatch(env, newMatch(env), shooter, "Revolver 1500", 1)
 	if fake.calls() != 1 {
 		t.Fatalf("calls %d", fake.calls())
 	}
 	env.Advance(time.Hour)
 	env.Login()
-	addToMatch(env, newMatch(env), shooter, "Revolver", 1)
+	addToMatch(env, newMatch(env), shooter, "Revolver 1500", 1)
 	if fake.calls() != 2 {
 		t.Fatalf("calls after backoff %d", fake.calls())
 	}
@@ -204,13 +204,13 @@ func TestFailedRefreshIsBackedOff(t *testing.T) {
 
 func TestImportStoresClassifications(t *testing.T) {
 	fake := &fakeRegister{}
-	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", map[string]wa1500.Classification{"Pistol OS": wa1500.Sharpshooter})}, nil)
+	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", map[string]wa1500.Classification{"Pistol Optical Sight 1500": wa1500.Sharpshooter})}, nil)
 	env := newRegisterEnv(t, fake)
 	status, out := env.Do("POST", "/api/shooters/import", importBody(nil))
 	if status != http.StatusCreated {
 		t.Fatalf("import %d %v", status, out)
 	}
-	if v := classOf(t, env, int(out["id"].(float64)), "Pistol OS").(map[string]any)["name"]; v != "Sharpshooter" {
+	if v := classOf(t, env, int(out["id"].(float64)), "Pistol Optical Sight 1500").(map[string]any)["name"]; v != "Sharpshooter" {
 		t.Fatalf("pistol os %v", v)
 	}
 }
@@ -226,7 +226,7 @@ func TestImportSurvivesRegisterFailure(t *testing.T) {
 
 func TestBackgroundBatchRefreshesDueShootersOnly(t *testing.T) {
 	fake := &fakeRegister{}
-	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", map[string]wa1500.Classification{"Revolver": wa1500.Expert})}, nil)
+	fake.set([]wa1500.Shooter{registerShooter("3289", "ANDERSON", "CCSC", map[string]wa1500.Classification{"Revolver 1500": wa1500.Expert})}, nil)
 	env := newRegisterEnv(t, fake)
 	due := createShooter(env, "3289")
 	archived := env.ID("POST", "/api/shooters", map[string]any{"last_name": "OLD", "first_name": "A", "country": "N", "club": "C", "waid": "5"})
@@ -234,10 +234,10 @@ func TestBackgroundBatchRefreshesDueShootersOnly(t *testing.T) {
 	env.Do("POST", fmt.Sprintf("/api/shooters/%d/archive", archived), nil)
 
 	env.RunShooterSyncBatch()
-	if classOf(t, env, due, "Revolver") == nil {
+	if classOf(t, env, due, "Revolver 1500") == nil {
 		t.Fatal("due shooter not refreshed")
 	}
-	if classOf(t, env, archived, "Revolver") != nil || classOf(t, env, noWAID, "Revolver") != nil {
+	if classOf(t, env, archived, "Revolver 1500") != nil || classOf(t, env, noWAID, "Revolver 1500") != nil {
 		t.Fatal("archived or WAID-less shooter refreshed")
 	}
 	calls := fake.calls()
@@ -257,12 +257,12 @@ func TestBackgroundBatchRefreshesDueShootersOnly(t *testing.T) {
 
 func TestResultsShowClassForEntryCategory(t *testing.T) {
 	fake := &fakeRegister{}
-	fake.set([]wa1500.Shooter{registerShooter("1001", "ALPHA", "Club", map[string]wa1500.Classification{"Revolver": wa1500.Master, "Pistol": wa1500.Marksman})}, nil)
+	fake.set([]wa1500.Shooter{registerShooter("1001", "ALPHA", "Club", map[string]wa1500.Classification{"Revolver 1500": wa1500.Master, "Pistol 1500": wa1500.Marksman})}, nil)
 	f := newFixture(t, "150")
 	f.env = newRegisterEnv(t, fake)
 	f.comp = newMatch(f.env)
-	revolver := f.addShooterEntry(t, "ALPHA", "1001", "Revolver", 1)
-	f.addShooterEntry(t, "Echo", "", "Pistol", 2)
+	revolver := f.addShooterEntry(t, "ALPHA", "1001", "Revolver 1500", 1)
+	f.addShooterEntry(t, "Echo", "", "Pistol 1500", 2)
 	f.activate(t)
 	f.scoreAccepted(t, revolver, 1, map[string]any{"x": 24})
 	f.finishActive(t)

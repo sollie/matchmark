@@ -31,7 +31,7 @@ function install(status: string, extra?: Parameters<typeof stubFetch>[0]) {
                   label: "150",
                   discipline: "1500",
                   total_shots: 150,
-                  categories: ["Revolver", "Pistol"],
+                  categories: ["Revolver 1500", "Pistol 1500"],
                   stages: [],
                   segments: [
                     { number: 1, name: "Match 1", stages: [1, 2], shots: 24 },
@@ -217,12 +217,12 @@ describe("Spectator standings grouping", () => {
     segments: [],
   });
   const rows = [
-    entry(1, "Pistol", 100, 2),
-    entry(2, "Revolver", 90, 1),
-    entry(3, "Revolver", 90, 5),
-    entry(4, "Revolver", 10, 0, true),
-    entry(5, "Revolver", 70, 0),
-    entry(6, "Pistol", 100, 2),
+    entry(1, "Pistol 1500", 100, 2),
+    entry(2, "Revolver 1500", 90, 1),
+    entry(3, "Revolver 1500", 90, 5),
+    entry(4, "Revolver 1500", 10, 0, true),
+    entry(5, "Revolver 1500", 70, 0),
+    entry(6, "Pistol 1500", 100, 2),
   ];
 
   async function open(group: boolean, standings: unknown[]) {
@@ -241,9 +241,9 @@ describe("Spectator standings grouping", () => {
 
   it("renders one ranked table per category in rulebook order with withdrawn last", async () => {
     await open(true, rows);
-    await screen.findByRole("heading", { name: "Revolver" });
+    await screen.findByRole("heading", { name: "Revolver 1500" });
     const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
-    expect(headings).toEqual(["Revolver", "Pistol"]);
+    expect(headings).toEqual(["Revolver 1500", "Pistol 1500"]);
     expect(screen.getByRole("heading", { name: "Standings" }).classList).not.toContain("sr-only");
     const [revolver, pistol] = screen.getAllByRole("table");
     expect(cells(revolver)).toEqual([
@@ -259,7 +259,7 @@ describe("Spectator standings grouping", () => {
   });
 
   it("keeps one combined table with overall ranks when not grouped", async () => {
-    await open(false, [entry(1, "Pistol", 100, 2), entry(2, "Revolver", 90, 1)]);
+    await open(false, [entry(1, "Pistol 1500", 100, 2), entry(2, "Revolver 1500", 90, 1)]);
     await screen.findByRole("heading", { name: "Standings" });
     expect(screen.getAllByRole("table")).toHaveLength(1);
     expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
@@ -271,9 +271,9 @@ describe("Spectator standings grouping", () => {
 
   it("puts withdrawn entries last and unranked when not grouped", async () => {
     await open(false, [
-      entry(3, "Pistol", 100, 2),
-      entry(1, "Pistol", 95, 0, true),
-      entry(2, "Revolver", 90, 1),
+      entry(3, "Pistol 1500", 100, 2),
+      entry(1, "Pistol 1500", 95, 0, true),
+      entry(2, "Revolver 1500", 90, 1),
     ]);
     await screen.findByRole("table");
     expect(cells(screen.getByRole("table"))).toEqual([
@@ -284,7 +284,7 @@ describe("Spectator standings grouping", () => {
   });
 
   it("shows a single category without a heading in either mode", async () => {
-    await open(true, [entry(1, "Revolver", 100, 2), entry(2, "Revolver", 90, 1)]);
+    await open(true, [entry(1, "Revolver 1500", 100, 2), entry(2, "Revolver 1500", 90, 1)]);
     await screen.findByRole("table");
     expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
     expect(screen.getByRole("heading", { name: "Standings" }).classList).toContain("sr-only");

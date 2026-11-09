@@ -15,7 +15,7 @@ import (
 const restoreLine = `{"msg":"segment_status","schema_version":4,"event":"segment_status","status":"accepted","accepted_by":"bob","accepted_at":"2026-10-19T10:00:00Z","emitted_at":"2026-10-19T10:00:01.000Z","seq":1,` +
 	`"competition":{"id":3,"name":"Nationals"},` +
 	`"match":{"id":7,"name":"Club Match","date":"2026-10-19","course_of_fire":{"key":"150"}},` +
-	`"entry":{"id":1,"lane":2,"category":"Pistol","shooter":{"first_name":"Ann","last_name":"Lee"}},` +
+	`"entry":{"id":1,"lane":2,"category":"Pistol 1500","shooter":{"first_name":"Ann","last_name":"Lee"}},` +
 	`"segment":{"number":1,"expected_shots":10},"ring_counts":[1,2,3,4,0,0,0],"locked_by":"bob","scorer_name":"bob"}`
 
 func TestRestoreCommandReadsStdinWithoutAdminPassword(t *testing.T) {

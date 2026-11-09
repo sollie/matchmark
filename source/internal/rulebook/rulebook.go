@@ -1,6 +1,9 @@
 package rulebook
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 type Stage struct {
 	StageNumber   int
@@ -109,13 +112,34 @@ var course48FiveShot = Course{
 
 var courseKeys = []string{"150", "60", "48", "40"}
 
-var categories = []string{"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Carbine"}
+type category struct {
+	name     string
+	course   string
+	register string
+	column   string
+}
 
-var courseCategories = map[string][]string{
-	"150": {"Revolver", "Pistol", "Revolver OS", "Pistol OS", "Carbine"},
-	"60":  {"Revolver", "Pistol", "Revolver OS", "Pistol OS"},
-	"48":  {"Revolver", "Pistol"},
-	"40":  {"Revolver"},
+var categoryList = []category{
+	{"Revolver 1500", "150", "Revolver", "class_revolver"},
+	{"Pistol 1500", "150", "Pistol", "class_pistol"},
+	{"Revolver Optical Sight 1500", "150", "Revolver OS", "class_revolver_os"},
+	{"Pistol Optical Sight 1500", "150", "Pistol OS", "class_pistol_os"},
+	{"Open", "60", "", ""},
+	{"Distinguished Revolver", "60", "", ""},
+	{"Distinguished Pistol", "60", "", ""},
+	{"Standard Revolver 4,25\"", "48", "", ""},
+	{"Standard Revolver 2,75\"", "48", "", ""},
+	{"Standard Revolver 2,75\" 5 Shot", "40", "", ""},
+	{"Standard Semi-Automatic Pistol 5,5\" Production", "48", "", ""},
+	{"Standard Semi-Automatic Pistol 5,5\"", "48", "", ""},
+	{"Standard Semi-Automatic Pistol 3,7\"", "48", "", ""},
+	{"Carbine 1500", "150", "Carbine", "class_carbine"},
+}
+
+type ClassifiedCategory struct {
+	Name          string
+	RegisterTitle string
+	Column        string
 }
 
 const (
@@ -132,15 +156,34 @@ func CourseKeys() []string {
 }
 
 func Categories() []string {
-	return append([]string(nil), categories...)
+	out := make([]string, 0, len(categoryList))
+	for _, c := range categoryList {
+		out = append(out, c.name)
+	}
+	return out
+}
+
+func ClassifiedCategories() []ClassifiedCategory {
+	var out []ClassifiedCategory
+	for _, c := range categoryList {
+		if c.column != "" {
+			out = append(out, ClassifiedCategory{Name: c.name, RegisterTitle: c.register, Column: c.column})
+		}
+	}
+	return out
 }
 
 func CategoriesForCourse(key string) ([]string, error) {
-	allowed, ok := courseCategories[key]
-	if !ok {
+	if !slices.Contains(courseKeys, key) {
 		return nil, fmt.Errorf("unknown course %q", key)
 	}
-	return append([]string(nil), allowed...), nil
+	var out []string
+	for _, c := range categoryList {
+		if c.course == key {
+			out = append(out, c.name)
+		}
+	}
+	return out, nil
 }
 
 func ValidateCategory(courseKey, category string) error {

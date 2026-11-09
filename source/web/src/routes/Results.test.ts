@@ -66,7 +66,7 @@ describe("Results", () => {
           segments: [1, 2],
           categories: [
             {
-              category: "Revolver",
+              category: "Revolver 1500",
               did_not_finish: [],
               rows: [
                 {
@@ -107,7 +107,7 @@ describe("Results", () => {
           segments: [1, 2],
           categories: [
             {
-              category: "Revolver",
+              category: "Revolver 1500",
               did_not_finish: [],
               rows: [
                 {
@@ -155,7 +155,7 @@ describe("Results", () => {
           segments: [1],
           categories: [
             {
-              category: "Revolver",
+              category: "Revolver 1500",
               rows: [
                 {
                   rank: 1,
@@ -212,7 +212,7 @@ describe("Results", () => {
               segments: [1, 2],
               categories: [
                 {
-                  category: "Revolver",
+                  category: "Revolver 1500",
                   did_not_finish: [],
                   rows: [
                     {
@@ -277,7 +277,7 @@ describe("Results", () => {
           segments: [1],
           categories: [
             {
-              category: "Pistol",
+              category: "Pistol 1500",
               did_not_finish: [],
               rows: [
                 row(1, "Berg", { value: 4, name: "Master" }),
@@ -317,7 +317,7 @@ describe("Results", () => {
           segments: [1],
           categories: [
             {
-              category: "Pistol",
+              category: "Pistol 1500",
               did_not_finish: [],
               rows: [
                 {

@@ -32,7 +32,7 @@ interface Visibility {
 
 type MatchStatus = "draft" | "active" | "finished";
 
-export type Category = "Revolver" | "Pistol" | "Revolver OS" | "Pistol OS" | "Carbine";
+export type Category = string;
 
 export interface Course {
   key: string;
@@ -200,7 +200,7 @@ export async function addEntry(
   matchId: number,
   shooterId: number,
   lane: number,
-  category: Category = "Revolver",
+  category: Category = "Revolver 1500",
 ) {
   const { id } = await checked<{ id: number }>(
     await api.post(`/api/matches/${matchId}/entries`, {
@@ -215,7 +215,7 @@ export async function seedEntry(
   api: APIRequestContext,
   matchId: number,
   lane: number,
-  category: Category = "Revolver",
+  category: Category = "Revolver 1500",
 ) {
   const shooter = await createShooter(api);
   const entryId = await addEntry(api, matchId, shooter.id, lane, category);

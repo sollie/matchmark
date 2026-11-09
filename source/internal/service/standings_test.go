@@ -20,7 +20,7 @@ func accepted(n int, c repository.RingCounts) repository.SpectatorSegment {
 
 func TestProjectStandingsVisibility(t *testing.T) {
 	counts := repository.RingCounts{X: 2, Ten: 4, Nine: 6}
-	entry := spectatorEntry(1, "Pistol", false, accepted(1, counts))
+	entry := spectatorEntry(1, "Pistol 1500", false, accepted(1, counts))
 	tests := []struct {
 		name string
 		vis  repository.Visibility
@@ -54,8 +54,8 @@ func TestProjectStandingsVisibility(t *testing.T) {
 }
 
 func TestProjectStandingsClassificationFollowsNamesAndEntryCategory(t *testing.T) {
-	entry := spectatorEntry(1, "Pistol", false, accepted(1, repository.RingCounts{X: 1}))
-	entry.Classes = map[string]int{"Pistol": 3, "Revolver": 1}
+	entry := spectatorEntry(1, "Pistol 1500", false, accepted(1, repository.RingCounts{X: 1}))
+	entry.Classes = map[string]int{"Pistol 1500": 3, "Revolver 1500": 1}
 	got := projectStandings(1, repository.Visibility{Names: true}, []repository.SpectatorEntry{entry})[0]
 	if got.Class == nil || *got.Class != wa1500.Expert {
 		t.Fatalf("class %v", got.Class)
@@ -63,7 +63,7 @@ func TestProjectStandingsClassificationFollowsNamesAndEntryCategory(t *testing.T
 	if got := projectStandings(1, repository.Visibility{}, []repository.SpectatorEntry{entry})[0]; got.Class != nil {
 		t.Fatalf("hidden names leaked class %v", got.Class)
 	}
-	entry.Classes = map[string]int{"Revolver": 1}
+	entry.Classes = map[string]int{"Revolver 1500": 1}
 	if got := projectStandings(1, repository.Visibility{Names: true}, []repository.SpectatorEntry{entry})[0]; got.Class != nil {
 		t.Fatalf("other category leaked class %v", got.Class)
 	}
@@ -87,7 +87,7 @@ func TestProjectStandingsUnacceptedSegments(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			entry := spectatorEntry(1, "Pistol", false, repository.SpectatorSegment{Number: tt.number, Counts: counts, Status: tt.status})
+			entry := spectatorEntry(1, "Pistol 1500", false, repository.SpectatorSegment{Number: tt.number, Counts: counts, Status: tt.status})
 			got := projectStandings(1, repository.Visibility{SegmentScores: true, RingCounts: true}, []repository.SpectatorEntry{entry})[0]
 			sv := got.Segments[0]
 			if got.Total != tt.wantTotal || sv.State != tt.wantState || sv.Accepted != tt.wantAccept || (sv.Score == nil) != tt.wantNoScore {
@@ -109,21 +109,21 @@ func TestProjectStandingsOrderingAndGrouping(t *testing.T) {
 		want    []int
 	}{
 		{"higher total first", []repository.SpectatorEntry{
-			spectatorEntry(1, "Pistol", false, accepted(1, repository.RingCounts{Nine: 6})),
-			spectatorEntry(2, "Pistol", false, accepted(1, high)),
+			spectatorEntry(1, "Pistol 1500", false, accepted(1, repository.RingCounts{Nine: 6})),
+			spectatorEntry(2, "Pistol 1500", false, accepted(1, high)),
 		}, []int{2, 1}},
 		{"equal total ranks more X first", []repository.SpectatorEntry{
-			spectatorEntry(1, "Pistol", false, accepted(1, repository.RingCounts{X: 1, Ten: 5, Nine: 6})),
-			spectatorEntry(2, "Pistol", false, accepted(1, moreX)),
+			spectatorEntry(1, "Pistol 1500", false, accepted(1, repository.RingCounts{X: 1, Ten: 5, Nine: 6})),
+			spectatorEntry(2, "Pistol 1500", false, accepted(1, moreX)),
 		}, []int{2, 1}},
 		{"full tie keeps input order", []repository.SpectatorEntry{
-			spectatorEntry(3, "Pistol", false, accepted(1, high)),
-			spectatorEntry(1, "Revolver", false, accepted(1, high)),
+			spectatorEntry(3, "Pistol 1500", false, accepted(1, high)),
+			spectatorEntry(1, "Revolver 1500", false, accepted(1, high)),
 		}, []int{3, 1}},
 		{"categories ranked together and kept", []repository.SpectatorEntry{
-			spectatorEntry(1, "Revolver", false, accepted(1, repository.RingCounts{Nine: 6})),
-			spectatorEntry(2, "Pistol", false, accepted(1, high)),
-			spectatorEntry(3, "Revolver", true, accepted(1, repository.RingCounts{Ten: 6})),
+			spectatorEntry(1, "Revolver 1500", false, accepted(1, repository.RingCounts{Nine: 6})),
+			spectatorEntry(2, "Pistol 1500", false, accepted(1, high)),
+			spectatorEntry(3, "Revolver 1500", true, accepted(1, repository.RingCounts{Ten: 6})),
 		}, []int{2, 3, 1}},
 	}
 	for _, tt := range tests {

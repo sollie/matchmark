@@ -8,34 +8,40 @@ import (
 
 	"github.com/sollie/matchmark/internal/apitest"
 	"github.com/sollie/matchmark/internal/handler"
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 type fixture struct {
-	env  *apitest.Env
-	comp int
+	env      *apitest.Env
+	comp     int
+	category string
 }
 
 func newFixture(t *testing.T, course string, opts ...handler.Option) *fixture {
 	t.Helper()
 	env := apitest.NewAdmin(t, opts...)
 	comp := env.ID("POST", "/api/matches", map[string]any{"name": "Club Match", "date": "2026-05-01", "course": course})
-	return &fixture{env: env, comp: comp}
+	categories, err := rulebook.CategoriesForCourse(course)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &fixture{env: env, comp: comp, category: categories[0]}
 }
 
 func (f *fixture) addEntry(t *testing.T, name string, lane int) int {
 	t.Helper()
 	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": strings.ToUpper(name), "first_name": "A", "country": "NOR", "club": "Club"})
-	return f.env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Revolver", "lane": lane})
+	return f.env.ID("POST", fmt.Sprintf("/api/matches/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": f.category, "lane": lane})
 }
 
 func TestAddEntryRejectsCategoryNotAllowedForCourse(t *testing.T) {
 	f := newFixture(t, "40")
 	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "ONE", "first_name": "A", "country": "NOR", "club": "Club"})
 	path := fmt.Sprintf("/api/matches/%d/entries", f.comp)
-	if status, _ := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 1}); status != http.StatusUnprocessableEntity {
+	if status, _ := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Pistol 1500", "lane": 1}); status != http.StatusUnprocessableEntity {
 		t.Fatalf("status %d", status)
 	}
-	if status, _ := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Revolver", "lane": 1}); status != http.StatusCreated {
+	if status, _ := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Standard Revolver 2,75\" 5 Shot", "lane": 1}); status != http.StatusCreated {
 		t.Fatalf("status %d", status)
 	}
 }
@@ -45,7 +51,7 @@ func TestCarbineSharesTheLaneRotationOn150(t *testing.T) {
 	f.addEntry(t, "One", 1)
 	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "TWO", "first_name": "A", "country": "NOR", "club": "Club"})
 	path := fmt.Sprintf("/api/matches/%d/entries", f.comp)
-	if status, out := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Carbine", "lane": 2}); status != http.StatusCreated {
+	if status, out := f.env.Do("POST", path, map[string]any{"shooter_id": shooter, "category": "Carbine 1500", "lane": 2}); status != http.StatusCreated {
 		t.Fatalf("status %d %v", status, out)
 	}
 	if status, out := f.scoreLane(1); status != http.StatusOK || int(out["score_lane"].(float64)) != 2 {
@@ -53,7 +59,7 @@ func TestCarbineSharesTheLaneRotationOn150(t *testing.T) {
 	}
 	g := newFixture(t, "60")
 	s2 := g.env.ID("POST", "/api/shooters", map[string]any{"last_name": "THREE", "first_name": "A", "country": "NOR", "club": "Club"})
-	if status, _ := g.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries", g.comp), map[string]any{"shooter_id": s2, "category": "Carbine", "lane": 1}); status != http.StatusUnprocessableEntity {
+	if status, _ := g.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries", g.comp), map[string]any{"shooter_id": s2, "category": "Carbine 1500", "lane": 1}); status != http.StatusUnprocessableEntity {
 		t.Fatalf("status %d", status)
 	}
 }
@@ -117,7 +123,7 @@ func TestLaneIsExclusive(t *testing.T) {
 	f := newFixture(t, "150")
 	f.addEntry(t, "One", 1)
 	shooter := f.env.ID("POST", "/api/shooters", map[string]any{"last_name": "TWO", "first_name": "B", "country": "NOR", "club": "Club"})
-	status, _ := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Pistol", "lane": 1})
+	status, _ := f.env.Do("POST", fmt.Sprintf("/api/matches/%d/entries", f.comp), map[string]any{"shooter_id": shooter, "category": "Pistol 1500", "lane": 1})
 	if status != http.StatusConflict {
 		t.Fatalf("status %d", status)
 	}

@@ -139,8 +139,9 @@ func parseRow(tr *html.Node) (Shooter, bool) {
 	if s.LastName == "" {
 		return Shooter{}, false
 	}
-	for _, category := range rulebook.Categories() {
-		raw, ok := cells["class. "+category]
+	for _, c := range rulebook.ClassifiedCategories() {
+		category := c.Name
+		raw, ok := cells["class. "+c.RegisterTitle]
 		if !ok {
 			continue
 		}

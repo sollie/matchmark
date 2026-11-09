@@ -37,10 +37,10 @@ func sampleResults() ResultsPDFData {
 		CourseLabel: "WA1500 150",
 		Segments:    []int{1, 2},
 		Categories: []ResultsPDFCategory{
-			{Category: "Revolver", Rows: []ResultsPDFRow{row(1, "Ørn"), row(2, "Berg")}},
-			{Category: "Pistol", Rows: []ResultsPDFRow{row(1, "Dahl")}},
+			{Category: "Revolver 1500", Rows: []ResultsPDFRow{row(1, "Ørn"), row(2, "Berg")}},
+			{Category: "Pistol 1500", Rows: []ResultsPDFRow{row(1, "Dahl")}},
 		},
-		NewShooters: []ResultsPDFNewShooter{{LastName: "Ny", FirstName: "Nina", Category: "Pistol", Club: ptr("Łódź SK"), Total: 170, XCount: ptr(4)}},
+		NewShooters: []ResultsPDFNewShooter{{LastName: "Ny", FirstName: "Nina", Category: "Pistol 1500", Club: ptr("Łódź SK"), Total: 170, XCount: ptr(4)}},
 	}
 }
 
@@ -93,7 +93,7 @@ func TestResultsPDFPaginatesLongCategories(t *testing.T) {
 		r.LastName = ptr(fmt.Sprintf("Shooter%d", i))
 		rows = append(rows, r)
 	}
-	d.Categories = []ResultsPDFCategory{{Category: "Revolver", Rows: rows}}
+	d.Categories = []ResultsPDFCategory{{Category: "Revolver 1500", Rows: rows}}
 	d.NewShooters = nil
 	out, err := ResultsPDF(d)
 	if err != nil {

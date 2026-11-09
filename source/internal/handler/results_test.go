@@ -25,11 +25,11 @@ func resultsPath(f *fixture) string {
 
 func resultsFixture(t *testing.T, opts ...handler.Option) *fixture {
 	f := newFixture(t, "150", opts...)
-	alpha := f.addShooterEntry(t, "ALPHA", "1001", "Revolver", 1)
-	bravo := f.addShooterEntry(t, "BRAVO", "1002", "Revolver", 2)
-	charlie := f.addShooterEntry(t, "CHARLIE", "", "Revolver", 3)
-	delta := f.addShooterEntry(t, "Delta", "1004", "Revolver", 4)
-	echo := f.addShooterEntry(t, "Echo", "1005", "Pistol", 5)
+	alpha := f.addShooterEntry(t, "ALPHA", "1001", "Revolver 1500", 1)
+	bravo := f.addShooterEntry(t, "BRAVO", "1002", "Revolver 1500", 2)
+	charlie := f.addShooterEntry(t, "CHARLIE", "", "Revolver 1500", 3)
+	delta := f.addShooterEntry(t, "Delta", "1004", "Revolver 1500", 4)
+	echo := f.addShooterEntry(t, "Echo", "1005", "Pistol 1500", 5)
 	f.activate(t)
 	f.scoreAccepted(t, alpha, 1, map[string]any{"x": 6, "10": 14, "9": 4})
 	f.scoreAccepted(t, bravo, 1, map[string]any{"x": 6, "10": 14, "9": 4})
@@ -81,7 +81,7 @@ func TestResultsRankingAndGrouping(t *testing.T) {
 		t.Fatalf("match %v", comp)
 	}
 	cats := out["categories"].([]any)
-	if len(cats) != 2 || cats[0].(map[string]any)["category"] != "Revolver" || cats[1].(map[string]any)["category"] != "Pistol" {
+	if len(cats) != 2 || cats[0].(map[string]any)["category"] != "Revolver 1500" || cats[1].(map[string]any)["category"] != "Pistol 1500" {
 		t.Fatalf("categories %v", cats)
 	}
 	rows := cats[0].(map[string]any)["rows"].([]any)
@@ -128,15 +128,15 @@ func TestResultsRankingAndGrouping(t *testing.T) {
 		t.Fatalf("dnf row has ring counts: %v", lateSegment)
 	}
 	fresh := out["new_shooters"].([]any)
-	if len(fresh) != 1 || fresh[0].(map[string]any)["last_name"] != "CHARLIE" || fresh[0].(map[string]any)["category"] != "Revolver" {
+	if len(fresh) != 1 || fresh[0].(map[string]any)["last_name"] != "CHARLIE" || fresh[0].(map[string]any)["category"] != "Revolver 1500" {
 		t.Fatalf("new shooters %v", fresh)
 	}
 }
 
 func TestResultsRankBreaksTieOnXCount(t *testing.T) {
 	f := newFixture(t, "150")
-	a := f.addShooterEntry(t, "ALPHA", "1", "Revolver", 1)
-	b := f.addShooterEntry(t, "BRAVO", "2", "Revolver", 2)
+	a := f.addShooterEntry(t, "ALPHA", "1", "Revolver 1500", 1)
+	b := f.addShooterEntry(t, "BRAVO", "2", "Revolver 1500", 2)
 	f.activate(t)
 	f.scoreAccepted(t, a, 1, map[string]any{"x": 4, "10": 16, "9": 4})
 	f.scoreAccepted(t, b, 1, map[string]any{"x": 10, "10": 10, "9": 4})

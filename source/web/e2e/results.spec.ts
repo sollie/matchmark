@@ -38,7 +38,7 @@ test.describe("results", () => {
     await expect(page).toHaveURL(`/results/${match.id}`);
 
     await expect(page.getByRole("heading", { name: match.name })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Revolver" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Revolver 1500" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "New shooters" })).toBeVisible();
     await expect(row(page, known.last_name).first().getByRole("cell").first()).toHaveText("2");
     await expect(row(page, fresh.last_name).first().getByRole("cell").first()).toHaveText("1");

@@ -11,6 +11,7 @@ import (
 
 	"github.com/sollie/matchmark/internal/db"
 	"github.com/sollie/matchmark/internal/repository"
+	"github.com/sollie/matchmark/internal/rulebook"
 	"github.com/sollie/matchmark/internal/service"
 	"github.com/xuri/excelize/v2"
 )
@@ -93,7 +94,11 @@ func TestCompetitionWorkbook1500SelectionAndRepeatShooters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := svc.AddEntry(ctx, repository.Entry{MatchID: id, ShooterID: shooter, Category: "Revolver", Lane: 1}); err != nil {
+		categories, err := rulebook.CategoriesForCourse(course)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := svc.AddEntry(ctx, repository.Entry{MatchID: id, ShooterID: shooter, Category: categories[0], Lane: 1}); err != nil {
 			t.Fatal(err)
 		}
 		if !finish {

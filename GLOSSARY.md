@@ -61,11 +61,11 @@ Did not finish: an Entry withdrawn during a Match. The Results view lists it unr
 _Avoid_: WD, DNS, DSQ
 
 **Category**:
-The class a shooter competes in: Revolver, Pistol, Revolver OS, Pistol OS or Carbine; the rulebook limits which ones a course allows. Each category is one sheet of the results report.
+The equipment class a shooter competes in, named as in the rulebook: Revolver 1500, Pistol 1500, Revolver Optical Sight 1500, Pistol Optical Sight 1500, Open, Distinguished Revolver, Distinguished Pistol, Standard Revolver 4,25", Standard Revolver 2,75", Standard Revolver 2,75" 5 Shot, three Standard Semi-Automatic Pistol classes (5,5" Production, 5,5", 3,7") and Carbine 1500, in that rulebook order everywhere. The course of the Match limits which ones an Entry may have. Only the five 1500 categories are classified, reported to the register and exported to the results `.xlsx` (one sheet each).
 _Avoid_: Weapon class, class, division
 
 **Carbine**:
-The category for Carbine 1500, shot over the 150-shot course on reduced WA1500-29 targets at the same distances; ring values and scoring are unchanged. It is not the Rifle 1500 the rulebook reserves for a future match.
+The Carbine 1500 category (Carbine rulebook 1.0), shot over the 150-shot course on reduced WA1500-29 targets at the same distances; ring values and scoring are unchanged. It is not the Rifle 1500 the rulebook reserves for a future match.
 _Avoid_: Rifle
 
 **Lane**:
@@ -261,5 +261,5 @@ The record of who did what: every change by a user, plus logins, failed logins, 
 _Avoid_: Activity log, history
 
 **Classification**:
-A shooter's WA1500 skill level in one Category: Unclassified, Marksman, Sharpshooter, Expert, Master or High Master, in rising order. A shooter holds one Classification per Category (Revolver, Pistol, Revolver OS, Pistol OS, Carbine). Unclassified means the shooter has not competed in that Category; no value means it has not been fetched yet. Only shooters with a WAID have one. It is the current value, not the value at the time of a Match.
+A shooter's WA1500 skill level in one Category: Unclassified, Marksman, Sharpshooter, Expert, Master or High Master, in rising order. A shooter holds one Classification per classified Category (the five 1500 categories: Revolver 1500, Pistol 1500, Revolver Optical Sight 1500, Pistol Optical Sight 1500, Carbine 1500). Unclassified means the shooter has not competed in that Category; no value means it has not been fetched yet. Only shooters with a WAID have one. It is the current value, not the value at the time of a Match.
 _Avoid_: Rank, class, level

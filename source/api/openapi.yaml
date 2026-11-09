@@ -3054,9 +3054,9 @@ components:
               type: boolean
             classifications:
               type: object
-              description: Classification per Category, refreshed from the WA1500 register; a Category is absent until it has been fetched
+              description: Classification per classified Category (the five 1500 categories), refreshed from the WA1500 register; a Category is absent until it has been fetched
               propertyNames:
-                enum: [Revolver, Pistol, Revolver OS, Pistol OS, Carbine]
+                enum: [Revolver 1500, Pistol 1500, Revolver Optical Sight 1500, Pistol Optical Sight 1500, Carbine 1500]
               additionalProperties:
                 $ref: '#/components/schemas/Classification'
             wa1500_synced_at:

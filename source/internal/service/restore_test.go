@@ -143,7 +143,7 @@ func mergePlan(name string, counts [7]int, segments ...int) restore.Plan {
 	return restore.Plan{Matches: []restore.RestoredMatch{{
 		ID: 7, Name: name, Date: "2026-10-19", CourseOfFire: restore.CourseOfFire{Key: "150"},
 		Entries: []restore.RestoredEntry{{
-			ID: 1, Lane: 2, Category: "Pistol",
+			ID: 1, Lane: 2, Category: "Pistol 1500",
 			Shooter:  restore.Shooter{FirstName: "Ann", LastName: "Lee"},
 			Segments: scored,
 		}},

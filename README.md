@@ -229,6 +229,10 @@ Push a tag such as `v0.1.0` (or `v0.1.0-rc.1` for a pre-release) on a commit on 
 
 The macOS and Windows binaries are not signed. On macOS clear the quarantine flag (`xattr -d com.apple.quarantine matchmark`); on Windows choose "More info" and "Run anyway" in SmartScreen. See ADR 0012.
 
+### Upgrading to the equipment categories
+
+Migration 005 replaces the five old categories with the rulebook equipment classes (ADR 0024). Entries in 150-shot matches are renamed automatically (`Revolver` to `Revolver 1500`, `Pistol` to `Pistol 1500`, `Revolver OS` to `Revolver Optical Sight 1500`, `Pistol OS` to `Pistol Optical Sight 1500`, `Carbine` to `Carbine 1500`). Entries in 60, 48 and 40-shot matches cannot be mapped unambiguously: the server refuses to start with a migration error until those entries have been removed and re-entered with the new categories. Take a backup first.
+
 ## CI
 
 Pull requests run the source checks (build, windows and darwin cross-compile, test, lint), the web checks and chromium e2e. The image build and the goreleaser snapshot run on a PR only when the Dockerfile, smoke script, `go.mod`/`go.sum`, `.goreleaser.yaml` or the workflows change. On `main` and weekly the image is built on native runners (`ubuntu-latest`, `ubuntu-24.04-arm`), smoke-tested with `scripts/smoke-image.sh matchmark:latest` and scanned with Trivy, and all three browsers run e2e.

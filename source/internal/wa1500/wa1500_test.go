@@ -39,10 +39,10 @@ func TestParseResults(t *testing.T) {
 	}
 	want := []Shooter{
 		{WAID: "3289", LastName: "ANDERSON", FirstName: "Mike", Country: "Canada", Club: "CCSC",
-			Classes: map[string]Classification{"Revolver": Unclassified, "Pistol": Marksman, "Revolver OS": HighMaster}},
+			Classes: map[string]Classification{"Revolver 1500": Unclassified, "Pistol 1500": Marksman, "Revolver Optical Sight 1500": HighMaster}},
 		{WAID: "412", LastName: "ÅSEN", FirstName: "Kari Anne", Country: "Norway"},
 		{WAID: "77", LastName: "MONONYM", Country: "Sweden", Club: "SSK",
-			Classes: map[string]Classification{"Carbine": Sharpshooter, "Revolver": Expert, "Pistol": Master}},
+			Classes: map[string]Classification{"Carbine 1500": Sharpshooter, "Revolver 1500": Expert, "Pistol 1500": Master}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v\nwant %+v", got, want)

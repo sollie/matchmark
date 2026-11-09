@@ -8,14 +8,10 @@ import (
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
-func classColumn(category string) string {
-	return "class_" + strings.ReplaceAll(strings.ToLower(category), " ", "_")
-}
-
 var classColumns = func() string {
-	cols := make([]string, 0, len(rulebook.Categories()))
-	for _, c := range rulebook.Categories() {
-		cols = append(cols, classColumn(c))
+	var cols []string
+	for _, c := range rulebook.ClassifiedCategories() {
+		cols = append(cols, c.Column)
 	}
 	return strings.Join(cols, ", ")
 }()
@@ -25,7 +21,7 @@ type classScan struct {
 }
 
 func (c *classScan) dest() []any {
-	c.cells = make([]sql.NullInt64, len(rulebook.Categories()))
+	c.cells = make([]sql.NullInt64, len(rulebook.ClassifiedCategories()))
 	out := make([]any, len(c.cells))
 	for i := range c.cells {
 		out[i] = &c.cells[i]
@@ -35,14 +31,14 @@ func (c *classScan) dest() []any {
 
 func (c *classScan) values() map[string]int {
 	var out map[string]int
-	for i, category := range rulebook.Categories() {
+	for i, cat := range rulebook.ClassifiedCategories() {
 		if !c.cells[i].Valid {
 			continue
 		}
 		if out == nil {
 			out = map[string]int{}
 		}
-		out[category] = int(c.cells[i].Int64)
+		out[cat.Name] = int(c.cells[i].Int64)
 	}
 	return out
 }
@@ -59,10 +55,10 @@ type ShooterRefresh struct {
 func (r *Repository) RefreshShooter(ctx context.Context, id int64, in ShooterRefresh) error {
 	sets := []string{"last_name = ?", "first_name = ?", "country = ?", "club = ?", "wa1500_synced_at = ?"}
 	args := []any{in.LastName, in.FirstName, in.Country, in.Club, in.SyncedAt}
-	for _, category := range rulebook.Categories() {
-		col := classColumn(category)
+	for _, c := range rulebook.ClassifiedCategories() {
+		col := c.Column
 		sets = append(sets, col+" = COALESCE(?, "+col+")")
-		if v, ok := in.Classes[category]; ok {
+		if v, ok := in.Classes[c.Name]; ok {
 			args = append(args, v)
 		} else {
 			args = append(args, nil)

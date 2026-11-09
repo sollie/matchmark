@@ -1554,7 +1554,7 @@ export interface components {
             /** Format: int64 */
             id: number;
             archived: boolean;
-            /** @description Classification per Category, refreshed from the WA1500 register; a Category is absent until it has been fetched */
+            /** @description Classification per classified Category (the five 1500 categories), refreshed from the WA1500 register; a Category is absent until it has been fetched */
             classifications: {
                 [key: string]: components["schemas"]["Classification"];
             };
