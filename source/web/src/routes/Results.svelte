@@ -100,6 +100,25 @@
     })();
   });
 
+  async function printPdf() {
+    if (!results) return;
+    const response = await fetch(`/api/matches/${results.match.id}/results?format=pdf`);
+    if (!response.ok) return;
+    const url = URL.createObjectURL(await response.blob());
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "position:fixed;width:0;height:0;border:0;visibility:hidden";
+    frame.onload = () => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      setTimeout(() => {
+        frame.remove();
+        URL.revokeObjectURL(url);
+      }, 60000);
+    };
+    frame.src = url;
+    document.body.append(frame);
+  }
+
   function pick(event: Event) {
     const value = (event.currentTarget as HTMLSelectElement).value;
     if (value) navigate(`/results/${value}`);
@@ -121,7 +140,7 @@
       </select>
     </label>
     {#if results}
-      <button type="button" onclick={() => window.print()}>Print</button>
+      <button type="button" onclick={printPdf}>Print</button>
       <a class="button" href={`/api/matches/${results.match.id}/results?format=pdf`} download
         >Download PDF</a
       >
