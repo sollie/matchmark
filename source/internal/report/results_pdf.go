@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/johnfercher/maroto/v2"
@@ -35,7 +34,7 @@ const (
 	pdfRowHeight     = 4.6
 	pdfSectionHeight = 8.0
 	pdfGroupHeight   = 6.0
-	pdfLogoHeight    = 20.0
+	pdfLogoHeight    = 24.0
 	pdfHeadGap       = 2.0
 	pdfMargin        = 12.0
 	pdfFooterHeight  = 8.0
@@ -106,6 +105,7 @@ type ResultsPDFData struct {
 	Logo         []byte
 	LogoType     string
 	Generated    time.Time
+	Competition  string
 	Name         string
 	Date         string
 	CourseLabel  string
@@ -375,6 +375,11 @@ func derefInt(n *int) string {
 	return strconv.Itoa(*n)
 }
 
+type headerField struct {
+	label string
+	value string
+}
+
 func headerRows(d ResultsPDFData, grid int) []core.Row {
 	logoCols := max(grid/8, 1)
 	logo, logoExt := matchMarkIcon, extension.Png
@@ -385,40 +390,52 @@ func headerRows(d ResultsPDFData, grid int) []core.Row {
 	if title == "" {
 		title = "MatchMark"
 	}
-	lines := d.headerLines()
-	texts := []core.Component{
-		text.New(title, props.Text{Size: 16, Style: fontstyle.Bold, Top: 1, Left: 2}),
-		text.New(lines[0], props.Text{Size: 10, Top: 8.5, Left: 2, Color: pdfMuted}),
+	blocks := d.headerBlocks()
+	textCols := grid - 2*logoCols
+	first := max(textCols/3, 1)
+	second := max((textCols-first)/2, 1)
+	widths := []int{first, second, max(textCols-first-second, 1)}
+	cols := []core.Col{image.NewFromBytesCol(logoCols, logo, logoExt, props.Rect{Center: true, Percent: 100})}
+	for i, block := range blocks {
+		var texts []core.Component
+		top := 1.0
+		if i == 0 {
+			texts = append(texts, text.New(title, props.Text{Size: 13, Style: fontstyle.Bold, Top: top, Left: 2}))
+			top += 6
+		}
+		for _, f := range block {
+			texts = append(texts,
+				text.New(f.label+":", props.Text{Size: 8, Top: top, Left: 2, Color: pdfMuted}),
+				text.New(f.value, props.Text{Size: 9, Top: top, Left: 26}),
+			)
+			top += 4.6
+		}
+		cols = append(cols, col.New(widths[i]).Add(texts...))
 	}
-	if len(lines) > 1 {
-		texts = append(texts, text.New(lines[1], props.Text{Size: 9, Top: 14, Left: 2, Color: pdfMuted}))
-	}
+	cols = append(cols, image.NewFromBytesCol(logoCols, wa1500Logo, extension.Png, props.Rect{Center: true, Percent: 100}))
 	return []core.Row{
-		row.New(pdfLogoHeight).Add(
-			image.NewFromBytesCol(logoCols, logo, logoExt, props.Rect{Center: true, Percent: 100}),
-			col.New(grid-2*logoCols).Add(texts...),
-			image.NewFromBytesCol(logoCols, wa1500Logo, extension.Png, props.Rect{Center: true, Percent: 100}),
-		),
+		row.New(pdfLogoHeight).WithStyle(&props.Cell{BackgroundColor: pdfHeaderFill}).Add(cols...),
 		row.New(pdfHeadGap),
 	}
 }
 
-func (d ResultsPDFData) headerLines() []string {
-	lines := []string{d.Name + "  ·  " + d.Date + "  ·  " + d.CourseLabel + "  ·  " + shooterCount(d.participants())}
-	var parts []string
+func (d ResultsPDFData) headerBlocks() [][]headerField {
+	blocks := [][]headerField{{}, {}, {}}
+	if d.Competition != "" {
+		blocks[0] = append(blocks[0], headerField{"Competition", d.Competition})
+	}
+	blocks[0] = append(blocks[0], headerField{"Match", d.Name}, headerField{"Course", d.CourseLabel})
 	if d.Referee != "" {
-		parts = append(parts, "Referee: "+d.Referee)
+		blocks[1] = append(blocks[1], headerField{"Referee", d.Referee})
 	}
 	if d.RangeOfficer != "" {
-		parts = append(parts, "Range officer: "+d.RangeOfficer)
+		blocks[1] = append(blocks[1], headerField{"Range officer", d.RangeOfficer})
 	}
 	if d.Range != "" {
-		parts = append(parts, "Range: "+d.Range)
+		blocks[1] = append(blocks[1], headerField{"Range", d.Range})
 	}
-	if len(parts) > 0 {
-		lines = append(lines, strings.Join(parts, "  ·  "))
-	}
-	return lines
+	blocks[2] = append(blocks[2], headerField{"Match date", d.Date}, headerField{"Participants", strconv.Itoa(d.participants())})
+	return blocks
 }
 
 func (d ResultsPDFData) allRows() []ResultsPDFRow {

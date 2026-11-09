@@ -46,6 +46,9 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 	if err != nil {
 		return Download{}, mapRepoErr(err)
 	}
+	if data.Competition, err = s.repo.CompetitionName(ctx, match.CompetitionID); err != nil {
+		return Download{}, mapRepoErr(err)
+	}
 	data.Referee = officialDisplay(match.RefereeName, match.RefereeWAID)
 	data.RangeOfficer = officialDisplay(match.RangeOfficerName, match.RangeOfficerWAID)
 	var logo ClubLogo
