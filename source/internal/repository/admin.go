@@ -144,7 +144,7 @@ func (r *Repository) DeleteShooter(ctx context.Context, id int64) error {
 
 func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, '') FROM matches ORDER BY date DESC, id DESC`)
+		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, ''), classified FROM matches ORDER BY date DESC, id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 	comps := []Match{}
 	for rows.Next() {
 		var c Match
-		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt, &c.Classified); err != nil {
 			return nil, err
 		}
 		comps = append(comps, c)
@@ -167,7 +167,7 @@ func (r *Repository) UpdateMatch(ctx context.Context, c Match) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE matches SET name = ?, date = ?, course = ? WHERE id = ?`, c.Name, c.Date, c.Course, c.ID)
+		`UPDATE matches SET name = ?, date = ?, course = ?, classified = ? WHERE id = ?`, c.Name, c.Date, c.Course, c.Classified, c.ID)
 	if err := affected(res, err); err != nil {
 		return err
 	}

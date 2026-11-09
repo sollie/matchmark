@@ -40,6 +40,7 @@ func resultsFixture(t *testing.T, opts ...handler.Option) *fixture {
 		t.Fatalf("withdraw: %d %v", status, out)
 	}
 	f.finishActive(t)
+	f.setClassified(t, false)
 	on := map[string]any{"show_names": true, "show_clubs": true, "show_countries": true, "show_segment_scores": true, "show_ring_counts": true}
 	if status, out := f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", f.comp), on); status != http.StatusOK {
 		t.Fatalf("visibility: %d %v", status, out)
@@ -141,6 +142,7 @@ func TestResultsRankBreaksTieOnXCount(t *testing.T) {
 	f.scoreAccepted(t, a, 1, map[string]any{"x": 4, "10": 16, "9": 4})
 	f.scoreAccepted(t, b, 1, map[string]any{"x": 10, "10": 10, "9": 4})
 	f.finishActive(t)
+	f.setClassified(t, false)
 	_, out := publicGet(t, f, resultsPath(f))
 	rows := out["categories"].([]any)[0].(map[string]any)["rows"].([]any)
 	if rows[0].(map[string]any)["last_name"] != "BRAVO" || rows[1].(map[string]any)["rank"].(float64) != 2 {

@@ -142,7 +142,7 @@ func TestResultsIgnoreReclassificationAfterActivation(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("results: %d %v", status, out)
 	}
-	row := out["categories"].([]any)[0].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	row := out["categories"].([]any)[0].(map[string]any)["groups"].([]any)[0].(map[string]any)["rows"].([]any)[0].(map[string]any)
 	if name(row["classification"]) != "Expert" || name(row["class"]) != "Expert" || row["club"] != "Old Club" {
 		t.Fatalf("row follows live values: %v", row)
 	}

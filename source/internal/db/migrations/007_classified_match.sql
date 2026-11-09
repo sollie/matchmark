@@ -1,0 +1,1 @@
+ALTER TABLE matches ADD COLUMN classified INTEGER NOT NULL DEFAULT 1 CHECK (classified IN (0, 1));

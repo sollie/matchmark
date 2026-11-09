@@ -68,6 +68,7 @@ describe("Results", () => {
             {
               category: "Revolver 1500",
               did_not_finish: [],
+              groups: [],
               rows: [
                 {
                   rank: 1,
@@ -109,6 +110,7 @@ describe("Results", () => {
             {
               category: "Revolver 1500",
               did_not_finish: [],
+              groups: [],
               rows: [
                 {
                   rank: 1,
@@ -165,6 +167,7 @@ describe("Results", () => {
                   total: 110,
                 },
               ],
+              groups: [],
               did_not_finish: [
                 {
                   last_name: "Slow",
@@ -214,6 +217,7 @@ describe("Results", () => {
                 {
                   category: "Revolver 1500",
                   did_not_finish: [],
+                  groups: [],
                   rows: [
                     {
                       rank: 1,
@@ -279,6 +283,7 @@ describe("Results", () => {
             {
               category: "Pistol 1500",
               did_not_finish: [],
+              groups: [],
               rows: [
                 row(1, "Berg", { value: 4, name: "Master" }),
                 row(2, "Dahl", { value: 0, name: "Unclassified" }),
@@ -319,6 +324,7 @@ describe("Results", () => {
             {
               category: "Pistol 1500",
               did_not_finish: [],
+              groups: [],
               rows: [
                 {
                   rank: 1,
@@ -338,5 +344,50 @@ describe("Results", () => {
     render(Results);
     expect(await screen.findByRole("columnheader", { name: "Total" })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "Classification" })).toBeNull();
+  });
+
+  it("renders one ranked table per Class group under the category heading", async () => {
+    navigate("/results/7");
+    const row = (rank: number, total: number) => ({
+      rank,
+      segments: [{ segment: 1, score: total }],
+      total,
+    });
+    stubFetch((call) => {
+      if (!call.path.endsWith("/results")) return { body: { matches } };
+      return {
+        body: {
+          match: {
+            id: 7,
+            name: "Spring Match",
+            date: "2026-05-01",
+            course: "150",
+            course_label: "150",
+          },
+          segments: [1],
+          categories: [
+            {
+              category: "Revolver 1500",
+              did_not_finish: [],
+              rows: [],
+              groups: [
+                { class: { value: 4, name: "Master" }, rows: [row(1, 230), row(2, 220)] },
+                { class: { value: 1, name: "Marksman" }, rows: [row(1, 200)] },
+              ],
+            },
+          ],
+          new_shooters: [],
+        },
+      };
+    });
+    render(Results);
+    await screen.findByRole("heading", { name: "Master" });
+    expect(screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent)).toEqual([
+      "Master",
+      "Marksman",
+    ]);
+    const tables = screen.getAllByRole("table");
+    expect(tables).toHaveLength(2);
+    expect(within(tables[1]).getAllByRole("row")[1].textContent).toContain("1200");
   });
 });

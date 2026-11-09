@@ -59,6 +59,10 @@ test.describe("results", () => {
   }) => {
     const course = await defaultCourse(admin);
     const match = await createMatch(admin, { name: uniqueName("Class") });
+    const unclassify = await admin.put(`/api/matches/${match.id}`, {
+      data: { name: match.name, date: match.date, course: match.course, classified: false },
+    });
+    expect(unclassify.ok()).toBe(true);
     const classed = await createShooter(admin);
     const unclassed = await createShooter(admin);
     const first = await addEntry(admin, match.id, classed.id, 1);

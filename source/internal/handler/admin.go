@@ -66,6 +66,7 @@ type matchBody struct {
 	Course        string           `json:"course"`
 	CompetitionID int64            `json:"competition_id"`
 	Competition   *competitionBody `json:"competition"`
+	Classified    *bool            `json:"classified"`
 }
 
 func matchesJSON(comps []repository.Match) []map[string]any {
@@ -101,7 +102,7 @@ func shooterJSON(s repository.Shooter) map[string]any {
 }
 
 func matchJSON(c repository.Match) map[string]any {
-	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt)}
+	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt), "classified": c.Classified}
 }
 
 func nullable(s string) any {
@@ -250,7 +251,15 @@ func (h *Handler) updateMatch(r *http.Request) (int, any, error) {
 	if req.err != nil {
 		return fail(req.err)
 	}
-	if err := h.svc.UpdateMatch(r.Context(), repository.Match{ID: id, Name: body.Name, Date: body.Date, Course: body.Course}); err != nil {
+	classified := body.Classified
+	if classified == nil {
+		current, err := h.repo.GetMatch(r.Context(), id)
+		if err != nil {
+			return fail(err)
+		}
+		classified = &current.Classified
+	}
+	if err := h.svc.UpdateMatch(r.Context(), repository.Match{ID: id, Name: body.Name, Date: body.Date, Course: body.Course, Classified: *classified}); err != nil {
 		return fail(err)
 	}
 	c, err := h.repo.GetMatch(r.Context(), id)

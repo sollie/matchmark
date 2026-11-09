@@ -26,6 +26,7 @@
   let name = $state(untrack(() => match.name));
   let date = $state(untrack(() => match.date));
   let course = $state(untrack(() => match.course));
+  let classified = $state(untrack(() => match.classified));
   let error = $state("");
 
   onMount(loadRulebook);
@@ -35,7 +36,7 @@
     error = "";
     const result = await api.PUT("/api/matches/{matchID}", {
       params: { path: { matchID: match.id } },
-      body: { name, date, course },
+      body: { name, date, course, classified },
     });
     if (result.data) saved(result.data);
     else error = failure(result);
@@ -62,7 +63,12 @@
       {#each rulebook.courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
     </select>
   </label>
-  {#if !draft}<p class="muted">Only the name can change once the match has started.</p>
+  <label class="check">
+    <input type="checkbox" bind:checked={classified} /> Classified match
+  </label>
+  {#if !draft}<p class="muted">
+      Only the name and Classified match can change once the match has started.
+    </p>
   {:else if hasEntries}<p class="muted">
       The course cannot change once the match has entries.
     </p>{/if}

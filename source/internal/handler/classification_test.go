@@ -270,11 +270,11 @@ func TestResultsShowClassForEntryCategory(t *testing.T) {
 	f.env.Do("PUT", fmt.Sprintf("/api/matches/%d/visibility", f.comp), map[string]any{"show_names": true})
 	_, public := publicGet(t, f, resultsPath(f))
 	pub := public["categories"].([]any)
-	class := pub[0].(map[string]any)["rows"].([]any)[0].(map[string]any)["classification"].(map[string]any)
+	class := pub[0].(map[string]any)["groups"].([]any)[0].(map[string]any)["rows"].([]any)[0].(map[string]any)["classification"].(map[string]any)
 	if class["value"] != float64(4) || class["name"] != "Master" {
 		t.Fatalf("revolver row class %v", class)
 	}
-	if pistol := pub[1].(map[string]any)["rows"].([]any)[0].(map[string]any); pistol["classification"] != nil {
+	if pistol := pub[1].(map[string]any)["groups"].([]any)[0].(map[string]any)["rows"].([]any)[0].(map[string]any); pistol["classification"] != nil {
 		t.Fatalf("shooter without WAID has class %v", pistol)
 	}
 }

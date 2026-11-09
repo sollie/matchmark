@@ -266,6 +266,15 @@ The Classification frozen on an Entry when its Match goes active; results read i
 **Class**:
 The group an Entry competes in, frozen with the Classification at match and equal to it, except Unclassified, which maps to the club setting "Unclassified shooters compete as" (Master or Unclassified).
 
+**Classified match**:
+A per-Match toggle (`matches.classified`, default on; rulebook 1.x(c): classified matches give awards per Class). When on, results, standings and the results PDF split each classified Category into Class groups. Editable in any Match status. Not the `group_by_category` visibility flag, which only controls whether standings are grouped by Category.
+
+**Class group**:
+The rows of one Category that share a Class, shown as one table under the heading of the Class. Ordered High Master, Master, Expert, Sharpshooter, Marksman, Unclassified; empty groups are omitted. Used only when the Match is a Classified match, the Category is one of the five 1500 Categories and every ranked Entry has a Class (the entry snapshot, or the live Classification for entries not yet frozen); otherwise the Category is one flat list.
+
+**Rank**:
+An Entry's placement within its Class group (or within its Category when not grouped), restarting at 1 in each group. Equal total and X count share a Rank.
+
 **Classification**:
 A shooter's WA1500 skill level in one Category: Unclassified, Marksman, Sharpshooter, Expert, Master or High Master, in rising order. A shooter holds one Classification per classified Category (the five 1500 categories: Revolver 1500, Pistol 1500, Revolver Optical Sight 1500, Pistol Optical Sight 1500, Carbine 1500). Unclassified means the shooter has not competed in that Category; no value means it has not been fetched yet. Only shooters with a WAID have one. It is the current value, not the value at the time of a Match.
 _Avoid_: Rank, class, level

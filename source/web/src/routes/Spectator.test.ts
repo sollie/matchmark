@@ -239,6 +239,32 @@ describe("Spectator standings grouping", () => {
       .slice(1)
       .map((r) => [...r.querySelectorAll("td")].slice(0, 2).map((c) => c.textContent));
 
+  it("splits a category into ranked Class groups when standings carry a class group", async () => {
+    const classed = (lane: number, total: number, value: number, name: string) => ({
+      ...entry(lane, "Revolver 1500", total, 0),
+      class_group: { value, name },
+    });
+    await open(true, [
+      classed(1, 90, 4, "Master"),
+      classed(2, 80, 4, "Master"),
+      classed(3, 70, 1, "Marksman"),
+      classed(4, 99, 5, "High Master"),
+    ]);
+    await screen.findByRole("heading", { name: "Revolver 1500 - High Master" });
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent?.trim());
+    expect(headings).toEqual([
+      "Revolver 1500 - High Master",
+      "Revolver 1500 - Master",
+      "Revolver 1500 - Marksman",
+    ]);
+    const tables = screen.getAllByRole("table");
+    expect(cells(tables[1])).toEqual([
+      ["1", "1"],
+      ["2", "2"],
+    ]);
+    expect(cells(tables[2])).toEqual([["1", "3"]]);
+  });
+
   it("renders one ranked table per category in rulebook order with withdrawn last", async () => {
     await open(true, rows);
     await screen.findByRole("heading", { name: "Revolver 1500" });

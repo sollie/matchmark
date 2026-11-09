@@ -26,6 +26,7 @@ type Match struct {
 	Status         string
 	CurrentSegment int
 	ActivatedAt    string
+	Classified     bool
 }
 
 type DateRange struct {
@@ -145,8 +146,8 @@ func (r *Repository) CompetitionDateRange(ctx context.Context, id int64) (DateRa
 func (r *Repository) GetMatch(ctx context.Context, id int64) (Match, error) {
 	var c Match
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, '') FROM matches WHERE id = ?`, id).
-		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt)
+		`SELECT id, competition_id, name, date, course, status, current_segment, COALESCE(activated_at, ''), classified FROM matches WHERE id = ?`, id).
+		Scan(&c.ID, &c.CompetitionID, &c.Name, &c.Date, &c.Course, &c.Status, &c.CurrentSegment, &c.ActivatedAt, &c.Classified)
 	return c, mapErr(err)
 }
 

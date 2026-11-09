@@ -110,8 +110,8 @@ test.describe("spectator", () => {
     const revolver = page.getByRole("heading", { name: "Revolver 1500", level: 3 });
     await expect(revolver).toBeVisible();
     await expect(page.getByRole("heading", { level: 3 })).toHaveText([
-      "Revolver 1500",
-      "Pistol 1500",
+      "Revolver 1500 - Master",
+      "Pistol 1500 - Master",
     ]);
     const tables = page.getByRole("table");
     await expect(tables).toHaveCount(2);

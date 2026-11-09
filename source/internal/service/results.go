@@ -46,9 +46,15 @@ type ResultsDNFRow struct {
 	Segments  []ResultsSegment `json:"segments"`
 }
 
+type ResultsGroup struct {
+	Class wa1500.Classification `json:"class"`
+	Rows  []ResultsRow          `json:"rows"`
+}
+
 type ResultsCategory struct {
 	Category     string          `json:"category"`
 	Rows         []ResultsRow    `json:"rows"`
+	Groups       []ResultsGroup  `json:"groups"`
 	DidNotFinish []ResultsDNFRow `json:"did_not_finish"`
 }
 
@@ -151,19 +157,20 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 		if len(ranked) == 0 && len(dnf) == 0 {
 			continue
 		}
-		sort.SliceStable(ranked, func(i, j int) bool {
-			if ranked[i].total != ranked[j].total {
-				return ranked[i].total > ranked[j].total
+		sortRanked(ranked)
+		cat := ResultsCategory{Category: category, Rows: []ResultsRow{}, Groups: []ResultsGroup{}, DidNotFinish: make([]ResultsDNFRow, len(dnf))}
+		if groups, ok := classGroups(comp.Classified, category, ranked); ok {
+			for _, class := range classOrder {
+				members := groups[class]
+				if len(members) == 0 {
+					continue
+				}
+				cat.Groups = append(cat.Groups, ResultsGroup{Class: class, Rows: rankRows(members, vis)})
 			}
-			return ranked[i].x > ranked[j].x
-		})
-		cat := ResultsCategory{Category: category, Rows: make([]ResultsRow, len(ranked)), DidNotFinish: make([]ResultsDNFRow, len(dnf))}
-		rank := 0
-		for i, r := range ranked {
-			if i == 0 || r.total != ranked[i-1].total || r.x != ranked[i-1].x {
-				rank = i + 1
-			}
-			cat.Rows[i] = resultsRow(r, rank, vis)
+		} else {
+			cat.Rows = rankRows(ranked, vis)
+		}
+		for _, r := range ranked {
 			if vis.Names && r.entry.Shooter.WAID == "" {
 				out.NewShooters = append(out.NewShooters, resultsNewShooter(r, category, vis))
 			}
@@ -174,6 +181,56 @@ func (s *Service) results(ctx context.Context, comp repository.Match, vis reposi
 		out.Categories = append(out.Categories, cat)
 	}
 	return out, nil
+}
+
+var classOrder = []wa1500.Classification{wa1500.HighMaster, wa1500.Master, wa1500.Expert, wa1500.Sharpshooter, wa1500.Marksman, wa1500.Unclassified}
+
+func sortRanked(ranked []rankedEntry) {
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].total != ranked[j].total {
+			return ranked[i].total > ranked[j].total
+		}
+		return ranked[i].x > ranked[j].x
+	})
+}
+
+func rankRows(ranked []rankedEntry, vis repository.Visibility) []ResultsRow {
+	rows := make([]ResultsRow, len(ranked))
+	rank := 0
+	for i, r := range ranked {
+		if i == 0 || r.total != ranked[i-1].total || r.x != ranked[i-1].x {
+			rank = i + 1
+		}
+		rows[i] = resultsRow(r, rank, vis)
+	}
+	return rows
+}
+
+func entryClass(e repository.ReportEntry) (wa1500.Classification, bool) {
+	id := e.Identity(e.Shooter.Club, e.Shooter.Country, e.Shooter.Classes)
+	class := id.Class
+	if class == nil && !e.Frozen() {
+		class = id.Classification
+	}
+	if class == nil {
+		return 0, false
+	}
+	return wa1500.Classification(*class), true
+}
+
+func classGroups(classified bool, category string, ranked []rankedEntry) (map[wa1500.Classification][]rankedEntry, bool) {
+	if !classified || !rulebook.IsClassified(category) || len(ranked) == 0 {
+		return nil, false
+	}
+	groups := map[wa1500.Classification][]rankedEntry{}
+	for _, r := range ranked {
+		class, ok := entryClass(r.entry)
+		if !ok {
+			return nil, false
+		}
+		groups[class] = append(groups[class], r)
+	}
+	return groups, true
 }
 
 func resultsRow(r rankedEntry, rank int, vis repository.Visibility) ResultsRow {

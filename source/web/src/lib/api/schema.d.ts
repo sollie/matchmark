@@ -1698,6 +1698,8 @@ export interface components {
             date: string;
             /** @description Course of fire key from the rulebook */
             course: string;
+            /** @description Classified match. When on (the default), results and standings group each classified Category's rows by Class. Optional on update; omitting it keeps the current value. Editable in any status */
+            classified?: boolean;
         };
         Match: {
             /** Format: int64 */
@@ -1888,6 +1890,8 @@ export interface components {
             classification?: components["schemas"]["Classification"];
             /** @description The Class the shooter competed in; present when names are visible and the entry is frozen */
             class?: components["schemas"]["Classification"];
+            /** @description Class group the row belongs to; present for every entry of a Category only when the match is classified and all its entries have a Class */
+            class_group?: components["schemas"]["Classification"];
             x_count?: number;
             ring_counts?: components["schemas"]["RingCounts"];
             segments?: components["schemas"]["SegmentScore"][];
@@ -1907,7 +1911,13 @@ export interface components {
             /** @description Categories with at least one entry, in rulebook order */
             categories: {
                 category: string;
+                /** @description Ranked rows of the Category; empty when the Category is grouped by Class */
                 rows: components["schemas"]["ResultsRow"][];
+                /** @description Class groups in the order High Master, Master, Expert, Sharpshooter, Marksman, Unclassified, empty groups omitted; rank restarts within each group. Empty (use rows) when the match is not classified, the Category is not a WA1500 1500 Category, or any ranked entry has no Class */
+                groups: {
+                    class: components["schemas"]["Classification"];
+                    rows: components["schemas"]["ResultsRow"][];
+                }[];
                 /** @description Entries withdrawn during the match, unranked, with the scores of their accepted segments */
                 did_not_finish: components["schemas"]["ResultsDnfRow"][];
             }[];

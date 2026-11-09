@@ -31,6 +31,7 @@ const match = {
   course: "150",
   status: "draft" as const,
   current_segment: 1,
+  classified: true,
 };
 
 function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0], draft = true) {
@@ -57,7 +58,12 @@ describe("MatchEdit", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].method).toBe("PUT");
     expect(calls[0].path).toBe("/api/matches/5");
-    expect(calls[0].body).toEqual({ name: "Autumn", date: "2026-10-19", course: "60" });
+    expect(calls[0].body).toEqual({
+      name: "Autumn",
+      date: "2026-10-19",
+      course: "60",
+      classified: true,
+    });
     expect(saved).toHaveBeenCalledOnce();
   });
 
@@ -74,7 +80,19 @@ describe("MatchEdit", () => {
     await user.clear(screen.getByLabelText("Name"));
     await user.type(screen.getByLabelText("Name"), "Renamed");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(calls[0].body).toEqual({ name: "Renamed", date: match.date, course: match.course });
+    expect(calls[0].body).toEqual({
+      name: "Renamed",
+      date: match.date,
+      course: match.course,
+      classified: true,
+    });
+  });
+
+  it("sends the Classified match toggle, also once the match has started", async () => {
+    const { calls, user } = setup(false, () => ({ body: { ...match, classified: false } }), false);
+    await user.click(screen.getByLabelText("Classified match"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(calls[0].body).toMatchObject({ classified: false });
   });
 
   it("blocks a date that is not ISO 8601", async () => {

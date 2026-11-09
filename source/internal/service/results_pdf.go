@@ -51,28 +51,28 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		data.SegmentNames = append(data.SegmentNames, names[n])
 	}
 	for _, c := range view.Categories {
-		cat := report.ResultsPDFCategory{Category: c.Category}
-		for _, r := range c.Rows {
-			row := report.ResultsPDFRow{
-				Rank: r.Rank, LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
-				Club: r.Club, Country: r.Country, Total: r.Total, XCount: r.XCount,
-			}
-			for _, st := range r.Segments {
-				row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
-			}
-			cat.Rows = append(cat.Rows, row)
+		sections := []ResultsGroup{{Class: -1, Rows: c.Rows}}
+		if len(c.Groups) > 0 {
+			sections = c.Groups
 		}
-		for _, r := range c.DidNotFinish {
-			row := report.ResultsPDFRow{
-				LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
-				Club: r.Club, Country: r.Country, DNF: true,
+		for i, g := range sections {
+			title := c.Category
+			if g.Class >= 0 {
+				title += " - " + g.Class.Name()
 			}
-			for _, st := range r.Segments {
-				row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
+			cat := report.ResultsPDFCategory{Category: title}
+			for _, r := range g.Rows {
+				cat.Rows = append(cat.Rows, pdfRow(r))
 			}
-			cat.Rows = append(cat.Rows, row)
+			if i == len(sections)-1 {
+				for _, r := range c.DidNotFinish {
+					cat.Rows = append(cat.Rows, pdfDNFRow(r))
+				}
+			}
+			if len(cat.Rows) > 0 {
+				data.Categories = append(data.Categories, cat)
+			}
 		}
-		data.Categories = append(data.Categories, cat)
 	}
 	for _, n := range view.NewShooters {
 		data.NewShooters = append(data.NewShooters, report.ResultsPDFNewShooter{
@@ -85,4 +85,26 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		return Download{}, err
 	}
 	return Download{BaseName: downloadBaseName(view.Match.Name, view.Match.Date) + "-results", Data: pdf}, nil
+}
+
+func pdfRow(r ResultsRow) report.ResultsPDFRow {
+	row := report.ResultsPDFRow{
+		Rank: r.Rank, LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
+		Club: r.Club, Country: r.Country, Total: r.Total, XCount: r.XCount,
+	}
+	for _, st := range r.Segments {
+		row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
+	}
+	return row
+}
+
+func pdfDNFRow(r ResultsDNFRow) report.ResultsPDFRow {
+	row := report.ResultsPDFRow{
+		LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
+		Club: r.Club, Country: r.Country, DNF: true,
+	}
+	for _, st := range r.Segments {
+		row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
+	}
+	return row
 }
