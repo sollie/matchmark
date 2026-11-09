@@ -7,6 +7,7 @@ import (
 	"image/png"
 	"regexp"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,8 +38,8 @@ func sampleResults() ResultsPDFData {
 		CourseLabel: "WA1500 150",
 		Segments:    []int{1, 2},
 		Categories: []ResultsPDFCategory{
-			{Category: "Revolver 1500", Rows: []ResultsPDFRow{row(1, "Ørn"), row(2, "Berg")}},
-			{Category: "Pistol 1500", Rows: []ResultsPDFRow{row(1, "Dahl")}},
+			{Category: "Revolver 1500", Groups: []ResultsPDFGroup{{Rows: []ResultsPDFRow{row(1, "Ørn"), row(2, "Berg")}}}},
+			{Category: "Pistol 1500", Groups: []ResultsPDFGroup{{Rows: []ResultsPDFRow{row(1, "Dahl")}}}},
 		},
 		NewShooters: []ResultsPDFNewShooter{{LastName: "Ny", FirstName: "Nina", Category: "Pistol 1500", Club: ptr("Łódź SK"), Total: 170, XCount: ptr(4)}},
 	}
@@ -60,8 +61,8 @@ func TestResultsPDFFlowsCategoriesBeforeNewShootersPage(t *testing.T) {
 func TestResultsPDFWithHiddenColumnsAndLogo(t *testing.T) {
 	d := sampleResults()
 	for i := range d.Categories {
-		for j := range d.Categories[i].Rows {
-			r := &d.Categories[i].Rows[j]
+		for j := range d.Categories[i].Groups[0].Rows {
+			r := &d.Categories[i].Groups[0].Rows[j]
 			r.LastName, r.FirstName, r.WAID, r.Club, r.Country, r.XCount = nil, nil, nil, nil, nil, nil
 			for k := range r.Segments {
 				r.Segments[k].Score = nil
@@ -88,12 +89,12 @@ func TestResultsPDFPaginatesLongCategories(t *testing.T) {
 	d := sampleResults()
 	var rows []ResultsPDFRow
 	for i := 1; i <= 120; i++ {
-		r := d.Categories[0].Rows[0]
+		r := d.Categories[0].Groups[0].Rows[0]
 		r.Rank = i
 		r.LastName = ptr(fmt.Sprintf("Shooter%d", i))
 		rows = append(rows, r)
 	}
-	d.Categories = []ResultsPDFCategory{{Category: "Revolver 1500", Rows: rows}}
+	d.Categories = []ResultsPDFCategory{{Category: "Revolver 1500", Groups: []ResultsPDFGroup{{Rows: rows}}}}
 	d.NewShooters = nil
 	out, err := ResultsPDF(d)
 	if err != nil {
@@ -128,15 +129,15 @@ func TestResultsPDFWithoutClubSettings(t *testing.T) {
 	}
 }
 
-func TestResultsColumnsUseSegmentNames(t *testing.T) {
+func TestResultsColumnsUseSegmentHeadings(t *testing.T) {
 	d := sampleResults()
-	d.SegmentNames = []string{"Match 1", "Match 2"}
+	d.Headings = []string{"1-2", "3-4"}
 	columns, _ := resultsColumns(d)
 	var titles []string
 	for _, c := range columns {
 		titles = append(titles, c.title)
 	}
-	for _, want := range d.SegmentNames {
+	for _, want := range d.Headings {
 		if !slices.Contains(titles, want) {
 			t.Fatalf("titles %q lack %q", titles, want)
 		}
@@ -148,13 +149,13 @@ func TestResultsColumnsUseSegmentNames(t *testing.T) {
 
 func TestResultsColumnsShowDNFRowsAsDNF(t *testing.T) {
 	d := sampleResults()
-	d.Categories[0].Rows = append(d.Categories[0].Rows, ResultsPDFRow{
+	d.Categories[0].Groups[0].Rows = append(d.Categories[0].Groups[0].Rows, ResultsPDFRow{
 		LastName: ptr("Slow"), FirstName: ptr("Sam"), Club: ptr("Łódź SK"), Country: ptr("NOR"), DNF: true,
 		Segments: []ResultsPDFSegment{{Segment: 1, Score: ptr(80)}, {Segment: 2}},
 	})
 	_, cells := resultsColumns(d)
-	got := cells(d.Categories[0].Rows[2])
-	want := []string{"", "Sam Slow", "", "Łódź SK", "NOR", "80", "", "DNF", ""}
+	got := cells(d.Categories[0].Groups[0].Rows[2])
+	want := []string{"", "", "Sam Slow", "Łódź SK", "NOR", "80", "", "", "DNF"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("cells %q, want %q", got, want)
 	}
@@ -194,5 +195,110 @@ func TestResultsPDFFlowsCategoriesOnSharedPages(t *testing.T) {
 	}
 	if got := pageCount(out); got != 1 {
 		t.Fatalf("pages = %d, want short categories on one page", got)
+	}
+}
+
+func course150() ResultsPDFData {
+	scores := []int{229, 167, 205, 227, 291, 259}
+	var segs []ResultsPDFSegment
+	for i, v := range scores {
+		segs = append(segs, ResultsPDFSegment{Segment: i + 1, Score: ptr(v)})
+	}
+	d := sampleResults()
+	d.Segments = []int{1, 2, 3, 4, 5, 6}
+	d.Headings = []string{"1", "2", "3", "4", "5:1", "5:2"}
+	d.SumGroups = []ResultsPDFSumGroup{{Heading: "1-4", Segments: []int{1, 2, 3, 4}}, {Heading: "5", Segments: []int{5, 6}}}
+	r := ResultsPDFRow{Rank: 1, LastName: ptr("Ørn"), FirstName: ptr("Åse"), WAID: ptr("1001"), Club: ptr("Łódź SK"), Country: ptr("NOR"),
+		Classification: ptr("Master"), Segments: segs, Total: 1378, XCount: ptr(9)}
+	d.Categories = []ResultsPDFCategory{{Category: "Revolver 1500", Groups: []ResultsPDFGroup{{Class: "Master", Rows: []ResultsPDFRow{r}}}}}
+	return d
+}
+
+func TestResultsColumnsAddMatchSumsForCourse150(t *testing.T) {
+	d := course150()
+	columns, cells := resultsColumns(d)
+	var titles []string
+	for _, c := range columns {
+		titles = append(titles, c.title)
+	}
+	wantTitles := []string{"Rank", "WAID", "Name", "Club", "Country", "Classification", "1", "2", "3", "4", "5:1", "5:2", "Match Sum 1-4", "Match Sum 5", "X", "Total"}
+	if !slices.Equal(titles, wantTitles) {
+		t.Fatalf("titles %q, want %q", titles, wantTitles)
+	}
+	got := cells(d.Categories[0].Groups[0].Rows[0])
+	want := []string{"1", "1001", "Åse Ørn", "Łódź SK", "NOR", "Master", "229", "167", "205", "227", "291", "259", "828", "550", "9", "1378"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("cells %q, want %q", got, want)
+	}
+}
+
+func TestResultsColumnsHideClassificationRemarksAndSums(t *testing.T) {
+	d := course150()
+	r := &d.Categories[0].Groups[0].Rows[0]
+	r.Classification = nil
+	for i := range r.Segments {
+		r.Segments[i].Score = nil
+	}
+	columns, _ := resultsColumns(d)
+	for _, c := range columns {
+		if c.title == "Classification" || c.title == "Remarks" || c.title == "Match Sum 1-4" {
+			t.Fatalf("column %q must be hidden", c.title)
+		}
+	}
+}
+
+func TestResultsPDFHeaderLines(t *testing.T) {
+	d := sampleResults()
+	if got := d.headerLines(); len(got) != 1 {
+		t.Fatalf("lines %q, want only the match line", got)
+	}
+	d.Referee, d.RangeOfficer, d.Range = "Rita Ref", "Ola Officer", "Åsane Range"
+	got := d.headerLines()
+	if len(got) != 2 || got[1] != "Referee: Rita Ref  ·  Range officer: Ola Officer  ·  Range: Åsane Range" {
+		t.Fatalf("lines %q", got)
+	}
+	if want := "Autumn Match  ·  2026-10-24  ·  WA1500 150  ·  3 shooters"; got[0] != want {
+		t.Fatalf("line %q, want %q", got[0], want)
+	}
+	d.Referee = ""
+	if got := d.headerLines(); got[1] != "Range officer: Ola Officer  ·  Range: Åsane Range" {
+		t.Fatalf("lines %q", got)
+	}
+}
+
+var pdfMediaBox = regexp.MustCompile(`/MediaBox \[0 0 ([0-9.]+) ([0-9.]+)\]`)
+
+func TestResultsPDFIsLandscapeA4(t *testing.T) {
+	out, err := ResultsPDF(course150())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := pdfMediaBox.FindSubmatch(out)
+	if m == nil {
+		t.Fatal("no media box")
+	}
+	w, h := string(m[1]), string(m[2])
+	if !strings.HasPrefix(w, "841") || !strings.HasPrefix(h, "595") {
+		t.Fatalf("media box %s x %s, want landscape A4", w, h)
+	}
+}
+
+func TestResultsPDFWithClassGroupsRestartsRanks(t *testing.T) {
+	d := course150()
+	second := d.Categories[0].Groups[0].Rows[0]
+	d.NewShooters = nil
+	d.Categories[0].Groups = append(d.Categories[0].Groups, ResultsPDFGroup{Class: "Marksman", Rows: []ResultsPDFRow{second}})
+	if got := d.participants(); got != 2 {
+		t.Fatalf("participants = %d", got)
+	}
+	if got := categoryTitle(d.Categories[0]); got != "Revolver 1500  ·  2 shooters" {
+		t.Fatalf("title %q", got)
+	}
+	out, err := ResultsPDF(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := pageCount(out); got != 1 {
+		t.Fatalf("pages = %d", got)
 	}
 }

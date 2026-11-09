@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	pdfPageWidth   = 186.0
+	pdfPageWidth   = 273.0
 	pdfUnit        = 0.5
 	pdfGrid        = int(pdfPageWidth / pdfUnit)
 	pdfCellPadX    = 1.0

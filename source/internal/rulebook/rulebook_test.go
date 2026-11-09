@@ -192,6 +192,39 @@ func TestStageParts(t *testing.T) {
 	}
 }
 
+func TestShortHeadingsAndSumGroups(t *testing.T) {
+	want := map[string][]string{
+		"150": {"1", "2", "3", "4", "5:1", "5:2"},
+		"60":  {"1-2", "3-4"},
+		"48":  {"1-2", "3-4"},
+		"40":  {"1-2", "3-4"},
+	}
+	for key, heads := range want {
+		course, err := rulebook.CourseByKey(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, s := range course.Segments {
+			got = append(got, s.Short)
+		}
+		if !slices.Equal(got, heads) {
+			t.Errorf("course %s short headings = %q, want %q", key, got, heads)
+		}
+	}
+	c150, _ := rulebook.CourseByKey("150")
+	if len(c150.SumGroups) != 2 || c150.SumGroups[0].Heading != "1-4" || !slices.Equal(c150.SumGroups[0].Segments, []int{1, 2, 3, 4}) ||
+		c150.SumGroups[1].Heading != "5" || !slices.Equal(c150.SumGroups[1].Segments, []int{5, 6}) {
+		t.Errorf("course 150 sum groups = %+v", c150.SumGroups)
+	}
+	for _, key := range []string{"60", "48", "40"} {
+		c, _ := rulebook.CourseByKey(key)
+		if len(c.SumGroups) != 0 {
+			t.Errorf("course %s has sum groups %+v", key, c.SumGroups)
+		}
+	}
+}
+
 func TestSegments(t *testing.T) {
 	type seg struct {
 		name   string

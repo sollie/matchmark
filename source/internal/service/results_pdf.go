@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sollie/matchmark/internal/report"
+	"github.com/sollie/matchmark/internal/rulebook"
 )
 
 func (s *Service) PublicResultsPDF(ctx context.Context, matchID int64) (Download, error) {
@@ -41,38 +42,54 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 		Range:       view.Match.Range,
 		Segments:    view.Segments,
 	}
+	match, err := s.repo.GetMatch(ctx, view.Match.ID)
+	if err != nil {
+		return Download{}, mapRepoErr(err)
+	}
+	data.Referee = officialDisplay(match.RefereeName, match.RefereeWAID)
+	data.RangeOfficer = officialDisplay(match.RangeOfficerName, match.RangeOfficerWAID)
 	var logo ClubLogo
-	var err error
 	if data.ClubName, logo, err = s.clubBranding(ctx); err != nil {
 		return Download{}, err
 	}
 	data.Logo, data.LogoType = logo.Data, logo.ContentType
-	names := segmentNames(view.Match.Course)
-	for _, n := range view.Segments {
-		data.SegmentNames = append(data.SegmentNames, names[n])
+	if course, err := rulebook.CourseByKey(view.Match.Course); err == nil {
+		byNumber := map[int]string{}
+		for _, seg := range course.Segments {
+			byNumber[seg.Number] = seg.Short
+		}
+		for _, n := range view.Segments {
+			data.Headings = append(data.Headings, byNumber[n])
+		}
+		for _, g := range course.SumGroups {
+			data.SumGroups = append(data.SumGroups, report.ResultsPDFSumGroup{Heading: g.Heading, Segments: g.Segments})
+		}
 	}
 	for _, c := range view.Categories {
 		sections := []ResultsGroup{{Class: -1, Rows: c.Rows}}
 		if len(c.Groups) > 0 {
 			sections = c.Groups
 		}
+		cat := report.ResultsPDFCategory{Category: c.Category}
 		for i, g := range sections {
-			title := c.Category
+			group := report.ResultsPDFGroup{}
 			if g.Class >= 0 {
-				title += " - " + g.Class.Name()
+				group.Class = g.Class.Name()
 			}
-			cat := report.ResultsPDFCategory{Category: title}
 			for _, r := range g.Rows {
-				cat.Rows = append(cat.Rows, pdfRow(r))
+				group.Rows = append(group.Rows, pdfRow(r))
 			}
 			if i == len(sections)-1 {
 				for _, r := range c.DidNotFinish {
-					cat.Rows = append(cat.Rows, pdfDNFRow(r))
+					group.Rows = append(group.Rows, pdfDNFRow(r))
 				}
 			}
-			if len(cat.Rows) > 0 {
-				data.Categories = append(data.Categories, cat)
+			if len(group.Rows) > 0 {
+				cat.Groups = append(cat.Groups, group)
 			}
+		}
+		if len(cat.Groups) > 0 {
+			data.Categories = append(data.Categories, cat)
 		}
 	}
 	for _, n := range view.NewShooters {
@@ -93,10 +110,21 @@ func pdfRow(r ResultsRow) report.ResultsPDFRow {
 		Rank: r.Rank, LastName: r.LastName, FirstName: r.FirstName, WAID: r.WAID,
 		Club: r.Club, Country: r.Country, Remarks: r.Remarks, Total: r.Total, XCount: r.XCount,
 	}
+	if r.Class != nil {
+		name := r.Class.Name()
+		row.Classification = &name
+	}
 	for _, st := range r.Segments {
 		row.Segments = append(row.Segments, report.ResultsPDFSegment{Segment: st.Segment, Score: st.Score})
 	}
 	return row
+}
+
+func officialDisplay(name, waid string) string {
+	if name != "" {
+		return name
+	}
+	return waid
 }
 
 func pdfDNFRow(r ResultsDNFRow) report.ResultsPDFRow {

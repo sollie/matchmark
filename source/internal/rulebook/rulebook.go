@@ -17,8 +17,14 @@ type Stage struct {
 type Segment struct {
 	Number int
 	Name   string
+	Short  string
 	Stages []int
 	Shots  int
+}
+
+type SumGroup struct {
+	Heading  string
+	Segments []int
 }
 
 type Course struct {
@@ -27,6 +33,7 @@ type Course struct {
 	TotalShots int
 	Stages     []Stage
 	Segments   []Segment
+	SumGroups  []SumGroup
 }
 
 var course1500 = Course{
@@ -46,12 +53,16 @@ var course1500 = Course{
 		{10, "25 yd", 6, 12, "Standing without support", "Match 5"},
 	},
 	Segments: []Segment{
-		{1, "Match 1", []int{1, 2}, 24},
-		{2, "Match 2", []int{3}, 18},
-		{3, "Match 3", []int{4}, 24},
-		{4, "Match 4", []int{5, 6}, 24},
-		{5, "Match 5 · Stage 1+2", []int{7, 8}, 30},
-		{6, "Match 5 · Stage 3+4", []int{9, 10}, 30},
+		{1, "Match 1", "1", []int{1, 2}, 24},
+		{2, "Match 2", "2", []int{3}, 18},
+		{3, "Match 3", "3", []int{4}, 24},
+		{4, "Match 4", "4", []int{5, 6}, 24},
+		{5, "Match 5 · Stage 1+2", "5:1", []int{7, 8}, 30},
+		{6, "Match 5 · Stage 3+4", "5:2", []int{9, 10}, 30},
+	},
+	SumGroups: []SumGroup{
+		{"1-4", []int{1, 2, 3, 4}},
+		{"5", []int{5, 6}},
 	},
 }
 
@@ -73,8 +84,8 @@ var course60 = Course{
 		{4, "25 yd", 6, 12, "Standing without support", ""},
 	},
 	Segments: []Segment{
-		{1, "Stage 1+2", []int{1, 2}, 30},
-		{2, "Stage 3+4", []int{3, 4}, 30},
+		{1, "Stage 1+2", "1-2", []int{1, 2}, 30},
+		{2, "Stage 3+4", "3-4", []int{3, 4}, 30},
 	},
 }
 
@@ -89,8 +100,8 @@ var course48 = Course{
 		{4, "25 yd", 18, 90, "6 kneeling + 6 L-barricade + 6 R-barricade", ""},
 	},
 	Segments: []Segment{
-		{1, "Stage 1+2", []int{1, 2}, 18},
-		{2, "Stage 3+4", []int{3, 4}, 30},
+		{1, "Stage 1+2", "1-2", []int{1, 2}, 18},
+		{2, "Stage 3+4", "3-4", []int{3, 4}, 30},
 	},
 }
 
@@ -105,8 +116,8 @@ var course48FiveShot = Course{
 		{4, "25 yd", 15, 90, "5 kneeling + 5 L-barricade + 5 R-barricade", ""},
 	},
 	Segments: []Segment{
-		{1, "Stage 1+2", []int{1, 2}, 15},
-		{2, "Stage 3+4", []int{3, 4}, 25},
+		{1, "Stage 1+2", "1-2", []int{1, 2}, 15},
+		{2, "Stage 3+4", "3-4", []int{3, 4}, 25},
 	},
 }
 

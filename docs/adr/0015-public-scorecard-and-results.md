@@ -14,3 +14,7 @@ A shooter should be able to keep a record of a finished match without an account
 ## Consequences
 
 Sequential ids make the data enumerable. That is accepted; the cost of a scrape is bounded by the render protection in ADR 0016, and rate limiting beyond the application (per-IP edge limits) is left to the CDN or reverse proxy. A club that cannot accept public results should not expose the instance.
+
+## Amendment (#527)
+
+The Results PDF is A4 landscape and its header always carries the WA1500 logo (downloaded from https://wa1500.org/images/logo.png and embedded; licence note in `README.md`). Classification at match and Remarks follow the names flag, like the other personal columns, so the public PDF still discloses nothing the Results view hides. Referee, Range officer and Range are shown whenever set, as they are match facts rather than shooter data.

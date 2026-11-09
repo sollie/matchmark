@@ -186,7 +186,7 @@ The printable, public page of a finished match's standings, chosen from a picker
 _Avoid_: Results page, leaderboard
 
 **Results PDF**:
-The Results view rendered as a PDF on demand and never stored, as standings per category only (no per-shooter ring counts). The public one honours visibility flags; the admin one, downloaded from the match list, shows everything.
+The Results view rendered as a landscape A4 PDF on demand and never stored, as standings per category (one table per Class group when the match is classified) with the club and WA1500 logos, short segment headings, Match Sum columns for the 150 course, Classification at match and Remarks, and no per-shooter ring counts. The public one honours visibility flags; the admin one, downloaded from the match list, shows everything.
 _Avoid_: Results report (that is the `.xlsx`)
 
 **Club settings**:
