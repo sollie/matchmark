@@ -54,6 +54,8 @@ var (
 	pdfHeaderFill  = &props.Color{Red: 238, Green: 238, Blue: 238}
 	pdfMuted       = &props.Color{Red: 92, Green: 92, Blue: 92}
 	pdfSectionFill = &props.Color{Red: 184, Green: 224, Blue: 160}
+	pdfGroupFill   = &props.Color{Red: 228, Green: 241, Blue: 218}
+	pdfGroupText   = &props.Color{Red: 46, Green: 84, Blue: 30}
 )
 
 type ResultsPDFSegment struct {
@@ -500,7 +502,7 @@ func sectionRow(title string, grid int) core.Row {
 }
 
 func groupRow(title string, grid int) core.Row {
-	return row.New(pdfGroupHeight).Add(col.New(grid).Add(text.New(title, props.Text{Size: 9, Style: fontstyle.Bold, Top: 1.2, Color: pdfMuted})))
+	return row.New(pdfGroupHeight).WithStyle(&props.Cell{BackgroundColor: pdfGroupFill}).Add(col.New(grid).Add(text.New(title, props.Text{Size: 9, Style: fontstyle.Bold, Top: 1.2, Left: 2, Color: pdfGroupText})))
 }
 
 func tableHeader(ms *measurer, columns []pdfColumn, grid int) (core.Row, float64) {
