@@ -36,22 +36,58 @@ func getMatch(t *testing.T, env *apitest.Env, id int) map[string]any {
 	return out
 }
 
-func TestMatchOfficialsAreLookedUpAndSnapshotted(t *testing.T) {
+func officialList(m map[string]any, key string) []string {
+	var out []string
+	list, _ := m[key].([]any)
+	for _, v := range list {
+		o := v.(map[string]any)
+		out = append(out, o["waid"].(string)+"="+o["name"].(string))
+	}
+	return out
+}
+
+func sameList(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestMatchOfficialsAreLookedUpSnapshottedAndKeepOrder(t *testing.T) {
 	env, _ := officialsEnv(t)
-	status, out := env.Do("POST", "/api/matches", matchBody(map[string]any{"referee_waid": "1001", "range_officer_waid": " 2002 "}))
+	status, out := env.Do("POST", "/api/matches", matchBody(map[string]any{
+		"referee_waids":       []string{"2002", " 1001 "},
+		"range_officer_waids": []string{"2002"},
+	}))
 	if status != http.StatusCreated {
 		t.Fatalf("create: %d %v", status, out)
 	}
 	m := getMatch(t, env, int(out["id"].(float64)))
-	if m["referee_waid"] != "1001" || m["referee_name"] != "Rita REFEREE" || m["range_officer_waid"] != "2002" || m["range_officer_name"] != "Ron RANGE" {
-		t.Fatalf("officials: %v", m)
+	if got := officialList(m, "referees"); !sameList(got, []string{"2002=Ron RANGE", "1001=Rita REFEREE"}) {
+		t.Fatalf("referees: %v", got)
+	}
+	if got := officialList(m, "range_officers"); !sameList(got, []string{"2002=Ron RANGE"}) {
+		t.Fatalf("range officers: %v", got)
+	}
+}
+
+func TestMatchOfficialsRejectDuplicateWAIDWithinRole(t *testing.T) {
+	env, _ := officialsEnv(t)
+	status, out := env.Do("POST", "/api/matches", matchBody(map[string]any{"referee_waids": []string{"1001", "1001"}}))
+	if status != http.StatusUnprocessableEntity {
+		t.Fatalf("duplicate: %d %v", status, out)
 	}
 }
 
 func TestMatchOfficialsAreEmptyByDefault(t *testing.T) {
 	env, fake := officialsEnv(t)
 	m := getMatch(t, env, newMatch(env))
-	if m["referee_waid"] != nil || m["referee_name"] != nil || m["range_officer_waid"] != nil || m["range_officer_name"] != nil {
+	if len(m["referees"].([]any)) != 0 || len(m["range_officers"].([]any)) != 0 {
 		t.Fatalf("officials: %v", m)
 	}
 	if fake.calls() != 0 {
@@ -65,20 +101,20 @@ func TestMatchRefereeDefaultsToSignedInUserWithWAID(t *testing.T) {
 		t.Fatalf("set waid: %d %v", status, out)
 	}
 	m := getMatch(t, env, newMatch(env))
-	if m["referee_waid"] != "1001" || m["referee_name"] != "Rita REFEREE" || m["range_officer_waid"] != nil {
+	if got := officialList(m, "referees"); !sameList(got, []string{"1001=Rita REFEREE"}) || len(m["range_officers"].([]any)) != 0 {
 		t.Fatalf("default: %v", m)
 	}
-	m = getMatch(t, env, env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waid": ""})))
-	if m["referee_waid"] != nil {
+	m = getMatch(t, env, env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waids": []string{}})))
+	if len(m["referees"].([]any)) != 0 {
 		t.Fatalf("explicit empty: %v", m)
 	}
 }
 
 func TestMatchOfficialLookupFailureStoresNothing(t *testing.T) {
 	env, fake := officialsEnv(t)
-	id := env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waid": "1001"}))
+	id := env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waids": []string{"1001"}}))
 
-	status, out := env.Do("POST", "/api/matches", matchBody(map[string]any{"range_officer_waid": "9999"}))
+	status, out := env.Do("POST", "/api/matches", matchBody(map[string]any{"range_officer_waids": []string{"2002", "9999"}}))
 	if status != http.StatusUnprocessableEntity || out["error"] != "WAID not found in the WA1500 register" {
 		t.Fatalf("not found: %d %v", status, out)
 	}
@@ -88,28 +124,32 @@ func TestMatchOfficialLookupFailureStoresNothing(t *testing.T) {
 
 	fake.set(nil, wa1500.ErrUpstream)
 	path := fmt.Sprintf("/api/matches/%d", id)
-	status, out = env.Do("PUT", path, matchBody(map[string]any{"name": "Renamed", "referee_waid": "1001", "range_officer_waid": "2002"}))
+	status, out = env.Do("PUT", path, matchBody(map[string]any{"name": "Renamed", "referee_waids": []string{"1001"}, "range_officer_waids": []string{"2002"}}))
 	if status != http.StatusServiceUnavailable {
 		t.Fatalf("unreachable: %d %v", status, out)
 	}
 	m := getMatch(t, env, id)
-	if m["name"] != "Club Match" || m["range_officer_waid"] != nil || m["referee_name"] != "Rita REFEREE" {
+	if m["name"] != "Club Match" || len(m["range_officers"].([]any)) != 0 || !sameList(officialList(m, "referees"), []string{"1001=Rita REFEREE"}) {
 		t.Fatalf("partial update: %v", m)
 	}
 }
 
-func TestMatchOfficialsKeepOnUnrelatedEditAndCanBeCleared(t *testing.T) {
+func TestMatchOfficialsAddRemoveReorderAndClear(t *testing.T) {
 	env, fake := officialsEnv(t)
-	id := env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waid": "1001"}))
+	id := env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waids": []string{"1001"}}))
 	fake.set(nil, wa1500.ErrUpstream)
 	path := fmt.Sprintf("/api/matches/%d", id)
-	if status, out := env.Do("PUT", path, matchBody(map[string]any{"name": "Renamed"})); status != http.StatusOK || out["referee_name"] != "Rita REFEREE" {
+	if status, out := env.Do("PUT", path, matchBody(map[string]any{"name": "Renamed"})); status != http.StatusOK || !sameList(officialList(out, "referees"), []string{"1001=Rita REFEREE"}) {
 		t.Fatalf("omitted: %d %v", status, out)
 	}
-	if status, out := env.Do("PUT", path, matchBody(map[string]any{"name": "Renamed", "referee_waid": "1001"})); status != http.StatusOK || out["referee_name"] != "Rita REFEREE" {
-		t.Fatalf("unchanged: %d %v", status, out)
+	fake.set([]wa1500.Shooter{{WAID: "2002", FirstName: "Ron", LastName: "RANGE"}}, nil)
+	if status, out := env.Do("PUT", path, matchBody(map[string]any{"referee_waids": []string{"2002", "1001"}})); status != http.StatusOK || !sameList(officialList(out, "referees"), []string{"2002=Ron RANGE", "1001=Rita REFEREE"}) {
+		t.Fatalf("add first: %d %v", status, out)
 	}
-	if status, out := env.Do("PUT", path, matchBody(map[string]any{"name": "Renamed", "referee_waid": ""})); status != http.StatusOK || out["referee_waid"] != nil || out["referee_name"] != nil {
+	if status, out := env.Do("PUT", path, matchBody(map[string]any{"referee_waids": []string{"2002"}})); status != http.StatusOK || !sameList(officialList(out, "referees"), []string{"2002=Ron RANGE"}) {
+		t.Fatalf("remove: %d %v", status, out)
+	}
+	if status, out := env.Do("PUT", path, matchBody(map[string]any{"referee_waids": []string{}})); status != http.StatusOK || len(out["referees"].([]any)) != 0 {
 		t.Fatalf("cleared: %d %v", status, out)
 	}
 }
@@ -120,23 +160,28 @@ func TestMatchOfficialsEditableAfterMatchStarts(t *testing.T) {
 	if status, out := env.Do("POST", fmt.Sprintf("/api/matches/%d/status", id), map[string]any{"status": "active"}); status != http.StatusOK {
 		t.Fatalf("activate: %d %v", status, out)
 	}
-	status, out := env.Do("PUT", fmt.Sprintf("/api/matches/%d", id), matchBody(map[string]any{"range_officer_waid": "2002"}))
-	if status != http.StatusOK || out["range_officer_name"] != "Ron RANGE" {
+	status, out := env.Do("PUT", fmt.Sprintf("/api/matches/%d", id), matchBody(map[string]any{"range_officer_waids": []string{"2002"}}))
+	if status != http.StatusOK || !sameList(officialList(out, "range_officers"), []string{"2002=Ron RANGE"}) {
 		t.Fatalf("active edit: %d %v", status, out)
 	}
 }
 
 func TestMatchOfficialsAreAudited(t *testing.T) {
 	env, _ := officialsEnv(t)
-	env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waid": "1001"}))
-	found := false
+	id := env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waids": []string{"1001", "2002"}}))
+	env.Do("PUT", fmt.Sprintf("/api/matches/%d", id), matchBody(map[string]any{"referee_waids": []string{"2002"}, "range_officer_waids": []string{"1001"}}))
+	seen := map[string]bool{}
 	for _, line := range env.AuditLines() {
-		if line["action"] == "match.create" && line["details"] == "Club Match, referee 1001" {
-			found = true
-		}
+		d, _ := line["details"].(string)
+		seen[line["action"].(string)+": "+d] = true
 	}
-	if !found {
-		t.Fatalf("audit: %v", env.AuditLines())
+	for _, want := range []string{
+		"match.create: Club Match, referees 1001, 2002",
+		"match.update: Club Match, referees 2002, range officers 1001",
+	} {
+		if !seen[want] {
+			t.Fatalf("missing %q in %v", want, seen)
+		}
 	}
 }
 

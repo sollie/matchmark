@@ -157,7 +157,11 @@ func (r *Repository) ListMatches(ctx context.Context) ([]Match, error) {
 		}
 		comps = append(comps, c)
 	}
-	return comps, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	_ = rows.Close()
+	return comps, r.loadMatchOfficials(ctx, comps)
 }
 
 func (r *Repository) UpdateMatch(ctx context.Context, c Match) error {
@@ -167,9 +171,12 @@ func (r *Repository) UpdateMatch(ctx context.Context, c Match) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE matches SET name = ?, date = ?, course = ?, classified = ?, referee_waid = ?, referee_name = ?, range_officer_waid = ?, range_officer_name = ? WHERE id = ?`,
-		c.Name, c.Date, c.Course, c.Classified, nullIfEmpty(c.RefereeWAID), nullIfEmpty(c.RefereeName), nullIfEmpty(c.RangeOfficerWAID), nullIfEmpty(c.RangeOfficerName), c.ID)
+		`UPDATE matches SET name = ?, date = ?, course = ?, classified = ? WHERE id = ?`,
+		c.Name, c.Date, c.Course, c.Classified, c.ID)
 	if err := affected(res, err); err != nil {
+		return err
+	}
+	if err := replaceMatchOfficials(ctx, tx, c.ID, c); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx,

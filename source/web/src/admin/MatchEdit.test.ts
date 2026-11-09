@@ -32,6 +32,8 @@ const match = {
   status: "draft" as const,
   current_segment: 1,
   classified: true,
+  referees: [{ waid: "1001", name: "Rita Referee" }],
+  range_officers: [],
 };
 
 function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0], draft = true) {
@@ -63,8 +65,8 @@ describe("MatchEdit", () => {
       date: "2026-10-19",
       course: "60",
       classified: true,
-      referee_waid: "",
-      range_officer_waid: "",
+      referee_waids: ["1001"],
+      range_officer_waids: [],
     });
     expect(saved).toHaveBeenCalledOnce();
   });
@@ -87,8 +89,25 @@ describe("MatchEdit", () => {
       date: match.date,
       course: match.course,
       classified: true,
-      referee_waid: "",
-      range_officer_waid: "",
+      referee_waids: ["1001"],
+      range_officer_waids: [],
+    });
+  });
+
+  it("adds, removes and orders officials", async () => {
+    const { calls, user } = setup();
+    await user.click(screen.getByRole("button", { name: "Add referee" }));
+    await user.type(screen.getByLabelText("Referee WAID 2"), " 2002 ");
+    await user.click(screen.getByRole("button", { name: "Add range officer" }));
+    await user.type(screen.getByLabelText("Range officer WAID 1"), "3003");
+    await user.click(screen.getByRole("button", { name: "Add range officer" }));
+    await user.type(screen.getByLabelText("Range officer WAID 2"), "4004");
+    await user.click(screen.getByRole("button", { name: "Remove range officer 1" }));
+    await user.click(screen.getByRole("button", { name: "Remove referee 1" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(calls[0].body).toMatchObject({
+      referee_waids: ["2002"],
+      range_officer_waids: ["4004"],
     });
   });
 

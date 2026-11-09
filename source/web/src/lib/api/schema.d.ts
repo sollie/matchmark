@@ -1846,10 +1846,15 @@ export interface components {
             course: string;
             /** @description Classified match. When on (the default), results and standings group each classified Category's rows by Class. Optional on update; omitting it keeps the current value. Editable in any status */
             classified?: boolean;
-            /** @description WAID of the Referee, looked up in the WA1500 register when it changes; an empty string clears it. On create, omitting it defaults to the signed-in user's WAID when set. On update, omitting it keeps the current value. Fails with 422 when the WAID is not in the register and 503 when the register is unreachable, storing nothing. Editable in any status */
-            referee_waid?: string | null;
-            /** @description WAID of the Range officer, same rules as referee_waid except that it is empty by default */
-            range_officer_waid?: string | null;
+            /** @description WAIDs of the Referees in the order given, each looked up in the WA1500 register when new to the Match. Empty entries are dropped and a duplicate WAID within the list answers 422. On create, omitting it defaults to the signed-in user's WAID when set. On update, omitting it keeps the current list and an empty list clears it. Fails with 422 when a WAID is not in the register and 503 when the register is unreachable, storing nothing. Editable in any status */
+            referee_waids?: string[];
+            /** @description WAIDs of the Range officers, same rules as referee_waids except that the list is empty by default */
+            range_officer_waids?: string[];
+        };
+        MatchOfficial: {
+            waid: string;
+            /** @description Name snapshotted from the WA1500 register when the official was added */
+            name: string;
         };
         Match: {
             /** Format: int64 */
@@ -1861,10 +1866,10 @@ export interface components {
             current_segment: number;
             /** @description UTC time the match left draft, backfilled with the match date for matches activated before this field existed. Null for drafts. Admin responses only */
             activated_at?: string | null;
-            /** @description Referee name snapshotted from the WA1500 register when the WAID was set. Admin responses only */
-            referee_name?: string | null;
-            /** @description Range officer name snapshotted from the WA1500 register when the WAID was set. Admin responses only */
-            range_officer_name?: string | null;
+            /** @description Referees in the order given. Admin responses only */
+            referees: components["schemas"]["MatchOfficial"][];
+            /** @description Range officers in the order given. Admin responses only */
+            range_officers: components["schemas"]["MatchOfficial"][];
         } & components["schemas"]["MatchInput"];
         Visibility: {
             show_names: boolean;

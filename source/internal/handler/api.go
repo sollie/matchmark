@@ -29,13 +29,13 @@ func (h *Handler) createMatch(r *http.Request) (int, any, error) {
 		return fail(req.err)
 	}
 	m := repository.Match{CompetitionID: body.CompetitionID, Name: body.Name, Date: body.Date, Course: body.Course}
-	if body.RefereeWAID != nil {
-		m.RefereeWAID = *body.RefereeWAID
-	} else {
-		m.RefereeWAID = currentUser(r).WAID
+	if body.RefereeWAIDs != nil {
+		m.Referees = officialsFromWAIDs(*body.RefereeWAIDs)
+	} else if waid := currentUser(r).WAID; waid != "" {
+		m.Referees = officialsFromWAIDs([]string{waid})
 	}
-	if body.RangeOfficerWAID != nil {
-		m.RangeOfficerWAID = *body.RangeOfficerWAID
+	if body.RangeOfficerWAIDs != nil {
+		m.RangeOfficers = officialsFromWAIDs(*body.RangeOfficerWAIDs)
 	}
 	var id int64
 	var err error

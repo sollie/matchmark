@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/johnfercher/maroto/v2"
@@ -101,22 +102,22 @@ type ResultsPDFNewShooter struct {
 }
 
 type ResultsPDFData struct {
-	ClubName     string
-	Logo         []byte
-	LogoType     string
-	Generated    time.Time
-	Competition  string
-	Name         string
-	Date         string
-	CourseLabel  string
-	Referee      string
-	RangeOfficer string
-	Range        string
-	Segments     []int
-	Headings     []string
-	SumGroups    []ResultsPDFSumGroup
-	Categories   []ResultsPDFCategory
-	NewShooters  []ResultsPDFNewShooter
+	ClubName      string
+	Logo          []byte
+	LogoType      string
+	Generated     time.Time
+	Competition   string
+	Name          string
+	Date          string
+	CourseLabel   string
+	Referees      []string
+	RangeOfficers []string
+	Range         string
+	Segments      []int
+	Headings      []string
+	SumGroups     []ResultsPDFSumGroup
+	Categories    []ResultsPDFCategory
+	NewShooters   []ResultsPDFNewShooter
 }
 
 type pdfColumn struct {
@@ -419,17 +420,24 @@ func headerRows(d ResultsPDFData, grid int) []core.Row {
 	}
 }
 
+func officialsLabel(role string, n int) string {
+	if n > 1 {
+		return role + "s"
+	}
+	return role
+}
+
 func (d ResultsPDFData) headerBlocks() [][]headerField {
 	blocks := [][]headerField{{}, {}, {}}
 	if d.Competition != "" {
 		blocks[0] = append(blocks[0], headerField{"Competition", d.Competition})
 	}
 	blocks[0] = append(blocks[0], headerField{"Match", d.Name}, headerField{"Course", d.CourseLabel})
-	if d.Referee != "" {
-		blocks[1] = append(blocks[1], headerField{"Referee", d.Referee})
+	if len(d.Referees) > 0 {
+		blocks[1] = append(blocks[1], headerField{officialsLabel("Referee", len(d.Referees)), strings.Join(d.Referees, ", ")})
 	}
-	if d.RangeOfficer != "" {
-		blocks[1] = append(blocks[1], headerField{"Range officer", d.RangeOfficer})
+	if len(d.RangeOfficers) > 0 {
+		blocks[1] = append(blocks[1], headerField{officialsLabel("Range officer", len(d.RangeOfficers)), strings.Join(d.RangeOfficers, ", ")})
 	}
 	if d.Range != "" {
 		blocks[1] = append(blocks[1], headerField{"Range", d.Range})

@@ -89,5 +89,9 @@ func (r *Repository) ListCompetitionMatches(ctx context.Context, competitionID i
 		}
 		out = append(out, m)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	_ = rows.Close()
+	return out, r.loadMatchOfficials(ctx, out)
 }

@@ -254,11 +254,11 @@ func TestResultsPDFHeaderBlocks(t *testing.T) {
 	if len(blocks[1]) != 0 {
 		t.Fatalf("officials %v, want none when unset", blocks[1])
 	}
-	d.Competition, d.Referee, d.RangeOfficer, d.Range = "Autumn Open", "Rita Ref", "Ola Officer", "Åsane Range"
+	d.Competition, d.Referees, d.RangeOfficers, d.Range = "Autumn Open", []string{"Rita Ref", "Per Pace"}, []string{"Ola Officer"}, "Åsane Range"
 	blocks = d.headerBlocks()
 	want := [][]headerField{
 		{{"Competition", "Autumn Open"}, {"Match", "Autumn Match"}, {"Course", "WA1500 150"}},
-		{{"Referee", "Rita Ref"}, {"Range officer", "Ola Officer"}, {"Range", "Åsane Range"}},
+		{{"Referees", "Rita Ref, Per Pace"}, {"Range officer", "Ola Officer"}, {"Range", "Åsane Range"}},
 		{{"Match date", "2026-10-24"}, {"Participants", "3"}},
 	}
 	if !reflect.DeepEqual(blocks, want) {
