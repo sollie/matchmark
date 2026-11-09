@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/report"
+	"github.com/sollie/matchmark/internal/repository"
 	"github.com/sollie/matchmark/internal/rulebook"
 )
 
@@ -50,8 +50,8 @@ func (s *Service) renderResultsPDF(ctx context.Context, view ResultsView) (Downl
 	if data.Competition, err = s.repo.CompetitionName(ctx, match.CompetitionID); err != nil {
 		return Download{}, mapRepoErr(err)
 	}
-	data.Referees = officialNames(match.Referees)
-	data.RangeOfficers = officialNames(match.RangeOfficers)
+	data.Referees = officialNames(match.EffectiveReferees)
+	data.RangeOfficers = officialNames(match.EffectiveRangeOfficers)
 	var logo ClubLogo
 	if data.ClubName, logo, err = s.clubBranding(ctx); err != nil {
 		return Download{}, err

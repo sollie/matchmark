@@ -107,7 +107,8 @@ func shooterJSON(s repository.Shooter) map[string]any {
 
 func matchJSON(c repository.Match) map[string]any {
 	return map[string]any{"id": c.ID, "competition_id": c.CompetitionID, "name": c.Name, "date": c.Date, "course": c.Course, "status": c.Status, "current_segment": c.CurrentSegment, "activated_at": nullable(c.ActivatedAt), "classified": c.Classified,
-		"referees": officialsJSON(c.Referees), "range_officers": officialsJSON(c.RangeOfficers)}
+		"referees": officialsJSON(c.Referees), "range_officers": officialsJSON(c.RangeOfficers),
+		"effective_referees": officialsJSON(c.EffectiveReferees), "effective_range_officers": officialsJSON(c.EffectiveRangeOfficers)}
 }
 
 func officialsJSON(list []repository.Official) []map[string]string {

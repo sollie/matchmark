@@ -1814,6 +1814,10 @@ export interface components {
              * @description The range of the competition. Omitted on create it defaults to the club default range, else the only active range; omitted on update it is unchanged; null clears it. Archived ranges are rejected unless already set
              */
             range_id?: number | null;
+            /** @description WAIDs of the Referees in the order given, each looked up in the WA1500 register when new to the competition. Empty entries are dropped and a duplicate WAID within the list answers 422. On create, omitting it defaults to the signed-in user's WAID when set. On update, omitting it keeps the current list and an empty list clears it. Fails with 422 when a WAID is not in the register and 503 when the register is unreachable, storing nothing. Matches without Referees of their own use these, resolved live */
+            referee_waids?: string[];
+            /** @description WAIDs of the Range officers, same rules as referee_waids except that the list is empty by default */
+            range_officer_waids?: string[];
         };
         Range: {
             /** Format: int64 */
@@ -1830,6 +1834,10 @@ export interface components {
             match_count: number;
             /** @description Name of the competition's range; null when it has none */
             range_name?: string | null;
+            /** @description Referees in the order given */
+            referees: components["schemas"]["MatchOfficial"][];
+            /** @description Range officers in the order given */
+            range_officers: components["schemas"]["MatchOfficial"][];
         } & components["schemas"]["CompetitionInput"];
         MatchInput: {
             /**
@@ -1866,10 +1874,14 @@ export interface components {
             current_segment: number;
             /** @description UTC time the match left draft, backfilled with the match date for matches activated before this field existed. Null for drafts. Admin responses only */
             activated_at?: string | null;
-            /** @description Referees in the order given. Admin responses only */
+            /** @description Referees of the match itself, in the order given; empty means it inherits its competition's. Admin responses only */
             referees: components["schemas"]["MatchOfficial"][];
-            /** @description Range officers in the order given. Admin responses only */
+            /** @description Range officers of the match itself, in the order given; empty means it inherits its competition's. Admin responses only */
             range_officers: components["schemas"]["MatchOfficial"][];
+            /** @description The Referees the match uses, resolved live. Its own when it has any, otherwise those of its competition. Admin responses only */
+            effective_referees: components["schemas"]["MatchOfficial"][];
+            /** @description The Range officers the match uses, resolved live like effective_referees. Admin responses only */
+            effective_range_officers: components["schemas"]["MatchOfficial"][];
         } & components["schemas"]["MatchInput"];
         Visibility: {
             show_names: boolean;

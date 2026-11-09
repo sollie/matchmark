@@ -66,16 +66,16 @@
     {/if}
     <button class="danger" onclick={remove}>Delete match</button>
   </div>
-  {#if match.referees.length > 0}
+  {#if match.effective_referees.length > 0}
     <p class="muted">
-      {match.referees.length > 1 ? "Referees" : "Referee"}: {match.referees
+      {match.effective_referees.length > 1 ? "Referees" : "Referee"}: {match.effective_referees
         .map((o) => `${o.name} (${o.waid})`)
         .join(", ")}
     </p>
   {/if}
-  {#if match.range_officers.length > 0}
+  {#if match.effective_range_officers.length > 0}
     <p class="muted">
-      {match.range_officers.length > 1 ? "Range officers" : "Range officer"}: {match.range_officers
+      {match.effective_range_officers.length > 1 ? "Range officers" : "Range officer"}: {match.effective_range_officers
         .map((o) => `${o.name} (${o.waid})`)
         .join(", ")}
     </p>

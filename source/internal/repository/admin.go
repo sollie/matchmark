@@ -176,7 +176,7 @@ func (r *Repository) UpdateMatch(ctx context.Context, c Match) error {
 	if err := affected(res, err); err != nil {
 		return err
 	}
-	if err := replaceMatchOfficials(ctx, tx, c.ID, c); err != nil {
+	if err := replaceOfficials(ctx, tx, matchOfficialsTable, c.ID, c.Referees, c.RangeOfficers); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx,

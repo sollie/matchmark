@@ -36,7 +36,7 @@
   let name = $state("");
   let date = $state(localDate(new Date()));
   let course = $state("150");
-  let refereeWaids = $state(admin.waid ? [admin.waid] : []);
+  let refereeWaids = $state<string[]>([]);
   let rangeOfficerWaids = $state<string[]>([]);
   let error = $state("");
 

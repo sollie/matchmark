@@ -31,6 +31,10 @@ type Match struct {
 
 	Referees      []Official
 	RangeOfficers []Official
+
+	EffectiveReferees      []Official
+	EffectiveRangeOfficers []Official
+	NewCompetitionReferees []Official
 }
 
 type Official struct {
@@ -97,7 +101,7 @@ func (r *Repository) CreateMatch(ctx context.Context, c Match) (int64, error) {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	containerID, err := ensureContainer(ctx, tx, c.CompetitionID, c.Name, c.Date, c.NewRangeID)
+	containerID, err := ensureContainer(ctx, tx, c)
 	if err != nil {
 		return 0, err
 	}
@@ -111,7 +115,7 @@ func (r *Repository) CreateMatch(ctx context.Context, c Match) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if err := replaceMatchOfficials(ctx, tx, id, c); err != nil {
+	if err := replaceOfficials(ctx, tx, matchOfficialsTable, id, c.Referees, c.RangeOfficers); err != nil {
 		return 0, err
 	}
 	return id, tx.Commit()
@@ -132,6 +136,9 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 	if err != nil {
 		return 0, 0, err
 	}
+	if err := replaceOfficials(ctx, tx, competitionOfficialsTable, compID, comp.Referees, comp.RangeOfficers); err != nil {
+		return 0, 0, err
+	}
 	res, err = tx.ExecContext(ctx,
 		`INSERT INTO matches (competition_id, name, date, course) VALUES (?, ?, ?, ?)`,
 		compID, c.Name, c.Date, c.Course)
@@ -142,22 +149,26 @@ func (r *Repository) CreateMatchInNewCompetition(ctx context.Context, comp Compe
 	if err != nil {
 		return 0, 0, err
 	}
-	if err := replaceMatchOfficials(ctx, tx, id, c); err != nil {
+	if err := replaceOfficials(ctx, tx, matchOfficialsTable, id, c.Referees, c.RangeOfficers); err != nil {
 		return 0, 0, err
 	}
 	return compID, id, tx.Commit()
 }
 
-func ensureContainer(ctx context.Context, tx *sql.Tx, id int64, name, date string, rangeID *int64) (int64, error) {
-	if id != 0 {
-		return id, nil
+func ensureContainer(ctx context.Context, tx *sql.Tx, c Match) (int64, error) {
+	if c.CompetitionID != 0 {
+		return c.CompetitionID, nil
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, name, date, date, rangeID)
+		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, c.Name, c.Date, c.Date, c.NewRangeID)
 	if err != nil {
 		return 0, mapErr(err)
 	}
-	return res.LastInsertId()
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return id, replaceOfficials(ctx, tx, competitionOfficialsTable, id, c.NewCompetitionReferees, nil)
 }
 
 func (r *Repository) CompetitionName(ctx context.Context, id int64) (string, error) {
@@ -186,14 +197,27 @@ func (r *Repository) GetMatch(ctx context.Context, id int64) (Match, error) {
 	return list[0], nil
 }
 
-func replaceMatchOfficials(ctx context.Context, tx *sql.Tx, matchID int64, c Match) error {
-	if _, err := tx.ExecContext(ctx, `DELETE FROM match_officials WHERE match_id = ?`, matchID); err != nil {
+type officialsTable struct {
+	table  string
+	parent string
+}
+
+var (
+	matchOfficialsTable       = officialsTable{"match_officials", "match_id"}
+	competitionOfficialsTable = officialsTable{"competition_officials", "competition_id"}
+)
+
+func replaceOfficials(ctx context.Context, tx *sql.Tx, t officialsTable, parentID int64, referees, rangeOfficers []Official) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM `+t.table+` WHERE `+t.parent+` = ?`, parentID); err != nil {
 		return mapErr(err)
 	}
-	for role, officials := range map[string][]Official{RoleReferee: c.Referees, RoleRangeOfficer: c.RangeOfficers} {
-		for _, o := range officials {
+	for _, group := range []struct {
+		role      string
+		officials []Official
+	}{{RoleReferee, referees}, {RoleRangeOfficer, rangeOfficers}} {
+		for _, o := range group.officials {
 			if _, err := tx.ExecContext(ctx,
-				`INSERT INTO match_officials (match_id, role, waid, name) VALUES (?, ?, ?, ?)`, matchID, role, o.WAID, o.Name); err != nil {
+				`INSERT INTO `+t.table+` (`+t.parent+`, role, waid, name) VALUES (?, ?, ?, ?)`, parentID, group.role, o.WAID, o.Name); err != nil {
 				return mapErr(err)
 			}
 		}
@@ -201,38 +225,89 @@ func replaceMatchOfficials(ctx context.Context, tx *sql.Tx, matchID int64, c Mat
 	return nil
 }
 
-func (r *Repository) loadMatchOfficials(ctx context.Context, matches []Match) error {
-	if len(matches) == 0 {
-		return nil
+type roleOfficials struct {
+	referees      []Official
+	rangeOfficers []Official
+}
+
+func (r *Repository) officialsByParent(ctx context.Context, t officialsTable) (map[int64]*roleOfficials, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+t.parent+`, role, waid, name FROM `+t.table+` ORDER BY id`)
+	if err != nil {
+		return nil, err
 	}
-	index := make(map[int64]int, len(matches))
-	for i := range matches {
-		index[matches[i].ID] = i
-		matches[i].Referees, matches[i].RangeOfficers = []Official{}, []Official{}
+	defer func() { _ = rows.Close() }()
+	out := map[int64]*roleOfficials{}
+	for rows.Next() {
+		var parentID int64
+		var role string
+		var o Official
+		if err := rows.Scan(&parentID, &role, &o.WAID, &o.Name); err != nil {
+			return nil, err
+		}
+		g := out[parentID]
+		if g == nil {
+			g = &roleOfficials{}
+			out[parentID] = g
+		}
+		if role == RoleReferee {
+			g.referees = append(g.referees, o)
+		} else {
+			g.rangeOfficers = append(g.rangeOfficers, o)
+		}
 	}
-	rows, err := r.db.QueryContext(ctx, `SELECT match_id, role, waid, name FROM match_officials ORDER BY id`)
+	return out, rows.Err()
+}
+
+func orEmpty(list []Official) []Official {
+	if list == nil {
+		return []Official{}
+	}
+	return list
+}
+
+func (r *Repository) loadCompetitionOfficials(ctx context.Context, comps []Competition) error {
+	own, err := r.officialsByParent(ctx, competitionOfficialsTable)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var matchID int64
-		var role string
-		var o Official
-		if err := rows.Scan(&matchID, &role, &o.WAID, &o.Name); err != nil {
-			return err
+	for i := range comps {
+		g := own[comps[i].ID]
+		if g == nil {
+			g = &roleOfficials{}
 		}
-		i, ok := index[matchID]
-		if !ok {
-			continue
+		comps[i].Referees, comps[i].RangeOfficers = orEmpty(g.referees), orEmpty(g.rangeOfficers)
+	}
+	return nil
+}
+
+func (r *Repository) loadMatchOfficials(ctx context.Context, matches []Match) error {
+	own, err := r.officialsByParent(ctx, matchOfficialsTable)
+	if err != nil {
+		return err
+	}
+	inherited, err := r.officialsByParent(ctx, competitionOfficialsTable)
+	if err != nil {
+		return err
+	}
+	for i := range matches {
+		g, c := own[matches[i].ID], inherited[matches[i].CompetitionID]
+		if g == nil {
+			g = &roleOfficials{}
 		}
-		if role == RoleReferee {
-			matches[i].Referees = append(matches[i].Referees, o)
-		} else {
-			matches[i].RangeOfficers = append(matches[i].RangeOfficers, o)
+		if c == nil {
+			c = &roleOfficials{}
+		}
+		m := &matches[i]
+		m.Referees, m.RangeOfficers = orEmpty(g.referees), orEmpty(g.rangeOfficers)
+		m.EffectiveReferees, m.EffectiveRangeOfficers = m.Referees, m.RangeOfficers
+		if len(g.referees) == 0 {
+			m.EffectiveReferees = orEmpty(c.referees)
+		}
+		if len(g.rangeOfficers) == 0 {
+			m.EffectiveRangeOfficers = orEmpty(c.rangeOfficers)
 		}
 	}
-	return rows.Err()
+	return nil
 }
 
 func (r *Repository) CreateEntry(ctx context.Context, e Entry, segments []SegmentSeed) (int64, error) {

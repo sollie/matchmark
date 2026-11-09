@@ -79,14 +79,31 @@ func (s *Service) resolveOfficials(ctx context.Context, c *repository.Match, cur
 }
 
 func officialsDetails(oldMatch, newMatch repository.Match) string {
+	return rolesDetails(oldMatch.Referees, newMatch.Referees, oldMatch.RangeOfficers, newMatch.RangeOfficers)
+}
+
+func competitionOfficialsDetails(oldComp, newComp repository.Competition) string {
+	return rolesDetails(oldComp.Referees, newComp.Referees, oldComp.RangeOfficers, newComp.RangeOfficers)
+}
+
+func rolesDetails(oldReferees, newReferees, oldRangeOfficers, newRangeOfficers []repository.Official) string {
 	var parts []string
-	if !sameOfficials(oldMatch.Referees, newMatch.Referees) {
-		parts = append(parts, "referees "+officialsLabel(newMatch.Referees))
+	if !sameOfficials(oldReferees, newReferees) {
+		parts = append(parts, "referees "+officialsLabel(newReferees))
 	}
-	if !sameOfficials(oldMatch.RangeOfficers, newMatch.RangeOfficers) {
-		parts = append(parts, "range officers "+officialsLabel(newMatch.RangeOfficers))
+	if !sameOfficials(oldRangeOfficers, newRangeOfficers) {
+		parts = append(parts, "range officers "+officialsLabel(newRangeOfficers))
 	}
 	return strings.Join(parts, ", ")
+}
+
+func (s *Service) resolveCompetitionOfficials(ctx context.Context, c *repository.Competition, current repository.Competition) error {
+	var err error
+	if c.Referees, err = s.resolveOfficialList(ctx, c.Referees, current.Referees); err != nil {
+		return err
+	}
+	c.RangeOfficers, err = s.resolveOfficialList(ctx, c.RangeOfficers, current.RangeOfficers)
+	return err
 }
 
 func sameOfficials(a, b []repository.Official) bool {

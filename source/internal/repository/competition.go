@@ -1,6 +1,8 @@
 package repository
 
-import "context"
+import (
+	"context"
+)
 
 type Competition struct {
 	ID         int64
@@ -10,15 +12,30 @@ type Competition struct {
 	MatchCount int
 	RangeID    *int64
 	RangeName  string
+
+	Referees      []Official
+	RangeOfficers []Official
 }
 
 func (r *Repository) CreateCompetition(ctx context.Context, c Competition) (int64, error) {
-	res, err := r.db.ExecContext(ctx,
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
 		`INSERT INTO competitions (name, start_date, end_date, range_id) VALUES (?, ?, ?, ?)`, c.Name, c.StartDate, c.EndDate, c.RangeID)
 	if err != nil {
 		return 0, mapErr(err)
 	}
-	return res.LastInsertId()
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	if err := replaceOfficials(ctx, tx, competitionOfficialsTable, id, c.Referees, c.RangeOfficers); err != nil {
+		return 0, err
+	}
+	return id, tx.Commit()
 }
 
 func (r *Repository) GetCompetition(ctx context.Context, id int64) (Competition, error) {
@@ -27,7 +44,14 @@ func (r *Repository) GetCompetition(ctx context.Context, id int64) (Competition,
 		`SELECT id, name, start_date, end_date, (SELECT COUNT(*) FROM matches WHERE competition_id = competitions.id),
 		        range_id, COALESCE((SELECT name FROM ranges WHERE id = competitions.range_id), '')
 		 FROM competitions WHERE id = ?`, id).Scan(&c.ID, &c.Name, &c.StartDate, &c.EndDate, &c.MatchCount, &c.RangeID, &c.RangeName)
-	return c, mapErr(err)
+	if err != nil {
+		return c, mapErr(err)
+	}
+	list := []Competition{c}
+	if err := r.loadCompetitionOfficials(ctx, list); err != nil {
+		return c, err
+	}
+	return list[0], nil
 }
 
 func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error) {
@@ -47,13 +71,28 @@ func (r *Repository) ListCompetitions(ctx context.Context) ([]Competition, error
 		}
 		out = append(out, c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	_ = rows.Close()
+	return out, r.loadCompetitionOfficials(ctx, out)
 }
 
 func (r *Repository) UpdateCompetition(ctx context.Context, c Competition) error {
-	res, err := r.db.ExecContext(ctx,
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
 		`UPDATE competitions SET name = ?, start_date = ?, end_date = ?, range_id = ? WHERE id = ?`, c.Name, c.StartDate, c.EndDate, c.RangeID, c.ID)
-	return affected(res, err)
+	if err := affected(res, err); err != nil {
+		return err
+	}
+	if err := replaceOfficials(ctx, tx, competitionOfficialsTable, c.ID, c.Referees, c.RangeOfficers); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *Repository) DeleteCompetition(ctx context.Context, id int64) error {

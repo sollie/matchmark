@@ -76,6 +76,7 @@
   <label class="check">
     <input type="checkbox" bind:checked={classified} /> Classified match
   </label>
+  <p class="muted">Leave a role empty to use the competition's officials.</p>
   <OfficialsInput role="Referee" bind:waids={refereeWaids} />
   <OfficialsInput role="Range officer" bind:waids={rangeOfficerWaids} />
   {#if !draft}<p class="muted">

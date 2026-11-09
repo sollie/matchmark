@@ -34,6 +34,8 @@ const match = {
   classified: true,
   referees: [{ waid: "1001", name: "Rita Referee" }],
   range_officers: [],
+  effective_referees: [{ waid: "1001", name: "Rita Referee" }],
+  effective_range_officers: [],
 };
 
 function setup(hasEntries = false, reply?: Parameters<typeof stubFetch>[0], draft = true) {

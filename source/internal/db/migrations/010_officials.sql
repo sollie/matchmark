@@ -9,3 +9,12 @@ CREATE TABLE match_officials (
     name     TEXT NOT NULL,
     UNIQUE (match_id, role, waid)
 );
+
+CREATE TABLE competition_officials (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    competition_id INTEGER NOT NULL REFERENCES competitions (id) ON DELETE CASCADE,
+    role           TEXT NOT NULL CHECK (role IN ('referee', 'range_officer')),
+    waid           TEXT NOT NULL,
+    name           TEXT NOT NULL,
+    UNIQUE (competition_id, role, waid)
+);
