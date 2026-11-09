@@ -71,7 +71,7 @@
   });
   const entered = $derived(entries.map((e) => e.shooter_id));
   const lane = $derived(laneInput ?? nextLane);
-  const categories = $derived([...courseCategories(course)].sort((a, b) => a.localeCompare(b)));
+  const categories = $derived(courseCategories(course));
   const category = $derived(
     chosenCategory !== null && categories.includes(chosenCategory)
       ? chosenCategory

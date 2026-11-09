@@ -383,7 +383,7 @@ test.describe("admin ring counts", () => {
     for (const key of ["40", "150"]) {
       const categories = courses.find((c) => c.key === key)?.categories;
       expect(categories).toBeDefined();
-      const expected = [...categories!].sort((a, b) => a.localeCompare(b));
+      const expected = categories!;
       const match = await createMatch(admin, { course: key });
       const entry = await seedEntry(admin, match.id, 1, expected[0] as Category);
       await openMatch(page, match.id);
