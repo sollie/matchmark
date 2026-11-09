@@ -368,3 +368,25 @@ func TestOfficialCandidatesListActiveUsersWithAWAID(t *testing.T) {
 		t.Fatalf("candidates: %v", got)
 	}
 }
+
+func TestOfficialLookupChecksShooterTableFirstAndRefreshesStaleShooter(t *testing.T) {
+	env, fake := officialsEnv(t)
+	createShooter(env, "1001")
+
+	m := getMatch(t, env, env.ID("POST", "/api/matches", matchBody(map[string]any{"referee_waids": []string{"1001"}})))
+	if got := officialList(m, "referees"); !sameList(got, []string{"1001=Rita REFEREE"}) {
+		t.Fatalf("stale shooter must be refreshed and its data used: %v", got)
+	}
+	if fake.calls() != 1 {
+		t.Fatalf("register queries after refresh: %d", fake.calls())
+	}
+
+	fake.set(nil, wa1500.ErrUpstream)
+	m = getMatch(t, env, env.ID("POST", "/api/matches", matchBody(map[string]any{"range_officer_waids": []string{"1001"}})))
+	if got := officialList(m, "range_officers"); !sameList(got, []string{"1001=Rita REFEREE"}) {
+		t.Fatalf("fresh shooter must be used without the register: %v", got)
+	}
+	if fake.calls() != 1 {
+		t.Fatalf("register queried for a fresh shooter: %d", fake.calls())
+	}
+}

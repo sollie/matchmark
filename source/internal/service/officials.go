@@ -24,6 +24,9 @@ func (s *Service) resolveOfficial(ctx context.Context, waid, currentWAID, curren
 	if waid == currentWAID && currentName != "" {
 		return waid, currentName, nil
 	}
+	if name := s.shooterOfficialName(ctx, waid); name != "" {
+		return waid, name, nil
+	}
 	if s.register == nil {
 		return "", "", wa1500.ErrUpstream
 	}
@@ -42,6 +45,22 @@ func (s *Service) resolveOfficial(ctx context.Context, waid, currentWAID, curren
 		return waid, name, nil
 	}
 	return "", "", ErrWAIDNotFound
+}
+
+func (s *Service) shooterOfficialName(ctx context.Context, waid string) string {
+	sh, err := s.repo.FindShooterByWAID(ctx, waid)
+	if err != nil {
+		return ""
+	}
+	if s.syncedBefore(sh, addEntryRefreshAfter) {
+		if s.RefreshShooter(ctx, sh) != nil {
+			return ""
+		}
+		if sh, err = s.repo.FindShooterByWAID(ctx, waid); err != nil {
+			return ""
+		}
+	}
+	return strings.TrimSpace(sh.FirstName + " " + sh.LastName)
 }
 
 func (s *Service) resolveOfficialList(ctx context.Context, requested, current []repository.Official) ([]repository.Official, error) {

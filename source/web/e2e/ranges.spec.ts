@@ -21,7 +21,7 @@ test.describe("ranges", () => {
     await page.goto("/admin");
     await page.getByRole("button", { name: "New competition" }).click();
     const form = page.getByRole("form", { name: "New competition" });
-    await expect(form.getByLabel("Range")).toHaveText(new RegExp(range));
+    await expect(form.getByLabel(/^Range(?! officer)/)).toHaveText(new RegExp(range));
     await form.getByLabel("Competition name").fill(competition);
     await form.getByRole("button", { name: "Save" }).click();
     const group = page.getByRole("region", { name: `Competition ${competition}` });
