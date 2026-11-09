@@ -139,7 +139,7 @@
 
 {#snippet standingsTable(rows: Standing[])}
   <div class="scroll">
-    <table>
+    <table class="standings-table">
       <thead>
         <tr>
           <th class="num">#</th>
@@ -167,7 +167,9 @@
             {#if showNames}<td>{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
               >{/if}
             {#if showClass}<td class="optional"
-                >{s.classification && s.classification.value > 0 ? s.classification.name : ""}</td
+                >{s.classification && s.classification.value > 0
+                  ? s.classification.name
+                  : "Unclassified"}</td
               >{/if}
             {#if showClubs}<td class="optional">{s.club}</td>{/if}
             {#if showCountries}<td class="optional">{s.country}</td>{/if}

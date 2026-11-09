@@ -506,6 +506,44 @@ button.ghost:hover:not(:disabled) {
   align-items: end;
   margin: var(--space-2) 0;
 }
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+.form-grid > p,
+.form-grid > fieldset,
+.form-grid > button[type="submit"] {
+  grid-column: 1 / -1;
+}
+.form-grid > p {
+  margin: 0;
+}
+.form-grid > button[type="submit"] {
+  justify-self: start;
+}
+fieldset.officials {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+fieldset.officials legend {
+  padding: 0;
+  margin-bottom: 0.2rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+fieldset.officials .official {
+  display: flex;
+  gap: var(--space-2);
+  align-items: end;
+}
 label {
   display: flex;
   flex-direction: column;
@@ -598,6 +636,18 @@ th {
   font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
+}
+table.standings-table {
+  table-layout: fixed;
+}
+.standings-table th.num {
+  width: 5.5rem;
+}
+.standings-table th.num:nth-child(-n + 2) {
+  width: 3.5rem;
+}
+.standings-table td {
+  overflow-wrap: anywhere;
 }
 tbody tr:hover > td {
   background: var(--surface-alt);

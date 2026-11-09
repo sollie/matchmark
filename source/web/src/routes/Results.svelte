@@ -147,7 +147,7 @@
           {#each sections(category) as section (section.heading ?? "")}
             {#if section.heading !== null}<h4>{section.heading}</h4>{/if}
             <div class="scroll">
-              <table>
+              <table class="standings-table">
                 <thead>
                   <tr>
                     <th class="num">#</th>

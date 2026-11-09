@@ -53,7 +53,7 @@
   }
 </script>
 
-<form class="row card" onsubmit={save} aria-label="Edit match">
+<form class="form-grid card" onsubmit={save} aria-label="Edit match">
   <label>Name <input bind:value={name} maxlength="128" required /></label>
   <label
     >Date <input
