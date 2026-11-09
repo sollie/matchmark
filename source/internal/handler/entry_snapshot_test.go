@@ -118,6 +118,19 @@ func TestUnclassifiedShooterClassFollowsClubSetting(t *testing.T) {
 	}
 }
 
+func TestShooterWithoutClassificationCompetesAsUnclassifiedSetting(t *testing.T) {
+	fake := &fakeRegister{}
+	fake.set([]wa1500.Shooter{registerShooter("1001", "ANDERSON", "Old Club", map[string]wa1500.Classification{})}, nil)
+	s := &snapshotEnv{env: newRegisterEnv(t, fake), fake: fake}
+	s.match = newMatch(s.env)
+	s.addEntry(t)
+	s.setStatus(t, "active")
+	e := s.entry(t)
+	if e["classification_at_match"] != nil || name(e["class"]) != "Master" {
+		t.Fatalf("entry: %v", e)
+	}
+}
+
 func TestResultsIgnoreReclassificationAfterActivation(t *testing.T) {
 	s := newSnapshotEnv(t, wa1500.Expert)
 	s.addEntry(t)

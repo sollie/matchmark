@@ -48,14 +48,25 @@ var freezeSQL = `UPDATE entries SET
 	classification_at_match = ` + classificationAtMatchExpr() + `
 	WHERE match_id = ? AND (? = 0 OR id = ?)`
 
-const classFromClassificationSQL = `UPDATE entries SET class = CASE WHEN classification_at_match = 0 THEN ? ELSE classification_at_match END
+func classFromClassificationSQL() string {
+	var b strings.Builder
+	b.WriteString("category IN (")
+	for i, c := range rulebook.ClassifiedCategories() {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString("'" + c.Name + "'")
+	}
+	b.WriteString(")")
+	return `UPDATE entries SET class = CASE WHEN classification_at_match = 0 OR (classification_at_match IS NULL AND ` + b.String() + `) THEN ? ELSE classification_at_match END
 	WHERE match_id = ? AND (? = 0 OR id = ?)`
+}
 
 func freezeEntries(ctx context.Context, tx *sql.Tx, matchID, entryID int64, unclassifiedClass int) error {
 	if _, err := tx.ExecContext(ctx, freezeSQL, matchID, entryID, entryID); err != nil {
 		return err
 	}
-	_, err := tx.ExecContext(ctx, classFromClassificationSQL, unclassifiedClass, matchID, entryID, entryID)
+	_, err := tx.ExecContext(ctx, classFromClassificationSQL(), unclassifiedClass, matchID, entryID, entryID)
 	return err
 }
 
