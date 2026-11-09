@@ -3,11 +3,11 @@ module github.com/sollie/matchmark
 go 1.27.3
 
 require (
-	github.com/andybalholm/brotli v1.2.7
+	github.com/andybalholm/brotli v1.2.8
 	github.com/caddyserver/certmagic v0.25.6
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/johnfercher/maroto/v2 v2.4.4
-	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
+	github.com/xuri/excelize/v2 v2.11.1
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/image v0.47.0
@@ -31,12 +31,12 @@ require (
 	github.com/miekg/dns v1.1.73 // indirect
 	github.com/pdfcpu/pdfcpu v0.16.2 // indirect
 	github.com/phpdave11/gofpdf v1.4.3 // indirect
-	github.com/richardlehane/mscfb v1.0.8 // indirect
+	github.com/richardlehane/mscfb v1.0.9 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/tursodatabase/turso-go-platform-libs v0.8.3 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
-	github.com/xuri/efp v0.0.2 // indirect
+	github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
