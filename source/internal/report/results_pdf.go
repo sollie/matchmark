@@ -15,6 +15,7 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
 	"github.com/johnfercher/maroto/v2/pkg/config"
 	"github.com/johnfercher/maroto/v2/pkg/consts/align"
+	"github.com/johnfercher/maroto/v2/pkg/consts/border"
 	"github.com/johnfercher/maroto/v2/pkg/consts/extension"
 	"github.com/johnfercher/maroto/v2/pkg/consts/fontstyle"
 	"github.com/johnfercher/maroto/v2/pkg/consts/orientation"
@@ -53,7 +54,7 @@ var wa1500Logo []byte
 var (
 	pdfHeaderFill  = &props.Color{Red: 238, Green: 238, Blue: 238}
 	pdfMuted       = &props.Color{Red: 92, Green: 92, Blue: 92}
-	pdfSectionFill = &props.Color{Red: 184, Green: 224, Blue: 160}
+	pdfSectionFill = &props.Color{Red: 124, Green: 176, Blue: 96}
 	pdfGroupFill   = &props.Color{Red: 228, Green: 241, Blue: 218}
 	pdfGroupText   = &props.Color{Red: 46, Green: 84, Blue: 30}
 )
@@ -502,7 +503,7 @@ func sectionRow(title string, grid int) core.Row {
 }
 
 func groupRow(title string, grid int) core.Row {
-	return row.New(pdfGroupHeight).WithStyle(&props.Cell{BackgroundColor: pdfGroupFill}).Add(col.New(grid).Add(text.New(title, props.Text{Size: 9, Style: fontstyle.Bold, Top: 1.2, Left: 2, Color: pdfGroupText})))
+	return row.New(pdfGroupHeight).WithStyle(&props.Cell{BackgroundColor: pdfGroupFill, BorderType: border.Left, BorderColor: pdfGroupText, BorderThickness: 1.2}).Add(col.New(grid).Add(text.New(title, props.Text{Size: 9, Style: fontstyle.Bold, Top: 1.2, Left: 2, Color: pdfGroupText})))
 }
 
 func tableHeader(ms *measurer, columns []pdfColumn, grid int) (core.Row, float64) {
