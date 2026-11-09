@@ -22,6 +22,7 @@ _Avoid_: Judge, Dommer
 
 **Range officer**:
 An official in charge of the range during a Match (rulebook term). Held like Referees, any number per Competition or Match, with the same inheritance, but empty by default. Not the same thing as the Range (the place).
+_Avoid_: Standplassleder, range master
 
 **Match**:
 One course shot by the shooters of a Competition, on one date inside the Competition's date span. It has a name, a course, a status (draft, active, finished) and its own entries, lanes, stages and results. Its name can be edited in any status; its date and course only while it is a draft, and the course is fixed once it has entries. A shooter has at most one entry per Match.
