@@ -90,6 +90,53 @@ test.describe("results", () => {
     await expect(row(page, unclassed.last_name).first()).not.toContainText("Unclassified");
   });
 
+  test("a large viewport shows categories side by side without sideways scrolling", async ({
+    page,
+    admin,
+  }) => {
+    const course = await defaultCourse(admin);
+    const match = await createMatch(admin, { name: uniqueName("Wide") });
+    const shooter = await createShooter(admin);
+    const entry = await addEntry(admin, match.id, shooter.id, 1);
+    await setVisibility(admin, match.id, {});
+    await setStatus(admin, match.id, "active");
+    await setCounts(admin, match.id, entry, 1, { x: course.segmentOneShots }, true);
+    await setStatus(admin, match.id, "finished");
+
+    await page.route("**/api/spectator/matches/*/results", async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.categories = [
+        { ...body.categories[0], category: "Alpha class" },
+        { ...body.categories[0], category: "Bravo class" },
+      ];
+      await route.fulfill({ response, json: body });
+    });
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.goto(`/results/${match.id}`);
+
+    const alpha = await page.getByRole("heading", { name: "Alpha class" }).boundingBox();
+    const bravo = await page.getByRole("heading", { name: "Bravo class" }).boundingBox();
+    expect(alpha && bravo && Math.abs(alpha.y - bravo.y) < 4 && bravo.x > alpha.x + 200).toBe(true);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  });
+
+  test("a phone shows the categories stacked", async ({ page, admin }) => {
+    const match = await createMatch(admin, { name: uniqueName("Narrow") });
+    const shooter = await createShooter(admin);
+    await addEntry(admin, match.id, shooter.id, 1);
+    await setStatus(admin, match.id, "active");
+    await setStatus(admin, match.id, "finished");
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.goto(`/results/${match.id}`);
+    await expect(page.getByRole("heading", { name: match.name })).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  });
+
   test("an unfinished match has no results", async ({ page, admin }) => {
     const match = await createMatch(admin, { name: uniqueName("Unfinished"), status: "active" });
     await page.goto(`/results/${match.id}`);
