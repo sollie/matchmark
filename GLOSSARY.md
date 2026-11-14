@@ -190,7 +190,7 @@ The Results view rendered as a landscape A4 PDF on demand and never stored, as s
 _Avoid_: Results report (that is the `.xlsx`)
 
 **Club settings**:
-The club's name, optional logo and palette, edited by admins at `/admin/club`. The logo appears on the Results view, the Results PDF and the Scorecard copy; the palette colours every screen.
+The club's name and optional logo, edited by admins at `/admin/club`. The logo appears on the Results view, the Results PDF and the Scorecard copy.
 _Avoid_: Branding, profile
 
 **Device**:
@@ -239,12 +239,8 @@ _Avoid_: Placeholder, blank screen
 
 ## Display
 
-**Palette**:
-The club-wide set of interface colours, chosen by an admin among a fixed catalogue and shown to everyone. Reports, the Results PDF and the `.xlsx` are not affected.
-_Avoid_: Theme, skin
-
 **Mode**:
-A viewer's Auto, Light or Dark display preference, kept per browser. Auto follows the operating system. Every Palette has a light and a dark variant.
+A viewer's Auto, Light or Dark display preference, kept per browser. Auto follows the operating system. The single brand palette has a light and a dark variant.
 _Avoid_: Theme, skin
 
 ## Accounts

@@ -66,7 +66,7 @@ test.describe("theme", () => {
   test("the menu is keyboard accessible and closes on Escape", async ({ page }) => {
     await page.goto("/");
     const trigger = page.getByRole("button", { name: "Menu" });
-    await expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
     await trigger.focus();
     await page.keyboard.press("Enter");
     await expect(trigger).toHaveAttribute("aria-expanded", "true");
@@ -78,7 +78,7 @@ test.describe("theme", () => {
   test("the signed-in admin menu carries the Mode group", async ({ adminPage: page }) => {
     await chooseTheme(page, "Light");
     expect(await background(page)).toBe(lightBackground);
-    const menu = page.locator(".account-panel");
+    const menu = page.getByRole("group", { name: "Account menu" });
     await expect(menu.getByRole("heading", { name: "Account" })).toBeVisible();
     await page.goto("/admin");
     expect(await background(page)).toBe(lightBackground);

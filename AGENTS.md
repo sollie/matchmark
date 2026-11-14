@@ -60,7 +60,7 @@ Specification and decisions:
 
 ### TypeScript / Svelte (`source/web/`)
 
-- UI follows `docs/design-guidelines.md`: use bits-ui, svelte-sonner and NumberFlow instead of hand-built dialogs, toasts and animated numbers.
+- UI follows `docs/design-guidelines.md`: Tailwind v4 with the shared components in `src/lib/ui/` (Bits UI, svelte-sonner, NumberFlow) instead of hand-built dialogs, toasts and animated numbers.
 - Svelte 5 + Vite SPA, built to `web/dist` and embedded in the Go binary. No SSR, no service worker, no offline queue.
 - The API client is generated from `source/api/openapi.yaml`. After changing the spec, run `npm run generate` in `source/api` and commit the result; `npm run check` there must leave no diff.
 - After every change, run `npm run verify` in `source/web` (check, build, test, audit).
