@@ -6,7 +6,7 @@
   import Wa1500Import from "./Wa1500Import.svelte";
   import NameFields from "./NameFields.svelte";
   import ShooterMerge from "./ShooterMerge.svelte";
-  import Modal from "../lib/Modal.svelte";
+  import Dialog from "../lib/ui/Dialog.svelte";
   import ClassChips from "../lib/ClassChips.svelte";
   import { normalizeFirstName, normalizeLastName } from "../lib/names";
 
@@ -192,7 +192,7 @@
 {#if blocked}
   {@const b = blocked}
   {@const finished = b.matches.filter((m) => m.status === "finished")}
-  <Modal
+  <Dialog
     title={`Can't delete ${b.shooter.first_name} ${b.shooter.last_name}`}
     onclose={() => (blocked = null)}
   >
@@ -232,7 +232,7 @@
       >
       <button type="button" onclick={() => (blocked = null)}>Close</button>
     </div>
-  </Modal>
+  </Dialog>
 {/if}
 
 {#if importing}

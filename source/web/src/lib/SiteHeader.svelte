@@ -10,15 +10,33 @@
   const adminRoute = $derived(router.path === "/admin" || router.path.startsWith("/admin/"));
 </script>
 
-<header class="site-header">
-  <a class="brand-link" href="/"
-    ><img src="/brand/logo-horizontal-dark.svg" alt="MatchMark" width="158" height="32" /></a
+<header class="site-header flex min-h-12 items-center gap-2 border-b border-border bg-header px-4">
+  <a
+    class="inline-flex items-center rounded-md outline-offset-2 focus-visible:outline-3 focus-visible:outline-white"
+    href="/"
+    ><img
+      class="block h-8 w-auto"
+      src="/brand/logo-horizontal-dark.svg"
+      alt="MatchMark"
+      width="158"
+      height="32"
+    /></a
   >
   {#if club.hasLogo || club.name}
-    <span class="club-badge">
-      {#if club.hasLogo}<img src={clubLogoUrl(club.version)} alt="" />{/if}
-      {#if club.name}<span class="club-name">{club.name}</span>{/if}
+    <span
+      class="club-badge ml-auto inline-flex min-w-0 items-center gap-2 font-semibold text-white"
+    >
+      {#if club.hasLogo}<img
+          class="block h-8 max-w-24 object-contain"
+          src={clubLogoUrl(club.version)}
+          alt=""
+        />{/if}
+      {#if club.name}<span class={["truncate", club.hasLogo && "max-[480px]:hidden"]}
+          >{club.name}</span
+        >{/if}
     </span>
+  {:else}
+    <span class="ml-auto"></span>
   {/if}
   {#if adminRoute}
     {#if admin.authed && !admin.mustChangePassword}<AccountMenu />{/if}

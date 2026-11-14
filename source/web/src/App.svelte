@@ -8,7 +8,7 @@
   import NotFound from "./routes/NotFound.svelte";
   import Footer from "./lib/Footer.svelte";
   import SiteHeader from "./lib/SiteHeader.svelte";
-  import { Toaster } from "svelte-sonner";
+  import Toaster from "./lib/ui/Toaster.svelte";
   import { refreshClub } from "./lib/club.svelte";
 
   $effect(() => {
@@ -17,7 +17,7 @@
 </script>
 
 <SiteHeader />
-<Toaster position="bottom-center" richColors closeButton />
+<Toaster />
 
 <div class="app-content">
   {#if router.path === "/"}

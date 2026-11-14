@@ -24,9 +24,9 @@
 
 <MenuShell label="Account menu" current={ownsPage}>
   {#snippet children(close)}
-    <p class="account-who">
+    <p class="m-0 flex flex-col border-b border-border px-3 py-2">
       <strong>{admin.username}</strong>
-      <span class="muted">{admin.isAdmin ? "Admin" : "User"}</span>
+      <span class="text-muted">{admin.isAdmin ? "Admin" : "User"}</span>
     </p>
     {#if admin.isAdmin}
       <h2>Administration</h2>

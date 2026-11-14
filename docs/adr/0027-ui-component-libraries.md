@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by 0028
 ---
 
 # Headless component libraries instead of hand-built UI
