@@ -59,13 +59,6 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.club-logo-preview {
-  display: block;
-  max-height: 6rem;
-  max-width: 12rem;
-  object-fit: contain;
-  border: 1px solid var(--border);
-}
 .login-logo .logo-dark {
   display: none;
 }
