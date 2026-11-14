@@ -43,6 +43,7 @@ All colours, radii, type sizes and shadows are defined once in `src/tokens.css`.
 - One standout moment per page; keep the rest restrained. No gradients, glows or constant motion everywhere.
 - Customize through tokens rather than per-component colour overrides.
 - Motion is CSS only, gated with `motion-safe:`; a global rule also neutralises animation and transition under `prefers-reduced-motion`.
+- The Scorer has no theme switch (it has no chrome by design); it follows the system theme, or the Mode already stored in the browser. Do not add chrome to it for this.
 - Status is never colour only: pair a badge or state with text.
 
 ## Adding a dependency
