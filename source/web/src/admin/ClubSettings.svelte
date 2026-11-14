@@ -354,7 +354,7 @@
     title={`Delete range "${target.name}"?`}
     description="This permanently removes the range."
     confirmLabel="Delete"
-    onconfirm={() => deleteRange(target)}
+    onconfirm={async () => void (await deleteRange(target))}
     oncancel={() => (pendingDelete = null)}
   />
 {/if}
