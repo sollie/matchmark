@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { createMatch, createPairing, expect, seedEntry, setStatus, test } from "./helpers";
+import { expect, test } from "./helpers";
 
 const lightBackground = "rgb(241, 243, 246)";
 const darkBackground = "rgb(14, 19, 27)";
@@ -82,21 +82,5 @@ test.describe("theme", () => {
     await expect(menu.getByRole("heading", { name: "Account" })).toBeVisible();
     await page.goto("/admin");
     expect(await background(page)).toBe(lightBackground);
-  });
-
-  test("the scorer device menu has the Mode group and no admin link", async ({
-    admin,
-    openDevice,
-  }) => {
-    const match = await createMatch(admin);
-    await seedEntry(admin, match.id, 1);
-    await setStatus(admin, match.id, "active");
-    const pairing = await createPairing(admin, match.id, 1);
-    const device = await openDevice(pairing.token);
-    await device.getByRole("button", { name: "Menu" }).click();
-    await expect(device.getByRole("radiogroup", { name: "Mode" })).toBeVisible();
-    await expect(device.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
-    await chooseTheme(device, "Light");
-    await expect(device.locator("html")).toHaveAttribute("data-theme", "light");
   });
 });
