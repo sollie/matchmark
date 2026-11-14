@@ -4,6 +4,12 @@
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
   import { normalizeFirstName, normalizeLastName } from "../lib/names";
+  import Button from "../lib/ui/Button.svelte";
+  import Dialog from "../lib/ui/Dialog.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
+  import LoadingState from "../lib/ui/LoadingState.svelte";
   import NameFields from "./NameFields.svelte";
 
   type Shooter = components["schemas"]["Shooter"];
@@ -42,10 +48,10 @@
 
   const hitName = (h: Hit) => `${h.first_name} ${h.last_name}`;
 
-  let input: HTMLInputElement | undefined;
+  let searchForm: HTMLFormElement | undefined;
 
   onMount(() => {
-    input?.focus();
+    searchForm?.querySelector("input")?.focus();
     if (text.trim()) runSearch();
   });
 
@@ -137,117 +143,108 @@
   }
 </script>
 
-<div class="wa1500-import card">
-  <form class="row" onsubmit={search}>
-    <label
-      >Search WA1500 <input
-        type="text"
-        bind:this={input}
-        bind:value={text}
-        maxlength="100"
-        placeholder="Name, club or WAID"
-      /></label
-    >
-    <button type="submit" class="primary" disabled={searching || !text.trim()}>Search</button>
-    {#if oncancel}<button type="button" class="secondary" onclick={oncancel}>Close</button>{/if}
+<div class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card">
+  <form class="flex flex-wrap items-end gap-3" onsubmit={search} bind:this={searchForm}>
+    <Field label="Search WA1500" class="min-w-64 flex-1">
+      <Input type="text" bind:value={text} maxlength={100} placeholder="Name, club or WAID" />
+    </Field>
+    <Button type="submit" disabled={searching || !text.trim()}>Search</Button>
+    {#if oncancel}<Button variant="secondary" onclick={oncancel}>Close</Button>{/if}
   </form>
 
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if error}<ErrorState title={error} />{/if}
 
   {#if searching}
-    <p class="muted" role="status">Searching WA1500…</p>
+    <LoadingState label="Searching WA1500" />
   {:else if searched && hits.length === 0 && !error}
-    <p class="muted" role="status">No WA1500 results</p>
+    <p class="m-0 text-muted" role="status">No WA1500 results</p>
   {/if}
 
   {#if hits.length > 0}
-    <ul class="hits" aria-label="WA1500 results">
+    <ul class="m-0 flex list-none flex-col gap-2 p-0" aria-label="WA1500 results">
       {#each hits as h (h.waid)}
-        <li class="row">
+        <li
+          class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+        >
           <span>{hitName(h)} · {h.waid} · {h.club} · {h.country}</span>
-          <button type="button" class="primary" disabled={busy} onclick={() => runImport(h)}>
+          <Button size="sm" disabled={busy} onclick={() => runImport(h)}>
             Import {hitName(h)}
-          </button>
+          </Button>
         </li>
       {/each}
     </ul>
   {/if}
 
   {#if !manual}
-    <button type="button" class="secondary" onclick={() => (manual = true)}>Enter manually</button>
+    <div>
+      <Button variant="secondary" onclick={() => (manual = true)}>Enter manually</Button>
+    </div>
   {:else}
-    <form class="row" onsubmit={saveManual} aria-label="Manual shooter entry">
+    <form
+      class="flex flex-wrap items-end gap-3"
+      onsubmit={saveManual}
+      aria-label="Manual shooter entry"
+    >
       <NameFields bind:first={form.first_name} bind:last={form.last_name} />
-      <label>Country <input bind:value={form.country} maxlength="3" size="4" required /></label>
-      <label>Club <input bind:value={form.club} maxlength="128" required /></label>
-      <label>WAID (blank for new shooter) <input bind:value={form.waid} maxlength="32" /></label>
-      <button type="submit" class="primary" disabled={busy}>Save shooter</button>
+      <Field label="Country" class="w-24">
+        <Input bind:value={form.country} maxlength={3} required />
+      </Field>
+      <Field label="Club">
+        <Input bind:value={form.club} maxlength={128} required />
+      </Field>
+      <Field label="WAID (blank for new shooter)">
+        <Input bind:value={form.waid} maxlength={32} />
+      </Field>
+      <Button type="submit" disabled={busy}>Save shooter</Button>
     </form>
   {/if}
 
   {#if archivedMatch}
-    <div class="dialog card" role="alert">
-      <p>
+    <div
+      class="flex flex-col gap-3 rounded-lg border border-warning-fg bg-warning-bg p-4 text-warning-fg"
+      role="alert"
+    >
+      <p class="m-0">
         {hitName(archivedMatch.hit)} matched an archived shooter ({archivedMatch.shooter.first_name}
         {archivedMatch.shooter.last_name}). Unarchive the shooter to import.
       </p>
-      <div class="row">
-        <button type="button" class="primary" disabled={busy} onclick={unarchiveAndImport}>
-          Unarchive
-        </button>
-        <button type="button" class="secondary" onclick={() => (archivedMatch = null)}>
-          Cancel
-        </button>
+      <div class="flex flex-wrap gap-2">
+        <Button disabled={busy} onclick={unarchiveAndImport}>Unarchive</Button>
+        <Button variant="secondary" onclick={() => (archivedMatch = null)}>Cancel</Button>
       </div>
     </div>
   {/if}
 
   {#if pending}
     {@const current = pending}
-    <div class="dialog card" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
-      <h3 id="conflict-title">Name already exists</h3>
-      <p>
-        {hitName(current.hit)} matches existing shooters. Update one of them with the WA1500 data, or
-        create a new shooter.
-      </p>
-      <ul>
-        {#each current.candidates as c (c.id)}
-          <li>
-            <button
-              type="button"
-              class="secondary"
-              disabled={busy}
-              onclick={() => runImport(current.hit, { update_shooter_id: c.id })}
-            >
-              Update {c.first_name}
-              {c.last_name} · {c.waid || "no WAID"} · {c.club} · {c.country}
-            </button>
-          </li>
-        {/each}
-      </ul>
-      <div class="row">
-        <button
-          type="button"
-          class="primary"
-          disabled={busy}
-          onclick={() => runImport(current.hit, { create_new: true })}
-        >
-          Create new shooter
-        </button>
-        <button type="button" class="secondary" onclick={() => (pending = null)}>Cancel</button>
+    <Dialog title="Name already exists" onclose={() => (pending = null)}>
+      <div class="flex flex-col gap-3">
+        <p class="m-0">
+          {hitName(current.hit)} matches existing shooters. Update one of them with the WA1500 data, or
+          create a new shooter.
+        </p>
+        <ul class="m-0 flex list-none flex-col gap-2 p-0">
+          {#each current.candidates as c (c.id)}
+            <li>
+              <Button
+                variant="secondary"
+                class="h-auto w-full justify-start py-2 text-left whitespace-normal"
+                disabled={busy}
+                onclick={() => runImport(current.hit, { update_shooter_id: c.id })}
+              >
+                Update {c.first_name}
+                {c.last_name} · {c.waid || "no WAID"} · {c.club} · {c.country}
+              </Button>
+            </li>
+          {/each}
+        </ul>
+        <div class="flex flex-wrap gap-2">
+          <Button disabled={busy} onclick={() => runImport(current.hit, { create_new: true })}>
+            Create new shooter
+          </Button>
+          <Button variant="secondary" onclick={() => (pending = null)}>Cancel</Button>
+        </div>
       </div>
-    </div>
+    </Dialog>
   {/if}
 </div>
-
-<style>
-  .hits {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  .dialog {
-    border: 1px solid var(--border, #ccc);
-    background: var(--surface, #fff);
-  }
-</style>
