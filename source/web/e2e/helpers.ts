@@ -298,7 +298,8 @@ export async function openAccountMenu(page: Page) {
 }
 
 export async function openAccountLink(page: Page, name: string) {
-  await openAccountMenu(page);
+  const more = page.getByRole("button", { name: "More", exact: true });
+  if (await more.isVisible()) await more.click();
   await page.getByRole("link", { name, exact: true }).click();
 }
 
