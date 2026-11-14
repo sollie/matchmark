@@ -10,7 +10,8 @@ Tailwind v4, Bits UI primitives, svelte-sonner, NumberFlow, `@lucide/svelte` ico
 | --- | --- |
 | Button | `ui/Button.svelte` (`variant`: primary, secondary, danger, ghost; `size`: sm, md, lg, icon) |
 | Text input, labelled field | `ui/Input.svelte`, `ui/Field.svelte` |
-| Select | `ui/Select.svelte` (Bits UI Select; `label` is the accessible name) |
+| Select | `ui/Select.svelte` (Bits UI Select; `label` is the accessible name; use for short, fixed option lists that benefit from a styled popup) |
+| Native select | `ui/NativeSelect.svelte` (wraps `<select>`; prefer it over `Select` for long or dynamic lists, numeric `bind:value`, and where the platform picker is better, e.g. the Spectator match picker) |
 | Modal dialog | `ui/Dialog.svelte` |
 | Confirm a destructive or irreversible action (replaces `window.confirm`) | `ui/ConfirmDialog.svelte` |
 | Bottom or side sheet | `ui/Drawer.svelte` (Bits UI Dialog; `vaul-svelte` is unmaintained) |
