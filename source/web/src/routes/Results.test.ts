@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/svelte";
+import userEvent from "@testing-library/user-event";
 import Results from "./Results.svelte";
 import { stubFetch } from "../test/fetch";
 import { navigate } from "../lib/router.svelte";
@@ -235,6 +236,9 @@ describe("Results", () => {
     navigate("/results");
     stubFetch(() => ({ body: { matches } }));
     render(Results);
+    const trigger = await screen.findByRole("combobox", { name: "Finished match" });
+    trigger.focus();
+    await userEvent.keyboard("{ArrowDown}");
     expect(await screen.findByRole("option", { name: "Spring Match (2026-05-01)" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Live Match/ })).toBeNull();
   });

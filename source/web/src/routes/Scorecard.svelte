@@ -3,6 +3,10 @@
   import { club } from "../lib/club.svelte";
   import type { components } from "../lib/api/schema";
   import { api } from "../lib/api/client";
+  import Button, { buttonVariants } from "../lib/ui/Button.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import LoadingState from "../lib/ui/LoadingState.svelte";
+  import EmptyState from "../lib/ui/EmptyState.svelte";
 
   type Summary = components["schemas"]["ScorecardSummary"];
 
@@ -87,65 +91,51 @@
   }
 </script>
 
-<main class="scorecard">
-  <h1>Scorecard{params ? `, lane ${params.lane}` : ""}</h1>
+<main class="mx-auto w-full max-w-3xl px-4 py-4 print:max-w-none print:p-0">
+  <h1 class="m-0 mb-3 text-xl print:hidden">Scorecard{params ? `, lane ${params.lane}` : ""}</h1>
   {#if phase === "loading"}
-    <p class="muted">Loading scorecard…</p>
+    <LoadingState label="Loading scorecard" />
   {:else if phase === "busy"}
-    <div class="card">
-      <p>The scorecard is busy, please try again shortly.</p>
-      <p class="muted">
-        Trying again in {retrySeconds}
-        {retrySeconds === 1 ? "second" : "seconds"}.
-      </p>
-      <p><button class="button" onclick={() => attempt++}>Try again</button></p>
-    </div>
+    <ErrorState title="The scorecard is busy, please try again shortly.">
+      {#snippet action()}
+        <p class="m-0 mb-3 text-muted">
+          Trying again in {retrySeconds}
+          {retrySeconds === 1 ? "second" : "seconds"}.
+        </p>
+        <Button onclick={() => attempt++}>Try again</Button>
+      {/snippet}
+    </ErrorState>
   {:else if phase === "broken"}
-    <div class="card">
-      <p>The scorecard could not be loaded.</p>
-      <p><button class="button" onclick={() => attempt++}>Try again</button></p>
-    </div>
+    <ErrorState title="The scorecard could not be loaded.">
+      {#snippet action()}<Button onclick={() => attempt++}>Try again</Button>{/snippet}
+    </ErrorState>
   {:else if phase === "missing" || !params || !summary}
-    <div class="card">
-      <p>This scorecard is not available.</p>
-      <p class="muted">Scorecards appear once the match is finished and the lane has an entry.</p>
-      <p><a href="/">Back to start</a></p>
-    </div>
+    <EmptyState
+      title="This scorecard is not available."
+      description="Scorecards appear once the match is finished and the lane has an entry."
+    >
+      {#snippet action()}<a href="/">Back to start</a>{/snippet}
+    </EmptyState>
   {:else}
-    <section class="card">
-      <p><strong>{summary.shooter}</strong></p>
+    <section class="rounded-lg border border-border bg-surface p-4 print:border-0 print:p-0">
+      <p class="m-0 text-lg font-semibold">{summary.shooter}</p>
       {#if summary.scorers.length > 0}
-        <ul class="scorers">
+        <ul class="m-0 mt-2 list-none p-0 text-muted print:text-black">
           {#each summary.scorers as item (item.segment)}
             <li>{item.segment_name} scored by {item.scorer}</li>
           {/each}
         </ul>
       {/if}
     </section>
-    <p>
-      <a class="button primary download" href={`${base}&download=1`}>Download PNG</a>
-    </p>
+    <a
+      class={`${buttonVariants({ variant: "primary", size: "lg" })} my-4 w-full sm:w-auto print:hidden`}
+      href={`${base}&download=1`}>Download PNG</a
+    >
     <img
-      class="card-image"
+      class="block h-auto w-full max-w-240 rounded-md border border-border bg-white print:max-w-full print:border-0"
       src={`${base}&v=${club.version}-${loaded}-${attempt}`}
       alt={`Scorecard for ${summary.shooter}, lane ${params.lane}`}
       onerror={imageFailed}
     />
   {/if}
 </main>
-
-<style>
-  .card-image {
-    display: block;
-    width: 100%;
-    max-width: 60rem;
-    height: auto;
-    background: #fff;
-    border: 1px solid var(--border, #ccc);
-  }
-  .download {
-    display: inline-block;
-    font-size: var(--text-lg);
-    padding: var(--space-3) var(--space-5);
-  }
-</style>
