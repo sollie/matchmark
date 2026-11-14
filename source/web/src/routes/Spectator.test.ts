@@ -98,6 +98,29 @@ describe("Spectator status row", () => {
     expect(container.querySelector("progress")).toBeNull();
   });
 
+  it("updates the total in place when a score changes", async () => {
+    install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    const scored = (total: number) => ({
+      current_segment: 1,
+      total_segments: 2,
+      standings: [{ ...standing(1, ["accepted"]), total }],
+    });
+    send!(scored(118));
+    const total = await screen.findByRole("columnheader", { name: "Total" });
+    const table = total.closest("table")!;
+    await waitFor(() =>
+      expect(table.querySelector("tbody td:last-child")?.textContent).toContain("118"),
+    );
+    send!(scored(236));
+    await waitFor(() =>
+      expect(table.querySelector("tbody td:last-child")?.textContent).toContain("236"),
+    );
+    expect(table.querySelectorAll("tbody tr")).toHaveLength(1);
+  });
+
   it("heads each segment column with its short score-card name", async () => {
     install("active");
     render(Spectator);
