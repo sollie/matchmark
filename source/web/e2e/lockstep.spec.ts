@@ -37,7 +37,7 @@ test.describe("lockstep segments", () => {
     for (const device of [lane1, lane2]) {
       await device.getByRole("button", { name: "Review result" }).click();
       await device.getByRole("button", { name: "Accept" }).click();
-      await expect(device.getByRole("status")).toHaveText("Result accepted");
+      await expect(device.getByText("Result accepted", { exact: true })).toBeVisible();
     }
     await expect(
       row(page, first.shooter.last_name).getByText("Accepted", { exact: true }).first(),

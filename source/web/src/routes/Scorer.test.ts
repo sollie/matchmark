@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import Scorer from "./Scorer.svelte";
 import { stubFetch } from "../test/fetch";
 import { navigate } from "../lib/router.svelte";
+import { toast } from "../lib/ui/toast";
+
+vi.mock("../lib/ui/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 type SessionOverrides = {
   score_lane?: number;
@@ -388,5 +391,27 @@ describe("Scorer", () => {
     render(Scorer);
     await waitFor(() => expect(window.location.pathname).toBe("/scorecard/7/3"));
     expect(localStorage.getItem("mm_device_token")).toBeNull();
+  });
+
+  it("shows the pairing state in its own header", async () => {
+    const server = fakeStream();
+    await open(server);
+    expect(screen.getByText("Paired")).toBeTruthy();
+    expect(screen.getByText("Lane 1")).toBeTruthy();
+  });
+
+  it("reports save failures through a toast", async () => {
+    const server = fakeStream();
+    const user = userEvent.setup();
+    calls = stubFetch((c) =>
+      c.method === "PUT" ? { status: 422, body: { error: "invalid" } } : undefined,
+    );
+    await open(server);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining("Ring counts must add up to"),
+      expect.anything(),
+    );
   });
 });

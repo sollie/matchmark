@@ -332,5 +332,6 @@ export class ScorerSession {
   #begin() {
     this.busy = true;
     this.error = "";
+    this.message = "";
   }
 }
