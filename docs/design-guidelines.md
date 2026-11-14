@@ -4,7 +4,7 @@ See ADR 0028 (which supersedes 0027) for the reasoning.
 
 ## Stack
 
-Tailwind v4, Bits UI primitives, svelte-sonner, NumberFlow, `@lucide/svelte` icons. Shared components are owned in `source/web/src/lib/ui/`; compose them rather than hand-building dialogs, popovers, menus, selects, tabs, tooltips, toasts or drawers. Do not mix legacy CSS classes and Tailwind utilities in one screen; `src/legacy.css` is removed as surfaces migrate.
+Tailwind v4, Bits UI primitives, svelte-sonner, NumberFlow, `@lucide/svelte` icons. Shared components are owned in `source/web/src/lib/ui/`; compose them rather than hand-building dialogs, popovers, menus, selects, tooltips, toasts or drawers. Style with Tailwind utilities only; `src/app.css` keeps a minimal base layer and no component CSS.
 
 | Task | Use |
 | --- | --- |
@@ -14,7 +14,6 @@ Tailwind v4, Bits UI primitives, svelte-sonner, NumberFlow, `@lucide/svelte` ico
 | Modal dialog | `ui/Dialog.svelte` |
 | Confirm a destructive or irreversible action (replaces `window.confirm`) | `ui/ConfirmDialog.svelte` |
 | Bottom or side sheet | `ui/Drawer.svelte` (Bits UI Dialog; `vaul-svelte` is unmaintained) |
-| Tabs | `ui/Tabs.svelte` |
 | Table | `ui/Table.svelte` (scrolling region with a required `label`) |
 | Status badge | `ui/Badge.svelte` (`tone`: success, warning, danger, info, neutral) |
 | Toasts | `ui/toast.ts` (`toast.success()`, `toast.error()`); one `ui/Toaster.svelte` in `App.svelte` |

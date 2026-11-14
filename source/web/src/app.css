@@ -1,11 +1,78 @@
-@layer legacy, theme, base, components, utilities;
+@layer theme, base, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "./tokens.css";
-@import "./legacy.css" layer(legacy);
+
+@custom-variant dark-theme {
+  &:where(:root[data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  :root {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+    font-variant-numeric: tabular-nums;
+  }
+  body {
+    margin: 0;
+  }
+  #app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+  h1,
+  h2,
+  h3 {
+    margin: 0.5rem 0;
+    line-height: 1.25;
+  }
+  h1 {
+    font-size: var(--text-xl);
+  }
+  h2 {
+    font-size: var(--text-lg);
+  }
+  h3 {
+    font-size: var(--text-base);
+  }
+  a {
+    color: var(--link);
+  }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+  table {
+    border-collapse: collapse;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
   h1,
   h2,
   h3 {
