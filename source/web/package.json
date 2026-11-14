@@ -14,8 +14,11 @@
     "format:check": "prettier --check src e2e"
   },
   "dependencies": {
+    "@number-flow/svelte": "^0.4.2",
+    "bits-ui": "^2.21.0",
     "openapi-fetch": "^0.17.0",
-    "qrcode-generator": "^2.0.4"
+    "qrcode-generator": "^2.0.4",
+    "svelte-sonner": "^1.2.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",
