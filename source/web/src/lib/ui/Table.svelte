@@ -11,7 +11,7 @@
 </script>
 
 <div
-  class="overflow-x-auto rounded-lg border border-border bg-surface"
+  class="relative overflow-x-auto rounded-lg border border-border bg-surface"
   role="region"
   aria-label={label}
 >

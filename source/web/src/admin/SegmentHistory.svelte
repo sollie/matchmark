@@ -3,6 +3,12 @@
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
   import { segmentLabel } from "../lib/rulebook.svelte";
+  import Badge, { type BadgeTone } from "../lib/ui/Badge.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import LoadingState from "../lib/ui/LoadingState.svelte";
+  import NativeSelect from "../lib/ui/NativeSelect.svelte";
+  import Table from "../lib/ui/Table.svelte";
 
   type History = components["schemas"]["SegmentHistory"];
 
@@ -23,6 +29,14 @@
     disputed: "Disputed",
     accepted_all: "Accepted (all)",
     unlocked: "Unlocked",
+  };
+
+  const tones: Record<string, BadgeTone> = {
+    locked: "info",
+    accepted: "success",
+    disputed: "danger",
+    accepted_all: "success",
+    unlocked: "warning",
   };
 
   const union = <T,>(known: T[], more: T[]) => [...new Set([...known, ...more])].sort();
@@ -70,77 +84,65 @@
     e.actor_type === "device" ? `Device (${e.scorer_name || "unknown"})` : e.actor_name;
 </script>
 
-<section class="card">
-  <h2>Dispute history</h2>
-  <div class="row">
-    <label>
-      Scorer
-      <select aria-label="Filter by scorer" bind:value={scorer}>
+<section class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card">
+  <h2 class="m-0 text-lg">Dispute history</h2>
+  <div class="grid gap-3 sm:grid-cols-3">
+    <Field label="Scorer">
+      <NativeSelect aria-label="Filter by scorer" bind:value={scorer}>
         <option value="">All scorers</option>
         {#each scorerOptions as name (name)}<option value={name}>{name}</option>{/each}
-      </select>
-    </label>
-    <label>
-      Shooter
-      <select aria-label="Filter by shooter" bind:value={shooter}>
+      </NativeSelect>
+    </Field>
+    <Field label="Shooter">
+      <NativeSelect aria-label="Filter by shooter" bind:value={shooter}>
         <option value="">All shooters</option>
         {#each shooterOptions as name (name)}<option value={name}>{name}</option>{/each}
-      </select>
-    </label>
-    <label>
-      Segment
-      <select aria-label="Filter by segment" bind:value={segment}>
+      </NativeSelect>
+    </Field>
+    <Field label="Segment">
+      <NativeSelect aria-label="Filter by segment" bind:value={segment}>
         <option value="">All segments</option>
         {#each segmentOptions as n (n)}<option value={String(n)}>{segmentLabel(course, n)}</option
           >{/each}
-      </select>
-    </label>
+      </NativeSelect>
+    </Field>
   </div>
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if error}<ErrorState title={error} />{/if}
   {#if history}
-    <h3>Disputes per scorer</h3>
-    <div class="scroll">
-      <table class="scorers stacked">
-        <thead><tr><th>Scorer</th><th>Locks</th><th>Disputes</th></tr></thead>
-        <tbody>
-          {#each history.scorers as s (s.scorer_name)}
-            <tr
-              ><td>{s.scorer_name}</td><td data-label="Locks">{s.locks}</td><td
-                data-label="Disputes">{s.disputes}</td
-              ></tr
-            >
-          {:else}
-            <tr><td colspan="3" class="muted">No scorer events.</td></tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    <h3>Segment events</h3>
-    <div class="scroll">
-      <table class="events stacked">
-        <thead
-          ><tr
-            ><th>Time</th><th>Segment</th><th>Event</th><th>Shooter</th><th>Scorer</th><th>By</th
-            ></tr
-          ></thead
+    <h3 class="m-0 text-base">Disputes per scorer</h3>
+    <Table label="Disputes per scorer" class="scorers">
+      <thead><tr><th>Scorer</th><th>Locks</th><th>Disputes</th></tr></thead>
+      <tbody>
+        {#each history.scorers as s (s.scorer_name)}
+          <tr><td>{s.scorer_name}</td><td>{s.locks}</td><td>{s.disputes}</td></tr>
+        {:else}
+          <tr><td colspan="3" class="text-muted">No scorer events.</td></tr>
+        {/each}
+      </tbody>
+    </Table>
+    <h3 class="m-0 text-base">Segment events</h3>
+    <Table label="Segment events" class="events">
+      <thead>
+        <tr
+          ><th>Time</th><th>Segment</th><th>Event</th><th>Shooter</th><th>Scorer</th><th>By</th></tr
         >
-        <tbody>
-          {#each history.events as e (e.id)}
-            <tr>
-              <td>{new Date(e.time).toLocaleString()}</td>
-              <td data-label="Segment">{segmentLabel(course, e.segment)}</td>
-              <td data-label="Event">{labels[e.event]}</td>
-              <td data-label="Shooter">{e.shooter_name}</td>
-              <td data-label="Scorer">{e.scorer_name || "Admin"}</td>
-              <td data-label="By">{actor(e)}</td>
-            </tr>
-          {:else}
-            <tr><td colspan="6" class="muted">No events match.</td></tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
+      </thead>
+      <tbody>
+        {#each history.events as e (e.id)}
+          <tr>
+            <td class="whitespace-nowrap">{new Date(e.time).toLocaleString()}</td>
+            <td>{segmentLabel(course, e.segment)}</td>
+            <td><Badge tone={tones[e.event]}>{labels[e.event]}</Badge></td>
+            <td>{e.shooter_name}</td>
+            <td>{e.scorer_name || "Admin"}</td>
+            <td>{actor(e)}</td>
+          </tr>
+        {:else}
+          <tr><td colspan="6" class="text-muted">No events match.</td></tr>
+        {/each}
+      </tbody>
+    </Table>
   {:else if !error}
-    <p class="muted">Loading…</p>
+    <LoadingState />
   {/if}
 </section>
