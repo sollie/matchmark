@@ -29,7 +29,8 @@ Locate controls in e2e tests by accessible name; Bits UI parts keep correct role
 
 All colours, radii, type sizes and shadows are defined once in `src/tokens.css`. The palette uses `light-dark()`, so no `dark:` variants are needed; Mode (`data-theme` on `<html>`, set from `matchmark-theme`) only switches `color-scheme`.
 
-- Colour utilities: `bg-bg`, `bg-surface`, `bg-surface-alt`, `border-border`, `text-fg`, `text-muted`, `text-link`, `bg-brand`, `text-on-brand`, `bg-brand-tint`, `bg-danger`, `text-on-danger`, `bg-header`, status pairs `bg-success-bg text-success-fg` (also `warning`, `danger`, `neutral`), and `outline-focus`. The default Tailwind palette is removed; use only these.
+- Colour utilities: `bg-bg`, `bg-surface`, `bg-surface-alt`, `border-border`, `text-fg`, `text-muted`, `text-link`, `bg-brand`, `text-on-brand`, `bg-brand-tint`, `bg-danger`, `text-on-danger`, `bg-header` with `text-header-fg` (also `outline-header-fg`, `bg-header-fg/10`) on the dark header, `bg-overlay` for modal backdrops, status pairs `bg-success-bg text-success-fg` (also `warning`, `danger`, `neutral`), and `outline-focus`. The default Tailwind palette is removed; use only these.
+- Literal `bg-white` is allowed only where a white surface is functional in both modes: the pairing QR code card (scanners need dark modules on white) and the Scorecard image and print view (the image is rendered on white). Everything else uses tokens.
 - Radius: `rounded-sm` 4px, `rounded-md` 8px, `rounded-lg` 12px, `rounded-xl` 16px.
 - Type: `text-sm` 0.85rem, `text-base` 1rem, `text-lg` 1.25rem, `text-xl` 1.6rem; headings use a tighter weight and tracking from the base layer. Numbers are tabular.
 - Shadows: `shadow-card`, `shadow-overlay`.

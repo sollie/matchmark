@@ -44,7 +44,7 @@
 >
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 motion-safe:data-[state=open]:animate-[fade-in_150ms_ease-out]"
+      class="fixed inset-0 z-50 bg-overlay motion-safe:data-[state=open]:animate-[fade-in_150ms_ease-out]"
     />
     <Dialog.Content
       onOpenAutoFocus={(event) => {

@@ -11,6 +11,8 @@ function parseTokens(source: string): Record<string, Record<Mode, string>> {
   for (const [, name, value] of root.matchAll(/--([a-z-]+):\s*([^;]+);/g)) {
     const pair = value.match(/^light-dark\(\s*(#[0-9a-f]{6})\s*,\s*(#[0-9a-f]{6})\s*\)$/);
     if (pair) tokens[name] = { light: pair[1], dark: pair[2] };
+    else if (/^#[0-9a-f]{6}$/.test(value.trim()))
+      tokens[name] = { light: value.trim(), dark: value.trim() };
   }
   return tokens;
 }
@@ -42,6 +44,7 @@ const pairs: { fg: string; bg: string; min: number }[] = [
   { fg: "warning-fg", bg: "warning-bg", min: 4.5 },
   { fg: "danger-fg", bg: "danger-bg", min: 4.5 },
   { fg: "neutral-fg", bg: "neutral-bg", min: 4.5 },
+  { fg: "header-fg", bg: "header", min: 4.5 },
   { fg: "focus", bg: "surface", min: 3 },
 ];
 
