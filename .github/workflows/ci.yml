@@ -50,7 +50,7 @@ jobs:
     if: github.event_name != 'schedule'
     uses: ./.github/workflows/tests.yml
     with:
-      e2e-browsers: ${{ github.event_name == 'pull_request' && '["chromium"]' || '["chromium","firefox","webkit"]' }}
+      e2e-browsers: ${{ github.event_name == 'pull_request' && '["desktop","tablet","phone"]' || '["desktop","tablet","phone","firefox","webkit"]' }}
 
   image:
     name: Image

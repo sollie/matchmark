@@ -61,33 +61,33 @@ async function seedScored(api: APIRequestContext, finish = false) {
 }
 
 test.describe("spectator", () => {
-  test("standings are ranked by total then X count with the segment status row", async ({
-    course,
-    page,
-    admin,
-  }) => {
-    const { match, entries } = await seedScored(admin);
-    await openMatch(page, match.name);
+  test(
+    "standings are ranked by total then X count with the segment status row",
+    { tag: "@smoke" },
+    async ({ course, page, admin }) => {
+      const { match, entries } = await seedScored(admin);
+      await openMatch(page, match.name);
 
-    const table = page.getByRole("table");
-    const byLane = (lane: number) => row(page, entries[lane - 1].last_name);
-    await expect(byLane(2)).toBeVisible();
-    await expect(byLane(2).getByRole("cell").first()).toHaveText("1");
-    await expect(byLane(4).getByRole("cell").first()).toHaveText("3");
-    await expect(byLane(1).getByRole("cell").first()).toHaveText("2");
-    await expect(byLane(3).getByRole("cell").first()).toHaveText("3");
-    await expect(byLane(1).getByRole("cell").nth(1)).toHaveText("1");
-    await expect(table.getByRole("columnheader", { name: "M1", exact: true })).toBeVisible();
-    await expect(table.getByRole("columnheader", { name: "X", exact: true })).toBeVisible();
+      const table = page.getByRole("table");
+      const byLane = (lane: number) => row(page, entries[lane - 1].last_name);
+      await expect(byLane(2)).toBeVisible();
+      await expect(byLane(2).getByRole("cell").first()).toHaveText("1");
+      await expect(byLane(4).getByRole("cell").first()).toHaveText("3");
+      await expect(byLane(1).getByRole("cell").first()).toHaveText("2");
+      await expect(byLane(3).getByRole("cell").first()).toHaveText("3");
+      await expect(byLane(1).getByRole("cell").nth(1)).toHaveText("1");
+      await expect(table.getByRole("columnheader", { name: "M1", exact: true })).toBeVisible();
+      await expect(table.getByRole("columnheader", { name: "X", exact: true })).toBeVisible();
 
-    const rows = table.locator("tbody tr");
-    await expect(rows.first()).toContainText(entries[1].last_name);
+      const rows = table.locator("tbody tr");
+      await expect(rows.first()).toContainText(entries[1].last_name);
 
-    const progress = page.getByRole("status");
-    await expect(progress.getByText("2/4 accepted")).toBeVisible();
-    await expect(progress.getByText(`Segment 1 of ${course.segments}`)).toBeVisible();
-    await expect(page.locator("progress")).toHaveCount(0);
-  });
+      const progress = page.getByRole("status");
+      await expect(progress.getByText("2/4 accepted")).toBeVisible();
+      await expect(progress.getByText(`Segment 1 of ${course.segments}`)).toBeVisible();
+      await expect(page.locator("progress")).toHaveCount(0);
+    },
+  );
 
   test("grouped standings show one ranked table per category", async ({ page, admin }) => {
     const match = await createMatch(admin, { name: uniqueName("Grouped") });

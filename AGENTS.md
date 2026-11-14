@@ -65,7 +65,7 @@ Specification and decisions:
 - The API client is generated from `source/api/openapi.yaml`. After changing the spec, run `npm run generate` in `source/api` and commit the result; `npm run check` there must leave no diff.
 - After every change, run `npm run verify` in `source/web` (check, build, test, audit).
 - Format `.ts`, `.css` and `.svelte` files with `npm run format` in `source/web` (Prettier with prettier-plugin-svelte, print width 100); `npm run format:check` must pass.
-- For changes to user flows also run `npm run e2e` (Playwright, see ADR 0008). While iterating, narrow it: `npx playwright test e2e/<file>.spec.ts --project=chromium`; run the full suite before finishing.
+- For changes to user flows also run `npm run e2e` (Playwright, see ADR 0008). While iterating, narrow it: `npx playwright test e2e/<file>.spec.ts --project=desktop`; run the full suite before finishing.
 - Fix all high/critical findings reported by `npm audit` before considering the task done. `npm run verify` runs `npm audit --audit-level=moderate`, so low-severity findings (currently deepmerge via `@sveltejs/vite-plugin-svelte`, no upstream fix) do not fail it.
 
 ### Shell scripts
