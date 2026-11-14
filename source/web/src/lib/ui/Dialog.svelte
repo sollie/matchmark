@@ -3,6 +3,7 @@
   import X from "@lucide/svelte/icons/x";
   import type { Snippet } from "svelte";
   import { cn } from "./utils";
+  import { modalCloseClass, modalTitleClass, overlayClass } from "./modal";
 
   let {
     open = $bindable(true),
@@ -43,9 +44,7 @@
   }
 >
   <Dialog.Portal>
-    <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-overlay motion-safe:data-[state=open]:animate-[fade-in_150ms_ease-out]"
-    />
+    <Dialog.Overlay class={overlayClass} />
     <Dialog.Content
       onOpenAutoFocus={(event) => {
         const target = autofocus && content?.querySelector<HTMLElement>(autofocus);
@@ -59,15 +58,12 @@
         className,
       )}
     >
-      <Dialog.Title class="m-0 mb-3 pr-10 text-lg">{title}</Dialog.Title>
+      <Dialog.Title class={modalTitleClass}>{title}</Dialog.Title>
       <Dialog.Description class={description ? "mb-3 text-muted" : "sr-only"}>
         {description ?? title}
       </Dialog.Description>
       {@render children()}
-      <Dialog.Close
-        aria-label={closeLabel}
-        class="absolute top-2 right-2 inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-muted outline-offset-2 hover:bg-surface-alt hover:text-fg focus-visible:outline-3 focus-visible:outline-focus"
-      >
+      <Dialog.Close aria-label={closeLabel} class={modalCloseClass}>
         <X class="size-5" aria-hidden="true" />
       </Dialog.Close>
     </Dialog.Content>
