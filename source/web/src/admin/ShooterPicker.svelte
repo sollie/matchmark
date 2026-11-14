@@ -1,10 +1,10 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import type { components } from "../lib/api/schema";
+
   import Badge from "../lib/ui/Badge.svelte";
   import Field from "../lib/ui/Field.svelte";
   import Input from "../lib/ui/Input.svelte";
-  import { cn } from "../lib/ui/utils";
 
   type Shooter = components["schemas"]["Shooter"];
 
@@ -26,7 +26,6 @@
     onadd?: (query: string) => void;
   } = $props();
 
-  const option = "flex min-h-11 items-center gap-2 rounded-md px-3 py-2";
   const uid = $props.id();
   const listId = `${uid}-list`;
   const optionId = (i: number) => `${uid}-opt-${i}`;
@@ -122,7 +121,7 @@
   }
 </script>
 
-<div class="relative min-w-0">
+<div class="relative">
   <Field {label} {error}>
     <Input
       type="text"
@@ -132,8 +131,8 @@
       aria-controls={listId}
       aria-autocomplete="list"
       aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
-      aria-invalid={error ? true : undefined}
       {required}
+      aria-invalid={error ? true : undefined}
       bind:value={text}
       {oninput}
       {onfocus}
@@ -146,14 +145,14 @@
     role="listbox"
     aria-label={label}
     hidden={!open}
-    class="absolute inset-x-0 z-20 m-0 mt-1 max-h-64 list-none overflow-y-auto rounded-lg border border-border bg-surface p-1 text-fg shadow-overlay"
+    class="absolute inset-x-0 z-10 m-0 max-h-64 list-none overflow-y-auto rounded-md border border-border bg-surface p-0 text-fg shadow-overlay"
   >
     {#each visible as s, i (s.id)}
       <li
         id={optionId(i)}
         role="option"
         aria-selected={i === active}
-        class={cn(option, "cursor-pointer", i === active && "bg-brand-tint")}
+        class="cursor-pointer px-3 py-2 aria-selected:bg-brand-tint"
         onmousedown={(e) => e.preventDefault()}
         onclick={() => choose(s)}
       >
@@ -162,32 +161,21 @@
       </li>
     {/each}
     {#each archived as s (s.id)}
-      <li
-        role="option"
-        aria-selected="false"
-        aria-disabled="true"
-        class={cn(option, "justify-between text-muted")}
-      >
-        <span>
-          {s.first_name}
-          {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
-        </span>
+      <li role="option" aria-selected="false" aria-disabled="true" class="px-3 py-2 text-muted">
+        {s.first_name}
+        {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
         <Badge>Archived</Badge>
       </li>
     {/each}
     {#if searched && !loading && shown.length === 0}
-      <li class={cn(option, "text-muted")} role="presentation">No match</li>
+      <li class="px-3 py-2 text-muted" role="presentation">No match</li>
     {/if}
     {#if onadd}
       <li
         id={optionId(visible.length)}
         role="option"
         aria-selected={active === visible.length}
-        class={cn(
-          option,
-          "cursor-pointer font-semibold",
-          active === visible.length && "bg-brand-tint",
-        )}
+        class="cursor-pointer px-3 py-2 font-semibold aria-selected:bg-brand-tint"
         onmousedown={(e) => e.preventDefault()}
         onclick={add}
       >

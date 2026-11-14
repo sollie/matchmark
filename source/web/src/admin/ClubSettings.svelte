@@ -3,6 +3,13 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import { club, clubLogoUrl, refreshClub } from "../lib/club.svelte";
+  import Badge from "../lib/ui/Badge.svelte";
+  import Button from "../lib/ui/Button.svelte";
+  import EmptyState from "../lib/ui/EmptyState.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
+  import Select from "../lib/ui/Select.svelte";
   import type { components } from "../lib/api/schema";
 
   type Range = components["schemas"]["Range"];
@@ -94,25 +101,37 @@
     );
   }
 
-  async function chooseDefaultRange(e: Event) {
-    const select = e.currentTarget as HTMLSelectElement;
-    const value = select.value === "" ? null : Number(select.value);
-    const ok = await runRangeAction(
-      () => api.PUT("/api/club", { body: { default_range_id: value } }),
+  const defaultRangeValue = $derived(
+    club.defaultRangeId === null ? "none" : String(club.defaultRangeId),
+  );
+  const defaultRangeItems = $derived([
+    { value: "none", label: "None" },
+    ...ranges.filter((r) => !r.archived).map((r) => ({ value: String(r.id), label: r.name })),
+  ]);
+  const unclassifiedItems = [
+    { value: "Master", label: "Master" },
+    { value: "Unclassified", label: "Unclassified" },
+  ];
+
+  async function chooseDefaultRange(value: string) {
+    if (value === defaultRangeValue) return;
+    await runRangeAction(
+      () =>
+        api.PUT("/api/club", {
+          body: { default_range_id: value === "none" ? null : Number(value) },
+        }),
       "Default range saved.",
     );
-    if (!ok) select.value = club.defaultRangeId === null ? "" : String(club.defaultRangeId);
   }
 
-  async function chooseUnclassifiedClass(e: Event) {
-    const select = e.currentTarget as HTMLSelectElement;
+  async function chooseUnclassifiedClass(value: string) {
+    if (value === club.unclassifiedClass) return;
     error = "";
     message = "";
     const result = await api.PUT("/api/club", {
-      body: { unclassified_class: select.value as "Master" | "Unclassified" },
+      body: { unclassified_class: value as "Master" | "Unclassified" },
     });
     if (!result.response.ok) {
-      select.value = club.unclassifiedClass;
       error = failure(result);
       return;
     }
@@ -174,121 +193,154 @@
   }
 </script>
 
-<h1>Club settings</h1>
+<div class="mx-auto flex max-w-3xl flex-col gap-4">
+  <h1 class="m-0 text-xl">Club settings</h1>
 
-{#if loaded}
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
-  {#if message}<p role="status">{message}</p>{/if}
+  {#if loaded}
+    {#if error}<ErrorState title={error} />{/if}
+    {#if message}<p class="m-0 text-success-fg" role="status">{message}</p>{/if}
 
-  <section aria-labelledby="club-name-heading">
-    <h2 id="club-name-heading">Club name</h2>
-    <form onsubmit={saveName}>
-      <label>Name <input bind:value={name} maxlength="100" /></label>
-      <button type="submit">Save name</button>
-    </form>
-  </section>
+    <section
+      aria-labelledby="club-name-heading"
+      class="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-card"
+    >
+      <h2 id="club-name-heading" class="m-0 text-lg">Club name</h2>
+      <form class="flex flex-wrap items-end gap-3" onsubmit={saveName}>
+        <Field label="Name" class="min-w-56 flex-1">
+          <Input bind:value={name} maxlength={100} />
+        </Field>
+        <Button type="submit">Save name</Button>
+      </form>
+    </section>
 
-  <section aria-labelledby="club-class-heading">
-    <h2 id="club-class-heading">Unclassified shooters</h2>
-    <label>
-      Unclassified shooters compete as
-      <select value={club.unclassifiedClass} onchange={chooseUnclassifiedClass}>
-        <option value="Master">Master</option>
-        <option value="Unclassified">Unclassified</option>
-      </select>
-    </label>
-    <p class="muted">Applied when a match goes active (rule 20.2).</p>
-  </section>
+    <section
+      aria-labelledby="club-class-heading"
+      class="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-card"
+    >
+      <h2 id="club-class-heading" class="m-0 text-lg">Unclassified shooters</h2>
+      <div class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Unclassified shooters compete as</span>
+        <Select
+          label="Unclassified shooters compete as"
+          items={unclassifiedItems}
+          value={club.unclassifiedClass}
+          onValueChange={chooseUnclassifiedClass}
+          class="sm:max-w-xs"
+        />
+      </div>
+      <p class="m-0 text-sm text-muted">Applied when a match goes active (rule 20.2).</p>
+    </section>
 
-  <section aria-labelledby="club-ranges-heading">
-    <h2 id="club-ranges-heading">Ranges</h2>
-    <label>
-      Default range
-      <select
-        value={club.defaultRangeId === null ? "" : String(club.defaultRangeId)}
-        onchange={chooseDefaultRange}
-      >
-        <option value="">None</option>
-        {#each ranges.filter((r) => !r.archived) as range (range.id)}
-          <option value={String(range.id)}>{range.name}</option>
-        {/each}
-      </select>
-    </label>
-    <p class="muted">
-      Pre-filled on new competitions. A club with one active range selects it automatically.
-    </p>
-    {#if ranges.length === 0}
-      <p class="muted">No ranges yet.</p>
-    {:else}
-      <ul>
-        {#each ranges as range (range.id)}
-          <li aria-label={`Range ${range.name}`}>
-            {#if editingRange === range.id}
-              <form class="row" onsubmit={(e) => renameRange(e, range)}>
-                <label
-                  >Range name <input bind:value={editRangeName} maxlength="100" required /></label
-                >
-                <button type="submit">Save</button>
-                <button type="button" onclick={() => (editingRange = null)}>Cancel</button>
-              </form>
-            {:else}
-              <span class="row">
-                {range.name}
-                {#if range.archived}<span class="muted">(archived)</span>{/if}
-                {#if range.id === club.defaultRangeId}<span class="muted">(default)</span>{/if}
-                <button
-                  type="button"
-                  onclick={() => startRename(range)}
-                  aria-label={`Rename range ${range.name}`}>Rename</button
-                >
-                {#if range.archived}
-                  <button
-                    type="button"
-                    onclick={() => archiveRange(range, false)}
-                    aria-label={`Restore range ${range.name}`}>Restore</button
-                  >
-                {:else if range.id !== club.defaultRangeId}
-                  <button
-                    type="button"
-                    onclick={() => archiveRange(range, true)}
-                    aria-label={`Archive range ${range.name}`}>Archive</button
-                  >
-                {/if}
-                {#if range.id !== club.defaultRangeId}
-                  <button
-                    type="button"
-                    onclick={() => deleteRange(range)}
-                    aria-label={`Delete range ${range.name}`}>Delete</button
-                  >
-                {/if}
-              </span>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    {/if}
-    <form onsubmit={addRange}>
-      <label>Range to add <input bind:value={newRangeName} maxlength="100" required /></label>
-      <button type="submit">Add range</button>
-    </form>
-  </section>
-
-  <section aria-labelledby="club-logo-heading">
-    <h2 id="club-logo-heading">Club logo</h2>
-    {#if club.hasLogo}
-      <p>
-        <img class="club-logo-preview" src={clubLogoUrl(club.version)} alt="Current club logo" />
+    <section
+      aria-labelledby="club-ranges-heading"
+      class="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-card"
+    >
+      <h2 id="club-ranges-heading" class="m-0 text-lg">Ranges</h2>
+      <div class="flex flex-col gap-1">
+        <span class="text-sm font-medium">Default range</span>
+        <Select
+          label="Default range"
+          items={defaultRangeItems}
+          value={defaultRangeValue}
+          onValueChange={chooseDefaultRange}
+          class="sm:max-w-xs"
+        />
+      </div>
+      <p class="m-0 text-sm text-muted">
+        Pre-filled on new competitions. A club with one active range selects it automatically.
       </p>
-      <button type="button" onclick={removeLogo}>Remove logo</button>
-    {:else}
-      <p class="muted">No logo uploaded.</p>
-    {/if}
-    <form onsubmit={uploadLogo}>
-      <label
-        >Logo file <input type="file" accept="image/png,image/jpeg" bind:this={fileInput} /></label
-      >
-      <button type="submit">Upload logo</button>
-    </form>
-    <p class="muted">PNG or JPEG, at most 512 KB and 2048 by 2048 pixels.</p>
-  </section>
-{/if}
+      {#if ranges.length === 0}
+        <EmptyState title="No ranges yet." />
+      {:else}
+        <ul class="m-0 flex list-none flex-col divide-y divide-border p-0">
+          {#each ranges as range (range.id)}
+            <li aria-label={`Range ${range.name}`} class="py-2">
+              {#if editingRange === range.id}
+                <form
+                  class="flex flex-wrap items-end gap-2"
+                  onsubmit={(e) => renameRange(e, range)}
+                >
+                  <Field label="Range name" class="min-w-56 flex-1">
+                    <Input bind:value={editRangeName} maxlength={100} required />
+                  </Field>
+                  <Button type="submit">Save</Button>
+                  <Button variant="secondary" onclick={() => (editingRange = null)}>Cancel</Button>
+                </form>
+              {:else}
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="mr-auto font-medium">{range.name}</span>
+                  {#if range.archived}<Badge>archived</Badge>{/if}
+                  {#if range.id === club.defaultRangeId}<Badge tone="info">default</Badge>{/if}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onclick={() => startRename(range)}
+                    aria-label={`Rename range ${range.name}`}>Rename</Button
+                  >
+                  {#if range.archived}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onclick={() => archiveRange(range, false)}
+                      aria-label={`Restore range ${range.name}`}>Restore</Button
+                    >
+                  {:else if range.id !== club.defaultRangeId}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onclick={() => archiveRange(range, true)}
+                      aria-label={`Archive range ${range.name}`}>Archive</Button
+                    >
+                  {/if}
+                  {#if range.id !== club.defaultRangeId}
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onclick={() => deleteRange(range)}
+                      aria-label={`Delete range ${range.name}`}>Delete</Button
+                    >
+                  {/if}
+                </div>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      <form class="flex flex-wrap items-end gap-3" onsubmit={addRange}>
+        <Field label="Range to add" class="min-w-56 flex-1">
+          <Input bind:value={newRangeName} maxlength={100} required />
+        </Field>
+        <Button type="submit">Add range</Button>
+      </form>
+    </section>
+
+    <section
+      aria-labelledby="club-logo-heading"
+      class="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-card"
+    >
+      <h2 id="club-logo-heading" class="m-0 text-lg">Club logo</h2>
+      {#if club.hasLogo}
+        <img
+          class="max-h-24 max-w-48 self-start rounded-md border border-border bg-surface-alt p-2"
+          src={clubLogoUrl(club.version)}
+          alt="Current club logo"
+        />
+        <div><Button variant="secondary" onclick={removeLogo}>Remove logo</Button></div>
+      {:else}
+        <p class="m-0 text-muted">No logo uploaded.</p>
+      {/if}
+      <form class="flex flex-wrap items-end gap-3" onsubmit={uploadLogo}>
+        <Field label="Logo file" class="min-w-56 flex-1">
+          <input
+            type="file"
+            accept="image/png,image/jpeg"
+            bind:this={fileInput}
+            class="min-h-11 w-full rounded-md border border-border bg-surface px-3 py-2 text-base file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-brand-tint file:px-3 file:py-1 file:font-semibold file:text-link"
+          />
+        </Field>
+        <Button type="submit">Upload logo</Button>
+      </form>
+      <p class="m-0 text-sm text-muted">PNG or JPEG, at most 512 KB and 2048 by 2048 pixels.</p>
+    </section>
+  {/if}
+</div>

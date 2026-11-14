@@ -3,6 +3,11 @@
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
   import { segmentLabel } from "../lib/rulebook.svelte";
+  import Badge from "../lib/ui/Badge.svelte";
+  import Button from "../lib/ui/Button.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import LoadingState from "../lib/ui/LoadingState.svelte";
+  import Table from "../lib/ui/Table.svelte";
 
   type ControlRoom = components["schemas"]["ControlRoom"];
   type Lane = components["schemas"]["ControlRoomLane"];
@@ -63,6 +68,9 @@
       }),
     );
 
+  const count = (status: Lane["status"]) =>
+    room?.lanes.filter((l) => l.status === status).length ?? 0;
+
   const statusLabel = (lane: Lane) =>
     lane.status === "accepted"
       ? "Accepted"
@@ -81,84 +89,81 @@
           : "warning";
 </script>
 
-<section class="card">
-  <h2>Control room</h2>
+<section class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card">
+  <h2 class="m-0 text-lg">Control room</h2>
   {#if room}
-    <p>Current segment: <strong>{segmentLabel(course, room.current_segment)}</strong></p>
-    <div class="row">
-      <button class="primary" disabled={!room.can_start_next} onclick={startNext}
-        >Start next segment</button
-      >
-      <button class="primary" disabled={!room.can_accept_all} onclick={acceptAll}>Accept all</button
-      >
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <p class="m-0 text-base">
+        Current segment:
+        <strong class="text-xl">{segmentLabel(course, room.current_segment)}</strong>
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <Button disabled={!room.can_start_next} onclick={startNext}>Start next segment</Button>
+        <Button disabled={!room.can_accept_all} onclick={acceptAll}>Accept all</Button>
+      </div>
     </div>
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <div class="scroll">
-      <table class="lanes stacked">
-        <thead>
-          <tr
-            ><th>Lane</th><th>Shooter</th><th>Scorer</th><th>Status</th><th>Disputes</th><th
-              >Device</th
-            ><th>Actions</th></tr
-          >
-        </thead>
-        <tbody>
-          {#each room.lanes as lane (lane.entry_id)}
-            <tr>
-              <td data-label="Lane">{lane.lane}</td>
-              <td data-label="Shooter">{lane.shooter_name}</td>
-              <td data-label="Scorer">{lane.scorer_name || "Admin"}</td>
-              <td data-label="Status"
-                ><span class="badge {statusTone(lane)}">{statusLabel(lane)}</span></td
-              >
-              <td data-label="Disputes">{lane.disputes}</td>
-              <td data-label="Device">
-                <span class="badge {lane.paired ? 'success' : 'neutral'}"
-                  >{lane.paired ? "Paired" : "Not paired"}</span
+    <ul class="m-0 flex list-none flex-wrap gap-2 p-0">
+      <li><Badge tone="warning">{count("open")} open</Badge></li>
+      <li><Badge tone="info">{count("awaiting_acceptance")} awaiting</Badge></li>
+      <li><Badge tone="success">{count("accepted")} accepted</Badge></li>
+    </ul>
+    {#if error}<ErrorState title={error} />{/if}
+    <Table label="Control room lanes">
+      <thead>
+        <tr>
+          <th>Lane</th><th>Shooter</th><th>Scorer</th><th>Status</th><th>Disputes</th><th>Device</th
+          ><th><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each room.lanes as lane (lane.entry_id)}
+          <tr>
+            <td class="font-semibold">{lane.lane}</td>
+            <td>{lane.shooter_name}</td>
+            <td>{lane.scorer_name || "Admin"}</td>
+            <td><Badge tone={statusTone(lane)}>{statusLabel(lane)}</Badge></td>
+            <td>{lane.disputes}</td>
+            <td>
+              <span class="flex flex-wrap gap-1">
+                <Badge tone={lane.paired ? "success" : "neutral"}
+                  >{lane.paired ? "Paired" : "Not paired"}</Badge
                 >
-                <span class="badge {lane.connected ? 'success' : 'neutral'}"
-                  >{lane.connected ? "Connected" : "Not connected"}</span
+                <Badge tone={lane.connected ? "success" : "neutral"}
+                  >{lane.connected ? "Connected" : "Not connected"}</Badge
                 >
-              </td>
-              <td class="actions row-actions">
+              </span>
+            </td>
+            <td>
+              <span class="flex flex-wrap justify-end gap-2">
                 {#if lane.status === "awaiting_acceptance"}
-                  <button
-                    class="secondary"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     aria-label={`Control room lane ${lane.lane}: Accept`}
-                    onclick={() => accept(lane, room!.current_segment)}>Accept</button
+                    onclick={() => accept(lane, room!.current_segment)}>Accept</Button
                   >
                 {/if}
                 {#if lane.status !== "open"}
-                  <button
-                    class="secondary"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     aria-label={`Control room lane ${lane.lane}: Unlock`}
-                    onclick={() => unlock(lane, room!.current_segment)}>Unlock</button
+                    onclick={() => unlock(lane, room!.current_segment)}>Unlock</Button
                   >
                 {/if}
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    <p class="muted">
+              </span>
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </Table>
+    <p class="m-0 text-sm text-muted">
       Connected is best-effort: it shows an open connection from the lane's device, not whether the
       phone works. It is not stored.
     </p>
   {:else if error}
-    <p class="error" role="alert">{error}</p>
+    <ErrorState title={error} />
   {:else}
-    <p class="muted">Loading…</p>
+    <LoadingState />
   {/if}
 </section>
-
-<style>
-  .lanes .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-  .lanes button {
-    min-height: var(--touch);
-  }
-</style>
