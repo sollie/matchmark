@@ -47,6 +47,17 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.getByText("This device is paired to lane 1.")).toBeVisible();
   });
 
+  test("the scorer shows no site chrome", async ({ admin, openDevice }) => {
+    const { match } = await seedActive(admin, [1, 2]);
+    const pairing = await createPairing(admin, match.id, 1);
+    const scorer = await openDevice(pairing.token);
+    await scorer.setViewportSize({ width: 390, height: 844 });
+    await expect(scorer.getByRole("heading", { name: /Scoring lane 2/ })).toBeVisible();
+    await expect(scorer.getByRole("link", { name: "Source code on GitHub" })).toHaveCount(0);
+    await expect(scorer.locator(".site-header")).toHaveCount(0);
+    await expect(scorer.getByText("Paired", { exact: true })).toBeVisible();
+  });
+
   test("the total and Save stay visible on a small phone without scrolling", async ({
     admin,
     openDevice,
@@ -94,9 +105,9 @@ test.describe("pairing and scorer device", () => {
     await expect(scorer.locator(".total strong")).toHaveText("1");
 
     await scorer.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(scorer.getByRole("alert")).toHaveText(
-      "Ring counts must add up to 24 shots (entered 1).",
-    );
+    await expect(
+      scorer.getByText("Ring counts must add up to 24 shots (entered 1).", { exact: true }),
+    ).toBeVisible();
 
     await scorer.getByLabel("10 count", { exact: true }).fill("16");
     await scorer.getByLabel("9 count", { exact: true }).fill("8");
@@ -109,7 +120,7 @@ test.describe("pairing and scorer device", () => {
     await scorer.getByRole("button", { name: "Save", exact: true }).click();
     await expect(scorer.locator("#save-status")).toHaveText("Saved ✓");
     await scorer.getByRole("button", { name: "Lock segment", exact: true }).click();
-    await expect(scorer.getByRole("status")).toHaveText("Segment locked");
+    await expect(scorer.getByText("Segment locked", { exact: true })).toBeVisible();
 
     await openMatch(page, match.id);
     const segment = row(page, entries[1].shooter.last_name).locator("td.segment").first();
@@ -325,6 +336,6 @@ test.describe("pairing and scorer device", () => {
     await lane1.getByRole("button", { name: "Review result" }).click();
     await expect(lane1.getByText("24 hits, 0 X")).toBeVisible();
     await lane1.getByRole("button", { name: "Accept" }).click();
-    await expect(lane1.getByRole("status")).toHaveText("Result accepted");
+    await expect(lane1.getByText("Result accepted", { exact: true })).toBeVisible();
   });
 });

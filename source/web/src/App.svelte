@@ -16,7 +16,7 @@
   });
 </script>
 
-<SiteHeader />
+{#if router.path !== "/score"}<SiteHeader />{/if}
 <Toaster />
 
 <div class="app-content">
@@ -35,4 +35,4 @@
   {/if}
 </div>
 
-<Footer />
+{#if router.path !== "/score"}<Footer />{/if}
