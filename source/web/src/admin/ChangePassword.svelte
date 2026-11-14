@@ -4,6 +4,8 @@
   import PasswordInput from "../lib/PasswordInput.svelte";
   import { navigate } from "../lib/router.svelte";
   import { logout, refreshAdminSession } from "../lib/session.svelte";
+  import Button from "../lib/ui/Button.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
 
   let { forced = false, ondone = () => {} }: { forced?: boolean; ondone?: () => void } = $props();
 
@@ -52,57 +54,72 @@
   }
 </script>
 
-<main class={forced ? "centered" : undefined}>
-  <div class="card">
+<main class="mx-auto max-w-md p-4 pt-6 sm:pt-10">
+  <div class="rounded-xl border border-border bg-surface p-6 shadow-card">
     {#if done && !forced}
-      <div class="success" role="status">
-        <span class="check" aria-hidden="true">✓</span>
-        <h1>Password changed</h1>
-        <p>Your other sessions were signed out.</p>
-        <button class="primary" type="button" onclick={() => navigate("/admin")}>Continue</button>
+      <div class="flex flex-col items-center gap-3 text-center" role="status">
+        <span
+          class="inline-flex size-12 items-center justify-center rounded-full bg-success-bg text-xl text-success-fg"
+          aria-hidden="true">✓</span
+        >
+        <h1 class="m-0 text-xl">Password changed</h1>
+        <p class="m-0 text-muted">Your other sessions were signed out.</p>
+        <Button onclick={() => navigate("/admin")}>Continue</Button>
       </div>
     {:else}
-      <h1>Change password</h1>
+      <h1 class="m-0 mb-1 text-xl">Change password</h1>
       {#if forced}
-        <p>You must choose a new password before you can continue.</p>
+        <p class="m-0 mb-2 text-muted">You must choose a new password before you can continue.</p>
       {/if}
-      <form onsubmit={submit}>
+      <form class="mt-4 flex flex-col gap-4" onsubmit={submit}>
         <PasswordInput
           label="Current password"
           bind:value={current}
           autocomplete="current-password"
           required
         />
-        <PasswordInput
-          label="New password"
-          bind:value={next}
-          autocomplete="new-password"
-          class={lengthMet ? "valid" : undefined}
-          minlength={minLength}
-          maxlength={128}
-          required
-        />
-        <p class={lengthMet ? "hint valid" : "hint muted"} aria-live="polite">
-          {#if lengthMet}✓ {minLength} characters or more{:else}{next.length} / {minLength} characters{/if}
+        <div class="flex flex-col gap-1">
+          <PasswordInput
+            label="New password"
+            bind:value={next}
+            autocomplete="new-password"
+            minlength={minLength}
+            maxlength={128}
+            required
+          />
+          <p
+            class={["m-0 text-sm", lengthMet ? "text-success-fg" : "text-muted"]}
+            aria-live="polite"
+          >
+            {#if lengthMet}✓ {minLength} characters or more{:else}{next.length} / {minLength} characters{/if}
+          </p>
+        </div>
+        <div class="flex flex-col gap-1">
+          <PasswordInput
+            label="Confirm new password"
+            bind:value={confirm}
+            autocomplete="new-password"
+            aria-invalid={mismatch ? "true" : undefined}
+            minlength={minLength}
+            maxlength={128}
+            required
+          />
+          <p
+            class={["m-0 min-h-5 text-sm", matches ? "text-success-fg" : "text-danger-fg"]}
+            aria-live="polite"
+          >
+            {#if matches}✓ Passwords match{:else if mismatch}Passwords do not match{/if}
+          </p>
+        </div>
+        <p class="m-0 text-sm text-muted">
+          16 to 128 characters. Your other sessions are signed out.
         </p>
-        <PasswordInput
-          label="Confirm new password"
-          bind:value={confirm}
-          autocomplete="new-password"
-          class={matches ? "valid" : undefined}
-          aria-invalid={mismatch ? "true" : undefined}
-          minlength={minLength}
-          maxlength={128}
-          required
-        />
-        <p class={matches ? "hint valid" : mismatch ? "hint error" : "hint"} aria-live="polite">
-          {#if matches}✓ Passwords match{:else if mismatch}Passwords do not match{/if}
-        </p>
-        <p class="muted">16 to 128 characters. Your other sessions are signed out.</p>
-        <button class="primary" type="submit" disabled={busy}>Change password</button>
-        {#if forced}<button type="button" onclick={signOut}>Sign out</button>{/if}
+        {#if error}<ErrorState title={error} />{/if}
+        <div class="flex flex-wrap gap-2">
+          <Button type="submit" disabled={busy}>Change password</Button>
+          {#if forced}<Button variant="secondary" onclick={signOut}>Sign out</Button>{/if}
+        </div>
       </form>
-      {#if error}<p class="error" role="alert">{error}</p>{/if}
     {/if}
   </div>
 </main>

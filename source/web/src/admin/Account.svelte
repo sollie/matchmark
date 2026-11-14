@@ -1,6 +1,10 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
+  import Button from "../lib/ui/Button.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
   import { admin, refreshAdminSession } from "../lib/session.svelte";
 
   let waid = $state(admin.waid);
@@ -22,16 +26,21 @@
   }
 </script>
 
-<h1>Account</h1>
-<form class="row card" onsubmit={save} aria-label="Account WAID">
-  <label>
-    WAID
-    <input bind:value={waid} maxlength="32" inputmode="numeric" />
-  </label>
-  <button type="submit" class="primary">Save WAID</button>
-</form>
-<p class="muted">
-  Your WAID makes you the default Referee of the matches you create. Leave it empty to clear it.
-</p>
-{#if error}<p class="error" role="alert">{error}</p>{/if}
-{#if saved}<p role="status">WAID saved.</p>{/if}
+<div class="mx-auto flex max-w-xl flex-col gap-4">
+  <h1 class="m-0 text-xl">Account</h1>
+  <form
+    class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6 shadow-card"
+    onsubmit={save}
+    aria-label="Account WAID"
+  >
+    <Field
+      label="WAID"
+      hint="Your WAID makes you the default Referee of the matches you create. Leave it empty to clear it."
+    >
+      <Input bind:value={waid} maxlength={32} inputmode="numeric" />
+    </Field>
+    <div><Button type="submit">Save WAID</Button></div>
+    {#if error}<ErrorState title={error} />{/if}
+    {#if saved}<p class="m-0 text-success-fg" role="status">WAID saved.</p>{/if}
+  </form>
+</div>
