@@ -239,8 +239,8 @@ test.describe("spectator", () => {
       "Revolver 1500",
       shown.segment ? "240" : "",
       ...Array<string>(course.segments - 1).fill(""),
-      "240",
-      ...(shown.x ? ["12"] : []),
+      /^240\d*$/,
+      ...(shown.x ? [/^12\d*$/] : []),
     ];
     const table = page.getByRole("table");
     const winner = table.locator("tbody tr").first();

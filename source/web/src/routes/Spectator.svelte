@@ -256,7 +256,7 @@
     >
       <span class="text-xl font-semibold">Remote control code</span>
       <strong
-        class="font-mono text-7xl font-extrabold tracking-[0.15em] text-fg sm:text-8xl min-[90rem]:text-9xl"
+        class="code font-mono text-7xl font-extrabold tracking-[0.15em] text-fg sm:text-8xl min-[90rem]:text-9xl"
         >{control.registration.code}</strong
       >
       <span class="text-base text-muted"
