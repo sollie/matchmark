@@ -2,6 +2,10 @@
   import { api } from "../lib/api/client";
   import type { components } from "../lib/api/schema";
 
+  import Badge from "../lib/ui/Badge.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
+
   type Shooter = components["schemas"]["Shooter"];
 
   let {
@@ -115,10 +119,9 @@
   }
 </script>
 
-<div class="picker">
-  <label>
-    {label}
-    <input
+<div class="relative">
+  <Field {label}>
+    <Input
       type="text"
       role="combobox"
       autocomplete="off"
@@ -133,14 +136,20 @@
       {onkeydown}
       {onblur}
     />
-  </label>
-  <ul id={listId} role="listbox" aria-label={label} hidden={!open}>
+  </Field>
+  <ul
+    id={listId}
+    role="listbox"
+    aria-label={label}
+    hidden={!open}
+    class="absolute inset-x-0 z-10 m-0 max-h-64 list-none overflow-y-auto rounded-md border border-border bg-surface p-0 text-fg shadow-overlay"
+  >
     {#each visible as s, i (s.id)}
       <li
         id={optionId(i)}
         role="option"
         aria-selected={i === active}
-        class:active={i === active}
+        class="cursor-pointer px-3 py-2 aria-selected:bg-brand-tint"
         onmousedown={(e) => e.preventDefault()}
         onclick={() => choose(s)}
       >
@@ -149,21 +158,21 @@
       </li>
     {/each}
     {#each archived as s (s.id)}
-      <li role="option" aria-selected="false" aria-disabled="true" class="archived">
+      <li role="option" aria-selected="false" aria-disabled="true" class="px-3 py-2 text-muted">
         {s.first_name}
         {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
-        <span class="badge neutral">Archived</span>
+        <Badge>Archived</Badge>
       </li>
     {/each}
     {#if searched && !loading && shown.length === 0}
-      <li class="empty" role="presentation">No match</li>
+      <li class="px-3 py-2 text-muted" role="presentation">No match</li>
     {/if}
     {#if onadd}
       <li
         id={optionId(visible.length)}
         role="option"
         aria-selected={active === visible.length}
-        class:active={active === visible.length}
+        class="cursor-pointer px-3 py-2 font-semibold aria-selected:bg-brand-tint"
         onmousedown={(e) => e.preventDefault()}
         onclick={add}
       >
@@ -172,42 +181,3 @@
     {/if}
   </ul>
 </div>
-
-<style>
-  .picker {
-    position: relative;
-  }
-  ul {
-    position: absolute;
-    z-index: 10;
-    left: 0;
-    right: 0;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-    max-height: 16rem;
-    overflow-y: auto;
-  }
-  li {
-    padding: var(--space-2) var(--space-3);
-    cursor: pointer;
-  }
-  li.active {
-    background: var(--brand-tint);
-    color: var(--text);
-  }
-  li.archived {
-    cursor: default;
-    color: var(--text-muted);
-  }
-  li.empty {
-    cursor: default;
-    color: var(--text-muted);
-  }
-  [hidden] {
-    display: none;
-  }
-</style>

@@ -477,6 +477,22 @@ test.describe("shooters", () => {
     ).toBeVisible();
   });
 
+  test("the merge dialog closes on Escape and returns focus to its trigger", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const shooter = await createShooter(admin, { last_name: uniqueLastName("Escape") });
+    await openShooters(page);
+
+    const trigger = row(page, shooter.last_name).getByRole("button", { name: "Merge into…" });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: /Merge/ });
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+
   test("a merge is blocked when both shooters are entered in the same match", async ({
     adminPage: page,
     admin,
