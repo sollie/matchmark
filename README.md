@@ -59,6 +59,8 @@ npm run e2e
 npm run e2e -- --project=firefox
 ```
 
+The `desktop` (1440px) project runs the full suite; `tablet` (820px) and `phone` (390px) run only specs tagged `@smoke` (login, scoring a stage, Spectator, one admin flow). `npm run e2e` runs every project.
+
 Without local browsers or Go, run the suite in Docker against the built image:
 
 ```sh
@@ -235,7 +237,7 @@ Migration 005 replaces the five old categories with the rulebook equipment class
 
 ## CI
 
-Pull requests run the source checks (build, windows and darwin cross-compile, test, lint), the web checks and chromium e2e. The image build and the goreleaser snapshot run on a PR only when the Dockerfile, smoke script, `go.mod`/`go.sum`, `.goreleaser.yaml` or the workflows change. On `main` and weekly the image is built on native runners (`ubuntu-latest`, `ubuntu-24.04-arm`), smoke-tested with `scripts/smoke-image.sh matchmark:latest` and scanned with Trivy, and all three browsers run e2e.
+Pull requests run the source checks (build, windows and darwin cross-compile, test, lint), the web checks and e2e on the desktop, tablet and phone viewport projects (chromium). The image build and the goreleaser snapshot run on a PR only when the Dockerfile, smoke script, `go.mod`/`go.sum`, `.goreleaser.yaml` or the workflows change. On `main` and weekly the image is built on native runners (`ubuntu-latest`, `ubuntu-24.04-arm`), smoke-tested with `scripts/smoke-image.sh matchmark:latest` and scanned with Trivy, and e2e also runs in firefox and webkit.
 
 ## License
 

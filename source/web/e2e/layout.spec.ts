@@ -66,7 +66,7 @@ test.describe("layout", () => {
     await page.goto("/admin");
     const link = page.getByRole("link", { name: finished.name, exact: true });
     await expect(link).toBeVisible();
-    const scroller = page.locator(".scroll", { has: link });
+    const scroller = page.getByRole("region", { name: /^Matches in / }).filter({ has: link });
     const sideways = await scroller.evaluate((el) => el.scrollWidth - el.clientWidth);
     expect(sideways).toBeLessThanOrEqual(0);
   });

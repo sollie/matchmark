@@ -2,6 +2,8 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
+  import Button from "../lib/ui/Button.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
   import type { components } from "../lib/api/schema";
 
   type Visibility = components["schemas"]["Visibility"];
@@ -44,17 +46,19 @@
   }
 </script>
 
-<section class="card">
-  <h2>Spectator visibility</h2>
+<section class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card">
+  <h2 class="m-0 text-lg">Spectator visibility</h2>
   {#if visibility}
-    <div class="row">
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
       {#each labels as [key, label] (key)}
-        <label class="check"><input type="checkbox" bind:checked={visibility[key]} /> {label}</label
-        >
+        <label class="flex min-h-11 cursor-pointer items-center gap-2">
+          <input type="checkbox" class="size-5 accent-brand" bind:checked={visibility[key]} />
+          {label}
+        </label>
       {/each}
-      <button class="primary" onclick={save}>Save</button>
+      <Button onclick={save}>Save</Button>
     </div>
   {/if}
-  {#if message}<p class="muted" role="status">{message}</p>{/if}
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if message}<p class="m-0 text-success-fg" role="status">{message}</p>{/if}
+  {#if error}<ErrorState title={error} />{/if}
 </section>

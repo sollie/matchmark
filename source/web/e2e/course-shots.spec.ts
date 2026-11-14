@@ -24,11 +24,10 @@ test.describe("course shot counts", () => {
         await setStatus(admin, match.id, "active");
         await openMatch(page, match.id);
         const entryRow = row(page, entry.shooter.last_name);
-        const alert = section(page, "Entries and progress").getByRole("alert");
 
         for (const [index, shots] of course.segmentShots.entries()) {
           const segmentNumber = index + 1;
-          const segment = entryRow.locator("td.segment").nth(index);
+          const segment = entryRow.getByRole("group", { name: /^Lane \d+ / }).nth(index);
           await page
             .getByRole("button", { name: `Lane ${entry.lane} segment ${segmentNumber}: Edit` })
             .click();
@@ -36,20 +35,20 @@ test.describe("course shot counts", () => {
           await expect(counts).toContainText(`must sum to ${shots} shots`);
 
           await counts.getByLabel("10", { exact: true }).fill(String(shots - 1));
-          await expect(counts.locator(".total")).toContainText("1 to go");
+          await expect(counts).toContainText("1 to go");
           await counts.getByRole("button", { name: "Save and lock" }).click();
-          await expect(alert).toHaveText("invalid input");
+          await expect(counts.getByRole("alert")).toContainText("invalid input");
           await expect(counts).toBeVisible();
           await expect(segment.getByText("Accepted", { exact: true })).toHaveCount(0);
 
           await counts.getByLabel("10", { exact: true }).fill(String(shots + 1));
-          await expect(counts.locator(".total")).toContainText("1 too many");
+          await expect(counts).toContainText("1 too many");
           await counts.getByRole("button", { name: "Save and lock" }).click();
-          await expect(alert).toHaveText("invalid input");
+          await expect(counts.getByRole("alert")).toContainText("invalid input");
           await expect(segment.getByText("Accepted", { exact: true })).toHaveCount(0);
 
           await counts.getByLabel("10", { exact: true }).fill(String(shots));
-          await expect(counts.locator(".total")).toContainText("Shots match");
+          await expect(counts).toContainText("Shots match");
           await counts.getByRole("button", { name: "Save and lock" }).click();
           await expect(counts).toHaveCount(0);
           await expect(segment.getByText("Accepted", { exact: true })).toBeVisible();

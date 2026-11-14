@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import {
   adminUsername,
+  choose,
+  confirmDialog,
   type Category,
   createMatch,
   createShooter,
@@ -33,13 +35,13 @@ test.describe("entries", () => {
     await expect(page.getByLabel("Entry lane")).toHaveValue("2");
     await form.getByRole("combobox", { name: "Shooter" }).fill(shooter.last_name);
     await page.getByRole("option", { name: new RegExp(shooter.last_name) }).click();
-    await form.getByLabel("Entry category").selectOption("Pistol 1500");
+    await choose(page, "Entry category", "Pistol 1500", form);
     await form.getByRole("button", { name: "Add entry" }).click();
 
     const added = row(page, shooter.last_name);
     await expect(added).toBeVisible();
-    await expect(added.locator("td.lane")).toHaveText("2");
-    await expect(added.locator("td.category")).toHaveText("Pistol 1500");
+    await expect(added).toContainText(/Lane\s*2/);
+    await expect(added).toContainText("Pistol 1500");
   });
 
   test("a taken lane is rejected and an entered shooter is not offered again", async ({
@@ -75,21 +77,22 @@ test.describe("entries", () => {
     const match = await createMatch(admin);
     const entry = await seedEntry(admin, match.id, 1);
     await openMatch(page, match.id);
-    page.on("dialog", (dialog) => dialog.accept());
 
     const entryRow = row(page, entry.shooter.last_name);
     await entryRow.getByRole("button", { name: "Move", exact: true }).click();
     await entryRow.getByLabel("Move lane").fill("5");
-    await entryRow.getByLabel("Move category").selectOption("Pistol Optical Sight 1500");
+    await choose(page, "Move category", "Pistol Optical Sight 1500", entryRow);
     await entryRow.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(entryRow.locator("td.lane")).toHaveText("5");
-    await expect(entryRow.locator("td.category")).toHaveText("Pistol Optical Sight 1500");
+    await expect(entryRow).toContainText(/Lane\s*5/);
+    await expect(entryRow).toContainText("Pistol Optical Sight 1500");
 
     await entryRow.getByRole("button", { name: "Withdraw" }).click();
+    await confirmDialog(page).getByRole("button", { name: "Withdraw entry" }).click();
     await expect(entryRow.getByText("Withdrawn", { exact: true })).toBeVisible();
     await expect(entryRow.getByRole("button", { name: "Withdraw" })).toHaveCount(0);
 
     await entryRow.getByRole("button", { name: "Remove", exact: true }).click();
+    await confirmDialog(page).getByRole("button", { name: "Remove entry" }).click();
     await expect(row(page, entry.shooter.last_name)).toHaveCount(0);
   });
 
@@ -106,12 +109,12 @@ test.describe("entries", () => {
     await entryRow.getByRole("button", { name: /Edit remarks for/ }).click();
     await entryRow.getByRole("textbox", { name: /Remarks for/ }).fill("Late arrival");
     await entryRow.getByRole("button", { name: "Save remarks" }).click();
-    await expect(entryRow.locator("td.remarks")).toContainText("Late arrival");
+    await expect(entryRow).toContainText("Late arrival");
 
     await entryRow.getByRole("button", { name: /Edit remarks for/ }).click();
     await entryRow.getByRole("textbox", { name: /Remarks for/ }).fill("");
     await entryRow.getByRole("button", { name: "Save remarks" }).click();
-    await expect(entryRow.locator("td.remarks")).not.toContainText("Late arrival");
+    await expect(entryRow).not.toContainText("Late arrival");
   });
 });
 
@@ -126,9 +129,9 @@ test.describe("entries layout", () => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await openMatch(page, match.id);
 
-    const segments = row(page, entry.shooter.last_name).locator("td.segment");
+    const segments = row(page, entry.shooter.last_name).getByRole("group", { name: /^Lane \d+ / });
     await expect(segments).toHaveCount(course.segments);
-    const scroll = page.locator(".scroll", { has: page.locator("table.entries") });
+    const scroll = page.locator("html");
     expect(await scroll.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await expect(segments.last()).toBeInViewport();
   });
@@ -266,19 +269,17 @@ test.describe("admin ring counts", () => {
 
     await counts.getByLabel("10", { exact: true }).fill("10");
     await counts.getByLabel("9", { exact: true }).fill("8");
-    await expect(counts.locator(".total")).toContainText("6 to go");
+    await expect(counts).toContainText("6 to go");
 
     await counts.getByLabel("8", { exact: true }).fill("10");
-    await expect(counts.locator(".total")).toContainText("4 too many");
+    await expect(counts).toContainText("4 too many");
 
     await counts.getByRole("button", { name: "Save counts" }).click();
-    await expect(section(page, "Entries and progress").getByRole("alert")).toHaveText(
-      "invalid input",
-    );
+    await expect(counts.getByRole("alert")).toContainText("invalid input");
     await expect(counts).toBeVisible();
 
     await counts.getByLabel("8", { exact: true }).fill("6");
-    await expect(counts.locator(".total")).toContainText("Shots match");
+    await expect(counts).toContainText("Shots match");
   });
 
   test("save and lock records the segment as locked by the signed-in user and unlock reopens it", async ({
@@ -292,7 +293,7 @@ test.describe("admin ring counts", () => {
     await openMatch(page, match.id);
 
     const entryRow = row(page, entry.shooter.last_name);
-    const segment = entryRow.locator("td.segment").first();
+    const segment = entryRow.getByRole("group", { name: /^Lane \d+ / }).first();
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
     const counts = page.getByRole("dialog");
     await counts.getByLabel("X", { exact: true }).fill("4");
@@ -300,13 +301,16 @@ test.describe("admin ring counts", () => {
     await counts.getByLabel("9", { exact: true }).fill("6");
     await counts.getByLabel("0", { exact: true }).fill("2");
     await counts.getByLabel("miss", { exact: true }).fill("4");
-    await expect(counts.locator(".total")).toContainText("Shots match");
+    await expect(counts).toContainText("Shots match");
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
     await expect(counts).toHaveCount(0);
     const locked = segment.getByText("Accepted", { exact: true });
     await expect(locked).toBeVisible();
-    await expect(locked).toHaveAttribute("title", new RegExp(`Locked by ${adminUsername}`));
+    await expect(locked.locator("..")).toHaveAttribute(
+      "title",
+      new RegExp(`Locked by ${adminUsername}`),
+    );
     await expect(segment).toContainText("pts");
 
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Unlock` }).click();
@@ -328,8 +332,10 @@ test.describe("admin ring counts", () => {
     await setCounts(admin, match.id, entry.entryId, 1, { "10": course.segmentOneShots }, true);
     await openMatch(page, match.id);
 
-    const segment = row(page, entry.shooter.last_name).locator("td.segment").first();
-    await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 10));
+    const segment = row(page, entry.shooter.last_name)
+      .getByRole("group", { name: /^Lane \d+ / })
+      .first();
+    await expect(segment.locator("strong")).toHaveText(String(course.segmentOneShots * 10));
     await page.getByRole("button", { name: `Lane ${entry.lane} segment 1: Edit` }).click();
     const counts = page.getByRole("dialog");
     await counts.getByLabel("10", { exact: true }).fill("0");
@@ -337,11 +343,8 @@ test.describe("admin ring counts", () => {
     await counts.getByRole("button", { name: "Save and lock" }).click();
 
     await expect(counts).toHaveCount(0);
-    await expect(segment.locator(".score strong")).toHaveText(String(course.segmentOneShots * 9));
-    await expect(segment.getByText("Accepted", { exact: true })).toHaveAttribute(
-      "title",
-      new RegExp(`Locked by ${adminUsername}`),
-    );
+    await expect(segment.locator("strong")).toHaveText(String(course.segmentOneShots * 9));
+    await expect(segment.getByTitle(new RegExp(`Locked by ${adminUsername}`))).toBeVisible();
   });
 
   test("a shooter imported from WA1500 in the picker is selected for the entry", async ({
@@ -388,12 +391,14 @@ test.describe("admin ring counts", () => {
       const entry = await seedEntry(admin, match.id, 1, expected[0] as Category);
       await openMatch(page, match.id);
 
-      await expect(addForm(page).getByLabel("Entry category").getByRole("option")).toHaveText(
-        expected,
-      );
+      await addForm(page).getByRole("combobox", { name: "Entry category" }).click();
+      await expect(page.getByRole("listbox").getByRole("option")).toHaveText(expected);
+      await page.keyboard.press("Escape");
       const entryRow = row(page, entry.shooter.last_name);
       await entryRow.getByRole("button", { name: "Move", exact: true }).click();
-      await expect(entryRow.getByLabel("Move category").getByRole("option")).toHaveText(expected);
+      await entryRow.getByRole("combobox", { name: "Move category" }).click();
+      await expect(page.getByRole("listbox").getByRole("option")).toHaveText(expected);
+      await page.keyboard.press("Escape");
     }
   });
 
@@ -404,9 +409,7 @@ test.describe("admin ring counts", () => {
     const match = await createMatch(admin, { course: "150" });
     const entry = await seedEntry(admin, match.id, 1, "Carbine 1500");
     await openMatch(page, match.id);
-    await expect(row(page, entry.shooter.last_name).locator("td.category")).toHaveText(
-      "Carbine 1500",
-    );
+    await expect(row(page, entry.shooter.last_name)).toContainText("Carbine 1500");
   });
 
   test("an archived shooter is refused with an inline unarchive", async ({

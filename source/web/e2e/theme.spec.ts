@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { createMatch, createPairing, expect, seedEntry, setStatus, test } from "./helpers";
+import { expect, test } from "./helpers";
 
 const lightBackground = "rgb(241, 243, 246)";
 const darkBackground = "rgb(14, 19, 27)";
@@ -54,10 +54,10 @@ test.describe("theme", () => {
 
   test("print stays light and the login logo follows the theme", async ({ page }) => {
     await page.goto("/admin");
-    await expect(page.locator(".logo-dark")).toBeVisible();
+    await expect(page.locator('img[src$="logo-stacked-dark.svg"]')).toBeVisible();
     await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
-    await expect(page.locator(".logo-light")).toBeVisible();
-    await expect(page.locator(".logo-dark")).toBeHidden();
+    await expect(page.locator('img[src$="logo-stacked.svg"]')).toBeVisible();
+    await expect(page.locator('img[src$="logo-stacked-dark.svg"]')).toBeHidden();
     await page.emulateMedia({ colorScheme: "dark", media: "print" });
     await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
     expect(await background(page)).toBe(lightBackground);
@@ -66,7 +66,7 @@ test.describe("theme", () => {
   test("the menu is keyboard accessible and closes on Escape", async ({ page }) => {
     await page.goto("/");
     const trigger = page.getByRole("button", { name: "Menu" });
-    await expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
     await trigger.focus();
     await page.keyboard.press("Enter");
     await expect(trigger).toHaveAttribute("aria-expanded", "true");
@@ -78,25 +78,9 @@ test.describe("theme", () => {
   test("the signed-in admin menu carries the Mode group", async ({ adminPage: page }) => {
     await chooseTheme(page, "Light");
     expect(await background(page)).toBe(lightBackground);
-    const menu = page.locator(".account-panel");
+    const menu = page.getByRole("group", { name: "Account menu" });
     await expect(menu.getByRole("heading", { name: "Account" })).toBeVisible();
     await page.goto("/admin");
     expect(await background(page)).toBe(lightBackground);
-  });
-
-  test("the scorer device menu has the Mode group and no admin link", async ({
-    admin,
-    openDevice,
-  }) => {
-    const match = await createMatch(admin);
-    await seedEntry(admin, match.id, 1);
-    await setStatus(admin, match.id, "active");
-    const pairing = await createPairing(admin, match.id, 1);
-    const device = await openDevice(pairing.token);
-    await device.getByRole("button", { name: "Menu" }).click();
-    await expect(device.getByRole("radiogroup", { name: "Mode" })).toBeVisible();
-    await expect(device.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
-    await chooseTheme(device, "Light");
-    await expect(device.locator("html")).toHaveAttribute("data-theme", "light");
   });
 });

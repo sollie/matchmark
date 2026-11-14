@@ -1,5 +1,11 @@
 <script lang="ts">
+  import { Lock, TriangleAlert, WifiOff } from "@lucide/svelte";
   import { ScorerSession, rings } from "../lib/scorer.svelte";
+  import Badge from "../lib/ui/Badge.svelte";
+  import Button from "../lib/ui/Button.svelte";
+  import EmptyState from "../lib/ui/EmptyState.svelte";
+  import LoadingState from "../lib/ui/LoadingState.svelte";
+  import { toast } from "../lib/ui/toast";
 
   const scorer = new ScorerSession();
 
@@ -7,69 +13,171 @@
     void scorer.connectAttempt;
     return scorer.start();
   });
+
+  $effect(() => {
+    if (scorer.message) toast.success(scorer.message);
+  });
+
+  $effect(() => {
+    if (scorer.error) toast.error(scorer.error, { duration: 8000 });
+  });
+
+  const card = "rounded-lg border border-border bg-surface p-4 shadow-card";
+  const banner = "m-0 text-lg font-semibold";
 </script>
 
-<main class="scorer">
-  <div class="sr-only" aria-live="polite">{scorer.announcement}</div>
-  {#if !scorer.token}
-    <h1>Scorer</h1>
-    <p>Open a pairing link from the admin to score a lane.</p>
-  {:else if !scorer.session}
-    <h1>Scorer</h1>
-    {#if scorer.loadError}
-      <p class="error" role="alert">{scorer.loadError}</p>
-      <button onclick={() => scorer.reconnect()}>Retry</button>
-      <button onclick={() => scorer.unpair()}>Unpair device</button>
-    {:else}
-      <p class="muted">Loading…</p>
-    {/if}
-  {:else}
-    {#if scorer.session.phase === "not_started"}
-      <h1>Scorer</h1>
-      <p class="muted">This device is paired to lane {scorer.session.lane}.</p>
-      <section class="card" aria-label="Not started">
-        <h2>Waiting for the match to start</h2>
-        <p class="banner">This device is paired. Scoring begins when the admin starts the match.</p>
-      </section>
-    {:else}
-      <h1>Scoring lane {scorer.session.score_lane}: {scorer.session.shooter_name}</h1>
-      <p class="muted">
-        This device is paired to lane {scorer.session.lane}. {scorer.segmentLabel(
-          scorer.session.current_segment,
-        )}.
-      </p>
+<div class="flex min-h-dvh flex-col bg-bg text-fg" style="touch-action: manipulation">
+  <header class="flex min-h-14 items-center gap-3 bg-header px-4 text-header-fg">
+    <img
+      class="block h-8 w-auto"
+      src="/brand/logo-horizontal-dark.svg"
+      alt="MatchMark"
+      width="158"
+      height="32"
+    />
+    <span class="ml-auto flex items-center gap-2">
+      {#if scorer.session}
+        <Badge tone="neutral">Lane {scorer.session.lane}</Badge>
+      {/if}
+      {#if !scorer.token}
+        <Badge tone="warning">Unpaired</Badge>
+      {:else if scorer.connection === "stale"}
+        <Badge tone="warning"><WifiOff class="size-4" aria-hidden="true" />Reconnecting</Badge>
+      {:else if scorer.session}
+        <Badge tone="success">Paired</Badge>
+      {:else}
+        <Badge tone="neutral">Pairing</Badge>
+      {/if}
+    </span>
+  </header>
 
-      {#if scorer.session.phase === "next_segment" && !scorer.started}
-        <section class="card next-segment" aria-label="Next segment">
-          <h2>{scorer.segmentLabel(scorer.session.current_segment)} has started</h2>
-          <p class="banner">
-            The next segment has started. Get ready to score lane {scorer.session.score_lane}.
+  <main class="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-4">
+    <div class="sr-only" aria-live="polite">{scorer.announcement}</div>
+    {#if !scorer.token}
+      <h1 class="m-0 text-xl">Scorer</h1>
+      <EmptyState
+        title="Not paired"
+        description="Open a pairing link from the admin to score a lane."
+      />
+    {:else if !scorer.session}
+      <h1 class="m-0 text-xl">Scorer</h1>
+      {#if scorer.loadError}
+        <p
+          class="m-0 rounded-lg border border-danger bg-danger-bg p-4 font-semibold text-danger-fg"
+          role="alert"
+        >
+          {scorer.loadError}
+        </p>
+        <div class="flex gap-2">
+          <Button onclick={() => scorer.reconnect()}>Retry</Button>
+          <Button variant="secondary" onclick={() => scorer.unpair()}>Unpair device</Button>
+        </div>
+      {:else}
+        <LoadingState />
+      {/if}
+    {:else}
+      {#if scorer.session.phase === "not_started"}
+        <h1 class="m-0 text-xl">Scorer</h1>
+        <p class="m-0 text-muted">This device is paired to lane {scorer.session.lane}.</p>
+        <section class={card} aria-label="Not started">
+          <h2 class="m-0 mb-2 text-lg">Waiting for the match to start</h2>
+          <p class={banner}>
+            This device is paired. Scoring begins when the admin starts the match.
           </p>
-          <button class="primary" onclick={() => scorer.continueToScoring()}>Continue</button>
         </section>
-      {:else if scorer.session.phase === "scoring" || scorer.session.phase === "next_segment"}
-        {#if scorer.current?.status === "open" && scorer.current.disputed}
-          <p class="card banner disputed">
-            Disputed: the shooter disputed {scorer.segmentLabel(scorer.current.segment_number)}.
-            Correct the ring counts and lock it again.
+      {:else}
+        <section
+          class="flex items-center gap-4 rounded-lg border border-border bg-brand-tint p-4"
+          aria-label="Score lane"
+        >
+          <span
+            class="grid size-16 shrink-0 place-items-center rounded-lg bg-brand text-3xl font-extrabold text-on-brand tabular-nums"
+            aria-hidden="true">{scorer.session.score_lane}</span
+          >
+          <div class="min-w-0">
+            <h1 class="m-0 text-lg leading-tight">
+              Scoring lane {scorer.session.score_lane}: {scorer.session.shooter_name}
+            </h1>
+            <p class="m-0 mt-1 text-sm text-muted">
+              This device is paired to lane {scorer.session.lane}. {scorer.segmentLabel(
+                scorer.session.current_segment,
+              )}.
+            </p>
+          </div>
+        </section>
+
+        {#if scorer.session.segments.length > 1}
+          <ol class="m-0 flex list-none flex-wrap gap-2 p-0" aria-label="Stages">
+            {#each scorer.session.segments as seg (seg.segment_number)}
+              <li>
+                <Badge
+                  tone={seg.status === "accepted"
+                    ? "success"
+                    : seg.segment_number === scorer.session.current_segment
+                      ? "info"
+                      : "neutral"}
+                >
+                  {#if seg.status !== "open"}<Lock class="size-3.5" aria-hidden="true" />{/if}
+                  {seg.name ?? `Segment ${seg.segment_number}`}
+                </Badge>
+              </li>
+            {/each}
+          </ol>
+        {/if}
+
+        {#if scorer.notice}
+          <p
+            class="m-0 flex items-start gap-2 rounded-lg border border-warning-fg bg-warning-bg p-3 font-semibold text-warning-fg"
+            role="status"
+          >
+            <TriangleAlert class="mt-0.5 size-5 shrink-0" aria-hidden="true" />{scorer.notice}
           </p>
         {/if}
 
-        {#if scorer.current}
-          {#if scorer.current.status !== "open"}
-            <p class="card locked banner">
-              🔒 {scorer.segmentLabel(scorer.current.segment_number)} is locked.
+        {#if scorer.session.phase === "next_segment" && !scorer.started}
+          <section class="{card} flex flex-col gap-3" aria-label="Next segment">
+            <h2 class="m-0 text-lg">
+              {scorer.segmentLabel(scorer.session.current_segment)} has started
+            </h2>
+            <p class={banner}>
+              The next segment has started. Get ready to score lane {scorer.session.score_lane}.
             </p>
-          {:else}
-            <div class="layout">
-              <div class="rings">
+            <Button size="lg" onclick={() => scorer.continueToScoring()}>Continue</Button>
+          </section>
+        {:else if scorer.session.phase === "scoring" || scorer.session.phase === "next_segment"}
+          {#if scorer.current?.status === "open" && scorer.current.disputed}
+            <p
+              class="m-0 flex items-start gap-2 rounded-lg border-2 border-danger bg-danger-bg p-3 text-lg font-semibold text-danger-fg"
+            >
+              <TriangleAlert class="mt-0.5 size-5 shrink-0" aria-hidden="true" /><span
+                >Disputed: the shooter disputed {scorer.segmentLabel(
+                  scorer.current.segment_number,
+                )}. Correct the ring counts and lock it again.</span
+              >
+            </p>
+          {/if}
+
+          {#if scorer.current}
+            {#if scorer.current.status !== "open"}
+              <p
+                class="m-0 flex items-center gap-3 rounded-lg border border-dashed border-border bg-neutral-bg p-4 text-lg font-semibold text-neutral-fg"
+              >
+                🔒
+                {scorer.segmentLabel(scorer.current.segment_number)} is locked.
+              </p>
+            {:else}
+              <div class="flex flex-col gap-2">
                 {#each rings as r (r.key)}
-                  <div class="ring">
-                    <span class="label">{r.label}</span>
-                    <button onclick={() => scorer.bump(r.key, -1)} aria-label="Decrease {r.label}"
-                      >−</button
+                  <div class="grid grid-cols-[3.5rem_1fr_5rem_1fr] items-center gap-2">
+                    <span class="text-xl font-bold">{r.label}</span>
+                    <Button
+                      variant="secondary"
+                      class="min-h-16 text-3xl"
+                      onclick={() => scorer.bump(r.key, -1)}
+                      aria-label="Decrease {r.label}">−</Button
                     >
                     <input
+                      class="min-h-16 w-full min-w-0 rounded-md border border-border bg-surface text-center text-2xl font-semibold text-fg tabular-nums outline-offset-2 focus-visible:outline-3 focus-visible:outline-focus"
                       type="number"
                       inputmode="numeric"
                       min="0"
@@ -80,414 +188,184 @@
                       }}
                       aria-label="{r.label} count"
                     />
-                    <button
+                    <Button
+                      variant="secondary"
+                      class="min-h-16 text-3xl"
                       disabled={scorer.atCap}
                       onclick={() => scorer.bump(r.key, 1)}
-                      aria-label="Increase {r.label}">+</button
+                      aria-label="Increase {r.label}">+</Button
                     >
                   </div>
                 {/each}
               </div>
-              <div class="summary card">
-                <p class="total" class:mismatch={scorer.sum !== scorer.current.expected_shots}>
-                  <strong>{scorer.sum}</strong> / {scorer.current.expected_shots}
-                </p>
-                <p class="total-label">
-                  {#if scorer.sum === scorer.current.expected_shots}
-                    <span class="badge success">✓ Shots match</span>
-                  {:else if scorer.sum > scorer.current.expected_shots}
-                    <span class="badge danger"
-                      >⚠ {scorer.sum - scorer.current.expected_shots} too many</span
-                    >
-                  {:else}
-                    <span class="badge warning"
-                      >⚠ {scorer.current.expected_shots - scorer.sum} to go</span
-                    >
-                  {/if}
-                </p>
+              <div
+                class="summary sticky bottom-0 z-10 -mx-4 -mb-4 mt-auto flex flex-col gap-3 border-t border-border bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-overlay"
+              >
+                <div class="flex items-center gap-3">
+                  <p
+                    class={[
+                      "total m-0 text-3xl leading-tight tabular-nums",
+                      scorer.sum !== scorer.current.expected_shots && "text-danger-fg",
+                    ]}
+                  >
+                    <strong>{scorer.sum}</strong> / {scorer.current.expected_shots}
+                  </p>
+                  <p class="m-0">
+                    {#if scorer.sum === scorer.current.expected_shots}
+                      <Badge tone="success">✓ Shots match</Badge>
+                    {:else if scorer.sum > scorer.current.expected_shots}
+                      <Badge tone="danger"
+                        >⚠ {scorer.sum - scorer.current.expected_shots} too many</Badge
+                      >
+                    {:else}
+                      <Badge tone="warning"
+                        >⚠ {scorer.current.expected_shots - scorer.sum} to go</Badge
+                      >
+                    {/if}
+                  </p>
+                </div>
                 {#if scorer.segmentFull}
-                  <p class="save-status unsaved" role="status">
+                  <p class="m-0 text-sm font-semibold text-danger-fg" role="status">
                     Segment is full: all {scorer.current.expected_shots} shots are entered.
                   </p>
                 {/if}
-                <div class="actions">
-                  <button
-                    class="primary"
-                    class:emphasis={scorer.unsaved}
+                <div class="flex gap-2">
+                  <Button
+                    size="lg"
+                    class={["flex-1", scorer.unsaved && "outline-3 outline-offset-2 outline-brand"]}
                     disabled={scorer.busy}
-                    onclick={() => scorer.save()}>Save</button
+                    onclick={() => scorer.save()}>Save</Button
                   >
-                  <button
-                    class="primary lock"
-                    class:secondary={!scorer.canLock}
+                  <Button
+                    size="lg"
+                    variant={scorer.canLock ? "primary" : "secondary"}
+                    class="flex-1"
                     disabled={scorer.busy || !scorer.canLock}
                     aria-describedby={scorer.canLock ? undefined : "save-status"}
                     title={scorer.canLock ? undefined : scorer.saveStatus}
-                    onclick={() => scorer.lock()}>Lock segment</button
+                    onclick={() => scorer.lock()}>Lock segment</Button
                   >
                 </div>
                 <p
                   id="save-status"
-                  class="save-status"
-                  class:unsaved={scorer.unsaved}
+                  class={[
+                    "m-0 text-sm font-semibold",
+                    scorer.unsaved ? "text-danger-fg" : "text-muted",
+                  ]}
                   aria-live="polite"
                 >
                   {scorer.saveStatus}
                 </p>
               </div>
-            </div>
-          {/if}
-        {/if}
-      {:else if scorer.reviewing && scorer.acceptance}
-        <section class="card result" aria-label="Your result">
-          <div class="hero">
-            <span class="chip"
-              >Segment {scorer.acceptance.segment_number} of {scorer.session.segments.length}</span
-            >
-            <h2>Your result for {scorer.segmentLabel(scorer.acceptance.segment_number)}</h2>
-            <p class="total">{scorer.acceptance.total} hits, {scorer.acceptance.x} X</p>
-            <p class="muted">Scored by {scorer.acceptance.scorer_name}</p>
-          </div>
-          <ul class="breakdown">
-            {#each rings as r (r.key)}
-              <li>
-                <span class="ring-label">{r.label}</span>
-                <span class="ring-count">{scorer.acceptance[r.key]}</span>
-                <span class="bar" aria-hidden="true"
-                  ><span style="width: {(scorer.acceptance[r.key] / scorer.maxRing) * 100}%"
-                  ></span></span
-                >
-              </li>
-            {/each}
-          </ul>
-          <div class="action-bar">
-            {#if scorer.confirmingDispute}
-              <p class="confirm-text" role="alert">
-                Dispute this result? The scorer will re-score the segment.
-              </p>
-              <div class="actions">
-                <button disabled={scorer.busy} onclick={() => scorer.cancelDispute()}>Cancel</button
-                >
-                <button
-                  class="danger"
-                  disabled={scorer.busy}
-                  onclick={() => scorer.respond("dispute")}>Confirm dispute</button
-                >
-              </div>
-            {:else}
-              <button
-                class="primary accept"
-                disabled={scorer.busy}
-                onclick={() => scorer.respond("accept")}>Accept</button
-              >
-              <button class="dispute" disabled={scorer.busy} onclick={() => scorer.askDispute()}
-                >Dispute</button
-              >
             {/if}
-          </div>
-        </section>
-      {:else}
-        <section class="card waiting" aria-label="Waiting">
-          <h2>Waiting</h2>
-          {#if scorer.waitingSegment}
-            <p class="banner">
-              🔒 {scorer.segmentLabel(scorer.waitingSegment.segment_number)} is locked. Waiting for {scorer
-                .session.shooter_name} to accept.
-            </p>
-          {:else}
-            <p class="banner">
-              🔒 {scorer.segmentLabel(scorer.session.current_segment)} is locked. Waiting for the other
-              lanes and the admin.
-            </p>
           {/if}
-          {#if scorer.acceptance}
-            <div class="attention" role="group" aria-label="Action needed">
-              <span class="attention-icon" aria-hidden="true">!</span>
-              <p class="banner needs-acceptance">
-                Your result for {scorer.segmentLabel(scorer.acceptance.segment_number)} awaits your acceptance.
+        {:else if scorer.reviewing && scorer.acceptance}
+          <section class="{card} flex flex-col gap-4" aria-label="Your result">
+            <div class="text-center">
+              <Badge tone="info"
+                >Segment {scorer.acceptance.segment_number} of {scorer.session.segments
+                  .length}</Badge
+              >
+              <h2 class="m-0 my-2 text-lg">
+                Your result for {scorer.segmentLabel(scorer.acceptance.segment_number)}
+              </h2>
+              <p class="m-0 text-4xl font-extrabold tabular-nums">
+                {scorer.acceptance.total} hits, {scorer.acceptance.x} X
               </p>
-              <button class="primary" onclick={() => scorer.startReview()}>Review result</button>
+              <p class="m-0 mt-1 text-muted">Scored by {scorer.acceptance.scorer_name}</p>
             </div>
-          {/if}
-        </section>
+            <ul class="m-0 grid list-none gap-2 p-0">
+              {#each rings as r (r.key)}
+                <li class="grid min-h-11 grid-cols-[3rem_3.5rem_1fr] items-center gap-3">
+                  <span class="text-lg font-bold">{r.label}</span>
+                  <span class="text-right text-xl font-bold tabular-nums"
+                    >{scorer.acceptance[r.key]}</span
+                  >
+                  <span
+                    class="block h-3 overflow-hidden rounded-sm border border-border bg-surface-alt"
+                    aria-hidden="true"
+                    ><span
+                      class="block h-full bg-accent"
+                      style="width: {(scorer.acceptance[r.key] / scorer.maxRing) * 100}%"
+                    ></span></span
+                  >
+                </li>
+              {/each}
+            </ul>
+            <div
+              class="sticky bottom-0 -mx-4 -mb-4 grid gap-2 border-t border-border bg-surface p-4 shadow-overlay"
+            >
+              {#if scorer.confirmingDispute}
+                <p class="m-0 font-semibold" role="alert">
+                  Dispute this result? The scorer will re-score the segment.
+                </p>
+                <div class="grid grid-cols-2 gap-2">
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    disabled={scorer.busy}
+                    onclick={() => scorer.cancelDispute()}>Cancel</Button
+                  >
+                  <Button
+                    size="lg"
+                    variant="danger"
+                    disabled={scorer.busy}
+                    onclick={() => scorer.respond("dispute")}>Confirm dispute</Button
+                  >
+                </div>
+              {:else}
+                <Button size="lg" disabled={scorer.busy} onclick={() => scorer.respond("accept")}
+                  >Accept</Button
+                >
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  disabled={scorer.busy}
+                  onclick={() => scorer.askDispute()}>Dispute</Button
+                >
+              {/if}
+            </div>
+          </section>
+        {:else}
+          <section class="{card} flex flex-col gap-3" aria-label="Waiting">
+            <h2 class="m-0 text-lg">Waiting</h2>
+            {#if scorer.waitingSegment}
+              <p class="{banner} flex items-start gap-2">
+                🔒
+                {scorer.segmentLabel(scorer.waitingSegment.segment_number)} is locked. Waiting for {scorer
+                  .session.shooter_name} to accept.
+              </p>
+            {:else}
+              <p class="{banner} flex items-start gap-2">
+                🔒
+                {scorer.segmentLabel(scorer.session.current_segment)} is locked. Waiting for the other
+                lanes and the admin.
+              </p>
+            {/if}
+            {#if scorer.acceptance}
+              <div
+                class="grid gap-3 rounded-lg border-2 border-warning-fg bg-warning-bg p-4 text-warning-fg"
+                role="group"
+                aria-label="Action needed"
+              >
+                <p class="{banner} needs-acceptance flex items-center gap-2">
+                  <TriangleAlert class="size-6 shrink-0" aria-hidden="true" />Your result for {scorer.segmentLabel(
+                    scorer.acceptance.segment_number,
+                  )} awaits your acceptance.
+                </p>
+                <Button size="lg" onclick={() => scorer.startReview()}>Review result</Button>
+              </div>
+            {/if}
+          </section>
+        {/if}
       {/if}
+
+      {#if scorer.connection === "stale"}
+        <p class="m-0 text-muted">Connection lost. Reconnecting…</p>
+      {/if}
+      <div class="pt-2">
+        <Button variant="ghost" size="sm" onclick={() => scorer.unpair()}>Unpair device</Button>
+      </div>
     {/if}
-
-    {#if scorer.connection === "stale"}<p class="muted">Connection lost. Reconnecting…</p>{/if}
-    {#if scorer.notice}<p role="status">{scorer.notice}</p>{/if}
-    {#if scorer.message}<p role="status">{scorer.message}</p>{/if}
-    {#if scorer.error}<p class="error" role="alert">{scorer.error}</p>{/if}
-    <p><button onclick={() => scorer.unpair()}>Unpair device</button></p>
-  {/if}
-</main>
-
-<style>
-  .scorer {
-    touch-action: manipulation;
-  }
-  .scorer :global(button),
-  .scorer :global(input) {
-    touch-action: manipulation;
-  }
-  .banner {
-    font-weight: 600;
-    font-size: var(--text-lg);
-  }
-  .disputed {
-    border-color: var(--danger-fg);
-    color: var(--danger-fg);
-  }
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .hero {
-    text-align: center;
-  }
-  .hero h2 {
-    margin: var(--space-2) 0;
-    font-size: var(--text-lg);
-  }
-  .hero .total {
-    font-size: 2.5rem;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-  }
-  .chip {
-    display: inline-block;
-    padding: var(--space-1) var(--space-3);
-    border-radius: 999px;
-    background: var(--brand-tint);
-    color: var(--text);
-    font-size: var(--text-sm);
-    font-weight: 600;
-  }
-  .breakdown {
-    list-style: none;
-    margin: var(--space-4) 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-2);
-  }
-  .breakdown li {
-    display: grid;
-    grid-template-columns: 3rem 3.5rem 1fr;
-    gap: var(--space-3);
-    align-items: center;
-    min-height: var(--touch);
-  }
-  .ring-label {
-    font-weight: 700;
-    font-size: var(--text-lg);
-  }
-  .ring-count {
-    font-size: var(--text-xl);
-    font-weight: 700;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  .bar {
-    display: block;
-    height: 0.75rem;
-    border-radius: var(--radius-sm);
-    background: var(--surface-alt);
-    border: 1px solid var(--border);
-    overflow: hidden;
-  }
-  .bar span {
-    display: block;
-    height: 100%;
-    background: var(--accent);
-  }
-  .action-bar {
-    position: sticky;
-    bottom: 0;
-    display: grid;
-    gap: var(--space-2);
-    margin: 0 calc(var(--space-4) * -1) calc(var(--space-4) * -1);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    box-shadow: var(--shadow-lg);
-  }
-  .action-bar button {
-    min-height: 3.5rem;
-    font-size: var(--text-lg);
-  }
-  .action-bar .danger {
-    background: var(--danger);
-    border-color: var(--danger);
-    color: var(--on-danger);
-  }
-  .confirm-text {
-    margin: 0;
-    font-weight: 600;
-  }
-  .attention {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--space-3);
-    align-items: center;
-    padding: var(--space-4);
-    border: 2px solid var(--warning-fg);
-    border-radius: var(--radius-lg);
-    background: var(--warning-bg);
-    color: var(--warning-fg);
-  }
-  .attention .banner {
-    margin: 0;
-  }
-  .attention button {
-    grid-column: 1 / -1;
-    min-height: 3.5rem;
-    font-size: var(--text-lg);
-  }
-  .attention-icon {
-    display: grid;
-    place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    background: var(--warning-fg);
-    color: var(--warning-bg);
-    font-weight: 800;
-    font-size: var(--text-lg);
-  }
-  @media (min-width: 48rem) {
-    .action-bar {
-      position: static;
-      margin: var(--space-4) 0 0;
-      padding: 0;
-      border: 0;
-      box-shadow: none;
-      grid-auto-flow: column;
-    }
-  }
-  .layout {
-    display: grid;
-    gap: var(--space-4);
-    align-items: start;
-  }
-  .rings {
-    display: grid;
-    gap: var(--space-2);
-  }
-  .ring {
-    display: grid;
-    grid-template-columns: 3.5rem 1fr 5rem 1fr;
-    gap: var(--space-2);
-    align-items: center;
-  }
-  .ring .label {
-    font-weight: 700;
-    font-size: var(--text-lg);
-  }
-  .ring button {
-    font-size: 1.75rem;
-    min-height: 3.25rem;
-    min-width: var(--touch);
-  }
-  .ring input {
-    font-size: 1.5rem;
-    text-align: center;
-    min-height: 3.25rem;
-    width: 100%;
-  }
-  .summary {
-    margin: 0;
-    text-align: center;
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
-    box-shadow: var(--shadow-lg);
-  }
-  .summary {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    column-gap: var(--space-3);
-    align-items: center;
-  }
-  .summary .total {
-    font-size: 2rem;
-  }
-  .summary .total-label {
-    margin: 0;
-    text-align: left;
-  }
-  .summary .actions,
-  .summary .save-status {
-    grid-column: 1 / -1;
-  }
-  .total {
-    margin: 0;
-    font-size: 2.5rem;
-    line-height: 1.2;
-  }
-  .total.mismatch {
-    color: var(--danger-fg);
-  }
-  .total-label {
-    margin: var(--space-1) 0 var(--space-3);
-  }
-  .actions {
-    display: flex;
-    gap: var(--space-2);
-  }
-  .actions button {
-    flex: 1;
-    min-height: 3.5rem;
-    font-size: var(--text-lg);
-  }
-  .actions .emphasis {
-    box-shadow: 0 0 0 3px var(--brand-tint);
-  }
-  .actions .lock.secondary {
-    background: var(--surface-alt);
-    border-color: var(--border);
-    color: var(--text);
-  }
-  .save-status {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    font-weight: 600;
-  }
-  .save-status.unsaved {
-    color: var(--danger-fg);
-  }
-  .actions .lock {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-brand);
-  }
-  @media (min-width: 48rem) {
-    .layout {
-      grid-template-columns: 1fr 18rem;
-    }
-    .summary {
-      top: var(--space-4);
-      bottom: auto;
-      display: block;
-      padding-bottom: var(--space-4);
-      box-shadow: none;
-    }
-    .summary .total {
-      font-size: 2.5rem;
-    }
-    .summary .total-label {
-      margin: var(--space-1) 0 var(--space-3);
-      text-align: center;
-    }
-    .ring {
-      grid-template-columns: 4.5rem 1fr 7rem 1fr;
-      gap: var(--space-3);
-    }
-    .rings {
-      gap: var(--space-3);
-    }
-  }
-</style>
+  </main>
+</div>

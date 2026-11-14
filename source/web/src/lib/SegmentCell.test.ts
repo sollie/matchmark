@@ -14,7 +14,6 @@ describe("SegmentCell", () => {
     const cell = screen.getByLabelText(label);
     expect(cell.textContent?.trim()).toBe(text);
     expect(cell.getAttribute("title")).toBe(label);
-    expect(cell.className).toContain(state);
   });
 
   it("omits the segment number when used as a legend key", () => {

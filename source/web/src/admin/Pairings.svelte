@@ -4,6 +4,14 @@
   import { failure } from "../lib/api/util";
   import { pairingUrl, qrSvg } from "../lib/pairing";
   import type { components } from "../lib/api/schema";
+  import Badge from "../lib/ui/Badge.svelte";
+  import Button from "../lib/ui/Button.svelte";
+  import EmptyState from "../lib/ui/EmptyState.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
+  import NativeSelect from "../lib/ui/NativeSelect.svelte";
+  import Table from "../lib/ui/Table.svelte";
 
   type Pairing = components["schemas"]["Pairing"];
   type EntryWithSegments = components["schemas"]["EntryWithSegments"];
@@ -24,6 +32,8 @@
   let lane = $state<number | null>(null);
   let issued = $state<{ lane: number; url: string; svg: string } | null>(null);
   let error = $state("");
+
+  const active = $derived(pairings.filter((p) => !p.revoked).length);
 
   const lanes = $derived(
     [...new Set(entries.filter((e) => !e.withdrawn).map((e) => e.lane))].sort((a, b) => a - b),
@@ -64,69 +74,77 @@
   }
 </script>
 
-<section class="card">
-  <h2>Scorer pairing</h2>
+<section class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card">
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
+    <h2 class="m-0 text-lg">Scorer pairing</h2>
+    <p class="m-0 text-sm text-muted">{active} active {active === 1 ? "device" : "devices"}</p>
+  </div>
   {#if finished}
-    <p class="muted">Match finished. Pairings are revoked.</p>
+    <p class="m-0 text-muted">Match finished. Pairings are revoked.</p>
   {:else}
-    <form class="row" onsubmit={pair}>
-      <label>
-        Lane
-        <select aria-label="Pairing lane" bind:value={lane} required>
+    <form class="flex flex-wrap items-end gap-3" onsubmit={pair}>
+      <Field label="Lane" class="w-full sm:w-56">
+        <NativeSelect aria-label="Pairing lane" bind:value={lane} required>
           <option value={null} disabled>Select lane</option>
           {#each lanes as l (l)}<option value={l}>Lane {l}</option>{/each}
-        </select>
-      </label>
-      <button type="submit" class="primary">Create pairing link</button>
+        </NativeSelect>
+      </Field>
+      <Button type="submit">Create pairing link</Button>
     </form>
     {#if draft}
-      <p class="muted">
+      <p class="m-0 text-muted">
         You can pair devices before the start. They show a waiting screen until the match is
         started. Re-check pairings if you change lanes.
       </p>
     {/if}
   {/if}
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if error}<ErrorState title={error} />{/if}
 
   {#if issued}
-    <div class="card qr-card">
-      <h3>Lane {issued.lane}</h3>
-      <ol class="muted steps">
+    <div class="flex flex-col gap-3 rounded-lg border border-border bg-surface-alt p-4">
+      <h3 class="m-0 text-lg">Lane {issued.lane}</h3>
+      <ol class="m-0 list-decimal pl-5 text-muted">
         <li>Open the camera on the scorer's device and scan the code, or copy the link below.</li>
         <li>The link is shown once and pairs the device with lane {issued.lane}.</li>
       </ol>
-      <div class="qr" role="img" aria-label={`QR code pairing lane ${issued.lane}`}>
+      <div
+        class="size-48 self-start rounded-md bg-white p-2 [&_svg]:size-full"
+        role="img"
+        aria-label={`QR code pairing lane ${issued.lane}`}
+      >
         {@html issued.svg}
       </div>
-      <label>
-        Pairing link
-        <input readonly value={issued.url} onfocus={(e) => e.currentTarget.select()} />
-      </label>
-      <button class="secondary" onclick={() => (issued = null)}>Hide</button>
+      <Field label="Pairing link">
+        <Input readonly value={issued.url} onfocus={(e) => e.currentTarget.select()} />
+      </Field>
+      <div><Button variant="secondary" onclick={() => (issued = null)}>Hide</Button></div>
     </div>
   {/if}
 
-  <div class="scroll">
-    <table class="stacked">
-      <thead><tr><th>Lane</th><th>Status</th><th></th></tr></thead>
+  {#if pairings.length === 0}
+    <EmptyState title="No devices paired." heading="h3" />
+  {:else}
+    <Table label="Pairings">
+      <thead
+        ><tr><th>Lane</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead
+      >
       <tbody>
         {#each pairings as p (p.id)}
           <tr>
-            <td data-label="Lane">{p.lane}</td>
-            <td data-label="Status"
-              ><span class="badge {p.revoked ? 'neutral' : 'success'}"
-                >{p.revoked ? "revoked" : "paired"}</span
+            <td>{p.lane}</td>
+            <td
+              ><Badge tone={p.revoked ? "neutral" : "success"}
+                >{p.revoked ? "revoked" : "paired"}</Badge
               ></td
             >
-            <td class="row-actions"
-              >{#if !p.revoked}<button class="danger" onclick={() => revoke(p)}>Revoke</button
-                >{/if}</td
-            >
+            <td class="text-right">
+              {#if !p.revoked}<Button variant="danger" size="sm" onclick={() => revoke(p)}
+                  >Revoke</Button
+                >{/if}
+            </td>
           </tr>
-        {:else}
-          <tr><td colspan="3" class="muted">No devices paired.</td></tr>
         {/each}
       </tbody>
-    </table>
-  </div>
+    </Table>
+  {/if}
 </section>

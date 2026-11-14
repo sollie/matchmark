@@ -9,15 +9,19 @@ import {
 } from "./helpers";
 
 test.describe("auth", () => {
-  test("a wrong password shows an error and a correct one signs in", async ({ page }) => {
-    await signInViaUi(page, "wrong-password-value");
-    await expect(page.getByRole("alert")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
+  test(
+    "a wrong password shows an error and a correct one signs in",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      await signInViaUi(page, "wrong-password-value");
+      await expect(page.getByRole("alert")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Admin sign in" })).toBeVisible();
 
-    await page.getByLabel("Password", { exact: true }).fill(adminPassword);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
-  });
+      await page.getByLabel("Password", { exact: true }).fill(adminPassword);
+      await page.getByRole("button", { name: "Sign in" }).click();
+      await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
+    },
+  );
 
   test("an unknown username is rejected like a wrong password", async ({ page }) => {
     await signInViaUi(page, adminPassword, "nobody-here");

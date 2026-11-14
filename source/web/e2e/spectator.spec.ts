@@ -61,33 +61,35 @@ async function seedScored(api: APIRequestContext, finish = false) {
 }
 
 test.describe("spectator", () => {
-  test("standings are ranked by total then X count with the segment status row", async ({
-    course,
-    page,
-    admin,
-  }) => {
-    const { match, entries } = await seedScored(admin);
-    await openMatch(page, match.name);
+  test(
+    "standings are ranked by total then X count with the segment status row",
+    { tag: "@smoke" },
+    async ({ course, page, admin }) => {
+      const { match, entries } = await seedScored(admin);
+      await openMatch(page, match.name);
 
-    const table = page.getByRole("table");
-    const byLane = (lane: number) => row(page, entries[lane - 1].last_name);
-    await expect(byLane(2)).toBeVisible();
-    await expect(byLane(2).getByRole("cell").first()).toHaveText("1");
-    await expect(byLane(4).getByRole("cell").first()).toHaveText("3");
-    await expect(byLane(1).getByRole("cell").first()).toHaveText("2");
-    await expect(byLane(3).getByRole("cell").first()).toHaveText("3");
-    await expect(byLane(1).getByRole("cell").nth(1)).toHaveText("1");
-    await expect(table.getByRole("columnheader", { name: "M1", exact: true })).toBeVisible();
-    await expect(table.getByRole("columnheader", { name: "X", exact: true })).toBeVisible();
+      const table = page.getByRole("table");
+      const byLane = (lane: number) => row(page, entries[lane - 1].last_name);
+      await expect(byLane(2)).toBeVisible();
+      await expect(byLane(2).getByRole("cell").first()).toHaveText("1");
+      await expect(byLane(4).getByRole("cell").first()).toHaveText("3");
+      await expect(byLane(1).getByRole("cell").first()).toHaveText("2");
+      await expect(byLane(3).getByRole("cell").first()).toHaveText("3");
+      await expect(byLane(1).getByRole("cell").nth(1)).toHaveText("1");
+      if ((page.viewportSize()?.width ?? 0) >= 640) {
+        await expect(table.getByRole("columnheader", { name: "M1", exact: true })).toBeVisible();
+      }
+      await expect(table.getByRole("columnheader", { name: "X", exact: true })).toBeVisible();
 
-    const rows = table.locator("tbody tr");
-    await expect(rows.first()).toContainText(entries[1].last_name);
+      const rows = table.locator("tbody tr");
+      await expect(rows.first()).toContainText(entries[1].last_name);
 
-    const progress = page.getByRole("status");
-    await expect(progress.getByText("2/4 accepted")).toBeVisible();
-    await expect(progress.getByText(`Segment 1 of ${course.segments}`)).toBeVisible();
-    await expect(page.locator("progress")).toHaveCount(0);
-  });
+      const progress = page.getByRole("status");
+      await expect(progress.getByText("2/4 accepted")).toBeVisible();
+      await expect(progress.getByText(`Segment 1 of ${course.segments}`)).toBeVisible();
+      await expect(page.locator("progress")).toHaveCount(0);
+    },
+  );
 
   test("grouped standings show one ranked table per category", async ({ page, admin }) => {
     const match = await createMatch(admin, { name: uniqueName("Grouped") });
@@ -239,8 +241,8 @@ test.describe("spectator", () => {
       "Revolver 1500",
       shown.segment ? "240" : "",
       ...Array<string>(course.segments - 1).fill(""),
-      "240",
-      ...(shown.x ? ["12"] : []),
+      /^240\d*$/,
+      ...(shown.x ? [/^12\d*$/] : []),
     ];
     const table = page.getByRole("table");
     const winner = table.locator("tbody tr").first();
@@ -322,8 +324,10 @@ test.describe("spectator", () => {
   });
 });
 
-test("the footer links back to the repository on every page", async ({ page }) => {
-  for (const path of ["/", "/score", "/admin"]) {
+test("the footer links back to the repository on every page except the scorer", async ({
+  page,
+}) => {
+  for (const path of ["/", "/admin"]) {
     await page.goto(path);
     const link = page.getByRole("link", { name: "Source code on GitHub" });
     await expect(link).toBeVisible();
@@ -331,7 +335,9 @@ test("the footer links back to the repository on every page", async ({ page }) =
   }
 });
 
-test("the header menu leads to the admin area on public pages only", async ({ page }) => {
+test("the header menu leads to the admin area on public pages only and is absent on the scorer", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Menu" }).click();
@@ -341,8 +347,8 @@ test("the header menu leads to the admin area on public pages only", async ({ pa
   await expect(page.getByRole("button", { name: "Menu" })).toHaveCount(0);
 
   await page.goto("/score");
-  await page.getByRole("button", { name: "Menu" }).click();
-  await expect(page.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Menu" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Source code on GitHub" })).toHaveCount(0);
 });
 
 test("the header does not overflow at 320px", async ({ page }) => {

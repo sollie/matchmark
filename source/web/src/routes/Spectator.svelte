@@ -2,6 +2,11 @@
   import { autoScroll } from "../lib/autoScroll";
   import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
+  import NumberFlow from "@number-flow/svelte";
+  import Badge from "../lib/ui/Badge.svelte";
+  import EmptyState from "../lib/ui/EmptyState.svelte";
+  import NativeSelect from "../lib/ui/NativeSelect.svelte";
+  import Table from "../lib/ui/Table.svelte";
   import SegmentCell from "../lib/SegmentCell.svelte";
   import {
     courseCategories,
@@ -137,295 +142,226 @@
   }
 </script>
 
-{#snippet standingsTable(rows: Standing[])}
-  <div class="scroll">
-    <table class="standings-table">
-      <thead>
-        <tr>
-          <th class="num">#</th>
-          <th class="num">Lane</th>
-          {#if showNames}<th>Name</th>{/if}
-          {#if showClass}<th class="optional">Classification</th>{/if}
-          {#if showClubs}<th class="optional">Club</th>{/if}
-          {#if showCountries}<th class="optional">Country</th>{/if}
-          <th class="optional">Category</th>
-          {#each segmentNumbers as n (n)}<th
-              class="num"
-              title={segmentLabel(current?.course ?? "", n)}
-              >{segmentColumn(current?.course ?? "", n)}</th
-            >{/each}
-          <th class="num">Total</th>
-          {#if showX}<th class="num">X</th>{/if}
-          {#if finished}<th>Scorecard</th>{/if}
+{#snippet standingsTable(rows: Standing[], label: string)}
+  <Table
+    {label}
+    class="min-[90rem]:text-xl [&_td]:py-3 [&_th]:text-sm min-[90rem]:[&_th]:text-base"
+  >
+    <thead>
+      <tr>
+        <th class="text-right">#</th>
+        <th class="text-right">Lane</th>
+        {#if showNames}<th>Name</th>{/if}
+        {#if showClass}<th class="hidden md:table-cell">Classification</th>{/if}
+        {#if showClubs}<th class="hidden md:table-cell">Club</th>{/if}
+        {#if showCountries}<th class="hidden md:table-cell">Country</th>{/if}
+        <th class="hidden md:table-cell">Category</th>
+        {#each segmentNumbers as n (n)}<th
+            class="hidden text-right sm:table-cell"
+            title={segmentLabel(current?.course ?? "", n)}
+            >{segmentColumn(current?.course ?? "", n)}</th
+          >{/each}
+        <th class="text-right">Total</th>
+        {#if showX}<th class="text-right">X</th>{/if}
+        {#if finished}<th>Scorecard</th>{/if}
+      </tr>
+    </thead>
+    <tbody>
+      {#each rows as s, i (s.lane)}
+        {@const leader = !s.withdrawn && rank(rows, i) === 1}
+        <tr
+          class={[
+            s.withdrawn && "text-muted",
+            leader && "font-semibold [&>td]:bg-brand-tint",
+            !leader && "[&>td]:bg-surface",
+          ]}
+        >
+          <td class="text-right text-lg font-bold tabular-nums min-[90rem]:text-2xl"
+            >{s.withdrawn ? "" : rank(rows, i)}</td
+          >
+          <td class="text-right tabular-nums">{s.lane}</td>
+          {#if showNames}<td>{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
+            >{/if}
+          {#if showClass}<td class="hidden md:table-cell"
+              >{s.classification && s.classification.value > 0
+                ? s.classification.name
+                : "Unclassified"}</td
+            >{/if}
+          {#if showClubs}<td class="hidden md:table-cell">{s.club}</td>{/if}
+          {#if showCountries}<td class="hidden md:table-cell">{s.country}</td>{/if}
+          <td class="hidden md:table-cell">{s.category}</td>
+          {#each segmentNumbers as n (n)}
+            <td class="hidden text-right sm:table-cell"
+              ><SegmentCell segment={s.segments?.find((st) => st.segment === n)} /></td
+            >
+          {/each}
+          <td class="text-right text-lg font-bold tabular-nums min-[90rem]:text-2xl"
+            ><span class="sr-only">{s.total}</span><NumberFlow
+              aria-hidden="true"
+              value={s.total}
+              format={{ useGrouping: false }}
+            /></td
+          >
+          {#if showX}<td class="text-right tabular-nums"
+              ><span class="sr-only">{s.x_count}</span><NumberFlow
+                aria-hidden="true"
+                value={s.x_count ?? 0}
+                format={{ useGrouping: false }}
+              /></td
+            >{/if}
+          {#if finished}<td
+              >{#if !s.withdrawn}<a
+                  class="text-link underline"
+                  href={`/scorecard/${viewed}/${s.lane}`}
+                  aria-label={`Scorecard for lane ${s.lane}`}>View</a
+                >{/if}</td
+            >{/if}
         </tr>
-      </thead>
-      <tbody>
-        {#each rows as s, i (s.lane)}
-          <tr class:muted={s.withdrawn} class:leader={!s.withdrawn && rank(rows, i) === 1}>
-            <td class="num rank">{s.withdrawn ? "" : rank(rows, i)}</td>
-            <td class="num">{s.lane}</td>
-            {#if showNames}<td>{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
-              >{/if}
-            {#if showClass}<td class="optional"
-                >{s.classification && s.classification.value > 0
-                  ? s.classification.name
-                  : "Unclassified"}</td
-              >{/if}
-            {#if showClubs}<td class="optional">{s.club}</td>{/if}
-            {#if showCountries}<td class="optional">{s.country}</td>{/if}
-            <td class="optional">{s.category}</td>
-            {#each segmentNumbers as n (n)}
-              <td class="num"
-                ><SegmentCell segment={s.segments?.find((st) => st.segment === n)} /></td
-              >
-            {/each}
-            <td class="num total">{s.total}</td>
-            {#if showX}<td class="num">{s.x_count}</td>{/if}
-            {#if finished}<td
-                >{#if !s.withdrawn}<a
-                    href={`/scorecard/${viewed}/${s.lane}`}
-                    aria-label={`Scorecard for lane ${s.lane}`}>View</a
-                  >{/if}</td
-              >{/if}
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  </div>
+      {/each}
+    </tbody>
+  </Table>
 {/snippet}
 
-<main class="spectator">
+{#snippet legendItem(
+  segment: {
+    segment: number;
+    accepted: boolean;
+    state: "not_started" | "in_progress" | "awaiting_acceptance" | "accepted";
+    score?: number;
+  },
+  text: string,
+)}
+  <li class="flex items-center gap-2">
+    <SegmentCell {segment} prefix={false} />
+    {text}
+  </li>
+{/snippet}
+
+<main
+  class="mx-auto flex w-full max-w-480 flex-col gap-4 p-3 sm:p-4 min-[90rem]:gap-6 min-[90rem]:p-8 min-[90rem]:text-lg"
+>
   <h1 class="sr-only">Live standings</h1>
   {#if control.notice || control.error}
-    <p class="card notice" role="alert">{control.notice || control.error}</p>
+    <p
+      class="m-0 rounded-lg border border-border bg-danger-bg px-4 py-3 text-danger-fg"
+      role="alert"
+    >
+      {control.notice || control.error}
+    </p>
   {/if}
   {#if control.managed && control.registration && !control.assignment?.approved}
-    <div class="card remote" role="region" aria-label="Remote control">
-      <span>Remote control code <strong class="code">{control.registration.code}</strong></span>
+    <div
+      class="flex flex-col items-center gap-2 rounded-xl border-4 border-brand bg-brand-tint px-4 py-8 text-center"
+      role="region"
+      aria-label="Remote control"
+    >
+      <span class="text-xl font-semibold">Remote control code</span>
+      <strong
+        class="code font-mono text-7xl font-extrabold tracking-[0.15em] text-fg sm:text-8xl min-[90rem]:text-9xl"
+        >{control.registration.code}</strong
+      >
+      <span class="text-base text-muted"
+        >Enter this code in the admin Screens page to approve this screen.</span
+      >
     </div>
   {/if}
   {#if control.managed && viewed === null}
-    <div class="card empty" role="status">
-      <h2>Waiting for a match</h2>
-      <p class="muted">This screen will show a match as soon as one is assigned.</p>
+    <div
+      class="flex min-h-[40dvh] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface px-4 py-12 text-center"
+      role="status"
+    >
+      <h2 class="m-0 text-5xl font-extrabold sm:text-6xl min-[90rem]:text-8xl">
+        Waiting for a match
+      </h2>
+      <p class="m-0 text-xl text-muted min-[90rem]:text-3xl">
+        This screen will show a match as soon as one is assigned.
+      </p>
     </div>
   {:else if !control.managed && matches.length === 0}
-    <div class="card empty">
-      <p>No matches are live yet.</p>
-      <p class="muted">Reload this page once a match has started.</p>
-    </div>
+    <EmptyState
+      title="No matches are live yet."
+      description="Reload this page once a match has started."
+    />
   {:else}
-    <div class="bar">
+    <div class="flex flex-wrap items-stretch gap-3">
       {#if !control.managed}
-        <div class="card picker-card">
-          <label class="picker">
-            Match
-            <select bind:value={selected}>
-              {#each matches as c (c.id)}
-                <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
-              {/each}
-            </select>
-          </label>
-        </div>
+        <label
+          class="flex min-w-0 max-w-full flex-1 items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2 font-semibold"
+        >
+          Match
+          <NativeSelect bind:value={selected} class="max-w-full flex-1 font-normal">
+            {#each matches as c (c.id)}
+              <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
+            {/each}
+          </NativeSelect>
+        </label>
       {/if}
-      <div class="card status" role="status">
-        <div class="progress-info">
-          {#if current}<span class="badge neutral">{current.status}</span>{/if}
+      <div
+        class="flex flex-[100_1_14rem] flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-border bg-surface px-4 py-3"
+        role="status"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          {#if current}<Badge tone="neutral">{current.status}</Badge>{/if}
           {#if finished}
-            <strong>Finished</strong>
-            <a href={`/results/${viewed}`}>View results</a>
+            <strong class="text-lg">Finished</strong>
+            <a class="text-link underline" href={`/results/${viewed}`}>View results</a>
           {:else if snapshot && acceptance}
-            <strong>Segment {snapshot.current_segment} of {snapshot.total_segments}</strong>
-            <span class="muted">{acceptance.accepted}/{acceptance.total} accepted</span>
+            <strong class="text-lg"
+              >Segment {snapshot.current_segment} of {snapshot.total_segments}</strong
+            >
+            <span class="text-muted">{acceptance.accepted}/{acceptance.total} accepted</span>
           {/if}
         </div>
-        <div class="connection">
+        <div class="flex flex-wrap items-center gap-2">
           {#if connection === "stale"}
-            <span class="badge danger">Offline</span>
-            {#if updated}<span class="muted">Last update {clockTime(updated)}</span>{/if}
+            <Badge tone="danger">Offline</Badge>
+            {#if updated}<span class="text-muted">Last update {clockTime(updated)}</span>{/if}
           {:else if updated}
-            <span class="badge success">Live</span>
-            <span class="muted">Updated {clockTime(updated)}</span>
+            <Badge tone="success">Live</Badge>
+            <span class="text-muted">Updated {clockTime(updated)}</span>
           {:else}
-            <span class="badge neutral">Loading</span>
+            <Badge tone="neutral">Loading</Badge>
           {/if}
         </div>
       </div>
     </div>
 
-    <h2 class:sr-only={headingHidden}>Standings</h2>
+    <h2 class={headingHidden ? "sr-only" : "m-0 text-lg"}>Standings</h2>
     {#if standings.length === 0}
-      <div class="card empty">
-        <p>No results yet.</p>
-      </div>
+      <EmptyState title="No results yet." heading="h3" />
     {:else}
-      <div class="standings" use:autoScroll>
+      <div class="flex min-h-0 flex-col gap-4 overflow-y-auto" use:autoScroll>
         {#each groups as group (`${group.category ?? ""}/${group.classGroup ?? ""}`)}
-          {#if group.category !== null}<h3>
+          {#if group.category !== null}<h3 class="m-0 text-lg">
               {group.classGroup ? `${group.category} - ${group.classGroup}` : group.category}
             </h3>{/if}
-          {@render standingsTable(group.rows)}
+          {@render standingsTable(
+            group.rows,
+            group.category === null
+              ? "Standings"
+              : group.classGroup
+                ? `${group.category} - ${group.classGroup}`
+                : group.category,
+          )}
         {/each}
       </div>
       {#if segmentNumbers.length > 0}
-        <ul class="legend" aria-label="Segment state legend">
-          <li>
-            <SegmentCell
-              segment={{ segment: 0, accepted: false, state: "not_started" }}
-              prefix={false}
-            /> Not started
-          </li>
-          <li>
-            <SegmentCell
-              segment={{ segment: 0, accepted: false, state: "in_progress" }}
-              prefix={false}
-            /> In progress
-          </li>
-          <li>
-            <SegmentCell
-              segment={{ segment: 0, accepted: false, state: "awaiting_acceptance" }}
-              prefix={false}
-            /> Awaiting acceptance
-          </li>
-          <li>
-            <SegmentCell
-              segment={{ segment: 0, accepted: true, state: "accepted", score: 118 }}
-              prefix={false}
-            /> Accepted
-          </li>
+        <ul
+          class="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0 text-sm text-muted"
+          aria-label="Segment state legend"
+        >
+          {@render legendItem({ segment: 0, accepted: false, state: "not_started" }, "Not started")}
+          {@render legendItem({ segment: 0, accepted: false, state: "in_progress" }, "In progress")}
+          {@render legendItem(
+            { segment: 0, accepted: false, state: "awaiting_acceptance" },
+            "Awaiting acceptance",
+          )}
+          {@render legendItem(
+            { segment: 0, accepted: true, state: "accepted", score: 118 },
+            "Accepted",
+          )}
         </ul>
       {/if}
     {/if}
   {/if}
 </main>
-
-<style>
-  .picker select {
-    font-size: var(--text-base);
-    padding: var(--space-2) var(--space-3);
-    max-width: 100%;
-    min-width: 0;
-  }
-  .picker {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    gap: var(--space-2);
-    min-width: 0;
-    max-width: 100%;
-  }
-  .bar {
-    display: flex;
-    align-items: stretch;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin: var(--space-3) 0 var(--space-4);
-  }
-  .picker-card,
-  .status {
-    display: flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    margin: 0;
-  }
-  .spectator {
-    display: flex;
-    flex-direction: column;
-    max-height: calc(100dvh - var(--header-h));
-  }
-  .standings {
-    flex: 0 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-  }
-  .picker-card {
-    justify-content: center;
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 100%;
-  }
-  .status {
-    justify-content: space-between;
-    gap: var(--space-2) var(--space-4);
-    flex-wrap: wrap;
-    flex: 100 1 12rem;
-  }
-  .progress-info,
-  .connection {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-  .remote {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2) var(--space-4);
-    flex-wrap: wrap;
-    padding: var(--space-2) var(--space-4);
-    margin: var(--space-3) 0;
-  }
-  .code {
-    font-family: monospace;
-    letter-spacing: 0.1em;
-  }
-  .notice {
-    padding: var(--space-2) var(--space-4);
-  }
-  .empty {
-    text-align: center;
-    padding: var(--space-6) var(--space-4);
-  }
-  .empty p {
-    margin: var(--space-1) 0;
-  }
-  .rank,
-  .total {
-    font-weight: 700;
-    font-size: var(--text-lg);
-  }
-  tr.leader > td,
-  tr.leader:hover > td {
-    background: var(--brand-tint);
-    font-weight: 600;
-  }
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
-    list-style: none;
-    padding: 0;
-    margin: var(--space-3) 0;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
-  .legend li {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-  @media (min-width: 90rem) {
-    .spectator {
-      font-size: var(--text-lg);
-    }
-    .spectator :global(th) {
-      font-size: var(--text-base);
-    }
-    .total,
-    .rank {
-      font-size: var(--text-xl);
-    }
-  }
-</style>

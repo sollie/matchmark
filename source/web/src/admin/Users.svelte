@@ -3,6 +3,13 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import PasswordInput from "../lib/PasswordInput.svelte";
+  import Badge from "../lib/ui/Badge.svelte";
+  import Button from "../lib/ui/Button.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
+  import Select from "../lib/ui/Select.svelte";
+  import Table from "../lib/ui/Table.svelte";
   import { refreshAdminSession } from "../lib/session.svelte";
   import type { components } from "../lib/api/schema";
 
@@ -55,6 +62,18 @@
     created = message;
     await load();
   }
+
+  const roleItems = [
+    { value: "user", label: "User" },
+    { value: "admin", label: "Admin" },
+  ];
+
+  const statusOf = (u: User) =>
+    !u.active
+      ? { label: "Deactivated", tone: "danger" as const }
+      : u.must_change_password
+        ? { label: "Must change password", tone: "warning" as const }
+        : { label: "Active", tone: "success" as const };
 
   const params = (u: User) => ({ params: { path: { userID: u.id } } });
 
@@ -113,80 +132,71 @@
   }
 </script>
 
-<h1>Users</h1>
-{#if error}<p class="error" role="alert">{error}</p>{/if}
-{#if created}<p role="status">{created}</p>{/if}
+<div class="flex flex-col gap-4">
+  <h1 class="m-0 text-xl">Users</h1>
+  {#if error}<ErrorState title={error} />{/if}
+  {#if created}<p class="m-0 text-success-fg" role="status">{created}</p>{/if}
 
-<form class="row card" onsubmit={create}>
-  <label>
-    New username
-    <input
-      bind:value={username}
-      minlength="3"
-      maxlength="32"
-      pattern="[A-Za-z0-9._\-]+"
-      autocomplete="off"
+  <form
+    class="grid gap-4 rounded-xl border border-border bg-surface p-4 shadow-card sm:grid-cols-2 lg:grid-cols-[1fr_12rem_1fr_auto] lg:items-start"
+    onsubmit={create}
+    aria-label="New user"
+  >
+    <Field label="New username">
+      <Input
+        bind:value={username}
+        minlength={3}
+        maxlength={32}
+        pattern="[A-Za-z0-9._\-]+"
+        autocomplete="off"
+        required
+      />
+    </Field>
+    <div class="flex flex-col gap-1">
+      <span class="text-sm font-medium">Role</span>
+      <Select label="Role" items={roleItems} bind:value={role} />
+    </div>
+    <PasswordInput
+      label="Temporary password"
+      bind:value={password}
+      minlength={16}
+      maxlength={128}
+      autocomplete="new-password"
       required
     />
-  </label>
-  <label>
-    Role
-    <select bind:value={role}>
-      <option value="user">User</option>
-      <option value="admin">Admin</option>
-    </select>
-  </label>
-  <PasswordInput
-    label="Temporary password"
-    bind:value={password}
-    minlength={16}
-    maxlength={128}
-    autocomplete="new-password"
-    required
-  />
-  <button type="submit" class="primary">Create user</button>
-</form>
-<p class="muted">
-  Usernames use a-z, 0-9, '.', '_' and '-' (3 to 32 characters) and are never reused. The password
-  is 16 to 128 characters and must be changed at first login.
-</p>
+    <Button type="submit" class="self-end">Create user</Button>
+  </form>
+  <p class="m-0 text-sm text-muted">
+    Usernames use a-z, 0-9, '.', '_' and '-' (3 to 32 characters) and are never reused. The password
+    is 16 to 128 characters and must be changed at first login.
+  </p>
 
-<div class="card scroll">
-  <table class="stacked">
+  <Table label="Users" tableLabel="Users table">
     <thead>
-      <tr
-        ><th>Username</th><th>Role</th><th>WAID</th><th>Status</th><th>Backup</th><th>Actions</th
-        ></tr
-      >
+      <tr>
+        <th>Username</th><th>Role</th><th>WAID</th><th>Status</th><th>Backup</th><th>Actions</th>
+      </tr>
     </thead>
     <tbody>
       {#each users as u (u.id)}
+        {@const status = statusOf(u)}
         <tr>
-          <td>{u.username}</td>
-          <td data-label="Role">{u.role === "admin" ? "Admin" : "User"}</td>
-          <td data-label="WAID">{u.waid ?? "-"}</td>
-          <td data-label="Status"
-            >{!u.active
-              ? "Deactivated"
-              : u.must_change_password
-                ? "Must change password"
-                : "Active"}</td
-          >
-          <td data-label="Backup"
-            >{u.role !== "admin" ? "-" : u.can_download_backup ? "Allowed" : "Not allowed"}</td
-          >
-          <td data-label="Actions">
+          <td class="font-medium">{u.username}</td>
+          <td>{u.role === "admin" ? "Admin" : "User"}</td>
+          <td>{u.waid ?? "-"}</td>
+          <td><Badge tone={status.tone}>{status.label}</Badge></td>
+          <td>{u.role !== "admin" ? "-" : u.can_download_backup ? "Allowed" : "Not allowed"}</td>
+          <td>
             {#if waidFor === u.id}
-              <form class="row" onsubmit={(e) => saveWaid(e, u)}>
-                <label>
-                  WAID for {u.username}
-                  <input bind:value={waidValue} maxlength="32" inputmode="numeric" />
-                </label>
-                <button type="submit" class="primary">Save WAID</button>
-                <button type="button" onclick={() => (waidFor = null)}>Cancel</button>
+              <form class="flex flex-wrap items-end gap-2" onsubmit={(e) => saveWaid(e, u)}>
+                <Field label="WAID for {u.username}">
+                  <Input bind:value={waidValue} maxlength={32} inputmode="numeric" />
+                </Field>
+                <Button type="submit">Save WAID</Button>
+                <Button variant="secondary" onclick={() => (waidFor = null)}>Cancel</Button>
               </form>
             {:else if resetFor === u.id}
-              <form class="row" onsubmit={(e) => reset(e, u)}>
+              <form class="flex flex-wrap items-end gap-2" onsubmit={(e) => reset(e, u)}>
                 <PasswordInput
                   label="Temporary password for {u.username}"
                   bind:value={resetPassword}
@@ -195,42 +205,51 @@
                   autocomplete="new-password"
                   required
                 />
-                <button type="submit" class="primary">Confirm reset</button>
-                <button type="button" onclick={() => (resetFor = null)}>Cancel</button>
+                <Button type="submit">Confirm reset</Button>
+                <Button variant="secondary" onclick={() => (resetFor = null)}>Cancel</Button>
               </form>
             {:else}
-              <button type="button" onclick={() => setActive(u, !u.active)}
-                >{u.active ? "Deactivate" : "Reactivate"}</button
-              >
-              <button
-                type="button"
-                onclick={() => setRole(u, u.role === "admin" ? "user" : "admin")}
-              >
-                {u.role === "admin" ? "Make user" : "Make admin"}
-              </button>
-              {#if u.role === "admin"}
-                <button type="button" onclick={() => setBackup(u, !u.can_download_backup)}>
-                  {u.can_download_backup ? "Forbid backup" : "Allow backup"}
-                </button>
-              {/if}
-              <button
-                type="button"
-                onclick={() => {
-                  waidFor = u.id;
-                  waidValue = u.waid ?? "";
-                }}>Set WAID</button
-              >
-              <button
-                type="button"
-                onclick={() => {
-                  resetFor = u.id;
-                  resetPassword = "";
-                }}>Reset password</button
-              >
+              <div class="flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" onclick={() => setActive(u, !u.active)}>
+                  {u.active ? "Deactivate" : "Reactivate"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onclick={() => setRole(u, u.role === "admin" ? "user" : "admin")}
+                >
+                  {u.role === "admin" ? "Make user" : "Make admin"}
+                </Button>
+                {#if u.role === "admin"}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onclick={() => setBackup(u, !u.can_download_backup)}
+                  >
+                    {u.can_download_backup ? "Forbid backup" : "Allow backup"}
+                  </Button>
+                {/if}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onclick={() => {
+                    waidFor = u.id;
+                    waidValue = u.waid ?? "";
+                  }}>Set WAID</Button
+                >
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onclick={() => {
+                    resetFor = u.id;
+                    resetPassword = "";
+                  }}>Reset password</Button
+                >
+              </div>
             {/if}
           </td>
         </tr>
       {/each}
     </tbody>
-  </table>
+  </Table>
 </div>

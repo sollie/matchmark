@@ -166,21 +166,16 @@ test.describe("shooters", () => {
     const shooter = await createShooter(admin, { last_name: uniqueLastName("Doomed") });
     await openShooters(page);
 
-    const dialogs: string[] = [];
-    let accept = false;
-    page.on("dialog", async (dialog) => {
-      dialogs.push(dialog.message());
-      if (accept) await dialog.accept();
-      else await dialog.dismiss();
-    });
-
     await row(page, shooter.last_name).getByRole("button", { name: "Delete" }).click();
-    await expect.poll(() => dialogs.length).toBe(1);
-    expect(dialogs[0]).toBe(`Delete ${shooter.first_name} ${shooter.last_name}?`);
+    const dialog = page.getByRole("dialog", {
+      name: `Delete ${shooter.first_name} ${shooter.last_name}?`,
+    });
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
     await expect(row(page, shooter.last_name)).toBeVisible();
 
-    accept = true;
     await row(page, shooter.last_name).getByRole("button", { name: "Delete" }).click();
+    await dialog.getByRole("button", { name: "Delete" }).click();
     await expect(row(page, shooter.last_name)).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Shooters" })).toBeVisible();
@@ -226,8 +221,8 @@ test.describe("shooters", () => {
 
     const match = await createMatch(admin);
     await addEntry(admin, match.id, shooter.id, 1);
-    page.once("dialog", (dialog) => dialog.accept());
     await row(page, shooter.last_name).getByRole("button", { name: "Delete" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
 
     await expect(page.getByRole("alert")).toContainText("cannot be deleted");
     await expect(
@@ -475,6 +470,22 @@ test.describe("shooters", () => {
     await expect(
       row(page, real.last_name).getByRole("button", { name: "Entered in 1 match" }),
     ).toBeVisible();
+  });
+
+  test("the merge dialog closes on Escape and returns focus to its trigger", async ({
+    adminPage: page,
+    admin,
+  }) => {
+    const shooter = await createShooter(admin, { last_name: uniqueLastName("Escape") });
+    await openShooters(page);
+
+    const trigger = row(page, shooter.last_name).getByRole("button", { name: "Merge into…" });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: /Merge/ });
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
   });
 
   test("a merge is blocked when both shooters are entered in the same match", async ({

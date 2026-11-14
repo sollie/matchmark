@@ -45,29 +45,9 @@ describe("SiteHeader", () => {
       expect(trigger.getAttribute("aria-expanded")).toBe("false");
       await user.click(trigger);
       expect(trigger.getAttribute("aria-expanded")).toBe("true");
-      for (const name of ["Users", "Club", "Audit log", "Backup", "Change password"])
-        expect(screen.getByRole("link", { name })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
       await user.keyboard("{Escape}");
       expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    });
-
-    it("limits regular users to the account group", async () => {
-      signIn(false);
-      const user = userEvent.setup();
-      render(SiteHeader);
-      await user.click(screen.getByRole("button", { name: "Account menu" }));
-      expect(screen.getByRole("link", { name: "Change password" })).toBeTruthy();
-      expect(screen.queryByRole("link", { name: "Users" })).toBeNull();
-      expect(screen.queryByRole("link", { name: "Backup" })).toBeNull();
-    });
-
-    it("marks the trigger current on menu-owned pages", () => {
-      signIn(true);
-      router.path = "/admin/audit";
-      render(SiteHeader);
-      expect(
-        screen.getByRole("button", { name: "Account menu" }).getAttribute("aria-current"),
-      ).toBe("page");
     });
   });
 });

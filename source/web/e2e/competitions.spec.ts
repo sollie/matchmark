@@ -1,4 +1,4 @@
-import { createMatch, expect, openMatch, test, uniqueName } from "./helpers";
+import { choose, confirmDialog, createMatch, expect, openMatch, test, uniqueName } from "./helpers";
 
 test.describe("competitions", () => {
   test("create a competition, group matches under it and enforce its date span", async ({
@@ -18,9 +18,7 @@ test.describe("competitions", () => {
 
     await page.getByLabel("Name", { exact: true }).fill(match);
     await page.getByLabel("Date", { exact: true }).fill("2026-10-21");
-    await page
-      .getByRole("combobox", { name: /^Competition/ })
-      .selectOption({ label: `${competition} (2026-10-19 – 2026-10-20)` });
+    await choose(page, "Competition", `${competition} (2026-10-19 – 2026-10-20)`);
     await page.getByRole("button", { name: "Create match" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
 
@@ -52,8 +50,9 @@ test.describe("competitions", () => {
     const group = page.getByRole("region", { name: `Competition ${competition}` });
     await expect(group).toBeVisible();
 
-    page.once("dialog", (dialog) => dialog.accept());
     await group.getByRole("button", { name: `Delete competition ${competition}` }).click();
+    await expect(confirmDialog(page)).toContainText("This cannot be undone");
+    await confirmDialog(page).getByRole("button", { name: "Delete competition" }).click();
     await expect(group).toHaveCount(0);
   });
 
@@ -63,9 +62,7 @@ test.describe("competitions", () => {
 
     await page.getByLabel("Name", { exact: true }).fill(match);
     await page.getByLabel("Date", { exact: true }).fill("2026-11-02");
-    await page
-      .getByRole("combobox", { name: /^Competition/ })
-      .selectOption({ label: "New competition…" });
+    await choose(page, "Competition", "New competition…");
     await page.getByLabel("Competition name").fill(competition);
     await page.getByLabel("Start date").fill("2026-11-01");
     await page.getByLabel("End date").fill("2026-11-03");
@@ -170,14 +167,14 @@ test.describe("competitions", () => {
       await page.getByRole("button", { name: "New competition" }).click();
       const form = page.getByRole("form", { name: "New competition" });
       await expect(form.getByLabel("Referee WAID 1")).toHaveValue(ownWaid);
-      await expect(form.getByLabel("Pick referee from users")).not.toContainText(`(${ownWaid})`);
-      await form
-        .getByLabel("Pick referee from users")
-        .selectOption({ label: `${username} (${otherWaid})` });
+      await form.getByRole("combobox", { name: "Pick referee from users" }).click();
+      await expect(page.getByRole("option", { name: new RegExp(`\\(${ownWaid}\\)`) })).toHaveCount(
+        0,
+      );
+      await page.keyboard.press("Escape");
+      await choose(page, "Pick referee from users", `${username} (${otherWaid})`, form);
       await expect(form.getByLabel("Referee WAID 2")).toHaveValue(otherWaid);
-      await form
-        .getByLabel("Pick range officer from users")
-        .selectOption({ label: `${username} (${otherWaid})` });
+      await choose(page, "Pick range officer from users", `${username} (${otherWaid})`, form);
       await expect(form.getByLabel("Range officer WAID 1")).toHaveValue(otherWaid);
 
       await form.getByLabel("Competition name").fill(uniqueName("Picked"));

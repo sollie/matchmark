@@ -108,7 +108,8 @@ test.describe("user management", () => {
     const username = newUsername();
     await openAccountLink(page, "Users");
     await page.getByLabel("New username").fill(username);
-    await page.getByLabel("Role").selectOption("admin");
+    await page.getByRole("combobox", { name: "Role" }).click();
+    await page.getByRole("option", { name: "Admin" }).click();
     await page.getByLabel("Temporary password", { exact: true }).fill(temporaryPassword);
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(row(page, username)).toContainText("Not allowed");
@@ -179,7 +180,8 @@ test.describe("user lifecycle", () => {
     const username = newUsername();
     await openAccountLink(page, "Users");
     await page.getByLabel("New username").fill(username);
-    await page.getByLabel("Role").selectOption("admin");
+    await page.getByRole("combobox", { name: "Role" }).click();
+    await page.getByRole("option", { name: "Admin" }).click();
     await page.getByLabel("Temporary password", { exact: true }).fill(temporaryPassword);
     await page.getByRole("button", { name: "Create user" }).click();
     await expect(row(page, username)).toContainText("Admin");

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { badgeVariants } from "./ui/Badge.svelte";
   import { classChips, type Classifications } from "./classification";
 
   let { classifications }: { classifications: Classifications | undefined } = $props();
@@ -6,20 +7,9 @@
 </script>
 
 {#if chips.length > 0}
-  <ul class="chips" aria-label="Classifications">
+  <ul class="m-0 flex list-none flex-wrap gap-1 p-0" aria-label="Classifications">
     {#each chips as chip (chip.category)}
-      <li class="badge info">{chip.category} <strong>{chip.name}</strong></li>
+      <li class={badgeVariants({ tone: "info" })}>{chip.category} <strong>{chip.name}</strong></li>
     {/each}
   </ul>
 {/if}
-
-<style>
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-</style>

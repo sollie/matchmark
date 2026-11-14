@@ -5,7 +5,7 @@ on:
     inputs:
       e2e-browsers:
         type: string
-        default: '["chromium","firefox","webkit"]'
+        default: '["desktop","tablet","phone","firefox","webkit"]'
 
 jobs:
   source:

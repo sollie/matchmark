@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Popover } from "bits-ui";
   import type { Snippet } from "svelte";
   import { router } from "./router.svelte";
   import AccountIcon from "./AccountIcon.svelte";
@@ -10,49 +11,31 @@
   }: { label: string; current?: boolean; children: Snippet<[() => void]> } = $props();
 
   let open = $state(false);
-  let root: HTMLElement | undefined = $state();
-  let trigger: HTMLButtonElement | undefined = $state();
 
   $effect(() => {
     void router.path;
     open = false;
   });
-
-  function close() {
-    open = false;
-  }
-
-  function onWindowClick(e: MouseEvent) {
-    if (open && root && !root.contains(e.target as Node)) open = false;
-  }
-
-  function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape" && open) {
-      open = false;
-      trigger?.focus();
-    }
-  }
 </script>
 
-<svelte:window onclick={onWindowClick} onkeydown={onKeydown} />
-
-<div class="account-menu" bind:this={root}>
-  <button
-    bind:this={trigger}
-    type="button"
-    class="account-link"
+<Popover.Root bind:open>
+  <Popover.Trigger
     aria-label={label}
     title={label}
-    aria-haspopup="menu"
-    aria-expanded={open}
     aria-current={current ? "page" : undefined}
-    onclick={() => (open = !open)}
+    class="ml-2 inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md border-b-3 border-transparent bg-transparent text-header-fg outline-offset-[-2px] hover:bg-header-fg/10 focus-visible:outline-3 focus-visible:outline-header-fg aria-[current=page]:border-header-fg"
   >
     <AccountIcon />
-  </button>
-  {#if open}
-    <div class="account-panel">
-      {@render children(close)}
-    </div>
-  {/if}
-</div>
+  </Popover.Trigger>
+  <Popover.Portal>
+    <Popover.Content
+      align="end"
+      sideOffset={4}
+      class="z-40 flex min-w-56 flex-col rounded-lg border border-border bg-surface p-2 text-fg shadow-overlay motion-safe:data-[state=open]:animate-[fade-in_120ms_ease-out] [&_a]:rounded-md [&_a]:px-3 [&_a]:py-2 [&_a]:text-fg [&_a]:no-underline [&_a:hover]:bg-surface-alt [&_button]:cursor-pointer [&_button]:rounded-md [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-3 [&_button]:py-2 [&_button]:text-left [&_button]:text-fg [&_button:hover:not(:disabled)]:bg-surface-alt [&_h2]:m-0 [&_h2]:mt-2 [&_h2]:px-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-muted"
+    >
+      <div role="group" aria-label={label} class="flex flex-col">
+        {@render children(() => (open = false))}
+      </div>
+    </Popover.Content>
+  </Popover.Portal>
+</Popover.Root>

@@ -8,6 +8,7 @@
   import NotFound from "./routes/NotFound.svelte";
   import Footer from "./lib/Footer.svelte";
   import SiteHeader from "./lib/SiteHeader.svelte";
+  import Toaster from "./lib/ui/Toaster.svelte";
   import { refreshClub } from "./lib/club.svelte";
 
   $effect(() => {
@@ -15,9 +16,10 @@
   });
 </script>
 
-<SiteHeader />
+{#if router.path !== "/score"}<SiteHeader />{/if}
+<Toaster />
 
-<div class="app-content">
+<div class="flex-1">
   {#if router.path === "/"}
     <Spectator />
   {:else if router.path === "/results" || router.path.startsWith("/results/")}
@@ -33,4 +35,4 @@
   {/if}
 </div>
 
-<Footer />
+{#if router.path !== "/score"}<Footer />{/if}

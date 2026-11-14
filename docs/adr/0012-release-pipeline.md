@@ -8,7 +8,7 @@ Releases are cut by pushing a `v*.*.*` tag on a commit that is on `main`. The re
 
 goreleaser builds the standalone binaries on one Ubuntu runner with `CGO_ENABLED=0`: linux and darwin on amd64 and arm64, windows on amd64. Raspberry Pi is covered by linux/arm64 on a 64-bit OS. tursogo v0.8.3 embeds no native library for linux/arm or windows/arm64, so those are not built. The Docker image stays built from the Dockerfile (musl, Alpine); goreleaser does not build images because the image needs the `-tags musl` binary and the in-image smoke test.
 
-Pull requests run tests, a windows/darwin cross-compile and chromium-only e2e. The Docker and goreleaser snapshot jobs run on a PR only when the Dockerfile, `.dockerignore`, smoke script, `go.mod`/`go.sum`, `.goreleaser.yaml` or the release workflows change. On `main` and on a weekly schedule the images are always built, smoke-tested and scanned, but never pushed.
+Pull requests run tests, a windows/darwin cross-compile and e2e on the desktop, tablet and phone viewport projects (chromium). The Docker and goreleaser snapshot jobs run on a PR only when the Dockerfile, `.dockerignore`, smoke script, `go.mod`/`go.sum`, `.goreleaser.yaml` or the release workflows change. On `main` and on a weekly schedule the images are always built, smoke-tested and scanned, but never pushed.
 
 ## Considered Options
 
