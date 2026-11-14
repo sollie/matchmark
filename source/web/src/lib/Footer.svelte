@@ -15,7 +15,7 @@
   });
 </script>
 
-<footer class="site-footer">
+<footer class="site-footer print:hidden">
   <span>{brand.name}{version ? ` ${version}` : ""}</span>
   <span>© {brand.copyrightYear} {brand.copyrightHolder}</span>
   <a href={brand.repoUrl} target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
