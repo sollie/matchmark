@@ -23,7 +23,7 @@
     aria-label={label}
     title={label}
     aria-current={current ? "page" : undefined}
-    class="ml-2 inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md border-b-3 border-transparent bg-transparent text-white outline-offset-[-2px] hover:bg-white/10 focus-visible:outline-3 focus-visible:outline-white aria-[current=page]:border-white"
+    class="ml-2 inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md border-b-3 border-transparent bg-transparent text-header-fg outline-offset-[-2px] hover:bg-header-fg/10 focus-visible:outline-3 focus-visible:outline-header-fg aria-[current=page]:border-header-fg"
   >
     <AccountIcon />
   </Popover.Trigger>

@@ -5,6 +5,7 @@
   import { club, clubLogoUrl, refreshClub } from "../lib/club.svelte";
   import Badge from "../lib/ui/Badge.svelte";
   import Button from "../lib/ui/Button.svelte";
+  import ConfirmDialog from "../lib/ui/ConfirmDialog.svelte";
   import EmptyState from "../lib/ui/EmptyState.svelte";
   import ErrorState from "../lib/ui/ErrorState.svelte";
   import Field from "../lib/ui/Field.svelte";
@@ -93,8 +94,10 @@
     );
   }
 
+  let pendingDelete = $state<Range | null>(null);
+
   function deleteRange(range: Range) {
-    if (!confirm(`Delete range "${range.name}"?`)) return;
+    pendingDelete = null;
     return runRangeAction(
       () => api.DELETE("/api/ranges/{rangeID}", { params: { path: { rangeID: range.id } } }),
       "Range deleted.",
@@ -296,7 +299,7 @@
                     <Button
                       variant="danger"
                       size="sm"
-                      onclick={() => deleteRange(range)}
+                      onclick={() => (pendingDelete = range)}
                       aria-label={`Delete range ${range.name}`}>Delete</Button
                     >
                   {/if}
@@ -344,3 +347,14 @@
     </section>
   {/if}
 </div>
+
+{#if pendingDelete}
+  {@const target = pendingDelete}
+  <ConfirmDialog
+    title={`Delete range "${target.name}"?`}
+    description="This permanently removes the range."
+    confirmLabel="Delete"
+    onconfirm={async () => void (await deleteRange(target))}
+    oncancel={() => (pendingDelete = null)}
+  />
+{/if}

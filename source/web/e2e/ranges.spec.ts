@@ -32,8 +32,8 @@ test.describe("ranges", () => {
     await page.getByRole("combobox", { name: "Default range" }).click();
     await page.getByRole("option", { name: "None" }).click();
     await expect(page.getByRole("status")).toHaveText("Default range saved.");
-    page.once("dialog", (dialog) => dialog.accept());
     await row.getByRole("button", { name: `Delete range ${range}` }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
     await row.getByRole("button", { name: `Archive range ${range}` }).click();
     await expect(row).toContainText("archived");

@@ -5,6 +5,7 @@
   import NumberFlow from "@number-flow/svelte";
   import Badge from "../lib/ui/Badge.svelte";
   import EmptyState from "../lib/ui/EmptyState.svelte";
+  import NativeSelect from "../lib/ui/NativeSelect.svelte";
   import Table from "../lib/ui/Table.svelte";
   import SegmentCell from "../lib/SegmentCell.svelte";
   import {
@@ -288,14 +289,11 @@
           class="flex min-w-0 max-w-full flex-1 items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2 font-semibold"
         >
           Match
-          <select
-            bind:value={selected}
-            class="min-h-11 min-w-0 max-w-full flex-1 rounded-md border border-border bg-surface px-3 text-base font-normal text-fg outline-offset-2 hover:border-muted focus-visible:outline-3 focus-visible:outline-focus"
-          >
+          <NativeSelect bind:value={selected} class="max-w-full flex-1 font-normal">
             {#each matches as c (c.id)}
               <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
             {/each}
-          </select>
+          </NativeSelect>
         </label>
       {/if}
       <div

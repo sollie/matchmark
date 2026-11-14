@@ -14,7 +14,7 @@
   class="site-header print:hidden flex min-h-12 items-center gap-2 border-b border-border bg-header px-4"
 >
   <a
-    class="inline-flex items-center rounded-md outline-offset-2 focus-visible:outline-3 focus-visible:outline-white"
+    class="inline-flex items-center rounded-md outline-offset-2 focus-visible:outline-3 focus-visible:outline-header-fg"
     href="/"
     ><img
       class="block h-8 w-auto"
@@ -26,7 +26,7 @@
   >
   {#if club.hasLogo || club.name}
     <span
-      class="club-badge ml-auto inline-flex min-w-0 items-center gap-2 font-semibold text-white"
+      class="club-badge ml-auto inline-flex min-w-0 items-center gap-2 font-semibold text-header-fg"
     >
       {#if club.hasLogo}<img
           class="block h-8 max-w-24 object-contain"

@@ -3,17 +3,20 @@
   import X from "@lucide/svelte/icons/x";
   import type { Snippet } from "svelte";
   import { cn } from "./utils";
+  import { modalCloseClass, modalTitleClass, overlayClass } from "./modal";
 
   let {
     open = $bindable(false),
     title,
     side = "bottom",
+    closeLabel = "Dismiss",
     class: className,
     children,
   }: {
     open?: boolean;
     title: string;
     side?: "bottom" | "left";
+    closeLabel?: string;
     class?: string;
     children: Snippet;
   } = $props();
@@ -21,9 +24,7 @@
 
 <Dialog.Root bind:open>
   <Dialog.Portal>
-    <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 motion-safe:data-[state=open]:animate-[fade-in_150ms_ease-out]"
-    />
+    <Dialog.Overlay class={overlayClass} />
     <Dialog.Content
       class={cn(
         "fixed z-51 overflow-auto border-border bg-surface p-4 text-fg shadow-overlay",
@@ -34,13 +35,10 @@
         className,
       )}
     >
-      <Dialog.Title class="m-0 mb-3 pr-10 text-lg">{title}</Dialog.Title>
+      <Dialog.Title class={modalTitleClass}>{title}</Dialog.Title>
       <Dialog.Description class="sr-only">{title}</Dialog.Description>
       {@render children()}
-      <Dialog.Close
-        aria-label="Dismiss"
-        class="absolute top-2 right-2 inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-muted outline-offset-2 hover:bg-surface-alt hover:text-fg focus-visible:outline-3 focus-visible:outline-focus"
-      >
+      <Dialog.Close aria-label={closeLabel} class={modalCloseClass}>
         <X class="size-5" aria-hidden="true" />
       </Dialog.Close>
     </Dialog.Content>

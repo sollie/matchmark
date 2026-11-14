@@ -3,6 +3,7 @@
   import Check from "@lucide/svelte/icons/check";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { cn } from "./utils";
+  import { controlClass } from "./control";
 
   let {
     value = $bindable(""),
@@ -29,7 +30,8 @@
   <Select.Trigger
     aria-label={label}
     class={cn(
-      "inline-flex min-h-11 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 text-base text-fg outline-offset-2 hover:border-muted focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50",
+      controlClass,
+      "inline-flex cursor-pointer items-center justify-between gap-2",
       className,
     )}
   >

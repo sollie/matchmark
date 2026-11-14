@@ -8,6 +8,7 @@
   import ShooterMerge from "./ShooterMerge.svelte";
   import Badge from "../lib/ui/Badge.svelte";
   import Button from "../lib/ui/Button.svelte";
+  import ConfirmDialog from "../lib/ui/ConfirmDialog.svelte";
   import Dialog from "../lib/ui/Dialog.svelte";
   import ErrorState from "../lib/ui/ErrorState.svelte";
   import Field from "../lib/ui/Field.svelte";
@@ -156,8 +157,10 @@
     await load();
   }
 
+  let pendingDelete = $state<ShooterListItem | null>(null);
+
   async function remove(s: ShooterListItem) {
-    if (!confirm(`Delete ${s.first_name} ${s.last_name}?`)) return;
+    pendingDelete = null;
     error = "";
     const result = await api.DELETE("/api/shooters/{shooterID}", {
       params: { path: { shooterID: s.id } },
@@ -323,7 +326,8 @@
                 variant="danger"
                 size="sm"
                 aria-disabled={s.entry_count > 0 ? "true" : undefined}
-                onclick={() => (s.entry_count > 0 ? explainBlocked(s) : remove(s))}>Delete</Button
+                onclick={() => (s.entry_count > 0 ? explainBlocked(s) : (pendingDelete = s))}
+                >Delete</Button
               >
             </div>
           </td>
@@ -338,3 +342,14 @@
     </tbody>
   </Table>
 </div>
+
+{#if pendingDelete}
+  {@const target = pendingDelete}
+  <ConfirmDialog
+    title={`Delete ${target.first_name} ${target.last_name}?`}
+    description="This permanently removes the shooter."
+    confirmLabel="Delete"
+    onconfirm={() => remove(target)}
+    oncancel={() => (pendingDelete = null)}
+  />
+{/if}

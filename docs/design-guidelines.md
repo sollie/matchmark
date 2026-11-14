@@ -10,7 +10,8 @@ Tailwind v4, Bits UI primitives, svelte-sonner, NumberFlow, `@lucide/svelte` ico
 | --- | --- |
 | Button | `ui/Button.svelte` (`variant`: primary, secondary, danger, ghost; `size`: sm, md, lg, icon) |
 | Text input, labelled field | `ui/Input.svelte`, `ui/Field.svelte` |
-| Select | `ui/Select.svelte` (Bits UI Select; `label` is the accessible name) |
+| Select | `ui/Select.svelte` (Bits UI Select; `label` is the accessible name; use for short, fixed option lists that benefit from a styled popup) |
+| Native select | `ui/NativeSelect.svelte` (wraps `<select>`; prefer it over `Select` for long or dynamic lists, numeric `bind:value`, and where the platform picker is better, e.g. the Spectator match picker) |
 | Modal dialog | `ui/Dialog.svelte` |
 | Confirm a destructive or irreversible action (replaces `window.confirm`) | `ui/ConfirmDialog.svelte` |
 | Bottom or side sheet | `ui/Drawer.svelte` (Bits UI Dialog; `vaul-svelte` is unmaintained) |
@@ -29,7 +30,8 @@ Locate controls in e2e tests by accessible name; Bits UI parts keep correct role
 
 All colours, radii, type sizes and shadows are defined once in `src/tokens.css`. The palette uses `light-dark()`, so no `dark:` variants are needed; Mode (`data-theme` on `<html>`, set from `matchmark-theme`) only switches `color-scheme`.
 
-- Colour utilities: `bg-bg`, `bg-surface`, `bg-surface-alt`, `border-border`, `text-fg`, `text-muted`, `text-link`, `bg-brand`, `text-on-brand`, `bg-brand-tint`, `bg-danger`, `text-on-danger`, `bg-header`, status pairs `bg-success-bg text-success-fg` (also `warning`, `danger`, `neutral`), and `outline-focus`. The default Tailwind palette is removed; use only these.
+- Colour utilities: `bg-bg`, `bg-surface`, `bg-surface-alt`, `border-border`, `text-fg`, `text-muted`, `text-link`, `bg-brand`, `text-on-brand`, `bg-brand-tint`, `bg-danger`, `text-on-danger`, `bg-header` with `text-header-fg` (also `outline-header-fg`, `bg-header-fg/10`) on the dark header, `bg-overlay` for modal backdrops, status pairs `bg-success-bg text-success-fg` (also `warning`, `danger`, `neutral`), and `outline-focus`. The default Tailwind palette is removed; use only these.
+- Literal `bg-white` is allowed only where a white surface is functional in both modes: the pairing QR code card (scanners need dark modules on white) and the Scorecard image and print view (the image is rendered on white). Everything else uses tokens.
 - Radius: `rounded-sm` 4px, `rounded-md` 8px, `rounded-lg` 12px, `rounded-xl` 16px.
 - Type: `text-sm` 0.85rem, `text-base` 1rem, `text-lg` 1.25rem, `text-xl` 1.6rem; headings use a tighter weight and tracking from the base layer. Numbers are tabular.
 - Shadows: `shadow-card`, `shadow-overlay`.
@@ -41,6 +43,7 @@ All colours, radii, type sizes and shadows are defined once in `src/tokens.css`.
 - One standout moment per page; keep the rest restrained. No gradients, glows or constant motion everywhere.
 - Customize through tokens rather than per-component colour overrides.
 - Motion is CSS only, gated with `motion-safe:`; a global rule also neutralises animation and transition under `prefers-reduced-motion`.
+- The Scorer has no theme switch (it has no chrome by design); it follows the system theme, or the Mode already stored in the browser. Do not add chrome to it for this.
 - Status is never colour only: pair a badge or state with text.
 
 ## Adding a dependency

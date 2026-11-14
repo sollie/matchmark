@@ -27,7 +27,7 @@
 </script>
 
 <div class="flex min-h-dvh flex-col bg-bg text-fg" style="touch-action: manipulation">
-  <header class="flex min-h-14 items-center gap-3 bg-header px-4 text-white">
+  <header class="flex min-h-14 items-center gap-3 bg-header px-4 text-header-fg">
     <img
       class="block h-8 w-auto"
       src="/brand/logo-horizontal-dark.svg"
