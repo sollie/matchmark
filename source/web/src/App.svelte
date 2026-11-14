@@ -19,7 +19,7 @@
 {#if router.path !== "/score"}<SiteHeader />{/if}
 <Toaster />
 
-<div class="app-content">
+<div class="flex-1">
   {#if router.path === "/"}
     <Spectator />
   {:else if router.path === "/results" || router.path.startsWith("/results/")}

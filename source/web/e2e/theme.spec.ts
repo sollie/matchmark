@@ -54,10 +54,10 @@ test.describe("theme", () => {
 
   test("print stays light and the login logo follows the theme", async ({ page }) => {
     await page.goto("/admin");
-    await expect(page.locator(".logo-dark")).toBeVisible();
+    await expect(page.locator('img[src$="logo-stacked-dark.svg"]')).toBeVisible();
     await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
-    await expect(page.locator(".logo-light")).toBeVisible();
-    await expect(page.locator(".logo-dark")).toBeHidden();
+    await expect(page.locator('img[src$="logo-stacked.svg"]')).toBeVisible();
+    await expect(page.locator('img[src$="logo-stacked-dark.svg"]')).toBeHidden();
     await page.emulateMedia({ colorScheme: "dark", media: "print" });
     await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
     expect(await background(page)).toBe(lightBackground);

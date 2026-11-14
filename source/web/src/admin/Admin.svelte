@@ -43,7 +43,7 @@
 </script>
 
 {#if !admin.checked}
-  <main><LoadingState /></main>
+  <main class="p-4"><LoadingState /></main>
 {:else if !admin.authed}
   <Login />
 {:else if admin.mustChangePassword}

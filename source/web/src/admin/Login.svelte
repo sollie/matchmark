@@ -37,16 +37,16 @@
 
 <main class="mx-auto flex max-w-md flex-col gap-5 p-4 pt-8 sm:pt-12">
   <div class="rounded-xl border border-border bg-surface p-6 shadow-card">
-    <div class="login-logo">
+    <div class="mb-3 flex justify-center">
       <img
-        class="logo-light"
+        class="block h-22 w-auto dark-theme:hidden"
         src="/brand/logo-stacked.svg"
         alt="MatchMark"
         width="163"
         height="88"
       />
       <img
-        class="logo-dark"
+        class="hidden h-22 w-auto dark-theme:block"
         src="/brand/logo-stacked-dark.svg"
         alt="MatchMark"
         width="163"
