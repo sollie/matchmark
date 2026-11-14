@@ -4,6 +4,15 @@
   import { settle } from "../lib/api/util";
   import { entryCommands } from "../lib/entries";
   import { courseCategories, segmentColumn, segmentLabel } from "../lib/rulebook.svelte";
+  import Badge from "../lib/ui/Badge.svelte";
+  import Button from "../lib/ui/Button.svelte";
+  import ConfirmDialog from "../lib/ui/ConfirmDialog.svelte";
+  import Dialog from "../lib/ui/Dialog.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
+  import Select from "../lib/ui/Select.svelte";
+  import { cn } from "../lib/ui/utils";
   import ShooterPicker from "./ShooterPicker.svelte";
   import Wa1500Import from "./Wa1500Import.svelte";
   import type { components } from "../lib/api/schema";
@@ -38,6 +47,8 @@
     "0": 0,
     miss: 0,
   });
+  const numberInput =
+    "min-h-11 w-full min-w-0 rounded-md border border-border bg-surface px-3 text-base text-fg outline-offset-2 hover:border-muted focus-visible:outline-3 focus-visible:outline-focus aria-invalid:border-danger";
 
   let shooterId = $state<number | null>(null);
   let pickerKey = $state(0);
@@ -46,9 +57,11 @@
   let chosen = $state<Shooter | null>(null);
   let chosenCategory = $state<string | null>(null);
   let laneInput = $state<number | null>(null);
+  let submitted = $state(false);
   let editing = $state<{ id: number; category: string; lane: number } | null>(null);
   let remarking = $state<{ id: number; text: string } | null>(null);
-  let correcting = $state<{ id: number; classification: number; class: number } | null>(null);
+  let correcting = $state<{ id: number; classification: string; class: string } | null>(null);
+  let confirming = $state<{ kind: "withdraw" | "remove"; entry: EntryWithSegments } | null>(null);
   let scoring = $state<{
     entry: EntryWithSegments;
     segment: number;
@@ -56,7 +69,6 @@
     original: RingCounts;
   } | null>(null);
   let confirmDiscard = $state(false);
-  let countsDialog = $state<HTMLDialogElement>();
   let openedStored = $state("");
   let opener: HTMLElement | null = null;
   let countsError = $state("");
@@ -77,6 +89,12 @@
       ? chosenCategory
       : (categories[0] ?? ""),
   );
+  const shooterError = $derived(submitted && shooterId === null ? "Choose a shooter." : "");
+  const laneError = $derived(
+    submitted && !(Number.isInteger(Number(lane)) && Number(lane) >= 1)
+      ? "Lane must be a whole number from 1."
+      : "",
+  );
   const segmentNumbers = $derived(entries[0]?.segments.map((s) => s.segment_number) ?? []);
   const shooterName = (id: number) => {
     const s = shooters.find((x) => x.id === id) ?? imported.find((x) => x.id === id);
@@ -84,6 +102,11 @@
   };
   const ordered = $derived([...entries].sort((a, b) => a.lane - b.lane || a.id - b.id));
   const commands = $derived(entryCommands(matchId, reload));
+  const categoryItems = (current?: string) =>
+    (current && !categories.includes(current) ? [current, ...categories] : categories).map((c) => ({
+      value: c,
+      label: c,
+    }));
 
   async function run(command: Promise<string | null>): Promise<boolean> {
     error = "";
@@ -102,7 +125,8 @@
 
   async function add(e: SubmitEvent) {
     e.preventDefault();
-    if (shooterId === null) return;
+    submitted = true;
+    if (shooterId === null || laneError) return;
     archivedBlock = null;
     const ok = await run(commands.add({ shooter_id: shooterId, category, lane }));
     if (!ok && error === "shooter_archived") {
@@ -113,6 +137,7 @@
       laneInput = null;
       shooterId = null;
       chosen = null;
+      submitted = false;
       pickerKey++;
     }
   }
@@ -156,22 +181,23 @@
     { value: 4, name: "Master" },
     { value: 5, name: "High Master" },
   ];
+  const classificationItems = classificationOptions.map((o) => ({
+    value: String(o.value),
+    label: o.name,
+  }));
 
   async function saveCorrection() {
     if (!correcting) return;
     const { id, classification, class: competed } = correcting;
-    const ok = await run(commands.classify(id, classification, competed));
+    const ok = await run(commands.classify(id, Number(classification), Number(competed)));
     if (ok) correcting = null;
   }
 
-  async function withdraw(entry: EntryWithSegments) {
-    if (!confirm(`Withdraw ${shooterName(entry.shooter_id)}? Results are kept.`)) return;
-    await run(commands.withdraw(entry.id));
-  }
-
-  async function remove(entry: EntryWithSegments) {
-    if (!confirm(`Remove ${shooterName(entry.shooter_id)} and their results?`)) return;
-    await run(commands.remove(entry.id));
+  async function confirmed() {
+    if (!confirming) return;
+    const { kind, entry } = confirming;
+    confirming = null;
+    await run(kind === "withdraw" ? commands.withdraw(entry.id) : commands.remove(entry.id));
   }
 
   const unlock = (entry: EntryWithSegments, segment: number) =>
@@ -180,7 +206,7 @@
     run(commands.accept(entry.id, segment));
   const lock = (entry: EntryWithSegments, segment: number) => run(commands.lock(entry.id, segment));
 
-  async function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
+  function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
     opener = button;
     countsError = "";
     error = "";
@@ -190,9 +216,6 @@
     for (const k of ringKeys) counts[k] = stored?.[k] ?? 0;
     scoring = { entry, segment, counts, original: { ...counts } };
     openedStored = storedKey(stored);
-    await tick();
-    countsDialog?.showModal();
-    countsDialog?.querySelector("input")?.focus();
   }
 
   const storedKey = (s: { [k in (typeof ringKeys)[number]]: number } | undefined) =>
@@ -204,8 +227,13 @@
     accepted: "Accepted",
   } as const;
 
-  function closeCounts() {
-    countsDialog?.close();
+  async function closeCounts() {
+    scoring = null;
+    countsError = "";
+    confirmDiscard = false;
+    await tick();
+    opener?.focus();
+    opener = null;
   }
 
   function requestClose() {
@@ -215,15 +243,7 @@
       confirmDiscard = true;
       return;
     }
-    closeCounts();
-  }
-
-  function counted() {
-    scoring = null;
-    countsError = "";
-    confirmDiscard = false;
-    opener?.focus();
-    opener = null;
+    void closeCounts();
   }
 
   async function saveCounts(andLock = false) {
@@ -231,27 +251,36 @@
     const { entry, segment, counts } = scoring;
     countsError = (await commands.saveCounts(entry.id, segment, counts)) ?? "";
     if (countsError) return;
-    closeCounts();
+    await closeCounts();
     if (andLock) await lock(entry, segment);
   }
+
+  const cell = "block p-0";
 </script>
 
-<section class="card">
-  <h2>Entries and progress</h2>
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+<section class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card">
+  <h2 class="m-0 text-lg">Entries and progress</h2>
+  {#if error}<ErrorState title={error} />{/if}
   {#if archivedBlock}
-    <p class="error row" role="alert">
-      This shooter is archived
-      <button type="button" class="secondary" onclick={unarchive}>Unarchive</button>
-    </p>
+    <ErrorState title="This shooter is archived">
+      {#snippet action()}
+        <Button variant="secondary" onclick={unarchive}>Unarchive</Button>
+      {/snippet}
+    </ErrorState>
   {/if}
 
   {#if status === "draft"}
-    <form class="row add-form" aria-label="Add entry" onsubmit={add}>
+    <form
+      class="grid items-start gap-3 rounded-lg bg-surface-alt p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_6rem_auto]"
+      aria-label="Add entry"
+      onsubmit={add}
+      novalidate
+    >
       {#key pickerKey}
         <ShooterPicker
           exclude={entered}
           required
+          error={shooterError}
           initial={chosen}
           onselect={(s) => {
             shooterId = s?.id ?? null;
@@ -261,27 +290,32 @@
           onadd={(q) => (importQuery = q)}
         />
       {/key}
-      <label>
-        Category
-        <select
-          aria-label="Entry category"
+      <Field label="Category">
+        <Select
+          label="Entry category"
           bind:value={() => category, (v) => (chosenCategory = v)}
-        >
-          {#each categories as c (c)}<option value={c}>{c}</option>{/each}
-        </select>
-      </label>
-      <label
-        >Lane <input
+          items={categoryItems()}
+        />
+      </Field>
+      <Field label="Lane" error={laneError}>
+        <input
           type="number"
           min="1"
           aria-label="Entry lane"
+          aria-invalid={laneError ? true : undefined}
+          class={numberInput}
           bind:value={() => lane, (v) => (laneInput = v)}
-          size="3"
           required
-        /></label
-      >
-      <button type="submit" class="primary">Add entry</button>
-      <a href="/admin/shooters">Manage shooters</a>
+        />
+      </Field>
+      <div class="flex flex-wrap items-center gap-3 sm:pt-6">
+        <Button type="submit">Add entry</Button>
+        <a
+          href="/admin/shooters"
+          class="inline-flex min-h-11 items-center text-link outline-offset-2 focus-visible:outline-3 focus-visible:outline-focus"
+          >Manage shooters</a
+        >
+      </div>
     </form>
     {#if importQuery !== null}
       <Wa1500Import
@@ -292,574 +326,348 @@
     {/if}
   {/if}
 
-  <div class="scroll">
-    <table class="entries">
-      <thead>
-        <tr>
-          <th>Lane</th><th>Shooter</th><th>Category</th><th>Class</th><th>Remarks</th>
-          {#each segmentNumbers as n (n)}<th title={segmentLabel(course, n)}
-              >{segmentColumn(course, n)}</th
-            >{/each}
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each ordered as entry (entry.id)}
-          <tr class:muted={entry.withdrawn}>
-            {#if editing?.id === entry.id}
-              <td class="lane"
-                ><input
-                  type="number"
-                  min="1"
-                  aria-label="Move lane"
-                  bind:value={editing.lane}
-                  size="3"
-                /></td
+  <table class="block w-full">
+    <thead class="sr-only">
+      <tr>
+        <th>Lane</th><th>Shooter</th><th>Category</th><th>Class</th><th>Remarks</th>
+        {#each segmentNumbers as n (n)}<th title={segmentLabel(course, n)}
+            >{segmentColumn(course, n)}</th
+          >{/each}
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody class="flex flex-col gap-3">
+      {#each ordered as entry (entry.id)}
+        {@const name = shooterName(entry.shooter_id)}
+        <tr
+          class={cn(
+            "flex flex-wrap items-baseline gap-x-3 gap-y-2 rounded-lg border border-border bg-surface p-3 shadow-card",
+            entry.withdrawn && "border-dashed bg-surface-alt text-muted",
+          )}
+        >
+          {#if editing?.id === entry.id}
+            <td class={cn(cell, "order-1 w-24 self-center")}>
+              <input
+                type="number"
+                min="1"
+                aria-label="Move lane"
+                class={numberInput}
+                bind:value={editing.lane}
+              />
+            </td>
+            <td class={cn(cell, "order-2 min-w-0 flex-1 text-lg font-semibold")}>{name}</td>
+            <td class={cn(cell, "order-3 min-w-56 self-center")}>
+              <Select
+                label="Move category"
+                bind:value={editing.category}
+                items={categoryItems(entry.category)}
+              />
+            </td>
+          {:else}
+            <td class={cn(cell, "order-1 self-center font-semibold text-muted")}>
+              <span aria-hidden="true">Lane </span>{entry.lane}
+            </td>
+            <td class={cn(cell, "order-2 min-w-0 flex-1 text-lg font-semibold")}>
+              {name}
+              {#if entry.withdrawn}<Badge class="ml-1">Withdrawn</Badge>{/if}
+            </td>
+            <td class={cn(cell, "order-3 self-center text-muted")}>{entry.category}</td>
+          {/if}
+          <td class={cn(cell, "order-3 flex flex-wrap items-center gap-2 text-muted")}>
+            {#if correcting?.id === entry.id}
+              <Select
+                class="w-44"
+                label="Classification at match"
+                bind:value={correcting.classification}
+                items={classificationItems}
+              />
+              <Select
+                class="w-44"
+                label="Class"
+                bind:value={correcting.class}
+                items={classificationItems}
+              />
+              <Button size="sm" onclick={saveCorrection}>Save class</Button>
+              <Button size="sm" variant="secondary" onclick={() => (correcting = null)}
+                >Cancel</Button
               >
-              <td class="shooter">{shooterName(entry.shooter_id)}</td>
-              <td class="category">
-                <select aria-label="Move category" bind:value={editing.category}>
-                  {#each categories.includes(entry.category) ? categories : [entry.category, ...categories] as c (c)}<option
-                      value={c}>{c}</option
-                    >{/each}
-                </select>
-              </td>
-            {:else}
-              <td class="lane">{entry.lane}</td>
-              <td class="shooter">
-                {shooterName(entry.shooter_id)}
-                {#if entry.withdrawn}<span class="badge neutral">Withdrawn</span>{/if}
-              </td>
-              <td class="category">{entry.category}</td>
+            {:else if entry.class}
+              <span>{entry.classification_at_match?.name ?? "-"} / {entry.class.name}</span>
             {/if}
-            <td class="class">
-              {#if correcting?.id === entry.id}
-                <select aria-label="Classification at match" bind:value={correcting.classification}>
-                  {#each classificationOptions as o (o.value)}<option value={o.value}
-                      >{o.name}</option
-                    >{/each}
-                </select>
-                <select aria-label="Class" bind:value={correcting.class}>
-                  {#each classificationOptions as o (o.value)}<option value={o.value}
-                      >{o.name}</option
-                    >{/each}
-                </select>
-                <button class="primary" onclick={saveCorrection}>Save class</button>
-                <button class="secondary" onclick={() => (correcting = null)}>Cancel</button>
-              {:else if entry.class}
-                {entry.classification_at_match?.name ?? "-"} / {entry.class.name}
-              {/if}
-              {#if correcting?.id !== entry.id && entry.club !== null && course === "150"}
-                <button
-                  class="secondary"
-                  aria-label={`Correct class for ${shooterName(entry.shooter_id)}`}
-                  onclick={() =>
-                    (correcting = {
-                      id: entry.id,
-                      classification: entry.classification_at_match?.value ?? 0,
-                      class: entry.class?.value ?? 0,
-                    })}>Correct</button
-                >
-              {/if}
-            </td>
-            <td class="remarks">
-              {#if remarking?.id === entry.id}
-                <input
-                  type="text"
-                  maxlength="200"
-                  aria-label={`Remarks for ${shooterName(entry.shooter_id)}`}
-                  bind:value={remarking.text}
-                />
-                <button class="primary" onclick={() => saveRemarks(entry)}>Save remarks</button>
-                <button class="secondary" onclick={() => (remarking = null)}>Cancel</button>
-              {:else}
-                {entry.remarks ?? ""}
-                <button
-                  class="secondary"
-                  aria-label={`Edit remarks for ${shooterName(entry.shooter_id)}`}
-                  onclick={() => (remarking = { id: entry.id, text: entry.remarks ?? "" })}
-                  >{entry.remarks ? "Edit" : "Add remarks"}</button
-                >
-              {/if}
-            </td>
-            {#each entry.segments as st (st.segment_number)}
-              <td
-                class="segment"
-                class:state-locked={st.status === "accepted"}
-                class:state-scored={st.status === "open" && st.shots_entered >= st.expected_shots}
-                class:state-open={st.status === "open" && st.shots_entered < st.expected_shots}
-                data-label={segmentLabel(course, st.segment_number)}
+            {#if correcting?.id !== entry.id && entry.club !== null && course === "150"}
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`Correct class for ${name}`}
+                onclick={() =>
+                  (correcting = {
+                    id: entry.id,
+                    classification: String(entry.classification_at_match?.value ?? 0),
+                    class: String(entry.class?.value ?? 0),
+                  })}>Correct</Button
               >
-                <div class="segment-cell">
-                  <div class="segment-status">
-                    {#if st.status === "accepted"}
-                      <span
-                        class="badge success"
-                        title={st.scorer_lane != null
-                          ? `Scored by lane ${st.scorer_lane} ${st.scorer_name ?? ""}`
-                          : `Locked by ${st.scorer_name ?? ""}`}>Accepted</span
-                      >
-                    {:else if st.status === "awaiting_acceptance"}
-                      <span
-                        class="badge info"
-                        title={st.scorer_lane != null
-                          ? `Scored by lane ${st.scorer_lane} ${st.scorer_name ?? ""}`
-                          : `Locked by ${st.scorer_name ?? ""}`}>Awaiting acceptance</span
-                      >
-                    {:else if st.shots_entered >= st.expected_shots}
-                      <span class="badge info">Scored, not locked</span>
-                    {:else}
-                      <span class="badge warning">Open</span>
-                    {/if}
-                    {#if st.status !== "open" || st.shots_entered > 0}
-                      <span class="score"><strong>{st.score}</strong> pts</span>
-                    {/if}
-                  </div>
-                  {#if st.status === "open" && st.shots_entered > 0 && st.shots_entered < st.expected_shots}
-                    <span class="muted">{st.shots_entered} / {st.expected_shots} shots</span>
-                  {/if}
-                  <span class="segment-actions">
-                    <button
-                      class="secondary"
-                      aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Edit`}
-                      onclick={(e) => openCounts(entry, st.segment_number, e.currentTarget)}
-                      >Edit</button
+            {/if}
+          </td>
+          <td
+            class={cn(
+              cell,
+              "order-3 flex min-w-0 basis-full flex-wrap items-center gap-2 text-muted",
+            )}
+          >
+            {#if remarking?.id === entry.id}
+              <Input
+                class="max-w-md flex-1"
+                maxlength={200}
+                aria-label={`Remarks for ${name}`}
+                bind:value={remarking.text}
+              />
+              <Button size="sm" onclick={() => saveRemarks(entry)}>Save remarks</Button>
+              <Button size="sm" variant="secondary" onclick={() => (remarking = null)}
+                >Cancel</Button
+              >
+            {:else}
+              {#if entry.remarks}<span>{entry.remarks}</span>{/if}
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`Edit remarks for ${name}`}
+                onclick={() => (remarking = { id: entry.id, text: entry.remarks ?? "" })}
+                >{entry.remarks ? "Edit" : "Add remarks"}</Button
+              >
+            {/if}
+          </td>
+          <td
+            class={cn(
+              cell,
+              "order-4 grid basis-full grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5",
+            )}
+          >
+            {#each entry.segments as st (st.segment_number)}
+              {@const locked = st.status === "accepted"}
+              {@const scored = st.status === "open" && st.shots_entered >= st.expected_shots}
+              <div
+                class={cn(
+                  "flex min-w-0 flex-col items-start gap-2 rounded-md border-l-4 p-2",
+                  locked && "border-success-fg bg-success-bg",
+                  st.status === "awaiting_acceptance" && "border-link bg-brand-tint",
+                  scored && "border-link bg-brand-tint",
+                  st.status === "open" && !scored && "border-warning-fg bg-surface-alt",
+                )}
+                role="group"
+                aria-label={`Lane ${entry.lane} ${segmentLabel(course, st.segment_number)}`}
+              >
+                <span class="text-sm font-semibold text-muted"
+                  >{segmentLabel(course, st.segment_number)}</span
+                >
+                <div class="flex flex-wrap items-center gap-2">
+                  {#if locked}
+                    <span
+                      title={st.scorer_lane != null
+                        ? `Scored by lane ${st.scorer_lane} ${st.scorer_name ?? ""}`
+                        : `Locked by ${st.scorer_name ?? ""}`}
+                      ><Badge tone="success">Accepted</Badge></span
                     >
-                    {#if st.status === "awaiting_acceptance"}
-                      <button
-                        class="secondary"
-                        aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Accept`}
-                        onclick={() => accept(entry, st.segment_number)}>Accept</button
-                      >
-                    {/if}
-                    {#if st.status !== "open"}
-                      <button
-                        class="secondary"
-                        aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Unlock`}
-                        onclick={() => unlock(entry, st.segment_number)}>Unlock</button
-                      >
-                    {:else}
-                      <button
-                        class="secondary"
-                        aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Lock`}
-                        onclick={() => lock(entry, st.segment_number)}>Lock</button
-                      >
-                    {/if}
-                  </span>
+                  {:else if st.status === "awaiting_acceptance"}
+                    <span
+                      title={st.scorer_lane != null
+                        ? `Scored by lane ${st.scorer_lane} ${st.scorer_name ?? ""}`
+                        : `Locked by ${st.scorer_name ?? ""}`}
+                      ><Badge tone="info">Awaiting acceptance</Badge></span
+                    >
+                  {:else if scored}
+                    <Badge tone="info">Scored, not locked</Badge>
+                  {:else}
+                    <Badge tone="warning">Open</Badge>
+                  {/if}
+                  {#if st.status !== "open" || st.shots_entered > 0}
+                    <span class="text-sm text-muted"
+                      ><strong class="text-base text-fg">{st.score}</strong> pts</span
+                    >
+                  {/if}
                 </div>
-              </td>
-            {/each}
-            <td class="entry-actions">
-              <div class="entry-buttons">
-                {#if editing?.id === entry.id}
-                  <button class="primary" onclick={saveEdit}>Save</button>
-                  <button class="secondary" onclick={() => (editing = null)}>Cancel</button>
-                {:else}
-                  {#if status === "draft"}
-                    <button
-                      class="secondary"
-                      onclick={() =>
-                        (editing = { id: entry.id, category: entry.category, lane: entry.lane })}
-                    >
-                      Move
-                    </button>
-                  {/if}
-                  {#if !entry.withdrawn && status !== "finished"}<button
-                      class="secondary"
-                      onclick={() => withdraw(entry)}>Withdraw</button
-                    >{/if}
-                  <button class="danger remove" onclick={() => remove(entry)}>Remove</button>
+                {#if st.status === "open" && st.shots_entered > 0 && st.shots_entered < st.expected_shots}
+                  <span class="text-sm text-muted"
+                    >{st.shots_entered} / {st.expected_shots} shots</span
+                  >
                 {/if}
+                <div class="flex flex-wrap gap-1">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Edit`}
+                    onclick={(e) => openCounts(entry, st.segment_number, e.currentTarget)}
+                    >Edit</Button
+                  >
+                  {#if st.status === "awaiting_acceptance"}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Accept`}
+                      onclick={() => accept(entry, st.segment_number)}>Accept</Button
+                    >
+                  {/if}
+                  {#if st.status !== "open"}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Unlock`}
+                      onclick={() => unlock(entry, st.segment_number)}>Unlock</Button
+                    >
+                  {:else}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Lock`}
+                      onclick={() => lock(entry, st.segment_number)}>Lock</Button
+                    >
+                  {/if}
+                </div>
               </div>
-            </td>
-          </tr>
-        {:else}
-          <tr class="empty"
-            ><td colspan={6 + segmentNumbers.length}
-              >No entries yet. Add a shooter above to get started.</td
-            ></tr
+            {/each}
+          </td>
+          <td
+            class={cn(
+              cell,
+              "order-5 flex basis-full flex-wrap items-center gap-2 border-t border-border pt-3",
+            )}
           >
-        {/each}
-      </tbody>
-    </table>
-  </div>
-
-  <dialog
-    bind:this={countsDialog}
-    class="counts"
-    aria-labelledby="counts-title"
-    onclose={counted}
-    oncancel={(e) => {
-      e.preventDefault();
-      requestClose();
-    }}
-    onclick={(e) => {
-      if (e.target === countsDialog) requestClose();
-    }}
-  >
-    {#if scoring}
-      {@const expected =
-        scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ??
-        0}
-      {@const stored = entries
-        .find((e) => e.id === scoring?.entry.id)
-        ?.segments.find((s) => s.segment_number === scoring?.segment)}
-      {@const storedChanged = storedKey(stored) !== openedStored}
-      {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
-      <form
-        onsubmit={(e) => e.preventDefault()}
-        onkeydown={(e) => {
-          if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault();
-        }}
-      >
-        <div class="counts-head">
-          <h3 id="counts-title">
-            {shooterName(scoring.entry.shooter_id)}, {segmentLabel(course, scoring.segment)}
-          </h3>
-          <button type="button" class="secondary" aria-label="Close" onclick={requestClose}
-            >✕</button
+            {#if editing?.id === entry.id}
+              <Button onclick={saveEdit}>Save</Button>
+              <Button variant="secondary" onclick={() => (editing = null)}>Cancel</Button>
+            {:else}
+              {#if status === "draft"}
+                <Button
+                  variant="secondary"
+                  onclick={() =>
+                    (editing = { id: entry.id, category: entry.category, lane: entry.lane })}
+                  >Move</Button
+                >
+              {/if}
+              {#if !entry.withdrawn && status !== "finished"}
+                <Button
+                  variant="secondary"
+                  onclick={() => (confirming = { kind: "withdraw", entry })}>Withdraw</Button
+                >
+              {/if}
+              <Button
+                variant="danger"
+                class="ml-auto"
+                onclick={() => (confirming = { kind: "remove", entry })}>Remove</Button
+              >
+            {/if}
+          </td>
+        </tr>
+      {:else}
+        <tr>
+          <td class="block rounded-lg border border-dashed border-border p-6 text-center text-muted"
+            >No entries yet. Add a shooter above to get started.</td
           >
-        </div>
-        {#if countsError}<p class="error" role="alert">{countsError}</p>{/if}
-        {#if confirmDiscard}
-          <div class="row" role="alertdialog" aria-label="Discard changes?">
-            <strong>Discard changes?</strong>
-            <button type="button" class="secondary" onclick={() => (confirmDiscard = false)}
-              >Keep editing</button
-            >
-            <button type="button" class="danger" onclick={closeCounts}>Discard</button>
-          </div>
-        {/if}
-        <section class="stored" aria-label="Stored counts">
-          <h4>Stored counts</h4>
-          {#if storedChanged}
-            <p class="error" role="status">Stored counts changed since you opened this</p>
-          {/if}
-          {#if stored && stored.shots_entered > 0}
-            <ul class="stored-grid">
-              {#each ringKeys as k (k)}
-                <li>{k === "x" ? "X" : k} <strong>{stored[k]}</strong></li>
-              {/each}
-            </ul>
-            <p>
-              <strong>{stored.shots_entered}</strong> / {expected} shots ·
-              {statusLabels[stored.status]}
-            </p>
-          {:else}
-            <p class="muted">No counts entered yet</p>
-          {/if}
-        </section>
-        <p class="muted">Enter all counts; they must sum to {expected} shots.</p>
-        <div class="count-grid">
-          {#each ringKeys as k (k)}
-            <label>
-              {k === "x" ? "X" : k}
-              <input type="number" inputmode="numeric" min="0" bind:value={scoring.counts[k]} />
-            </label>
-          {/each}
-        </div>
-        <p class="total" class:mismatch={total !== expected}>
-          <strong>{total}</strong> / {expected}
-          {#if total === expected}
-            <span class="badge success">✓ Shots match</span>
-          {:else if total > expected}
-            <span class="badge danger">⚠ {total - expected} too many</span>
-          {:else}
-            <span class="badge warning">⚠ {expected - total} to go</span>
-          {/if}
-        </p>
-        <div class="count-actions">
-          <button type="button" class="primary" onclick={() => saveCounts()}>Save counts</button>
-          <button type="button" class="primary" onclick={() => saveCounts(true)}
-            >Save and lock</button
-          >
-          <button type="button" class="secondary" onclick={requestClose}>Cancel</button>
-        </div>
-      </form>
-    {/if}
-  </dialog>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
 </section>
 
-<style>
-  .add-form label {
-    min-width: 0;
-  }
-  .entries .segment-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
-  }
-  .entries .segment-status {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .entries .segment-actions,
-  .entries .entry-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-  .entries .entry-buttons .remove {
-    margin-left: var(--space-3);
-  }
-  .entries .shooter {
-    font-weight: 600;
-  }
-  .entries .score {
-    font-size: var(--text-sm);
-    color: var(--text-muted);
-  }
-  .entries .score strong {
-    color: var(--text);
-    font-size: var(--text-base);
-  }
-  .entries .shooter .badge {
-    margin-left: var(--space-1);
-  }
-  .entries .empty td {
-    padding: var(--space-5);
-    text-align: center;
-    color: var(--text-muted);
-  }
-  dialog.counts {
-    width: min(36rem, calc(100vw - 2 * var(--space-3)));
-    max-height: calc(100vh - 2 * var(--space-3));
-    overflow: auto;
-    padding: 0;
-    border: 1px solid var(--border, currentColor);
-    border-radius: var(--radius, 0.5rem);
-    background: var(--surface, Canvas);
-    color: var(--text);
-  }
-  dialog.counts form {
-    padding: var(--space-4);
-  }
-  .counts-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-  .counts-head h3 {
-    margin: 0;
-  }
-  .stored h4 {
-    margin: var(--space-3) 0 var(--space-2);
-  }
-  .stored-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  .count-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
-    gap: var(--space-3);
-    margin: var(--space-3) 0;
-  }
-  .count-grid label {
-    font-size: var(--text-base);
-    font-weight: 700;
-  }
-  .count-grid input {
-    width: 100%;
-    min-height: 3.25rem;
-    font-size: 1.5rem;
-    text-align: center;
-  }
-  .total {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-lg);
-  }
-  .total strong {
-    font-size: 2rem;
-  }
-  .total.mismatch strong {
-    color: var(--danger-fg);
-  }
-  .count-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-  .count-actions button {
-    flex: 1 1 8rem;
-    min-height: var(--touch);
-  }
-  tr.muted td {
-    color: var(--text-muted);
-  }
+{#if confirming}
+  {@const who = shooterName(confirming.entry.shooter_id)}
+  <ConfirmDialog
+    title={confirming.kind === "withdraw" ? "Withdraw entry" : "Remove entry"}
+    description={confirming.kind === "withdraw"
+      ? `Withdraw ${who}? Results are kept. The entry stays in the results marked as withdrawn and the lane is freed.`
+      : `Remove ${who} and their results? Every segment score for this entry is deleted and this cannot be undone.`}
+    confirmLabel={confirming.kind === "withdraw" ? "Withdraw entry" : "Remove entry"}
+    tone={confirming.kind === "withdraw" ? "primary" : "danger"}
+    onconfirm={confirmed}
+    oncancel={() => (confirming = null)}
+  />
+{/if}
 
-  .entries,
-  .entries tbody,
-  .entries tr,
-  .entries td {
-    display: block;
-  }
-  .entries thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-  .entries tbody tr {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin: var(--space-3) 0;
-    padding: var(--space-3);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-  }
-  .entries tbody tr:hover > td {
-    background: transparent;
-  }
-  .entries td {
-    padding: 0;
-    border: 0;
-  }
-  .entries tbody tr {
-    --cols: 2;
-    align-items: baseline;
-  }
-  .entries tbody tr::after {
-    content: "";
-    order: 3;
-    flex: 0 0 100%;
-    height: 0;
-  }
-  .entries .lane {
-    order: 1;
-  }
-  .entries .shooter {
-    order: 2;
-    flex: 1 1 0;
-    min-width: 0;
-    font-size: var(--text-lg);
-  }
-  .entries .category {
-    order: 3;
-    color: var(--text-muted);
-  }
-  .entries .class {
-    order: 3;
-    color: var(--text-muted);
-  }
-  .entries .remarks {
-    order: 3;
-    flex: 1 1 100%;
-    color: var(--text-muted);
-  }
-  .entries .lane::before {
-    content: "Lane ";
-    color: var(--text-muted);
-    font-weight: 600;
-  }
-  .entries .lane,
-  .entries .category {
-    align-self: center;
-  }
-  .entries .segment {
-    order: 4;
-    flex: 0 0 calc((100% - (var(--cols) - 1) * var(--space-2)) / var(--cols));
-    box-sizing: border-box;
-    padding: var(--space-2);
-    background: var(--surface-alt);
-    border-left: 4px solid var(--border);
-    border-radius: var(--radius);
-  }
-  .entries .segment.state-locked {
-    background: var(--success-bg);
-    border-left-color: var(--success-fg);
-  }
-  .entries .segment.state-scored {
-    background: var(--brand-tint);
-    border-left-color: var(--link);
-  }
-  .entries .segment.state-open {
-    border-left-color: var(--warning-fg);
-  }
-  .entries .segment.state-locked::before {
-    color: var(--success-fg);
-  }
-  .entries .segment::before {
-    content: attr(data-label);
-    display: block;
-    margin-bottom: var(--space-1);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--text-muted);
-  }
-  .entries .entry-actions {
-    order: 5;
-    flex: 1 1 100%;
-    padding-top: var(--space-2);
-    border-top: 1px solid var(--border);
-  }
-  .entries .entry-buttons {
-    align-items: center;
-  }
-  .entries .entry-buttons .remove {
-    margin-left: auto;
-  }
-  .entries button {
-    min-height: var(--touch);
-    min-width: var(--touch);
-  }
-  .entries input,
-  .entries select {
-    min-height: var(--touch);
-  }
-  .entries .empty {
-    display: block;
-    padding: 0;
-    border: 1px dashed var(--border);
-    border-radius: var(--radius-lg);
-  }
-  .entries .empty td {
-    padding: var(--space-5);
-  }
-  .scroll {
-    overflow: visible;
-    border: 0;
-  }
-  @media (min-width: 30rem) {
-    .entries tbody tr {
-      --cols: 3;
-    }
-  }
-  @media (min-width: 48rem) {
-    .entries tbody tr {
-      --cols: 5;
-    }
-  }
-
-  @media (max-width: 47.99rem) {
-    .add-form {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .add-form :is(input, select, button) {
-      width: 100%;
-      min-height: var(--touch);
-    }
-    .add-form a {
-      display: inline-flex;
-      align-items: center;
-      min-height: var(--touch);
-    }
-  }
-</style>
+{#if scoring}
+  {@const expected =
+    scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ?? 0}
+  {@const stored = entries
+    .find((e) => e.id === scoring?.entry.id)
+    ?.segments.find((s) => s.segment_number === scoring?.segment)}
+  {@const storedChanged = storedKey(stored) !== openedStored}
+  {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
+  <Dialog
+    title={`${shooterName(scoring.entry.shooter_id)}, ${segmentLabel(course, scoring.segment)}`}
+    description={`Enter all counts; they must sum to ${expected} shots.`}
+    closeLabel="Close"
+    autofocus="input"
+    class="w-[min(36rem,calc(100vw-1.5rem))]"
+    onrequestclose={requestClose}
+  >
+    <form
+      class="flex flex-col gap-3"
+      onsubmit={(e) => e.preventDefault()}
+      onkeydown={(e) => {
+        if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault();
+      }}
+    >
+      {#if countsError}<ErrorState title={countsError} />{/if}
+      {#if confirmDiscard}
+        <div
+          class="flex flex-wrap items-center gap-2 rounded-lg border border-danger bg-danger-bg p-3 text-danger-fg"
+          role="alertdialog"
+          aria-label="Discard changes?"
+        >
+          <strong class="mr-auto">Discard changes?</strong>
+          <Button variant="secondary" onclick={() => (confirmDiscard = false)}>Keep editing</Button>
+          <Button variant="danger" onclick={closeCounts}>Discard</Button>
+        </div>
+      {/if}
+      <section class="rounded-lg bg-surface-alt p-3" aria-label="Stored counts">
+        <h3 class="m-0 mb-2 text-base">Stored counts</h3>
+        {#if storedChanged}
+          <p class="m-0 mb-2 font-semibold text-danger-fg" role="status">
+            Stored counts changed since you opened this
+          </p>
+        {/if}
+        {#if stored && stored.shots_entered > 0}
+          <ul class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0">
+            {#each ringKeys as k (k)}
+              <li>{k === "x" ? "X" : k} <strong>{stored[k]}</strong></li>
+            {/each}
+          </ul>
+          <p class="m-0 mt-2">
+            <strong>{stored.shots_entered}</strong> / {expected} shots ·
+            {statusLabels[stored.status]}
+          </p>
+        {:else}
+          <p class="m-0 text-muted">No counts entered yet</p>
+        {/if}
+      </section>
+      <div class="grid grid-cols-[repeat(auto-fit,minmax(5rem,1fr))] gap-3">
+        {#each ringKeys as k (k)}
+          <label class="flex flex-col gap-1 font-bold">
+            {k === "x" ? "X" : k}
+            <input
+              type="number"
+              inputmode="numeric"
+              min="0"
+              class={cn(numberInput, "min-h-13 text-center text-xl")}
+              bind:value={scoring.counts[k]}
+            />
+          </label>
+        {/each}
+      </div>
+      <p class="m-0 flex flex-wrap items-center gap-2 text-lg">
+        <strong class={cn("text-3xl", total !== expected && "text-danger-fg")}>{total}</strong>
+        / {expected}
+        {#if total === expected}
+          <Badge tone="success">✓ Shots match</Badge>
+        {:else if total > expected}
+          <Badge tone="danger">⚠ {total - expected} too many</Badge>
+        {:else}
+          <Badge tone="warning">⚠ {expected - total} to go</Badge>
+        {/if}
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <Button class="flex-1" onclick={() => saveCounts()}>Save counts</Button>
+        <Button class="flex-1" onclick={() => saveCounts(true)}>Save and lock</Button>
+        <Button class="flex-1" variant="secondary" onclick={requestClose}>Cancel</Button>
+      </div>
+    </form>
+  </Dialog>
+{/if}

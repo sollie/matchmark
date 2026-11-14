@@ -12,6 +12,7 @@ Tailwind v4, Bits UI primitives, svelte-sonner, NumberFlow, `@lucide/svelte` ico
 | Text input, labelled field | `ui/Input.svelte`, `ui/Field.svelte` |
 | Select | `ui/Select.svelte` (Bits UI Select; `label` is the accessible name) |
 | Modal dialog | `ui/Dialog.svelte` |
+| Confirm a destructive or irreversible action (replaces `window.confirm`) | `ui/ConfirmDialog.svelte` |
 | Bottom or side sheet | `ui/Drawer.svelte` (Bits UI Dialog; `vaul-svelte` is unmaintained) |
 | Tabs | `ui/Tabs.svelte` |
 | Table | `ui/Table.svelte` (scrolling region with a required `label`) |

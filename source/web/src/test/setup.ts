@@ -25,3 +25,8 @@ const floatingStyle = document.createElement("style");
 floatingStyle.textContent =
   "[data-bits-floating-content-wrapper] { visibility: visible !important; }";
 document.head.appendChild(floatingStyle);
+
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.setPointerCapture ??= () => {};
+Element.prototype.releasePointerCapture ??= () => {};
+Element.prototype.scrollIntoView ??= () => {};

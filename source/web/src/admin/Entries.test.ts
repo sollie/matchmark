@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
+import { render, screen, waitFor, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import Entries from "./Entries.svelte";
 import { stubFetch } from "../test/fetch";
+import { choose, optionLabels } from "../test/select";
 import { rulebook, type RulebookCourse } from "../lib/rulebook.svelte";
 import type { components } from "../lib/api/schema";
 
@@ -110,19 +111,14 @@ function setup(
   return { calls, reload, view, user: userEvent.setup() };
 }
 
-const options = (name: string) =>
-  within(screen.getByRole("combobox", { name }))
-    .getAllByRole("option")
-    .map((o) => o.textContent);
-
 afterEach(() => vi.restoreAllMocks());
 
 describe("Entries", () => {
   it("offers only the categories the course allows when adding and editing", async () => {
     const { user } = setup([entry({ category: "Revolver 1500" })], "40");
-    expect(options("Entry category")).toEqual(["Revolver 1500"]);
+    expect(await optionLabels(user, "Entry category")).toEqual(["Revolver 1500"]);
     await user.click(screen.getByRole("button", { name: "Move" }));
-    expect(options("Move category")).toEqual(["Revolver 1500"]);
+    expect(await optionLabels(user, "Move category")).toEqual(["Revolver 1500"]);
   });
 
   it("titles segment columns with the rulebook segment name", () => {
@@ -136,20 +132,17 @@ describe("Entries", () => {
   it("keeps the current category of a legacy entry selectable when editing", async () => {
     const { user } = setup([entry({ category: "Pistol 1500" })], "40");
     await user.click(screen.getByRole("button", { name: "Move" }));
-    expect(options("Move category")).toEqual(["Pistol 1500", "Revolver 1500"]);
+    expect(await optionLabels(user, "Move category")).toEqual(["Pistol 1500", "Revolver 1500"]);
   });
 
   it("falls back to the first allowed category when the course changes", async () => {
     const { view, user } = setup([], "150");
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Entry category" }),
-      "Pistol Optical Sight 1500",
-    );
+    await choose(user, "Entry category", "Pistol Optical Sight 1500");
     await view.rerender({ course: "40" });
-    expect(options("Entry category")).toEqual(["Revolver 1500"]);
-    expect(
-      (screen.getByRole("combobox", { name: "Entry category" }) as HTMLSelectElement).value,
-    ).toBe("Revolver 1500");
+    expect(await optionLabels(user, "Entry category")).toEqual(["Revolver 1500"]);
+    expect(screen.getByRole("combobox", { name: "Entry category" }).textContent).toContain(
+      "Revolver 1500",
+    );
   });
 
   it("labels each segment as Accepted or Open", () => {
@@ -213,11 +206,8 @@ describe("Entries", () => {
     const { calls, user } = setup([frozen]);
     expect(screen.getByText("Unclassified / Master")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Correct class for Jane Doe" }));
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Classification at match" }),
-      "Expert",
-    );
-    await user.selectOptions(screen.getByRole("combobox", { name: "Class" }), "Expert");
+    await choose(user, "Classification at match", "Expert");
+    await choose(user, "Class", "Expert");
     await user.click(screen.getByRole("button", { name: "Save class" }));
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
       "PUT /api/matches/5/entries/1/classification",
@@ -281,7 +271,6 @@ describe("Entries", () => {
     const edit = screen.getByRole("button", { name: "Lane 1 segment 2: Edit" });
     await user.click(edit);
     const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
-    expect(dialog.hasAttribute("open")).toBe(true);
     expect(document.activeElement).toBe(within(dialog).getByLabelText("X"));
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -387,13 +376,7 @@ describe("Entries", () => {
         async (u: ReturnType<typeof userEvent.setup>) =>
           u.click(screen.getByRole("button", { name: "Close" })),
       ],
-      [
-        "Esc",
-        async () => {
-          fireEvent(dialogEl(), new Event("cancel", { cancelable: true }));
-        },
-      ],
-      ["backdrop", async (u: ReturnType<typeof userEvent.setup>) => u.click(dialogEl())],
+      ["Esc", async (u: ReturnType<typeof userEvent.setup>) => u.keyboard("{Escape}")],
     ] as const;
 
     it.each(closers)("%s closes a clean dialog immediately", async (_n, close) => {
@@ -445,7 +428,7 @@ describe("Entries", () => {
     await user.type(x, "5");
     await user.click(screen.getByRole("button", { name: "Save and lock" }));
     const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
-    expect(within(dialog).getByRole("alert").textContent).toBe("invalid input");
+    expect(within(dialog).getByRole("alert").textContent?.trim()).toBe("invalid input");
     expect((within(dialog).getByLabelText("X") as HTMLInputElement).value).toBe("5");
   });
 
@@ -463,14 +446,14 @@ describe("Entries", () => {
     ["Remove", "DELETE", "/api/matches/5/entries/1"],
   ])("asks before %s and only sends when confirmed", async (label, method, path) => {
     const { calls, user } = setup();
-    const confirm = vi
-      .spyOn(window, "confirm")
-      .mockReturnValueOnce(false)
-      .mockReturnValueOnce(true);
     await user.click(screen.getByRole("button", { name: label }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
     expect(calls).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: label }));
-    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("dialog").textContent).toContain("Jane Doe");
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: `${label} entry` }),
+    );
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`${method} ${path}`]);
   });
 

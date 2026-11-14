@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import {
   addEntry,
+  choose,
+  confirmDialog,
   createMatch,
   createPairing,
   createShooter,
@@ -43,7 +45,7 @@ test.describe("matches", () => {
 
         await page.goto("/admin");
         await page.getByLabel("Name").fill(name);
-        await page.getByLabel("Course of fire").selectOption({ label: course.label });
+        await choose(page, "Course of fire", course.label);
         await page.getByRole("button", { name: "Create match" }).click();
 
         await expect(page.getByRole("heading", { name })).toBeVisible();
@@ -80,10 +82,7 @@ test.describe("matches", () => {
     await page.getByRole("button", { name: "Create match" }).click();
 
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(form.getByLabel("Date", { exact: true })).toHaveJSProperty(
-      "validity.valid",
-      false,
-    );
+    await expect(form.getByText("Enter a date as YYYY-MM-DD.")).toBeVisible();
     await expect(row(page, name)).toHaveCount(0);
 
     await form.getByLabel("Date", { exact: true }).fill("2026-10-19");
@@ -145,36 +144,23 @@ test.describe("matches", () => {
     await openMatch(page, match.id);
     await expect(page.getByRole("heading", { name: match.name })).toBeVisible();
 
-    const messages: string[] = [];
-    page.on("dialog", (dialog) => {
-      messages.push(dialog.message());
-      void (accept ? dialog.accept() : dialog.dismiss());
-    });
-
-    let accept = false;
     await page.getByRole("button", { name: "Start match" }).click();
+    await decide(page, "Start match", false, "Start this match?");
     await expect(page.getByText("draft", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Start match" })).toBeVisible();
 
-    accept = true;
     await page.getByRole("button", { name: "Start match" }).click();
+    await decide(page, "Start match", true, "Entries are then frozen");
     await expect(page.getByText("active", { exact: true })).toBeVisible();
 
-    accept = false;
     await page.getByRole("button", { name: "Finish match" }).click();
+    await decide(page, "Finish match", false, "Finish this match?");
     await expect(page.getByText("active", { exact: true })).toBeVisible();
 
-    accept = true;
     await page.getByRole("button", { name: "Finish match" }).click();
+    await decide(page, "Finish match", true, "All pairings are revoked");
     await expect(page.getByText("finished", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Start match|Finish match/ })).toHaveCount(0);
-
-    expect(messages).toEqual([
-      expect.stringContaining("Start this match?"),
-      expect.stringContaining("Start this match?"),
-      expect.stringContaining("Finish this match?"),
-      expect.stringContaining("Finish this match?"),
-    ]);
   });
 
   test("an active match without hits returns to draft, takes a late entry and restarts", async ({
@@ -187,16 +173,12 @@ test.describe("matches", () => {
     await setStatus(admin, match.id, "active");
     await openMatch(page, match.id);
 
-    const messages: string[] = [];
-    page.once("dialog", (dialog) => {
-      messages.push(dialog.message());
-      void dialog.accept();
-    });
     await page.getByRole("button", { name: "Back to draft" }).click();
-    await expect(page.getByText("draft", { exact: true })).toBeVisible();
-    expect(messages).toEqual([
+    await expect(confirmDialog(page)).toContainText(
       "Return this match to draft? Devices will show 'not started' and spectators won't see the match until you start it again. Only possible while no hits are entered.",
-    ]);
+    );
+    await confirmDialog(page).getByRole("button", { name: "Back to draft" }).click();
+    await expect(page.getByText("draft", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Back to draft" })).toHaveCount(0);
 
     const late = await createShooter(admin);
@@ -204,8 +186,8 @@ test.describe("matches", () => {
     await page.reload();
     await expect(row(page, late.last_name)).toBeVisible();
 
-    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Start match" }).click();
+    await confirmDialog(page).getByRole("button", { name: "Start match" }).click();
     await expect(page.getByText("active", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Back to draft" })).toBeVisible();
   });
@@ -240,8 +222,8 @@ test.describe("matches", () => {
     const pairings = section(page, "Scorer pairing");
     await expect(pairings.getByRole("row", { name: /paired/ })).toHaveCount(1);
 
-    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Finish match" }).click();
+    await confirmDialog(page).getByRole("button", { name: "Finish match", exact: true }).click();
     await expect(page.getByText("finished", { exact: true })).toBeVisible();
 
     await expect(pairings.getByText("Match finished. Pairings are revoked.")).toBeVisible();
@@ -267,7 +249,7 @@ test.describe("matches", () => {
     const form = page.getByRole("form", { name: "Edit match" });
     await form.getByLabel("Name").fill(name);
     await form.getByLabel("Date").fill("2026-10-19");
-    await form.getByLabel("Course of fire").selectOption({ label: target.label });
+    await choose(page, "Course of fire", target.label, form);
     await form.getByRole("button", { name: "Save" }).click();
 
     await expect(page.getByRole("heading", { name })).toBeVisible();
@@ -292,7 +274,7 @@ test.describe("matches", () => {
     const form = page.getByRole("form", { name: "Edit match" });
     await form.getByLabel("Date").fill("19/10/2026");
     await form.getByRole("button", { name: "Save" }).click();
-    await expect(form.getByLabel("Date")).toHaveJSProperty("validity.valid", false);
+    await expect(form.getByText("Enter a date as YYYY-MM-DD.")).toBeVisible();
     await expect(page.getByRole("heading", { name: match.name })).toBeVisible();
   });
 
@@ -334,15 +316,13 @@ test.describe("matches", () => {
     const match = await createMatch(admin);
     await openMatch(page, match.id);
 
-    page.once("dialog", (dialog) => dialog.dismiss());
     await page.getByRole("button", { name: "Delete match" }).click();
+    await confirmDialog(page).getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByRole("heading", { name: match.name })).toBeVisible();
 
-    page.once("dialog", (dialog) => {
-      expect(dialog.message()).toContain(match.name);
-      void dialog.accept();
-    });
     await page.getByRole("button", { name: "Delete match" }).click();
+    await expect(confirmDialog(page)).toContainText(match.name);
+    await confirmDialog(page).getByRole("button", { name: "Delete match" }).click();
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole("heading", { name: "Matches" })).toBeVisible();
     await expect(row(page, match.name)).toHaveCount(0);
@@ -410,3 +390,10 @@ test.describe("matches", () => {
     await expect(page).toHaveURL(/\/admin\/?$/);
   });
 });
+
+async function decide(page: Page, confirmLabel: string, accept: boolean, text: string) {
+  const dialog = confirmDialog(page);
+  await expect(dialog).toContainText(text);
+  await dialog.getByRole("button", { name: accept ? confirmLabel : "Cancel", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}

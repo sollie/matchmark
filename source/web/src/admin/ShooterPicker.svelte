@@ -1,6 +1,10 @@
 <script lang="ts">
   import { api } from "../lib/api/client";
   import type { components } from "../lib/api/schema";
+  import Badge from "../lib/ui/Badge.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
+  import { cn } from "../lib/ui/utils";
 
   type Shooter = components["schemas"]["Shooter"];
 
@@ -8,6 +12,7 @@
     label = "Shooter",
     exclude = [],
     required = false,
+    error = "",
     initial = null,
     onselect,
     onadd,
@@ -15,11 +20,13 @@
     label?: string;
     exclude?: number[];
     required?: boolean;
+    error?: string;
     initial?: Shooter | null;
     onselect: (shooter: Shooter | null) => void;
     onadd?: (query: string) => void;
   } = $props();
 
+  const option = "flex min-h-11 items-center gap-2 rounded-md px-3 py-2";
   const uid = $props.id();
   const listId = `${uid}-list`;
   const optionId = (i: number) => `${uid}-opt-${i}`;
@@ -115,10 +122,9 @@
   }
 </script>
 
-<div class="picker">
-  <label>
-    {label}
-    <input
+<div class="relative min-w-0">
+  <Field {label} {error}>
+    <Input
       type="text"
       role="combobox"
       autocomplete="off"
@@ -126,6 +132,7 @@
       aria-controls={listId}
       aria-autocomplete="list"
       aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
+      aria-invalid={error ? true : undefined}
       {required}
       bind:value={text}
       {oninput}
@@ -133,14 +140,20 @@
       {onkeydown}
       {onblur}
     />
-  </label>
-  <ul id={listId} role="listbox" aria-label={label} hidden={!open}>
+  </Field>
+  <ul
+    id={listId}
+    role="listbox"
+    aria-label={label}
+    hidden={!open}
+    class="absolute inset-x-0 z-20 m-0 mt-1 max-h-64 list-none overflow-y-auto rounded-lg border border-border bg-surface p-1 text-fg shadow-overlay"
+  >
     {#each visible as s, i (s.id)}
       <li
         id={optionId(i)}
         role="option"
         aria-selected={i === active}
-        class:active={i === active}
+        class={cn(option, "cursor-pointer", i === active && "bg-brand-tint")}
         onmousedown={(e) => e.preventDefault()}
         onclick={() => choose(s)}
       >
@@ -149,21 +162,32 @@
       </li>
     {/each}
     {#each archived as s (s.id)}
-      <li role="option" aria-selected="false" aria-disabled="true" class="archived">
-        {s.first_name}
-        {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
-        <span class="badge neutral">Archived</span>
+      <li
+        role="option"
+        aria-selected="false"
+        aria-disabled="true"
+        class={cn(option, "justify-between text-muted")}
+      >
+        <span>
+          {s.first_name}
+          {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
+        </span>
+        <Badge>Archived</Badge>
       </li>
     {/each}
     {#if searched && !loading && shown.length === 0}
-      <li class="empty" role="presentation">No match</li>
+      <li class={cn(option, "text-muted")} role="presentation">No match</li>
     {/if}
     {#if onadd}
       <li
         id={optionId(visible.length)}
         role="option"
         aria-selected={active === visible.length}
-        class:active={active === visible.length}
+        class={cn(
+          option,
+          "cursor-pointer font-semibold",
+          active === visible.length && "bg-brand-tint",
+        )}
         onmousedown={(e) => e.preventDefault()}
         onclick={add}
       >
@@ -172,42 +196,3 @@
     {/if}
   </ul>
 </div>
-
-<style>
-  .picker {
-    position: relative;
-  }
-  ul {
-    position: absolute;
-    z-index: 10;
-    left: 0;
-    right: 0;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-    max-height: 16rem;
-    overflow-y: auto;
-  }
-  li {
-    padding: var(--space-2) var(--space-3);
-    cursor: pointer;
-  }
-  li.active {
-    background: var(--brand-tint);
-    color: var(--text);
-  }
-  li.archived {
-    cursor: default;
-    color: var(--text-muted);
-  }
-  li.empty {
-    cursor: default;
-    color: var(--text-muted);
-  }
-  [hidden] {
-    display: none;
-  }
-</style>
