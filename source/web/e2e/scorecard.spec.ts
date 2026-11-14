@@ -61,6 +61,23 @@ test.describe("scorecard", () => {
     ).toBe(true);
   });
 
+  test("printing keeps the card and hides the page chrome", async ({ page, admin }) => {
+    const match = await createMatch(admin, { name: uniqueName("Scorecard print") });
+    const shooter = await createShooter(admin);
+    await addEntry(admin, match.id, shooter.id, 1);
+    await setStatus(admin, match.id, "active");
+    await setStatus(admin, match.id, "finished");
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.goto(`/scorecard/${match.id}/1`);
+    const image = page.getByRole("img", { name: /^Scorecard for .+, lane 1$/ });
+    await expect(image).toBeVisible();
+    await page.emulateMedia({ media: "print" });
+    await expect(image).toBeVisible();
+    await expect(page.getByRole("link", { name: "Download PNG" })).toBeHidden();
+    await expect(page.getByRole("banner")).toBeHidden();
+    await expect(page.getByRole("contentinfo")).toBeHidden();
+  });
+
   test("an unfinished match explains that the card is not available", async ({ page, admin }) => {
     const match = await createMatch(admin, {
       name: uniqueName("Scorecard unfinished"),

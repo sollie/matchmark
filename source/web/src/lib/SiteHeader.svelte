@@ -10,7 +10,9 @@
   const adminRoute = $derived(router.path === "/admin" || router.path.startsWith("/admin/"));
 </script>
 
-<header class="site-header flex min-h-12 items-center gap-2 border-b border-border bg-header px-4">
+<header
+  class="site-header print:hidden flex min-h-12 items-center gap-2 border-b border-border bg-header px-4"
+>
   <a
     class="inline-flex items-center rounded-md outline-offset-2 focus-visible:outline-3 focus-visible:outline-white"
     href="/"
