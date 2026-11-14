@@ -4,6 +4,11 @@
   import { club, clubLogoUrl } from "../lib/club.svelte";
   import { matchRoute, navigate, router } from "../lib/router.svelte";
   import { loadRulebook, segmentLabel } from "../lib/rulebook.svelte";
+  import Button, { buttonVariants } from "../lib/ui/Button.svelte";
+  import EmptyState from "../lib/ui/EmptyState.svelte";
+  import LoadingState from "../lib/ui/LoadingState.svelte";
+  import Select from "../lib/ui/Select.svelte";
+  import Table from "../lib/ui/Table.svelte";
   import type { components } from "../lib/api/schema";
 
   type Match = components["schemas"]["Match"];
@@ -119,73 +124,90 @@
     document.body.append(frame);
   }
 
-  function pick(event: Event) {
-    const value = (event.currentTarget as HTMLSelectElement).value;
-    if (value) navigate(`/results/${value}`);
+  function pick(value: string) {
+    if (value && value !== id) navigate(`/results/${value}`);
   }
+
+  const options = $derived(
+    matches.map((c) => ({ value: String(c.id), label: `${c.name} (${c.date})` })),
+  );
 </script>
 
-<main class="results">
-  <div class="no-print">
-    <h1>Results</h1>
-    <label class="picker">
-      Finished match
-      <select value={id ?? ""} onchange={pick}>
-        <option value="" disabled
-          >{loaded && matches.length === 0 ? "No finished matches" : "Select a match"}</option
+<main
+  class="mx-auto w-full max-w-5xl px-4 py-4 print:max-w-none print:p-0 min-[1440px]:max-w-none min-[1440px]:px-10 min-[1440px]:text-lg"
+>
+  <div class="flex flex-col gap-3 print:hidden">
+    <h1 class="m-0 text-xl min-[1440px]:text-3xl">Results</h1>
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="w-full max-w-md min-w-0 flex-1">
+        <Select
+          label="Finished match"
+          value={id ?? ""}
+          items={options}
+          placeholder={loaded && matches.length === 0 ? "No finished matches" : "Select a match"}
+          onValueChange={pick}
+        />
+      </div>
+      {#if results}
+        <Button variant="secondary" onclick={printPdf}>Print</Button>
+        <a
+          class={buttonVariants({ variant: "primary" })}
+          href={`/api/matches/${results.match.id}/results?format=pdf`}
+          download>Download PDF</a
         >
-        {#each matches as c (c.id)}
-          <option value={String(c.id)}>{c.name} ({c.date})</option>
-        {/each}
-      </select>
-    </label>
-    {#if results}
-      <button type="button" onclick={printPdf}>Print</button>
-      <a class="button" href={`/api/matches/${results.match.id}/results?format=pdf`} download
-        >Download PDF</a
-      >
-    {/if}
+      {/if}
+    </div>
   </div>
 
   {#if missing}
-    <div class="card empty"><p>Results are not available for this match.</p></div>
+    <EmptyState class="mt-6" title="Results are not available for this match." />
   {:else if results}
-    <article class="sheet">
-      <header class="sheet-header">
-        {#if club.hasLogo}<img class="club-logo" src={clubLogoUrl(club.version)} alt="" />{/if}
+    <article class="mt-4 print:mt-0">
+      <header class="my-4 flex items-center gap-4">
+        {#if club.hasLogo}
+          <img
+            class="block h-16 w-auto max-w-32 object-contain min-[1440px]:h-24 min-[1440px]:max-w-48"
+            src={clubLogoUrl(club.version)}
+            alt=""
+          />
+        {/if}
         <div>
-          {#if club.name}<p class="club-name">{club.name}</p>{/if}
-          <h2>{results.match.name}</h2>
-          <p class="meta">{results.match.date} · {results.match.course_label}</p>
+          {#if club.name}<p class="m-0 font-semibold">{club.name}</p>{/if}
+          <h2 class="m-0 text-xl min-[1440px]:text-3xl">{results.match.name}</h2>
+          <p class="m-0 text-muted print:text-black">
+            {results.match.date} · {results.match.course_label}
+          </p>
         </div>
       </header>
 
-      {#each results.categories as category (category.category)}
-        <section class="category">
-          <h3>{category.category}</h3>
-          {#each sections(category) as section (section.heading ?? "")}
-            {#if section.heading !== null}<h4>{section.heading}</h4>{/if}
-            <div class="scroll">
-              <table class="standings-table">
+      <div class="grid grid-cols-1 items-start gap-x-10 gap-y-6 min-[1440px]:grid-cols-2">
+        {#each results.categories as category (category.category)}
+          <section class="min-w-0 break-inside-avoid">
+            <h3 class="m-0 mb-2 text-lg min-[1440px]:text-2xl">{category.category}</h3>
+            {#each sections(category) as section (section.heading ?? "")}
+              {#if section.heading !== null}
+                <h4 class="m-0 mt-4 mb-2 text-base font-semibold text-muted">{section.heading}</h4>
+              {/if}
+              <Table label={`Standings, ${category.category}`} class="print:text-[10pt]">
                 <thead>
                   <tr>
-                    <th class="num">#</th>
+                    <th class="text-right">#</th>
                     {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
                     {#if showClass}<th>Classification</th>{/if}
                     {#if showClubs}<th>Club</th>{/if}
                     {#if showCountries}<th>Country</th>{/if}
-                    {#if showSegments}{#each results.segments as n (n)}<th class="num"
+                    {#if showSegments}{#each results.segments as n (n)}<th class="text-right"
                           >{segmentLabel(results.match.course, n)}</th
                         >{/each}{/if}
-                    <th class="num">Total</th>
-                    {#if showX}<th class="num">X</th>{/if}
+                    <th class="text-right">Total</th>
+                    {#if showX}<th class="text-right">X</th>{/if}
                     {#if showRemarks}<th>Remarks</th>{/if}
                   </tr>
                 </thead>
                 <tbody>
                   {#each section.rows as row, i (i)}
                     <tr>
-                      <td class="num">{row.rank}</td>
+                      <td class="text-right tabular-nums">{row.rank}</td>
                       {#if showNames}<td>{row.first_name} {row.last_name}</td><td
                           >{row.waid ?? ""}</td
                         >{/if}
@@ -196,81 +218,78 @@
                         >{/if}
                       {#if showClubs}<td>{row.club}</td>{/if}
                       {#if showCountries}<td>{row.country}</td>{/if}
-                      {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
-                            >{st.score ?? ""}</td
+                      {#if showSegments}{#each row.segments as st (st.segment)}<td
+                            class="text-right tabular-nums">{st.score ?? ""}</td
                           >{/each}{/if}
-                      <td class="num total">{row.total}</td>
-                      {#if showX}<td class="num">{row.x_count}</td>{/if}
+                      <td class="text-right font-bold tabular-nums">{row.total}</td>
+                      {#if showX}<td class="text-right tabular-nums">{row.x_count}</td>{/if}
                       {#if showRemarks}<td>{row.remarks ?? ""}</td>{/if}
                     </tr>
                   {/each}
                   {#each section.dnf as row, i (i)}
-                    <tr class="dnf">
-                      <td class="num"></td>
+                    <tr class="text-muted">
+                      <td class="text-right"></td>
                       {#if showNames}<td>{row.first_name} {row.last_name}</td><td
                           >{row.waid ?? ""}</td
                         >{/if}
                       {#if showClass}<td></td>{/if}
                       {#if showClubs}<td>{row.club}</td>{/if}
                       {#if showCountries}<td>{row.country}</td>{/if}
-                      {#if showSegments}{#each row.segments as st (st.segment)}<td class="num"
-                            >{st.score ?? ""}</td
+                      {#if showSegments}{#each row.segments as st (st.segment)}<td
+                            class="text-right tabular-nums">{st.score ?? ""}</td
                           >{/each}{/if}
-                      <td class="num total">DNF</td>
-                      {#if showX}<td class="num"></td>{/if}
+                      <td class="text-right font-bold">DNF</td>
+                      {#if showX}<td class="text-right"></td>{/if}
                       {#if showRemarks}<td>{row.remarks ?? ""}</td>{/if}
                     </tr>
                   {/each}
                 </tbody>
-              </table>
-            </div>
-            {#each section.rows.filter(hasCounts) as row (row.rank + cardTitle(row))}
-              <div class="scroll score-card">
-                <table aria-label={`Score card for ${cardTitle(row)}`}>
-                  <thead>
-                    <tr>
-                      <th>{cardTitle(row)}</th>
-                      {#each results.segments as n (n)}<th class="num"
-                          >{segmentLabel(results.match.course, n)}</th
-                        >{/each}
-                      <th class="num">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {#each rings as [label, key] (key)}
+              </Table>
+              {#each section.rows.filter(hasCounts) as row (row.rank + cardTitle(row))}
+                <div class="my-4 break-inside-avoid">
+                  <Table
+                    label={`Ring counts, ${cardTitle(row)}`}
+                    tableLabel={`Score card for ${cardTitle(row)}`}
+                  >
+                    <thead>
                       <tr>
-                        <th scope="row">{label}</th>
-                        {#each row.segments as st (st.segment)}<td class="num"
-                            >{st.ring_counts?.[key] ?? ""}</td
+                        <th>{cardTitle(row)}</th>
+                        {#each results.segments as n (n)}<th class="text-right"
+                            >{segmentLabel(results.match.course, n)}</th
                           >{/each}
-                        <td class="num total">{ringTotal(row, key)}</td>
+                        <th class="text-right">Total</th>
                       </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {#each rings as [label, key] (key)}
+                        <tr>
+                          <th scope="row" class="text-left">{label}</th>
+                          {#each row.segments as st (st.segment)}<td class="text-right tabular-nums"
+                              >{st.ring_counts?.[key] ?? ""}</td
+                            >{/each}
+                          <td class="text-right font-bold tabular-nums">{ringTotal(row, key)}</td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </Table>
+                </div>
+              {/each}
             {/each}
-          {/each}
-        </section>
-      {/each}
+          </section>
+        {/each}
 
-      {#if results.categories.length === 0}
-        <p class="muted">No results.</p>
-      {/if}
-
-      {#if results.new_shooters.length > 0}
-        <section class="category">
-          <h3>New shooters</h3>
-          <div class="scroll">
-            <table>
+        {#if results.new_shooters.length > 0}
+          <section class="min-w-0 break-inside-avoid">
+            <h3 class="m-0 mb-2 text-lg min-[1440px]:text-2xl">New shooters</h3>
+            <Table label="New shooters" class="print:text-[10pt]">
               <thead>
                 <tr>
                   <th>Shooter</th>
                   <th>Category</th>
                   {#if showClubs}<th>Club</th>{/if}
                   {#if showCountries}<th>Country</th>{/if}
-                  <th class="num">Total</th>
-                  {#if showX}<th class="num">X</th>{/if}
+                  <th class="text-right">Total</th>
+                  {#if showX}<th class="text-right">X</th>{/if}
                 </tr>
               </thead>
               <tbody>
@@ -280,98 +299,25 @@
                     <td>{s.category}</td>
                     {#if showClubs}<td>{s.club}</td>{/if}
                     {#if showCountries}<td>{s.country}</td>{/if}
-                    <td class="num total">{s.total}</td>
-                    {#if showX}<td class="num">{s.x_count}</td>{/if}
+                    <td class="text-right font-bold tabular-nums">{s.total}</td>
+                    {#if showX}<td class="text-right tabular-nums">{s.x_count}</td>{/if}
                   </tr>
                 {/each}
               </tbody>
-            </table>
-          </div>
-        </section>
+            </Table>
+          </section>
+        {/if}
+      </div>
+
+      {#if results.categories.length === 0}
+        <p class="text-muted">No results.</p>
       {/if}
     </article>
+  {:else if id !== null}
+    <LoadingState label="Loading results" />
   {/if}
-  <p class="no-print"><a href="/">Live standings</a></p>
-  <p class="print-credit">
+  <p class="print:hidden"><a href="/">Live standings</a></p>
+  <p class="mt-4 hidden text-[9pt] print:block">
     Scored with MatchMark · <a href={brand.repoUrl}>{brand.repoUrl}</a>
   </p>
 </main>
-
-<style>
-  .picker {
-    display: block;
-    margin: var(--space-3) 0;
-  }
-  .picker select {
-    font-size: var(--text-base);
-    padding: var(--space-2) var(--space-3);
-    max-width: 100%;
-  }
-  .empty {
-    text-align: center;
-    padding: var(--space-6) var(--space-4);
-  }
-  .sheet-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    margin: var(--space-4) 0;
-  }
-  .club-logo {
-    display: block;
-    height: 4rem;
-    width: auto;
-    max-width: 8rem;
-    object-fit: contain;
-  }
-  .club-name {
-    margin: 0;
-    font-weight: 600;
-  }
-  .sheet-header h2 {
-    margin: 0;
-  }
-  .meta {
-    margin: 0;
-    color: var(--text-muted);
-  }
-  .category {
-    margin: var(--space-4) 0;
-    break-inside: avoid;
-  }
-  .total {
-    font-weight: 700;
-  }
-  .dnf {
-    color: var(--text-muted);
-  }
-  .score-card {
-    margin: var(--space-4) 0;
-    break-inside: avoid;
-  }
-  .print-credit {
-    display: none;
-  }
-  @media print {
-    .print-credit {
-      display: block;
-      margin-top: var(--space-4);
-      font-size: 9pt;
-    }
-    :global(.site-header),
-    :global(.site-footer),
-    .no-print {
-      display: none !important;
-    }
-    .results {
-      max-width: none;
-      padding: 0;
-    }
-    .meta {
-      color: #000;
-    }
-    table {
-      font-size: 10pt;
-    }
-  }
-</style>
