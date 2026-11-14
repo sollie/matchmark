@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import MatchEdit from "./MatchEdit.svelte";
 import { stubFetch, type Call } from "../test/fetch";
 import { loadRulebook } from "../lib/rulebook.svelte";
+import { choose } from "../test/select";
 
 const course = (key: string, label: string) => ({
   key,
@@ -68,7 +69,7 @@ describe("MatchEdit", () => {
     await user.type(screen.getByLabelText("Name"), "Autumn");
     await user.clear(screen.getByLabelText("Date"));
     await user.type(screen.getByLabelText("Date"), "2026-10-19");
-    await user.selectOptions(screen.getByLabelText("Course of fire"), "60");
+    await choose(user, "Course of fire", "60 shots");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(saves(calls)).toHaveLength(1);
     expect(saves(calls)[0].method).toBe("PUT");
@@ -86,14 +87,18 @@ describe("MatchEdit", () => {
 
   it("disables the course and explains why once entries exist", () => {
     setup(true);
-    expect((screen.getByLabelText("Course of fire") as HTMLSelectElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("combobox", { name: "Course of fire" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
     expect(screen.getByText(/cannot change once the match has entries/)).toBeTruthy();
   });
 
   it("leaves only the name editable once the match has started", async () => {
     const { calls, user } = setup(false, () => ({ body: { ...match, name: "Renamed" } }), false);
     expect((screen.getByLabelText("Date") as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByLabelText("Course of fire") as HTMLSelectElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("combobox", { name: "Course of fire" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
     await user.clear(screen.getByLabelText("Name"));
     await user.type(screen.getByLabelText("Name"), "Renamed");
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -126,11 +131,19 @@ describe("MatchEdit", () => {
 
   it("picks officials from users that have a WAID, leaving out those already listed", async () => {
     const { calls, user } = setup();
-    const picker = await screen.findByLabelText("Pick range officer from users");
-    expect(screen.getByLabelText("Pick referee from users").textContent).not.toContain("rita");
-    await user.selectOptions(picker, "2002");
+    await screen.findByRole("combobox", { name: "Pick range officer from users" });
+    await user.click(screen.getByRole("combobox", { name: "Pick referee from users" }));
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent?.trim())).toEqual([
+      "ola (2002)",
+    ]);
+    await user.keyboard("{Escape}");
+    await choose(user, "Pick range officer from users", "ola (2002)");
     expect((screen.getByLabelText("Range officer WAID 1") as HTMLInputElement).value).toBe("2002");
-    expect(picker.textContent).not.toContain("ola");
+    await user.click(screen.getByRole("combobox", { name: "Pick range officer from users" }));
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent?.trim())).toEqual([
+      "rita (1001)",
+    ]);
+    await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(saves(calls)[0].body).toMatchObject({ range_officer_waids: ["2002"] });
   });
@@ -148,13 +161,14 @@ describe("MatchEdit", () => {
     await user.type(screen.getByLabelText("Date"), "19/10/2026");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(saves(calls)).toHaveLength(0);
-    expect((screen.getByLabelText("Date") as HTMLInputElement).validity.valid).toBe(false);
+    expect(screen.getByRole("alert").textContent).toBe("Enter a date as YYYY-MM-DD.");
+    expect(screen.getByLabelText("Date").getAttribute("aria-invalid")).toBe("true");
   });
 
   it("shows API errors inline", async () => {
     const { saved, user } = setup(false, () => ({ status: 409, body: { error: "conflict" } }));
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("conflict");
+    expect((await screen.findByRole("alert")).textContent?.trim()).toBe("conflict");
     expect(saved).not.toHaveBeenCalled();
   });
 

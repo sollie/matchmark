@@ -364,3 +364,17 @@ export const test = base.extend<Fixtures>({
 });
 
 export { expect };
+
+export async function choose(
+  page: Page,
+  name: string | RegExp,
+  option: string | RegExp,
+  scope: Page | Locator = page,
+) {
+  await scope.getByRole("combobox", { name, exact: typeof name === "string" }).click();
+  await page.getByRole("option", { name: option, exact: typeof option === "string" }).click();
+}
+
+export function confirmDialog(page: Page) {
+  return page.getByRole("dialog");
+}

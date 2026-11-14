@@ -3,10 +3,20 @@
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import { navigate } from "../lib/router.svelte";
-  import { admin } from "../lib/session.svelte";
   import { statusTone } from "../lib/domain";
   import { courseLabel, is1500, loadRulebook, rulebook } from "../lib/rulebook.svelte";
   import { localDate } from "../lib/datetime";
+  import { dateError, dateRangeError, requiredError } from "../lib/formErrors";
+  import Badge from "../lib/ui/Badge.svelte";
+  import Button, { buttonVariants } from "../lib/ui/Button.svelte";
+  import ConfirmDialog from "../lib/ui/ConfirmDialog.svelte";
+  import EmptyState from "../lib/ui/EmptyState.svelte";
+  import ErrorState from "../lib/ui/ErrorState.svelte";
+  import Field from "../lib/ui/Field.svelte";
+  import Input from "../lib/ui/Input.svelte";
+  import Select from "../lib/ui/Select.svelte";
+  import Table from "../lib/ui/Table.svelte";
+  import Download from "@lucide/svelte/icons/download";
   import CompetitionForm from "./CompetitionForm.svelte";
   import OfficialsInput from "./OfficialsInput.svelte";
   import type { components } from "../lib/api/schema";
@@ -14,9 +24,7 @@
   type Match = components["schemas"]["Match"];
   type Competition = components["schemas"]["Competition"];
 
-  const datePattern = "\\d{4}-\\d{2}-\\d{2}";
-
-  const sameDay = "";
+  const sameDay = "oneday";
   const newCompetition = "new";
   const downloadFormats = [
     { format: "xlsx", label: "XLSX zip", title: "Results reports (.xlsx) zip" },
@@ -24,21 +32,40 @@
     { format: "pdf", label: "PDF zip", title: "Results PDFs zip" },
     { format: "all", label: "Download all", title: "All formats zip" },
   ];
+  const matchDownloads = [
+    { label: "XLSX", path: "results.xlsx", title: "Results report (.xlsx)" },
+    { label: "CSV", path: "results.csv", title: "Detailed CSV" },
+    { label: "PDF", path: "pdf", title: "Results PDF" },
+  ];
 
   let matches = $state<Match[]>([]);
   let competitions = $state<Competition[]>([]);
+  let loaded = $state(false);
   let competitionChoice = $state(sameDay);
   let compName = $state("");
   let compStart = $state(localDate(new Date()));
   let compEnd = $state(localDate(new Date()));
   let creatingCompetition = $state(false);
   let editingCompetition = $state<number | null>(null);
+  let deletingCompetition = $state<Competition | null>(null);
   let name = $state("");
   let date = $state(localDate(new Date()));
   let course = $state("150");
   let refereeWaids = $state<string[]>([]);
   let rangeOfficerWaids = $state<string[]>([]);
   let error = $state("");
+  let submitted = $state(false);
+
+  const creatingNew = $derived(competitionChoice === newCompetition);
+  const nameError = $derived(submitted ? requiredError(name, "a match name") : "");
+  const dateIssue = $derived(submitted ? dateError(date) : "");
+  const compNameError = $derived(
+    submitted && creatingNew ? requiredError(compName, "a competition name") : "",
+  );
+  const compStartError = $derived(submitted && creatingNew ? dateError(compStart) : "");
+  const compEndError = $derived(
+    submitted && creatingNew ? dateError(compEnd) || dateRangeError(compStart, compEnd) : "",
+  );
 
   async function load() {
     const [m, c] = await Promise.all([api.GET("/api/matches"), api.GET("/api/competitions")]);
@@ -46,6 +73,7 @@
     else error = failure(m);
     if (c.data) competitions = c.data.competitions;
     else error = failure(c);
+    loaded = true;
   }
 
   const groups = $derived(
@@ -68,7 +96,6 @@
   }
 
   async function removeCompetition(comp: Competition) {
-    if (!confirm(`Delete competition "${comp.name}"?`)) return;
     error = "";
     const result = await api.DELETE("/api/competitions/{competitionID}", {
       params: { path: { competitionID: comp.id } },
@@ -83,15 +110,30 @@
   async function create(e: SubmitEvent) {
     e.preventDefault();
     error = "";
+    submitted = true;
+    if (
+      requiredError(name, "a match name") ||
+      dateError(date) ||
+      (creatingNew &&
+        (requiredError(compName, "a competition name") ||
+          dateError(compStart) ||
+          dateError(compEnd) ||
+          dateRangeError(compStart, compEnd)))
+    )
+      return;
     const body: components["schemas"]["MatchInput"] = {
-      name,
-      date,
+      name: name.trim(),
+      date: date.trim(),
       course,
       referee_waids: refereeWaids.map((w) => w.trim()).filter(Boolean),
       range_officer_waids: rangeOfficerWaids.map((w) => w.trim()).filter(Boolean),
     };
-    if (competitionChoice === newCompetition) {
-      body.competition = { name: compName, start_date: compStart, end_date: compEnd };
+    if (creatingNew) {
+      body.competition = {
+        name: compName.trim(),
+        start_date: compStart.trim(),
+        end_date: compEnd.trim(),
+      };
     } else if (competitionChoice !== sameDay) {
       body.competition_id = Number(competitionChoice);
     }
@@ -101,229 +143,216 @@
   }
 </script>
 
-<h1>Matches</h1>
-{#if error}<p class="error" role="alert">{error}</p>{/if}
+<div class="flex flex-col gap-6">
+  <h1 class="m-0 text-xl">Matches</h1>
+  {#if error}<ErrorState title={error} />{/if}
 
-<form class="form-grid card" onsubmit={create}>
-  <label>Name <input bind:value={name} maxlength="128" required /></label>
-  <label
-    >Date <input
-      type="text"
-      bind:value={date}
-      placeholder="YYYY-MM-DD"
-      pattern={datePattern}
-      inputmode="numeric"
-      size="10"
-      required
-    /></label
+  <form
+    class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card"
+    onsubmit={create}
+    novalidate
+    aria-label="Create match"
   >
-  <label>
-    Course of fire
-    <select bind:value={course}>
-      {#each rulebook.courses as c (c.key)}<option value={c.key}>{c.label}</option>{/each}
-    </select>
-  </label>
-  <p class="muted">Leave a role empty to use the competition's officials.</p>
-  <OfficialsInput role="Referee" bind:waids={refereeWaids} />
-  <OfficialsInput role="Range officer" bind:waids={rangeOfficerWaids} />
-  <label>
-    Competition
-    <select bind:value={competitionChoice}>
-      <option value={sameDay}>New one-day competition</option>
-      {#each competitions as comp (comp.id)}<option value={String(comp.id)}
-          >{comp.name} ({comp.start_date} – {comp.end_date})</option
-        >{/each}
-      <option value={newCompetition}>New competition…</option>
-    </select>
-  </label>
-  {#if competitionChoice === newCompetition}
-    <label>Competition name <input bind:value={compName} maxlength="128" required /></label>
-    <label
-      >Start date <input
-        type="text"
-        bind:value={compStart}
-        placeholder="YYYY-MM-DD"
-        pattern={datePattern}
-        inputmode="numeric"
-        size="10"
-        required
-      /></label
-    >
-    <label
-      >End date <input
-        type="text"
-        bind:value={compEnd}
-        placeholder="YYYY-MM-DD"
-        pattern={datePattern}
-        inputmode="numeric"
-        size="10"
-        required
-      /></label
-    >
-  {/if}
-  <button type="submit" class="primary">Create match</button>
-</form>
-
-<div class="row">
-  <h2>Competitions</h2>
-  {#if !creatingCompetition}<button type="button" onclick={() => (creatingCompetition = true)}
-      >New competition</button
-    >{/if}
-</div>
-{#if creatingCompetition}
-  <CompetitionForm saved={competitionSaved} cancel={() => (creatingCompetition = false)} />
-{/if}
-
-{#each groups as { comp, matches: inComp, hasFinished1500, open1500 } (comp.id)}
-  <section class="competition" aria-label={`Competition ${comp.name}`}>
-    <div class="row">
-      <h3>{comp.name}</h3>
-      <span class="muted"
-        >{comp.start_date === comp.end_date
-          ? comp.start_date
-          : `${comp.start_date} – ${comp.end_date}`}</span
-      >
-      {#if comp.range_name}<span class="muted">{comp.range_name}</span>{/if}
-      <button
-        type="button"
-        onclick={() => (editingCompetition = comp.id)}
-        aria-label={`Edit competition ${comp.name}`}>Edit</button
-      >
-      {#if inComp.length > 0}
-        {#each downloadFormats as f (f.format)}
-          <a
-            class="button"
-            href={`/api/competitions/${comp.id}/results.zip?format=${f.format}`}
-            download
-            title={f.title}
-            aria-label={`${f.title} for ${comp.name}`}>{f.label}</a
-          >
-        {/each}
-      {/if}
-      {#if hasFinished1500}
-        <a
-          class="button"
-          href={`/api/competitions/${comp.id}/results.xlsx`}
-          download
-          title="Combined 1500 workbook (.xlsx)"
-          aria-label={`Combined 1500 workbook (.xlsx) for ${comp.name}`}>1500 XLSX</a
-        >
-      {/if}
-      {#if inComp.length === 0}
-        <button
-          type="button"
-          onclick={() => removeCompetition(comp)}
-          aria-label={`Delete competition ${comp.name}`}>Delete</button
-        >
+    <div class="grid gap-4 sm:grid-cols-2">
+      <Field label="Name" error={nameError} class="sm:col-span-2">
+        <Input bind:value={name} maxlength={128} aria-invalid={nameError ? true : undefined} />
+      </Field>
+      <Field label="Date" error={dateIssue}>
+        <Input
+          bind:value={date}
+          placeholder="YYYY-MM-DD"
+          inputmode="numeric"
+          aria-invalid={dateIssue ? true : undefined}
+        />
+      </Field>
+      <Field label="Course of fire">
+        <Select
+          label="Course of fire"
+          bind:value={course}
+          items={rulebook.courses.map((c) => ({ value: c.key, label: c.label }))}
+        />
+      </Field>
+      <Field label="Competition" class="sm:col-span-2">
+        <Select
+          label="Competition"
+          bind:value={competitionChoice}
+          items={[
+            { value: sameDay, label: "New one-day competition" },
+            ...competitions.map((comp) => ({
+              value: String(comp.id),
+              label: `${comp.name} (${comp.start_date} – ${comp.end_date})`,
+            })),
+            { value: newCompetition, label: "New competition…" },
+          ]}
+        />
+      </Field>
+      {#if creatingNew}
+        <Field label="Competition name" error={compNameError} class="sm:col-span-2">
+          <Input
+            bind:value={compName}
+            maxlength={128}
+            aria-invalid={compNameError ? true : undefined}
+          />
+        </Field>
+        <Field label="Start date" error={compStartError}>
+          <Input
+            bind:value={compStart}
+            placeholder="YYYY-MM-DD"
+            inputmode="numeric"
+            aria-invalid={compStartError ? true : undefined}
+          />
+        </Field>
+        <Field label="End date" error={compEndError}>
+          <Input
+            bind:value={compEnd}
+            placeholder="YYYY-MM-DD"
+            inputmode="numeric"
+            aria-invalid={compEndError ? true : undefined}
+          />
+        </Field>
       {/if}
     </div>
-    {#if hasFinished1500 && open1500.length > 0}
-      <p class="muted" role="note">
-        The 1500 XLSX leaves out unfinished 1500 matches: {open1500.map((m) => m.name).join(", ")}.
-      </p>
+    <p class="m-0 text-sm text-muted">Leave a role empty to use the competition's officials.</p>
+    <OfficialsInput role="Referee" bind:waids={refereeWaids} />
+    <OfficialsInput role="Range officer" bind:waids={rangeOfficerWaids} />
+    <div><Button type="submit">Create match</Button></div>
+  </form>
+
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="m-0 text-lg">Competitions</h2>
+    {#if !creatingCompetition}
+      <Button variant="secondary" onclick={() => (creatingCompetition = true)}
+        >New competition</Button
+      >
     {/if}
-    {#if editingCompetition === comp.id}
-      <CompetitionForm
-        competition={comp}
-        saved={competitionSaved}
-        cancel={() => (editingCompetition = null)}
-      />
-    {/if}
-    <div class="card scroll">
-      <table class="stacked">
-        <thead
-          ><tr><th>Name</th><th>Date</th><th>Course</th><th>Status</th><th>Actions</th></tr></thead
+  </div>
+  {#if creatingCompetition}
+    <CompetitionForm saved={competitionSaved} cancel={() => (creatingCompetition = false)} />
+  {/if}
+
+  {#each groups as { comp, matches: inComp, hasFinished1500, open1500 } (comp.id)}
+    <section
+      class="flex flex-col gap-3 rounded-xl border border-border bg-surface-alt p-4"
+      aria-label={`Competition ${comp.name}`}
+    >
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h3 class="m-0 text-lg">{comp.name}</h3>
+        <span class="text-muted"
+          >{comp.start_date === comp.end_date
+            ? comp.start_date
+            : `${comp.start_date} – ${comp.end_date}`}</span
         >
+        {#if comp.range_name}<span class="text-muted">{comp.range_name}</span>{/if}
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onclick={() => (editingCompetition = comp.id)}
+          aria-label={`Edit competition ${comp.name}`}>Edit</Button
+        >
+        {#if inComp.length > 0}
+          {#each downloadFormats as f (f.format)}
+            <a
+              class={buttonVariants({ variant: "secondary", size: "sm" })}
+              href={`/api/competitions/${comp.id}/results.zip?format=${f.format}`}
+              download
+              title={f.title}
+              aria-label={`${f.title} for ${comp.name}`}
+              ><Download class="size-4" aria-hidden="true" />{f.label}</a
+            >
+          {/each}
+        {/if}
+        {#if hasFinished1500}
+          <a
+            class={buttonVariants({ variant: "secondary", size: "sm" })}
+            href={`/api/competitions/${comp.id}/results.xlsx`}
+            download
+            title="Combined 1500 workbook (.xlsx)"
+            aria-label={`Combined 1500 workbook (.xlsx) for ${comp.name}`}
+            ><Download class="size-4" aria-hidden="true" />1500 XLSX</a
+          >
+        {/if}
+        {#if inComp.length === 0}
+          <Button
+            variant="danger"
+            size="sm"
+            onclick={() => (deletingCompetition = comp)}
+            aria-label={`Delete competition ${comp.name}`}>Delete</Button
+          >
+        {/if}
+      </div>
+      {#if hasFinished1500 && open1500.length > 0}
+        <p class="m-0 text-sm text-muted" role="note">
+          The 1500 XLSX leaves out unfinished 1500 matches: {open1500
+            .map((m) => m.name)
+            .join(", ")}.
+        </p>
+      {/if}
+      {#if editingCompetition === comp.id}
+        <CompetitionForm
+          competition={comp}
+          saved={competitionSaved}
+          cancel={() => (editingCompetition = null)}
+        />
+      {/if}
+      <Table label={`Matches in ${comp.name}`}>
+        <thead>
+          <tr><th>Name</th><th>Date</th><th>Course</th><th>Status</th><th>Actions</th></tr>
+        </thead>
         <tbody>
           {#each inComp as c (c.id)}
             <tr>
-              <td><a href={`/admin/matches/${c.id}`}>{c.name}</a></td>
-              <td data-label="Date">{c.date}</td>
-              <td data-label="Course">{courseLabel(c.course)}</td>
-              <td data-label="Status"
-                ><span class="badge {statusTone[c.status]}">{c.status}</span></td
+              <td
+                ><a class="font-semibold text-link" href={`/admin/matches/${c.id}`}>{c.name}</a></td
               >
-              <td class="row-actions" data-label={c.status === "finished" ? "Actions" : undefined}>
+              <td>{c.date}</td>
+              <td>{courseLabel(c.course)}</td>
+              <td><Badge tone={statusTone[c.status]}>{c.status}</Badge></td>
+              <td>
                 {#if c.status === "finished"}
-                  <a
-                    class="button"
-                    href={`/api/matches/${c.id}/results.xlsx`}
-                    download
-                    title="Results report (.xlsx)"
-                    aria-label={`Results report (.xlsx) for ${c.name}`}
-                    ><svg
-                      class="icon"
-                      viewBox="0 0 16 16"
-                      width="14"
-                      height="14"
-                      aria-hidden="true"
-                      focusable="false"
-                      ><path
-                        d="M8 2v7.5M4.5 6.5 8 10l3.5-3.5M3 13h10"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.6"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      /></svg
-                    >XLSX</a
-                  >
-                  <a
-                    class="button"
-                    href={`/api/matches/${c.id}/results.csv`}
-                    download
-                    title="Detailed CSV"
-                    aria-label={`Detailed CSV for ${c.name}`}
-                    ><svg
-                      class="icon"
-                      viewBox="0 0 16 16"
-                      width="14"
-                      height="14"
-                      aria-hidden="true"
-                      focusable="false"
-                      ><path
-                        d="M8 2v7.5M4.5 6.5 8 10l3.5-3.5M3 13h10"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.6"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      /></svg
-                    >CSV</a
-                  >
-                  <a
-                    class="button"
-                    href={`/api/admin/matches/${c.id}/results?format=pdf`}
-                    download
-                    title="Results PDF"
-                    aria-label={`Results PDF for ${c.name}`}
-                    ><svg
-                      class="icon"
-                      viewBox="0 0 16 16"
-                      width="14"
-                      height="14"
-                      aria-hidden="true"
-                      focusable="false"
-                      ><path
-                        d="M8 2v7.5M4.5 6.5 8 10l3.5-3.5M3 13h10"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.6"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      /></svg
-                    >PDF</a
-                  >
+                  <div class="flex flex-wrap gap-2">
+                    {#each matchDownloads as d (d.label)}
+                      <a
+                        class={buttonVariants({ variant: "secondary", size: "sm" })}
+                        href={d.path === "pdf"
+                          ? `/api/admin/matches/${c.id}/results?format=pdf`
+                          : `/api/matches/${c.id}/${d.path}`}
+                        download
+                        title={d.title}
+                        aria-label={`${d.title} for ${c.name}`}
+                        ><Download class="size-4" aria-hidden="true" />{d.label}</a
+                      >
+                    {/each}
+                  </div>
                 {/if}
               </td>
             </tr>
           {:else}
-            <tr><td colspan="5" class="muted">No matches yet.</td></tr>
+            <tr><td colspan="5" class="text-muted">No matches yet.</td></tr>
           {/each}
         </tbody>
-      </table>
-    </div>
-  </section>
-{:else}
-  <p class="muted">No competitions yet.</p>
-{/each}
+      </Table>
+    </section>
+  {:else}
+    {#if loaded}<EmptyState
+        title="No competitions yet"
+        description="Create a match above or add a competition to get started."
+      />{/if}
+  {/each}
+</div>
+
+{#if deletingCompetition}
+  {@const comp = deletingCompetition}
+  <ConfirmDialog
+    title="Delete competition"
+    description={`Delete competition "${comp.name}"? It has no matches. This cannot be undone.`}
+    confirmLabel="Delete competition"
+    onconfirm={async () => {
+      const target = comp;
+      deletingCompetition = null;
+      await removeCompetition(target);
+    }}
+    oncancel={() => (deletingCompetition = null)}
+  />
+{/if}

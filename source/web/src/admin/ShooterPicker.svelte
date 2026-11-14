@@ -12,6 +12,7 @@
     label = "Shooter",
     exclude = [],
     required = false,
+    error = "",
     initial = null,
     onselect,
     onadd,
@@ -19,6 +20,7 @@
     label?: string;
     exclude?: number[];
     required?: boolean;
+    error?: string;
     initial?: Shooter | null;
     onselect: (shooter: Shooter | null) => void;
     onadd?: (query: string) => void;
@@ -120,7 +122,7 @@
 </script>
 
 <div class="relative">
-  <Field {label}>
+  <Field {label} {error}>
     <Input
       type="text"
       role="combobox"
@@ -130,6 +132,7 @@
       aria-autocomplete="list"
       aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
       {required}
+      aria-invalid={error ? true : undefined}
       bind:value={text}
       {oninput}
       {onfocus}
