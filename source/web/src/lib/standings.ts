@@ -77,7 +77,7 @@ export function resultsColumns(categories: ResultsCategory[]): ResultsColumns {
 }
 
 const withdrawnLast = (rows: StandingRow[]) =>
-  [...rows].sort((a, b) => Number(a.withdrawn) - Number(b.withdrawn));
+  rows.toSorted((a, b) => Number(a.withdrawn) - Number(b.withdrawn));
 
 export function standingsGroups(
   standings: StandingRow[],
