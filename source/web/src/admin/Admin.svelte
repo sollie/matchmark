@@ -49,13 +49,15 @@
 {:else if admin.mustChangePassword}
   <ChangePassword forced />
 {:else}
-  <div class="min-[820px]:flex min-[820px]:items-start">
-    <nav
-      aria-label="Admin sections"
-      class="sticky top-0 hidden max-h-dvh w-60 shrink-0 flex-col gap-1 self-start overflow-y-auto border-r border-border bg-surface p-3 min-[820px]:flex"
-    >
-      <AdminNav />
-    </nav>
+  <div class="min-[820px]:flex">
+    <div class="hidden w-60 shrink-0 border-r border-border bg-surface min-[820px]:block">
+      <nav
+        aria-label="Admin sections"
+        class="sticky top-0 flex max-h-dvh flex-col gap-1 overflow-y-auto p-3"
+      >
+        <AdminNav />
+      </nav>
+    </div>
     <nav
       aria-label="Admin tabs"
       class="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] min-[820px]:hidden"
@@ -76,7 +78,9 @@
     <Drawer bind:open={moreOpen} title="More">
       <div class="flex flex-col gap-1"><AdminNav group="more" /></div>
     </Drawer>
-    <main class="w-full min-w-0 flex-1 pb-20 min-[820px]:pb-4">
+    <main
+      class="mx-auto w-full min-w-0 max-w-6xl flex-1 p-4 pb-20 min-[820px]:p-6 min-[820px]:pb-6"
+    >
       {#if router.path === "/admin" || router.path === "/admin/matches"}
         <Matches />
       {:else if router.path === "/admin/shooters"}

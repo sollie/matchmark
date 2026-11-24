@@ -143,10 +143,7 @@
 </script>
 
 {#snippet standingsTable(rows: Standing[], label: string)}
-  <Table
-    {label}
-    class="min-[90rem]:text-xl [&_td]:py-3 [&_th]:text-sm min-[90rem]:[&_th]:text-base"
-  >
+  <Table {label} class="[&_td]:py-2 [&_th]:text-sm">
     <thead>
       <tr>
         <th class="text-right">#</th>
@@ -176,26 +173,27 @@
             !leader && "[&>td]:bg-surface",
           ]}
         >
-          <td class="text-right text-lg font-bold tabular-nums min-[90rem]:text-2xl"
+          <td class="text-right text-lg font-bold tabular-nums"
             >{s.withdrawn ? "" : rank(rows, i)}</td
           >
           <td class="text-right tabular-nums">{s.lane}</td>
-          {#if showNames}<td>{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
+          {#if showNames}<td class="whitespace-nowrap"
+              >{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
             >{/if}
-          {#if showClass}<td class="hidden md:table-cell"
+          {#if showClass}<td class="hidden whitespace-nowrap md:table-cell"
               >{s.classification && s.classification.value > 0
                 ? s.classification.name
                 : "Unclassified"}</td
             >{/if}
-          {#if showClubs}<td class="hidden md:table-cell">{s.club}</td>{/if}
+          {#if showClubs}<td class="hidden whitespace-nowrap md:table-cell">{s.club}</td>{/if}
           {#if showCountries}<td class="hidden md:table-cell">{s.country}</td>{/if}
-          <td class="hidden md:table-cell">{s.category}</td>
+          <td class="hidden whitespace-nowrap md:table-cell">{s.category}</td>
           {#each segmentNumbers as n (n)}
             <td class="hidden text-right sm:table-cell"
               ><SegmentCell segment={s.segments?.find((st) => st.segment === n)} /></td
             >
           {/each}
-          <td class="text-right text-lg font-bold tabular-nums min-[90rem]:text-2xl"
+          <td class="text-right text-lg font-bold tabular-nums"
             ><span class="sr-only">{s.total}</span><NumberFlow
               aria-hidden="true"
               value={s.total}
@@ -237,9 +235,7 @@
   </li>
 {/snippet}
 
-<main
-  class="mx-auto flex w-full max-w-480 flex-col gap-4 p-3 sm:p-4 min-[90rem]:gap-6 min-[90rem]:p-8 min-[90rem]:text-lg"
->
+<main class="mx-auto flex w-full max-w-480 flex-col gap-4 p-3 sm:p-4 min-[90rem]:p-6">
   <h1 class="sr-only">Live standings</h1>
   {#if control.notice || control.error}
     <p
@@ -286,10 +282,10 @@
     <div class="flex flex-wrap items-stretch gap-3">
       {#if !control.managed}
         <label
-          class="flex min-w-0 max-w-full flex-1 items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2 font-semibold"
+          class="flex min-w-0 max-w-full flex-none items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2 font-semibold"
         >
-          Match
-          <NativeSelect bind:value={selected} class="max-w-full flex-1 font-normal">
+          <span class="shrink-0">Match</span>
+          <NativeSelect bind:value={selected} class="w-80 max-w-full font-normal">
             {#each matches as c (c.id)}
               <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
             {/each}
@@ -297,7 +293,7 @@
         </label>
       {/if}
       <div
-        class="flex flex-[100_1_14rem] flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-border bg-surface px-4 py-3"
+        class="flex flex-1 basis-80 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-border bg-surface px-4 py-3"
         role="status"
       >
         <div class="flex flex-wrap items-center gap-2">
