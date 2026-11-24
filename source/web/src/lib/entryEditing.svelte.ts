@@ -11,14 +11,7 @@ type RingCounts = components["schemas"]["RingCounts"];
 export const ringKeys = ["x", "10", "9", "8", "7", "0", "miss"] as const;
 
 export type OpenDialog =
-  | "add"
-  | "edit"
-  | "remark"
-  | "correct"
-  | "withdraw"
-  | "remove"
-  | "score"
-  | "discard";
+  "add" | "edit" | "remark" | "correct" | "withdraw" | "remove" | "score" | "discard";
 
 export const blankCounts = (): RingCounts => ({
   x: 0,

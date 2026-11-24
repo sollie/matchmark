@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { EntryEditor, fallbackCategory, nextFreeLane, isDirty, blankCounts } from "./entryEditing.svelte";
+import {
+  EntryEditor,
+  fallbackCategory,
+  nextFreeLane,
+  isDirty,
+  blankCounts,
+} from "./entryEditing.svelte";
 import type { EntryCommands } from "./entries";
 import type { components } from "./api/schema";
 
@@ -12,7 +18,20 @@ const entry = (over: Partial<Entry> & { id: number; lane: number }): Entry =>
     withdrawn: false,
     remarks: "",
     segments: [
-      { segment_number: 1, expected_shots: 10, shots_entered: 0, status: "open", score: 0, x: 0, "10": 0, "9": 0, "8": 0, "7": 0, "0": 0, miss: 0 },
+      {
+        segment_number: 1,
+        expected_shots: 10,
+        shots_entered: 0,
+        status: "open",
+        score: 0,
+        x: 0,
+        "10": 0,
+        "9": 0,
+        "8": 0,
+        "7": 0,
+        "0": 0,
+        miss: 0,
+      },
     ],
     ...over,
   }) as unknown as Entry;
@@ -42,7 +61,11 @@ describe("pure rules", () => {
   it("picks the lowest lane not held by an active entry", () => {
     expect(nextFreeLane([])).toBe(1);
     expect(
-      nextFreeLane([entry({ id: 1, lane: 1 }), entry({ id: 2, lane: 2, withdrawn: true }), entry({ id: 3, lane: 3 })]),
+      nextFreeLane([
+        entry({ id: 1, lane: 1 }),
+        entry({ id: 2, lane: 2, withdrawn: true }),
+        entry({ id: 3, lane: 3 }),
+      ]),
     ).toBe(2);
   });
 
