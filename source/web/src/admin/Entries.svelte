@@ -449,13 +449,7 @@
     class="w-[min(36rem,calc(100vw-1.5rem))]"
     onrequestclose={requestClose}
   >
-    <form
-      class="flex flex-col gap-3"
-      onsubmit={(e) => e.preventDefault()}
-      onkeydown={(e) => {
-        if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault();
-      }}
-    >
+    <form class="flex flex-col gap-3" onsubmit={(e) => e.preventDefault()}>
       {#if editor.countsError}<ErrorState title={editor.countsError} />{/if}
       {#if editor.confirmDiscard}
         <div

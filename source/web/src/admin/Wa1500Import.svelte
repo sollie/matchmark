@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
   import type { components } from "../lib/api/schema";
@@ -35,7 +35,7 @@
     waid: "",
   });
 
-  let text = $state(query);
+  let text = $state(untrack(() => query));
   let hits = $state<Hit[]>([]);
   let searched = $state(false);
   let searching = $state(false);

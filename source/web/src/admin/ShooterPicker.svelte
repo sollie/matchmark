@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { untrack } from "svelte";
+
   import { api } from "../lib/api/client";
   import type { components } from "../lib/api/schema";
 
@@ -30,7 +32,7 @@
   const listId = `${uid}-list`;
   const optionId = (i: number) => `${uid}-opt-${i}`;
 
-  let text = $state(initial ? `${initial.first_name} ${initial.last_name}` : "");
+  let text = $state(untrack(() => (initial ? `${initial.first_name} ${initial.last_name}` : "")));
   let results = $state<Shooter[]>([]);
   let open = $state(false);
   let loading = $state(false);
