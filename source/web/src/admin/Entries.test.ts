@@ -387,7 +387,9 @@ describe("Entries", () => {
 
     it.each(closers)("%s on a dirty dialog asks before discarding", async (_n, close) => {
       const { user } = await openEdit();
-      await user.type(screen.getByLabelText("X"), "3");
+      const x = screen.getByLabelText("X");
+      await user.clear(x);
+      await user.type(x, "3");
       await close(user);
       const dialog = dialogEl();
       expect(within(dialog).getByText("Discard changes?")).toBeTruthy();
@@ -425,6 +427,7 @@ describe("Entries", () => {
     }));
     await user.click(screen.getByRole("button", { name: "Lane 1 segment 2: Edit" }));
     const x = screen.getByLabelText("X");
+    await user.clear(x);
     await user.type(x, "5");
     await user.click(screen.getByRole("button", { name: "Save and lock" }));
     const dialog = screen.getByRole("dialog", { name: "Jane Doe, Segment 2" });
