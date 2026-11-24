@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
+  import { Command } from "../lib/command.svelte";
   import { navigate } from "../lib/router.svelte";
   import { statusTone } from "../lib/domain";
   import { courseLabel, is1500, loadRulebook, rulebook } from "../lib/rulebook.svelte";
@@ -53,7 +54,7 @@
   let course = $state("150");
   let refereeWaids = $state<string[]>([]);
   let rangeOfficerWaids = $state<string[]>([]);
-  let error = $state("");
+  const command = new Command(load);
   let submitted = $state(false);
 
   const creatingNew = $derived(competitionChoice === newCompetition);
@@ -70,9 +71,9 @@
   async function load() {
     const [m, c] = await Promise.all([api.GET("/api/matches"), api.GET("/api/competitions")]);
     if (m.data) matches = m.data.matches;
-    else error = failure(m);
+    else command.fail(failure(m));
     if (c.data) competitions = c.data.competitions;
-    else error = failure(c);
+    else command.fail(failure(c));
     loaded = true;
   }
 
@@ -96,12 +97,11 @@
   }
 
   async function removeCompetition(comp: Competition) {
-    error = "";
-    const result = await api.DELETE("/api/competitions/{competitionID}", {
-      params: { path: { competitionID: comp.id } },
-    });
-    if (result.error) error = failure(result);
-    else await load();
+    await command.run(
+      api.DELETE("/api/competitions/{competitionID}", {
+        params: { path: { competitionID: comp.id } },
+      }),
+    );
   }
 
   onMount(load);
@@ -109,7 +109,7 @@
 
   async function create(e: SubmitEvent) {
     e.preventDefault();
-    error = "";
+    command.clear();
     submitted = true;
     if (
       requiredError(name, "a match name") ||
@@ -139,13 +139,13 @@
     }
     const result = await api.POST("/api/matches", { body });
     if (result.data) navigate(`/admin/matches/${result.data.id}`);
-    else error = failure(result);
+    else command.fail(failure(result));
   }
 </script>
 
 <div class="flex flex-col gap-6">
   <h1 class="m-0 text-xl">Matches</h1>
-  {#if error}<ErrorState title={error} />{/if}
+  {#if command.error}<ErrorState title={command.error} />{/if}
 
   <form
     class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card"

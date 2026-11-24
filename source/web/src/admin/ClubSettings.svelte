@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
-  import { failure } from "../lib/api/util";
+  import { Command } from "../lib/command.svelte";
   import { club, clubLogoUrl, refreshClub } from "../lib/club.svelte";
   import Badge from "../lib/ui/Badge.svelte";
   import Button from "../lib/ui/Button.svelte";
@@ -21,8 +21,7 @@
   let editingRange = $state<number | null>(null);
   let editRangeName = $state("");
   let loaded = $state(false);
-  let error = $state("");
-  let message = $state("");
+  const command = new Command(() => Promise.all([loadRanges(), refreshClub()]).then(() => {}));
   let fileInput = $state<HTMLInputElement>();
 
   onMount(async () => {
@@ -38,19 +37,10 @@
   }
 
   async function runRangeAction(
-    action: () => Promise<{ response: Response } & object>,
+    action: () => Promise<{ error?: unknown; response: Response }>,
     ok: string,
   ) {
-    error = "";
-    message = "";
-    const result = await action();
-    if (!result.response.ok) {
-      error = failure(result as Parameters<typeof failure>[0]);
-      return false;
-    }
-    message = ok;
-    await Promise.all([loadRanges(), refreshClub()]);
-    return true;
+    return (await command.run(action(), ok)).ok;
   }
 
   async function addRange(e: SubmitEvent) {
@@ -129,40 +119,26 @@
 
   async function chooseUnclassifiedClass(value: string) {
     if (value === club.unclassifiedClass) return;
-    error = "";
-    message = "";
-    const result = await api.PUT("/api/club", {
-      body: { unclassified_class: value as "Master" | "Unclassified" },
-    });
-    if (!result.response.ok) {
-      error = failure(result);
-      return;
-    }
-    message = "Unclassified class saved.";
-    await refreshClub();
+    await runRangeAction(
+      () =>
+        api.PUT("/api/club", { body: { unclassified_class: value as "Master" | "Unclassified" } }),
+      "Unclassified class saved.",
+    );
   }
 
   async function saveName(e: SubmitEvent) {
     e.preventDefault();
-    error = "";
-    message = "";
-    const result = await api.PUT("/api/club", { body: { name } });
-    if (!result.response.ok) {
-      error = failure(result);
-      return;
+    if (await runRangeAction(() => api.PUT("/api/club", { body: { name } }), "Club name saved.")) {
+      name = club.name;
     }
-    message = "Club name saved.";
-    await refreshClub();
-    name = club.name;
   }
 
   async function uploadLogo(e: SubmitEvent) {
     e.preventDefault();
-    error = "";
-    message = "";
+    command.clear();
     const file = fileInput?.files?.[0];
     if (!file) {
-      error = "Choose a PNG or JPEG file first.";
+      command.fail("Choose a PNG or JPEG file first.");
       return;
     }
     const response = await fetch("/api/club/logo", {
@@ -172,36 +148,27 @@
       body: file,
     });
     if (!response.ok) {
-      error =
+      command.fail(
         response.status === 422
           ? "The logo must be a PNG or JPEG of at most 512 KB and 2048 by 2048 pixels."
-          : `Request failed (${response.status})`;
+          : `Request failed (${response.status})`,
+      );
       return;
     }
-    message = "Logo saved.";
+    command.notice = "Logo saved.";
     if (fileInput) fileInput.value = "";
     await refreshClub();
   }
 
-  async function removeLogo() {
-    error = "";
-    message = "";
-    const result = await api.DELETE("/api/club/logo");
-    if (!result.response.ok) {
-      error = failure(result);
-      return;
-    }
-    message = "Logo removed.";
-    await refreshClub();
-  }
+  const removeLogo = () => runRangeAction(() => api.DELETE("/api/club/logo"), "Logo removed.");
 </script>
 
 <div class="mx-auto flex max-w-3xl flex-col gap-4">
   <h1 class="m-0 text-xl">Club settings</h1>
 
   {#if loaded}
-    {#if error}<ErrorState title={error} />{/if}
-    {#if message}<p class="m-0 text-success-fg" role="status">{message}</p>{/if}
+    {#if command.error}<ErrorState title={command.error} />{/if}
+    {#if command.notice}<p class="m-0 text-success-fg" role="status">{command.notice}</p>{/if}
 
     <section
       aria-labelledby="club-name-heading"
