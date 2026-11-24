@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Command } from "./command.svelte";
 import { admin } from "./session.svelte";
 
-const reply = (status: number, body: { data?: unknown; error?: unknown } = {}) =>
+const reply = <T = unknown>(status: number, body: { data?: T; error?: unknown } = {}) =>
   Promise.resolve({ ...body, response: new Response(null, { status }) });
 
 describe("Command", () => {
