@@ -181,6 +181,10 @@ _Avoid_: Receipt, printout
 How the live spectator screen lays out a Match's standings: grouped, one table per Category with ranks within the Category, or combined, one table with one overall rank. An admin chooses it per Match; grouped is the default. A Match with a single Category looks the same either way. Withdrawn entries (DNF, and any later DSQ or DNS) stay unranked at the bottom of their Category, or of the combined table.
 _Avoid_: Leaderboard, layout mode
 
+**Visible columns**:
+The spectator columns the visibility flags show for a Match's standings.
+_Avoid_: Shown fields
+
 **Results view**:
 The printable, public page of a finished match's standings, chosen from a picker of finished matches and honouring spectator visibility flags. It is the source of the Results PDF and is separate from the live spectator screen.
 _Avoid_: Results page, leaderboard
