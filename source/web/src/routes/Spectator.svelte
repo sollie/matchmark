@@ -15,6 +15,7 @@
     segmentLabel,
   } from "../lib/rulebook.svelte";
   import { openStream, type StreamState } from "../lib/sse";
+  import { spectatorColumns, standingsGroups, type StandingRow } from "../lib/standings";
   import { screenControl } from "../lib/screenControl.svelte";
   import type { components } from "../lib/api/schema";
 
@@ -38,11 +39,7 @@
       : selected,
   );
 
-  const showNames = $derived(standings.some((s) => s.last_name !== undefined));
-  const showClubs = $derived(standings.some((s) => s.club !== undefined));
-  const showCountries = $derived(standings.some((s) => s.country !== undefined));
-  const showClass = $derived(standings.some((s) => (s.classification?.value ?? 0) > 0));
-  const showX = $derived(standings.some((s) => s.x_count !== undefined));
+  const columns = $derived(spectatorColumns(standings));
   const current = $derived(matches.find((c) => c.id === viewed));
   const finished = $derived((current?.status ?? snapshot?.status) === "finished");
   const acceptance = $derived.by(() => {
@@ -52,12 +49,6 @@
       .flatMap((s) => s.segments?.filter((st) => st.segment === snapshot?.current_segment) ?? []);
     return { accepted: segments.filter((st) => st.accepted).length, total: segments.length };
   });
-  const segmentNumbers = $derived(
-    [...new Set(standings.flatMap((s) => s.segments?.map((st) => st.segment) ?? []))].sort(
-      (a, b) => a - b,
-    ),
-  );
-
   async function loadMatches() {
     const { data } = await api.GET("/api/spectator/matches");
     if (!data) return;
@@ -102,39 +93,16 @@
     return () => stream.close();
   });
 
-  type Group = { category: string | null; classGroup?: string; rows: Standing[] };
-
-  const withdrawnLast = (rows: Standing[]) =>
-    [...rows].sort((a, b) => Number(a.withdrawn) - Number(b.withdrawn));
-
-  const groups = $derived.by((): Group[] => {
-    if (!snapshot?.group_by_category) return [{ category: null, rows: withdrawnLast(standings) }];
-    const order = courseCategories(current?.course ?? "");
-    const present = [...new Set(standings.map((s) => s.category))];
-    const known = order.filter((c) => present.includes(c));
-    const categories = [...known, ...present.filter((c) => !known.includes(c))];
-    const byScore = (a: Standing, b: Standing) =>
-      Number(a.withdrawn) - Number(b.withdrawn) ||
-      b.total - a.total ||
-      (b.x_count ?? 0) - (a.x_count ?? 0);
-    const result = categories.flatMap((category): Group[] => {
-      const rows = standings.filter((s) => s.category === category).sort(byScore);
-      if (rows.some((s) => s.class_group === undefined)) return [{ category, rows }];
-      const classes = [...new Set(rows.map((s) => s.class_group!.value))].sort((a, b) => b - a);
-      return classes.map((value) => {
-        const members = rows.filter((s) => s.class_group!.value === value);
-        return { category, classGroup: members[0].class_group!.name, rows: members };
-      });
-    });
-    if (categories.length <= 1 && result.every((g) => g.classGroup === undefined)) {
-      return [{ category: null, rows: withdrawnLast(standings) }];
-    }
-    return result;
-  });
+  const groups = $derived(
+    standingsGroups(standings, {
+      groupByCategory: snapshot?.group_by_category ?? false,
+      categoryOrder: courseCategories(current?.course ?? ""),
+    }),
+  );
   const headingHidden = $derived(groups.length <= 1 && groups[0]?.category === null);
 
-  function rank(rows: Standing[], i: number): number {
-    const tied = (a: Standing, b: Standing) =>
+  function rank(rows: StandingRow[], i: number): number {
+    const tied = (a: StandingRow, b: StandingRow) =>
       a.total === b.total && (!snapshot?.group_by_category || a.x_count === b.x_count);
     let r = i;
     while (r > 0 && tied(rows[r - 1], rows[i])) r--;
@@ -142,24 +110,24 @@
   }
 </script>
 
-{#snippet standingsTable(rows: Standing[], label: string)}
+{#snippet standingsTable(rows: StandingRow[], label: string)}
   <Table {label} class="[&_td]:py-2 [&_th]:text-sm">
     <thead>
       <tr>
         <th class="text-right">#</th>
         <th class="text-right">Lane</th>
-        {#if showNames}<th>Name</th>{/if}
-        {#if showClass}<th class="hidden md:table-cell">Classification</th>{/if}
-        {#if showClubs}<th class="hidden md:table-cell">Club</th>{/if}
-        {#if showCountries}<th class="hidden md:table-cell">Country</th>{/if}
+        {#if columns.names}<th>Name</th>{/if}
+        {#if columns.class}<th class="hidden md:table-cell">Classification</th>{/if}
+        {#if columns.clubs}<th class="hidden md:table-cell">Club</th>{/if}
+        {#if columns.countries}<th class="hidden md:table-cell">Country</th>{/if}
         <th class="hidden md:table-cell">Category</th>
-        {#each segmentNumbers as n (n)}<th
+        {#each columns.segments as n (n)}<th
             class="hidden text-right sm:table-cell"
             title={segmentLabel(current?.course ?? "", n)}
             >{segmentColumn(current?.course ?? "", n)}</th
           >{/each}
         <th class="text-right">Total</th>
-        {#if showX}<th class="text-right">X</th>{/if}
+        {#if columns.x}<th class="text-right">X</th>{/if}
         {#if finished}<th>Scorecard</th>{/if}
       </tr>
     </thead>
@@ -177,18 +145,18 @@
             >{s.withdrawn ? "" : rank(rows, i)}</td
           >
           <td class="text-right tabular-nums">{s.lane}</td>
-          {#if showNames}<td class="whitespace-nowrap"
+          {#if columns.names}<td class="whitespace-nowrap"
               >{s.first_name} {s.last_name}{s.withdrawn ? " (withdrawn)" : ""}</td
             >{/if}
-          {#if showClass}<td class="hidden whitespace-nowrap md:table-cell"
+          {#if columns.class}<td class="hidden whitespace-nowrap md:table-cell"
               >{s.classification && s.classification.value > 0
                 ? s.classification.name
                 : "Unclassified"}</td
             >{/if}
-          {#if showClubs}<td class="hidden whitespace-nowrap md:table-cell">{s.club}</td>{/if}
-          {#if showCountries}<td class="hidden md:table-cell">{s.country}</td>{/if}
+          {#if columns.clubs}<td class="hidden whitespace-nowrap md:table-cell">{s.club}</td>{/if}
+          {#if columns.countries}<td class="hidden md:table-cell">{s.country}</td>{/if}
           <td class="hidden whitespace-nowrap md:table-cell">{s.category}</td>
-          {#each segmentNumbers as n (n)}
+          {#each columns.segments as n (n)}
             <td class="hidden text-right sm:table-cell"
               ><SegmentCell segment={s.segments?.find((st) => st.segment === n)} /></td
             >
@@ -200,7 +168,7 @@
               format={{ useGrouping: false }}
             /></td
           >
-          {#if showX}<td class="text-right tabular-nums"
+          {#if columns.x}<td class="text-right tabular-nums"
               ><span class="sr-only">{s.x_count}</span><NumberFlow
                 aria-hidden="true"
                 value={s.x_count ?? 0}
@@ -341,7 +309,7 @@
           )}
         {/each}
       </div>
-      {#if segmentNumbers.length > 0}
+      {#if columns.segments.length > 0}
         <ul
           class="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0 text-sm text-muted"
           aria-label="Segment state legend"
