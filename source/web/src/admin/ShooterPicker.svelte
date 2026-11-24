@@ -95,6 +95,20 @@
     else add();
   }
 
+  function listHandlers(list: HTMLElement) {
+    const keepFocus = (e: MouseEvent) => e.preventDefault();
+    const pick = (e: MouseEvent) => {
+      const option = (e.target as Element).closest<HTMLElement>("[data-index]");
+      if (option) activate(Number(option.dataset.index));
+    };
+    list.addEventListener("mousedown", keepFocus);
+    list.addEventListener("click", pick);
+    return () => {
+      list.removeEventListener("mousedown", keepFocus);
+      list.removeEventListener("click", pick);
+    };
+  }
+
   function onkeydown(e: KeyboardEvent) {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
@@ -145,6 +159,7 @@
     role="listbox"
     aria-label={label}
     hidden={!open}
+    {@attach listHandlers}
     class="absolute inset-x-0 z-10 m-0 max-h-64 list-none overflow-y-auto rounded-md border border-border bg-surface p-0 text-fg shadow-overlay"
   >
     {#each visible as s, i (s.id)}
@@ -153,8 +168,7 @@
         role="option"
         aria-selected={i === active}
         class="cursor-pointer px-3 py-2 aria-selected:bg-brand-tint"
-        onmousedown={(e) => e.preventDefault()}
-        onclick={() => choose(s)}
+        data-index={i}
       >
         {s.first_name}
         {s.last_name} · {s.waid || "no WAID"} · {s.club} · {s.country}
@@ -176,8 +190,7 @@
         role="option"
         aria-selected={active === visible.length}
         class="cursor-pointer px-3 py-2 font-semibold aria-selected:bg-brand-tint"
-        onmousedown={(e) => e.preventDefault()}
-        onclick={add}
+        data-index={visible.length}
       >
         Search WA1500 / add new
       </li>

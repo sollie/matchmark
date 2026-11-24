@@ -56,7 +56,7 @@
     const s = shooters.find((x) => x.id === id) ?? imported.find((x) => x.id === id);
     return s ? `${s.first_name} ${s.last_name}` : `#${id}`;
   };
-  const ordered = $derived([...entries].sort((a, b) => a.lane - b.lane || a.id - b.id));
+  const ordered = $derived(entries.toSorted((a, b) => a.lane - b.lane || a.id - b.id));
   const categoryItems = (current?: string) =>
     (current && !categories.includes(current) ? [current, ...categories] : categories).map((c) => ({
       value: c,
