@@ -203,6 +203,31 @@ describe("Spectator status row", () => {
     await screen.findByRole("table");
     expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
   });
+
+  it("notices a match finishing from the snapshot without reloading the list", async () => {
+    const calls = install("active");
+    render(Spectator);
+    await screen.findByRole("combobox");
+    await waitFor(() => expect(send).not.toBeNull());
+    const loads = () => calls.filter((c) => c.path === "/api/spectator/matches").length;
+    const before = loads();
+    send!({
+      current_segment: 2,
+      total_segments: 10,
+      status: "active",
+      standings: [standing(1, ["accepted"])],
+    });
+    await screen.findByRole("table");
+    expect(screen.queryByRole("link", { name: /Scorecard for lane/ })).toBeNull();
+    send!({
+      current_segment: 10,
+      total_segments: 10,
+      status: "finished",
+      standings: [standing(1, ["accepted"])],
+    });
+    expect(await screen.findByRole("link", { name: "Scorecard for lane 1" })).toBeTruthy();
+    expect(loads()).toBe(before);
+  });
 });
 
 describe("Spectator standings grouping", () => {
@@ -390,6 +415,37 @@ describe("Spectator remote control", () => {
     await waitFor(() => expect(screenAuth).toBe("Bearer tok"));
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.getByText("Waiting for a match")).toBeTruthy();
+  });
+
+  it("follows the assigned match and returns to waiting", async () => {
+    localStorage.setItem(key, JSON.stringify({ token: "tok", code: "ABC234" }));
+    installManaged();
+    renderPage();
+    await waitFor(() => expect(screenSend).not.toBeNull());
+    screenSend!({ state: "match", match_id: 7, approved: true });
+    await waitFor(() => expect(send).not.toBeNull());
+    send!({ current_segment: 1, total_segments: 4, standings: [standing(1, ["accepted"])] });
+    expect(await screen.findByText("Segment 1 of 4")).toBeTruthy();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    screenSend!({ state: "waiting", match_id: null, approved: true });
+    expect(await screen.findByText("Waiting for a match")).toBeTruthy();
+    expect(screen.queryByText("Segment 1 of 4")).toBeNull();
+  });
+
+  it("keeps showing the final standings of a finished match", async () => {
+    localStorage.setItem(key, JSON.stringify({ token: "tok", code: "ABC234" }));
+    installManaged("finished");
+    renderPage();
+    await waitFor(() => expect(screenSend).not.toBeNull());
+    screenSend!({ state: "match", match_id: 7, approved: true });
+    await waitFor(() => expect(send).not.toBeNull());
+    send!({
+      status: "finished",
+      current_segment: 4,
+      total_segments: 4,
+      standings: [standing(1, ["accepted"])],
+    });
+    expect(await screen.findByText("Finished")).toBeTruthy();
   });
 
   it("shows the code until approved, then offers leave below the standings", async () => {

@@ -182,7 +182,7 @@ How the live spectator screen lays out a Match's standings: grouped, one table p
 _Avoid_: Leaderboard, layout mode
 
 **Visible columns**:
-The spectator columns the visibility flags show for a Match's standings.
+The spectator columns the visibility flags show for a Match's standings. The Results view honours the same flags.
 _Avoid_: Shown fields
 
 **Results view**:
