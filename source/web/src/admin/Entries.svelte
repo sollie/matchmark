@@ -1,8 +1,7 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { api } from "../lib/api/client";
-  import { settle } from "../lib/api/util";
   import { entryCommands } from "../lib/entries";
+  import { EntryEditor, ringKeys, storedKey } from "../lib/entryEditing.svelte";
   import { courseCategories, segmentColumn, segmentLabel } from "../lib/rulebook.svelte";
   import Badge from "../lib/ui/Badge.svelte";
   import Button from "../lib/ui/Button.svelte";
@@ -19,7 +18,6 @@
 
   type Shooter = components["schemas"]["Shooter"];
   type EntryWithSegments = components["schemas"]["EntryWithSegments"];
-  type RingCounts = components["schemas"]["RingCounts"];
 
   let {
     matchId,
@@ -37,140 +35,46 @@
     status?: components["schemas"]["MatchStatus"];
   } = $props();
 
-  const ringKeys = ["x", "10", "9", "8", "7", "0", "miss"] as const;
-  const blankCounts = (): RingCounts => ({
-    x: 0,
-    "10": 0,
-    "9": 0,
-    "8": 0,
-    "7": 0,
-    "0": 0,
-    miss: 0,
-  });
   const numberInput =
     "min-h-11 w-full min-w-0 rounded-md border border-border bg-surface px-3 text-base text-fg outline-offset-2 hover:border-muted focus-visible:outline-3 focus-visible:outline-focus aria-invalid:border-danger";
 
-  let shooterId = $state<number | null>(null);
   let pickerKey = $state(0);
   let importQuery = $state<string | null>(null);
   let imported = $state<Shooter[]>([]);
-  let chosen = $state<Shooter | null>(null);
-  let chosenCategory = $state<string | null>(null);
-  let laneInput = $state<number | null>(null);
-  let submitted = $state(false);
-  let editing = $state<{ id: number; category: string; lane: number } | null>(null);
-  let remarking = $state<{ id: number; text: string } | null>(null);
-  let correcting = $state<{ id: number; classification: string; class: string } | null>(null);
-  let confirming = $state<{ kind: "withdraw" | "remove"; entry: EntryWithSegments } | null>(null);
-  let scoring = $state<{
-    entry: EntryWithSegments;
-    segment: number;
-    counts: RingCounts;
-    original: RingCounts;
-  } | null>(null);
-  let confirmDiscard = $state(false);
-  let openedStored = $state("");
   let opener: HTMLElement | null = null;
-  let countsError = $state("");
-  let error = $state("");
-  let archivedBlock = $state<Shooter | null>(null);
 
-  const nextLane = $derived.by(() => {
-    const taken = new Set(entries.filter((e) => !e.withdrawn).map((e) => e.lane));
-    let n = 1;
-    while (taken.has(n)) n++;
-    return n;
+  const categories = $derived(courseCategories(course));
+  const commands = $derived(entryCommands(matchId, reload));
+  const editor = new EntryEditor({
+    entries: () => entries,
+    categories: () => categories,
+    commands: () => commands,
   });
   const entered = $derived(entries.map((e) => e.shooter_id));
-  const lane = $derived(laneInput ?? nextLane);
-  const categories = $derived(courseCategories(course));
-  const category = $derived(
-    chosenCategory !== null && categories.includes(chosenCategory)
-      ? chosenCategory
-      : (categories[0] ?? ""),
-  );
-  const shooterError = $derived(submitted && shooterId === null ? "Choose a shooter." : "");
-  const laneError = $derived(
-    submitted && !(Number.isInteger(Number(lane)) && Number(lane) >= 1)
-      ? "Lane must be a whole number from 1."
-      : "",
-  );
   const segmentNumbers = $derived(entries[0]?.segments.map((s) => s.segment_number) ?? []);
   const shooterName = (id: number) => {
     const s = shooters.find((x) => x.id === id) ?? imported.find((x) => x.id === id);
     return s ? `${s.first_name} ${s.last_name}` : `#${id}`;
   };
   const ordered = $derived([...entries].sort((a, b) => a.lane - b.lane || a.id - b.id));
-  const commands = $derived(entryCommands(matchId, reload));
   const categoryItems = (current?: string) =>
     (current && !categories.includes(current) ? [current, ...categories] : categories).map((c) => ({
       value: c,
       label: c,
     }));
 
-  async function run(command: Promise<string | null>): Promise<boolean> {
-    error = "";
-    const failed = await command;
-    if (failed !== null) error = failed;
-    return failed === null;
-  }
-
   function importSaved(s: Shooter) {
     imported = [...imported.filter((x) => x.id !== s.id), s];
-    chosen = s;
-    shooterId = s.id;
+    editor.chosen = s;
+    editor.shooterId = s.id;
     importQuery = null;
     pickerKey++;
   }
 
   async function add(e: SubmitEvent) {
     e.preventDefault();
-    submitted = true;
-    if (shooterId === null || laneError) return;
-    archivedBlock = null;
-    const ok = await run(commands.add({ shooter_id: shooterId, category, lane }));
-    if (!ok && error === "shooter_archived") {
-      error = "";
-      archivedBlock = chosen;
-    }
-    if (ok) {
-      laneInput = null;
-      shooterId = null;
-      chosen = null;
-      submitted = false;
-      pickerKey++;
-    }
-  }
-
-  async function unarchive() {
-    if (!archivedBlock) return;
-    const result = await settle(
-      api.POST("/api/shooters/{shooterID}/unarchive", {
-        params: { path: { shooterID: archivedBlock.id } },
-      }),
-    );
-    if (result.ok) archivedBlock = null;
-    else error = result.error;
-  }
-
-  async function saveEdit() {
-    if (!editing) return;
-    const ok = await run(
-      commands.update(editing.id, { category: editing.category, lane: editing.lane }),
-    );
-    if (ok) editing = null;
-  }
-
-  async function saveRemarks(entry: EntryWithSegments) {
-    if (!remarking) return;
-    const ok = await run(
-      commands.update(entry.id, {
-        category: entry.category,
-        lane: entry.lane,
-        remarks: remarking.text,
-      }),
-    );
-    if (ok) remarking = null;
+    await editor.add();
+    if (!editor.submitted) pickerKey++;
   }
 
   const classificationOptions = [
@@ -186,73 +90,37 @@
     label: o.name,
   }));
 
-  async function saveCorrection() {
-    if (!correcting) return;
-    const { id, classification, class: competed } = correcting;
-    const ok = await run(commands.classify(id, Number(classification), Number(competed)));
-    if (ok) correcting = null;
-  }
-
-  async function confirmed() {
-    if (!confirming) return;
-    const { kind, entry } = confirming;
-    confirming = null;
-    await run(kind === "withdraw" ? commands.withdraw(entry.id) : commands.remove(entry.id));
-  }
-
-  const unlock = (entry: EntryWithSegments, segment: number) =>
-    run(commands.unlock(entry.id, segment));
-  const accept = (entry: EntryWithSegments, segment: number) =>
-    run(commands.accept(entry.id, segment));
-  const lock = (entry: EntryWithSegments, segment: number) => run(commands.lock(entry.id, segment));
-
-  function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
-    opener = button;
-    countsError = "";
-    error = "";
-    confirmDiscard = false;
-    const stored = entry.segments.find((s) => s.segment_number === segment);
-    const counts = blankCounts();
-    for (const k of ringKeys) counts[k] = stored?.[k] ?? 0;
-    scoring = { entry, segment, counts, original: { ...counts } };
-    openedStored = storedKey(stored);
-  }
-
-  const storedKey = (s: { [k in (typeof ringKeys)[number]]: number } | undefined) =>
-    ringKeys.map((k) => s?.[k] ?? 0).join(",");
-
   const statusLabels = {
     open: "Open",
     awaiting_acceptance: "Awaiting acceptance",
     accepted: "Accepted",
   } as const;
 
-  async function closeCounts() {
-    scoring = null;
-    countsError = "";
-    confirmDiscard = false;
+  async function restoreFocus() {
     await tick();
     opener?.focus();
     opener = null;
   }
 
-  function requestClose() {
-    if (!scoring) return;
-    const { counts, original } = scoring;
-    if (ringKeys.some((k) => (Number(counts[k]) || 0) !== original[k])) {
-      confirmDiscard = true;
-      return;
-    }
-    void closeCounts();
+  function openCounts(entry: EntryWithSegments, segment: number, button: HTMLElement) {
+    opener = button;
+    editor.openCounts(entry, segment);
+  }
+
+  async function closeCounts() {
+    editor.closeCounts();
+    await restoreFocus();
+  }
+
+  async function requestClose() {
+    if (editor.requestClose()) await restoreFocus();
   }
 
   async function saveCounts(andLock = false) {
-    if (!scoring) return;
-    const { entry, segment, counts } = scoring;
-    countsError = (await commands.saveCounts(entry.id, segment, counts)) ?? "";
-    if (countsError) return;
-    await closeCounts();
-    if (andLock) await lock(entry, segment);
+    const saved = await editor.saveCounts();
+    if (!saved) return;
+    await restoreFocus();
+    if (andLock) await editor.lock(saved.entry, saved.segment);
   }
 
   const cell = "block p-0";
@@ -260,11 +128,11 @@
 
 <section class="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 shadow-card">
   <h2 class="m-0 text-lg">Entries and progress</h2>
-  {#if error}<ErrorState title={error} />{/if}
-  {#if archivedBlock}
+  {#if editor.error}<ErrorState title={editor.error} />{/if}
+  {#if editor.archivedBlock}
     <ErrorState title="This shooter is archived">
       {#snippet action()}
-        <Button variant="secondary" onclick={unarchive}>Unarchive</Button>
+        <Button variant="secondary" onclick={() => editor.unarchive()}>Unarchive</Button>
       {/snippet}
     </ErrorState>
   {/if}
@@ -280,31 +148,27 @@
         <ShooterPicker
           exclude={entered}
           required
-          error={shooterError}
-          initial={chosen}
-          onselect={(s) => {
-            shooterId = s?.id ?? null;
-            chosen = s;
-            archivedBlock = null;
-          }}
+          error={editor.shooterError}
+          initial={editor.chosen}
+          onselect={(s) => editor.selectShooter(s)}
           onadd={(q) => (importQuery = q)}
         />
       {/key}
       <Field label="Category">
         <Select
           label="Entry category"
-          bind:value={() => category, (v) => (chosenCategory = v)}
+          bind:value={() => editor.category, (v) => (editor.chosenCategory = v)}
           items={categoryItems()}
         />
       </Field>
-      <Field label="Lane" error={laneError}>
+      <Field label="Lane" error={editor.laneError}>
         <input
           type="number"
           min="1"
           aria-label="Entry lane"
-          aria-invalid={laneError ? true : undefined}
+          aria-invalid={editor.laneError ? true : undefined}
           class={numberInput}
-          bind:value={() => lane, (v) => (laneInput = v)}
+          bind:value={() => editor.lane, (v) => (editor.laneInput = v)}
           required
         />
       </Field>
@@ -345,21 +209,21 @@
             entry.withdrawn && "border-dashed bg-surface-alt text-muted",
           )}
         >
-          {#if editing?.id === entry.id}
+          {#if editor.editing?.id === entry.id}
             <td class={cn(cell, "order-1 w-24 self-center")}>
               <input
                 type="number"
                 min="1"
                 aria-label="Move lane"
                 class={numberInput}
-                bind:value={editing.lane}
+                bind:value={editor.editing.lane}
               />
             </td>
             <td class={cn(cell, "order-2 min-w-0 flex-1 text-lg font-semibold")}>{name}</td>
             <td class={cn(cell, "order-3 min-w-56 self-center")}>
               <Select
                 label="Move category"
-                bind:value={editing.category}
+                bind:value={editor.editing.category}
                 items={categoryItems(entry.category)}
               />
             </td>
@@ -374,37 +238,32 @@
             <td class={cn(cell, "order-3 self-center text-muted")}>{entry.category}</td>
           {/if}
           <td class={cn(cell, "order-3 flex flex-wrap items-center gap-2 text-muted")}>
-            {#if correcting?.id === entry.id}
+            {#if editor.correcting?.id === entry.id}
               <Select
                 class="w-44"
                 label="Classification at match"
-                bind:value={correcting.classification}
+                bind:value={editor.correcting.classification}
                 items={classificationItems}
               />
               <Select
                 class="w-44"
                 label="Class"
-                bind:value={correcting.class}
+                bind:value={editor.correcting.class}
                 items={classificationItems}
               />
-              <Button size="sm" onclick={saveCorrection}>Save class</Button>
-              <Button size="sm" variant="secondary" onclick={() => (correcting = null)}
+              <Button size="sm" onclick={() => editor.saveCorrection()}>Save class</Button>
+              <Button size="sm" variant="secondary" onclick={() => (editor.correcting = null)}
                 >Cancel</Button
               >
             {:else if entry.class}
               <span>{entry.classification_at_match?.name ?? "-"} / {entry.class.name}</span>
             {/if}
-            {#if correcting?.id !== entry.id && entry.club !== null && course === "150"}
+            {#if editor.correcting?.id !== entry.id && entry.club !== null && course === "150"}
               <Button
                 size="sm"
                 variant="secondary"
                 aria-label={`Correct class for ${name}`}
-                onclick={() =>
-                  (correcting = {
-                    id: entry.id,
-                    classification: String(entry.classification_at_match?.value ?? 0),
-                    class: String(entry.class?.value ?? 0),
-                  })}>Correct</Button
+                onclick={() => editor.startCorrection(entry)}>Correct</Button
               >
             {/if}
           </td>
@@ -414,15 +273,15 @@
               "order-3 flex min-w-0 basis-full flex-wrap items-center gap-2 text-muted",
             )}
           >
-            {#if remarking?.id === entry.id}
+            {#if editor.remarking?.id === entry.id}
               <Input
                 class="max-w-md flex-1"
                 maxlength={200}
                 aria-label={`Remarks for ${name}`}
-                bind:value={remarking.text}
+                bind:value={editor.remarking.text}
               />
-              <Button size="sm" onclick={() => saveRemarks(entry)}>Save remarks</Button>
-              <Button size="sm" variant="secondary" onclick={() => (remarking = null)}
+              <Button size="sm" onclick={() => editor.saveRemarks(entry)}>Save remarks</Button>
+              <Button size="sm" variant="secondary" onclick={() => (editor.remarking = null)}
                 >Cancel</Button
               >
             {:else}
@@ -431,7 +290,7 @@
                 size="sm"
                 variant="secondary"
                 aria-label={`Edit remarks for ${name}`}
-                onclick={() => (remarking = { id: entry.id, text: entry.remarks ?? "" })}
+                onclick={() => editor.startRemarks(entry)}
                 >{entry.remarks ? "Edit" : "Add remarks"}</Button
               >
             {/if}
@@ -503,7 +362,7 @@
                       size="sm"
                       variant="secondary"
                       aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Accept`}
-                      onclick={() => accept(entry, st.segment_number)}>Accept</Button
+                      onclick={() => editor.accept(entry, st.segment_number)}>Accept</Button
                     >
                   {/if}
                   {#if st.status !== "open"}
@@ -511,14 +370,14 @@
                       size="sm"
                       variant="secondary"
                       aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Unlock`}
-                      onclick={() => unlock(entry, st.segment_number)}>Unlock</Button
+                      onclick={() => editor.unlock(entry, st.segment_number)}>Unlock</Button
                     >
                   {:else}
                     <Button
                       size="sm"
                       variant="secondary"
                       aria-label={`Lane ${entry.lane} segment ${st.segment_number}: Lock`}
-                      onclick={() => lock(entry, st.segment_number)}>Lock</Button
+                      onclick={() => editor.lock(entry, st.segment_number)}>Lock</Button
                     >
                   {/if}
                 </div>
@@ -531,28 +390,22 @@
               "order-5 flex basis-full flex-wrap items-center gap-2 border-t border-border pt-3",
             )}
           >
-            {#if editing?.id === entry.id}
-              <Button onclick={saveEdit}>Save</Button>
-              <Button variant="secondary" onclick={() => (editing = null)}>Cancel</Button>
+            {#if editor.editing?.id === entry.id}
+              <Button onclick={() => editor.saveEdit()}>Save</Button>
+              <Button variant="secondary" onclick={() => (editor.editing = null)}>Cancel</Button>
             {:else}
               {#if status === "draft"}
-                <Button
-                  variant="secondary"
-                  onclick={() =>
-                    (editing = { id: entry.id, category: entry.category, lane: entry.lane })}
-                  >Move</Button
-                >
+                <Button variant="secondary" onclick={() => editor.startEdit(entry)}>Move</Button>
               {/if}
               {#if !entry.withdrawn && status !== "finished"}
-                <Button
-                  variant="secondary"
-                  onclick={() => (confirming = { kind: "withdraw", entry })}>Withdraw</Button
+                <Button variant="secondary" onclick={() => editor.confirm("withdraw", entry)}
+                  >Withdraw</Button
                 >
               {/if}
               <Button
                 variant="danger"
                 class="ml-auto"
-                onclick={() => (confirming = { kind: "remove", entry })}>Remove</Button
+                onclick={() => editor.confirm("remove", entry)}>Remove</Button
               >
             {/if}
           </td>
@@ -568,30 +421,28 @@
   </table>
 </section>
 
-{#if confirming}
-  {@const who = shooterName(confirming.entry.shooter_id)}
+{#if editor.confirming}
+  {@const who = shooterName(editor.confirming.entry.shooter_id)}
   <ConfirmDialog
-    title={confirming.kind === "withdraw" ? "Withdraw entry" : "Remove entry"}
-    description={confirming.kind === "withdraw"
+    title={editor.confirming.kind === "withdraw" ? "Withdraw entry" : "Remove entry"}
+    description={editor.confirming.kind === "withdraw"
       ? `Withdraw ${who}? Results are kept. The entry stays in the results marked as withdrawn and the lane is freed.`
       : `Remove ${who} and their results? Every segment score for this entry is deleted and this cannot be undone.`}
-    confirmLabel={confirming.kind === "withdraw" ? "Withdraw entry" : "Remove entry"}
-    tone={confirming.kind === "withdraw" ? "primary" : "danger"}
-    onconfirm={confirmed}
-    oncancel={() => (confirming = null)}
+    confirmLabel={editor.confirming.kind === "withdraw" ? "Withdraw entry" : "Remove entry"}
+    tone={editor.confirming.kind === "withdraw" ? "primary" : "danger"}
+    onconfirm={() => editor.confirmed()}
+    oncancel={() => editor.cancelConfirm()}
   />
 {/if}
 
-{#if scoring}
+{#if editor.scoring}
   {@const expected =
-    scoring.entry.segments.find((s) => s.segment_number === scoring?.segment)?.expected_shots ?? 0}
-  {@const stored = entries
-    .find((e) => e.id === scoring?.entry.id)
-    ?.segments.find((s) => s.segment_number === scoring?.segment)}
-  {@const storedChanged = storedKey(stored) !== openedStored}
-  {@const total = ringKeys.reduce((n, k) => n + (Number(scoring?.counts[k]) || 0), 0)}
+    editor.scoring.entry.segments.find((s) => s.segment_number === editor.scoring?.segment)
+      ?.expected_shots ?? 0}
+  {@const stored = editor.storedSegment(editor.scoring.entry.id, editor.scoring.segment)}
+  {@const total = ringKeys.reduce((n, k) => n + (Number(editor.scoring?.counts[k]) || 0), 0)}
   <Dialog
-    title={`${shooterName(scoring.entry.shooter_id)}, ${segmentLabel(course, scoring.segment)}`}
+    title={`${shooterName(editor.scoring.entry.shooter_id)}, ${segmentLabel(course, editor.scoring.segment)}`}
     description={`Enter all counts; they must sum to ${expected} shots.`}
     closeLabel="Close"
     autofocus="input"
@@ -605,21 +456,21 @@
         if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault();
       }}
     >
-      {#if countsError}<ErrorState title={countsError} />{/if}
-      {#if confirmDiscard}
+      {#if editor.countsError}<ErrorState title={editor.countsError} />{/if}
+      {#if editor.confirmDiscard}
         <div
           class="flex flex-wrap items-center gap-2 rounded-lg border border-danger bg-danger-bg p-3 text-danger-fg"
           role="alertdialog"
           aria-label="Discard changes?"
         >
           <strong class="mr-auto">Discard changes?</strong>
-          <Button variant="secondary" onclick={() => (confirmDiscard = false)}>Keep editing</Button>
+          <Button variant="secondary" onclick={() => editor.keepScoring()}>Keep editing</Button>
           <Button variant="danger" onclick={closeCounts}>Discard</Button>
         </div>
       {/if}
       <section class="rounded-lg bg-surface-alt p-3" aria-label="Stored counts">
         <h3 class="m-0 mb-2 text-base">Stored counts</h3>
-        {#if storedChanged}
+        {#if editor.storedChanged}
           <p class="m-0 mb-2 font-semibold text-danger-fg" role="status">
             Stored counts changed since you opened this
           </p>
@@ -647,7 +498,7 @@
               inputmode="numeric"
               min="0"
               class={cn(numberInput, "min-h-13 text-center text-xl")}
-              bind:value={scoring.counts[k]}
+              bind:value={editor.scoring.counts[k]}
             />
           </label>
         {/each}

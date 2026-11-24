@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
+  import { Command } from "../lib/command.svelte";
   import { pairingUrl, qrSvg } from "../lib/pairing";
   import type { components } from "../lib/api/schema";
   import Badge from "../lib/ui/Badge.svelte";
@@ -31,7 +32,7 @@
   let pairings = $state<Pairing[]>([]);
   let lane = $state<number | null>(null);
   let issued = $state<{ lane: number; url: string; svg: string } | null>(null);
-  let error = $state("");
+  const command = new Command(load);
 
   const active = $derived(pairings.filter((p) => !p.revoked).length);
 
@@ -44,7 +45,7 @@
       params: { path: { matchID: matchId } },
     });
     if (result.data) pairings = result.data.pairings;
-    else error = failure(result);
+    else command.fail(failure(result));
   }
 
   onMount(load);
@@ -52,25 +53,26 @@
   async function pair(e: SubmitEvent) {
     e.preventDefault();
     if (lane === null) return;
-    error = "";
-    const result = await api.POST("/api/matches/{matchID}/pairings", {
-      params: { path: { matchID: matchId } },
-      body: { lane },
-    });
-    if (result.data) {
-      const url = pairingUrl(result.data.token);
-      issued = { lane: result.data.lane, url, svg: qrSvg(url) };
-      await load();
-    } else error = failure(result);
+    await command.run(
+      api.POST("/api/matches/{matchID}/pairings", {
+        params: { path: { matchID: matchId } },
+        body: { lane },
+      }),
+      undefined,
+      async (data) => {
+        const url = pairingUrl(data.token);
+        issued = { lane: data.lane, url, svg: qrSvg(url) };
+        await load();
+      },
+    );
   }
 
   async function revoke(p: Pairing) {
-    error = "";
-    const result = await api.DELETE("/api/matches/{matchID}/pairings/{pairingID}", {
-      params: { path: { matchID: matchId, pairingID: p.id } },
-    });
-    if (result.response.ok) await load();
-    else error = failure(result);
+    await command.run(
+      api.DELETE("/api/matches/{matchID}/pairings/{pairingID}", {
+        params: { path: { matchID: matchId, pairingID: p.id } },
+      }),
+    );
   }
 </script>
 
@@ -98,7 +100,7 @@
       </p>
     {/if}
   {/if}
-  {#if error}<ErrorState title={error} />{/if}
+  {#if command.error}<ErrorState title={command.error} />{/if}
 
   {#if issued}
     <div class="flex flex-col gap-3 rounded-lg border border-border bg-surface-alt p-4">

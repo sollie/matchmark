@@ -1,5 +1,5 @@
 import { api } from "./api/client";
-import { settle } from "./api/util";
+import { Command } from "./command.svelte";
 import type { components } from "./api/schema";
 
 type RingCounts = components["schemas"]["RingCounts"];
@@ -13,10 +13,9 @@ export function entryCommands(matchId: number, reload: () => Promise<void>) {
   async function run(
     call: Promise<{ error?: unknown; response: Response }>,
   ): Promise<string | null> {
-    const result = await settle(call);
-    if (!result.ok) return result.error;
-    await reload();
-    return null;
+    const command = new Command(reload);
+    await command.run(call);
+    return command.error || null;
   }
 
   return {

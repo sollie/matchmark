@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
+  import { Command } from "../lib/command.svelte";
   import PasswordInput from "../lib/PasswordInput.svelte";
   import Badge from "../lib/ui/Badge.svelte";
   import Button from "../lib/ui/Button.svelte";
@@ -20,8 +21,7 @@
   let username = $state("");
   let role = $state<Role>("user");
   let password = $state("");
-  let error = $state("");
-  let created = $state("");
+  const command = new Command(load);
   let resetFor = $state<number | null>(null);
   let resetPassword = $state("");
   let waidFor = $state<number | null>(null);
@@ -30,37 +30,21 @@
   async function load() {
     const result = await api.GET("/api/users");
     if (result.data) users = result.data.users;
-    else error = failure(result);
+    else command.fail(failure(result));
   }
 
   onMount(load);
 
   async function create(e: SubmitEvent) {
     e.preventDefault();
-    error = "";
-    created = "";
-    const result = await api.POST("/api/users", { body: { username, role, password } });
-    if (!result.response.ok) {
-      error = failure(result);
-      return;
-    }
-    created = `User ${result.data?.username} created. They must change the password at first login.`;
+    const result = await command.run(
+      api.POST("/api/users", { body: { username, role, password } }),
+      (user) => `User ${user?.username} created. They must change the password at first login.`,
+    );
+    if (!result.ok) return;
     username = "";
     password = "";
     role = "user";
-    await load();
-  }
-
-  async function act(request: Promise<{ response: Response }>, message: string) {
-    error = "";
-    created = "";
-    const result = await request;
-    if (!result.response.ok) {
-      error = failure(result as Parameters<typeof failure>[0]);
-      return;
-    }
-    created = message;
-    await load();
   }
 
   const roleItems = [
@@ -78,7 +62,7 @@
   const params = (u: User) => ({ params: { path: { userID: u.id } } });
 
   const setActive = (u: User, active: boolean) =>
-    act(
+    command.run(
       api.POST(
         active ? "/api/users/{userID}/reactivate" : "/api/users/{userID}/deactivate",
         params(u),
@@ -87,16 +71,18 @@
     );
 
   const setBackup = (u: User, allowed: boolean) =>
-    act(
-      api.PUT("/api/users/{userID}/backup-permission", {
-        params: { path: { userID: u.id } },
-        body: { can_download_backup: allowed },
-      }),
-      `Backup download ${allowed ? "allowed" : "forbidden"} for ${u.username}.`,
-    ).then(refreshAdminSession);
+    command
+      .run(
+        api.PUT("/api/users/{userID}/backup-permission", {
+          params: { path: { userID: u.id } },
+          body: { can_download_backup: allowed },
+        }),
+        `Backup download ${allowed ? "allowed" : "forbidden"} for ${u.username}.`,
+      )
+      .then(refreshAdminSession);
 
   const setRole = (u: User, next: Role) =>
-    act(
+    command.run(
       api.PUT("/api/users/{userID}/role", {
         params: { path: { userID: u.id } },
         body: { role: next },
@@ -106,26 +92,26 @@
 
   async function saveWaid(e: SubmitEvent, u: User) {
     e.preventDefault();
-    await act(
+    const result = await command.run(
       api.PUT("/api/users/{userID}/waid", {
         params: { path: { userID: u.id } },
         body: { waid: waidValue },
       }),
       `WAID for ${u.username} saved.`,
     );
-    if (!error) waidFor = null;
+    if (result.ok) waidFor = null;
   }
 
   async function reset(e: SubmitEvent, u: User) {
     e.preventDefault();
-    await act(
+    const result = await command.run(
       api.POST("/api/users/{userID}/reset-password", {
         params: { path: { userID: u.id } },
         body: { password: resetPassword },
       }),
       `Password for ${u.username} reset. They must change it at next login.`,
     );
-    if (!error) {
+    if (result.ok) {
       resetFor = null;
       resetPassword = "";
     }
@@ -134,8 +120,8 @@
 
 <div class="flex flex-col gap-4">
   <h1 class="m-0 text-xl">Users</h1>
-  {#if error}<ErrorState title={error} />{/if}
-  {#if created}<p class="m-0 text-success-fg" role="status">{created}</p>{/if}
+  {#if command.error}<ErrorState title={command.error} />{/if}
+  {#if command.notice}<p class="m-0 text-success-fg" role="status">{command.notice}</p>{/if}
 
   <form
     class="grid gap-4 rounded-xl border border-border bg-surface p-4 shadow-card sm:grid-cols-2 lg:grid-cols-[1fr_12rem_1fr_auto] lg:items-start"
