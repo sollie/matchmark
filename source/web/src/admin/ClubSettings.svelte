@@ -39,8 +39,9 @@
   async function runRangeAction(
     action: () => Promise<{ error?: unknown; response: Response }>,
     ok: string,
+    reload?: () => Promise<void>,
   ) {
-    return (await command.run(action(), ok)).ok;
+    return (await command.run(action(), ok, reload)).ok;
   }
 
   async function addRange(e: SubmitEvent) {
@@ -123,12 +124,19 @@
       () =>
         api.PUT("/api/club", { body: { unclassified_class: value as "Master" | "Unclassified" } }),
       "Unclassified class saved.",
+      refreshClub,
     );
   }
 
   async function saveName(e: SubmitEvent) {
     e.preventDefault();
-    if (await runRangeAction(() => api.PUT("/api/club", { body: { name } }), "Club name saved.")) {
+    if (
+      await runRangeAction(
+        () => api.PUT("/api/club", { body: { name } }),
+        "Club name saved.",
+        refreshClub,
+      )
+    ) {
       name = club.name;
     }
   }
@@ -160,7 +168,8 @@
     await refreshClub();
   }
 
-  const removeLogo = () => runRangeAction(() => api.DELETE("/api/club/logo"), "Logo removed.");
+  const removeLogo = () =>
+    runRangeAction(() => api.DELETE("/api/club/logo"), "Logo removed.", refreshClub);
 </script>
 
 <div class="mx-auto flex max-w-3xl flex-col gap-4">

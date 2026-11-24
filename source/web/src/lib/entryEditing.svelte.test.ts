@@ -52,7 +52,6 @@ function setup(entries: Entry[] = [], categories = ["Open", "Veteran"]) {
     entries: () => entries,
     categories: () => categories,
     commands: () => commands as unknown as EntryCommands,
-    reload: async () => {},
   });
   return { editor, commands };
 }
@@ -136,29 +135,22 @@ describe("add form", () => {
 });
 
 describe("dialogs", () => {
-  it("reports which dialog is open", () => {
+  it("tracks the single open modal", () => {
     const e = entry({ id: 1, lane: 1 });
     const { editor } = setup([e]);
-    expect(editor.openDialog).toBeNull();
-    editor.startEdit(e);
-    expect(editor.openDialog).toBe("edit");
-    editor.editing = null;
-    editor.startRemarks(e);
-    expect(editor.openDialog).toBe("remark");
-    editor.remarking = null;
-    editor.startCorrection(e);
-    expect(editor.openDialog).toBe("correct");
-    editor.correcting = null;
-    editor.confirming = { kind: "withdraw", entry: e };
-    expect(editor.openDialog).toBe("withdraw");
-    editor.confirming = { kind: "remove", entry: e };
-    expect(editor.openDialog).toBe("remove");
-    editor.confirming = null;
+    expect(editor.dialog).toBeNull();
+    editor.confirm("withdraw", e);
+    expect(editor.confirming?.kind).toBe("withdraw");
+    editor.confirm("remove", e);
+    expect(editor.confirming?.kind).toBe("remove");
+    editor.cancelConfirm();
+    expect(editor.dialog).toBeNull();
     editor.openCounts(e, 1);
-    expect(editor.openDialog).toBe("score");
+    expect(editor.confirming).toBeNull();
     editor.scoring!.counts.x = 1;
     expect(editor.requestClose()).toBe(false);
-    expect(editor.openDialog).toBe("discard");
+    expect(editor.confirmDiscard).toBe(true);
+    expect(editor.scoring).not.toBeNull();
   });
 
   it("saves an edit and closes on success only", async () => {
@@ -200,11 +192,11 @@ describe("dialogs", () => {
   it("closes the confirmation before running withdraw or remove", async () => {
     const e = entry({ id: 1, lane: 1 });
     const { editor, commands } = setup([e]);
-    editor.confirming = { kind: "withdraw", entry: e };
+    editor.confirm("withdraw", e);
     await editor.confirmed();
     expect(editor.confirming).toBeNull();
     expect(commands.withdraw).toHaveBeenCalledWith(1);
-    editor.confirming = { kind: "remove", entry: e };
+    editor.confirm("remove", e);
     await editor.confirmed();
     expect(commands.remove).toHaveBeenCalledWith(1);
   });
@@ -225,11 +217,12 @@ describe("score dialog", () => {
     editor.openCounts(e, 1);
     editor.scoring!.counts["9"] = 3;
     expect(editor.requestClose()).toBe(false);
-    editor.confirmDiscard = false;
-    expect(editor.openDialog).toBe("score");
+    editor.keepScoring();
+    expect(editor.confirmDiscard).toBe(false);
+    expect(editor.scoring).not.toBeNull();
     editor.requestClose();
     editor.closeCounts();
-    expect(editor.openDialog).toBeNull();
+    expect(editor.dialog).toBeNull();
   });
 
   it("flags stored counts that changed since opening", () => {
@@ -239,7 +232,6 @@ describe("score dialog", () => {
       entries: () => current,
       categories: () => ["Open"],
       commands: () => ({}) as EntryCommands,
-      reload: async () => {},
     });
     editor.openCounts(e, 1);
     expect(editor.storedChanged).toBe(false);

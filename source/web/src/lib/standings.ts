@@ -29,13 +29,29 @@ export type StandingsGroup = {
   rows: StandingRow[];
 };
 
+type Visible = {
+  last_name?: unknown;
+  club?: unknown;
+  country?: unknown;
+  classification?: { value: number };
+  x_count?: unknown;
+};
+
+const flags = {
+  names: (r: Visible) => r.last_name !== undefined,
+  clubs: (r: Visible) => r.club !== undefined,
+  countries: (r: Visible) => r.country !== undefined,
+  class: (r: Visible) => (r.classification?.value ?? 0) > 0,
+  x: (r: Visible) => r.x_count !== undefined,
+};
+
 export function spectatorColumns(standings: StandingRow[]): SpectatorColumns {
   return {
-    names: standings.some((s) => s.last_name !== undefined),
-    clubs: standings.some((s) => s.club !== undefined),
-    countries: standings.some((s) => s.country !== undefined),
-    class: standings.some((s) => (s.classification?.value ?? 0) > 0),
-    x: standings.some((s) => s.x_count !== undefined),
+    names: standings.some(flags.names),
+    clubs: standings.some(flags.clubs),
+    countries: standings.some(flags.countries),
+    class: standings.some(flags.class),
+    x: standings.some(flags.x),
     segments: [
       ...new Set(standings.flatMap((s) => s.segments?.map((st) => st.segment) ?? [])),
     ].sort((a, b) => a - b),
@@ -50,13 +66,13 @@ const allRows = (c: ResultsCategory): ResultsRow[] => [
 export function resultsColumns(categories: ResultsCategory[]): ResultsColumns {
   const any = (test: (r: ResultsRow) => boolean) => categories.some((c) => allRows(c).some(test));
   return {
-    names: any((r) => r.last_name !== undefined),
-    clubs: any((r) => r.club !== undefined),
-    class: any((r) => (r.classification?.value ?? 0) > 0),
-    countries: any((r) => r.country !== undefined),
+    names: any(flags.names),
+    clubs: any(flags.clubs),
+    class: any(flags.class),
+    countries: any(flags.countries),
     remarks: any((r) => r.remarks !== undefined),
     segments: any((r) => r.segments.some((s) => s.score !== undefined)),
-    x: any((r) => r.x_count !== undefined),
+    x: any(flags.x),
   };
 }
 

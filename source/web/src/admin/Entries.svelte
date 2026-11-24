@@ -49,7 +49,6 @@
     entries: () => entries,
     categories: () => categories,
     commands: () => commands,
-    reload: () => reload(),
   });
   const entered = $derived(entries.map((e) => e.shooter_id));
   const segmentNumbers = $derived(entries[0]?.segments.map((s) => s.segment_number) ?? []);
@@ -399,15 +398,14 @@
                 <Button variant="secondary" onclick={() => editor.startEdit(entry)}>Move</Button>
               {/if}
               {#if !entry.withdrawn && status !== "finished"}
-                <Button
-                  variant="secondary"
-                  onclick={() => (editor.confirming = { kind: "withdraw", entry })}>Withdraw</Button
+                <Button variant="secondary" onclick={() => editor.confirm("withdraw", entry)}
+                  >Withdraw</Button
                 >
               {/if}
               <Button
                 variant="danger"
                 class="ml-auto"
-                onclick={() => (editor.confirming = { kind: "remove", entry })}>Remove</Button
+                onclick={() => editor.confirm("remove", entry)}>Remove</Button
               >
             {/if}
           </td>
@@ -433,7 +431,7 @@
     confirmLabel={editor.confirming.kind === "withdraw" ? "Withdraw entry" : "Remove entry"}
     tone={editor.confirming.kind === "withdraw" ? "primary" : "danger"}
     onconfirm={() => editor.confirmed()}
-    oncancel={() => (editor.confirming = null)}
+    oncancel={() => editor.cancelConfirm()}
   />
 {/if}
 
@@ -466,9 +464,7 @@
           aria-label="Discard changes?"
         >
           <strong class="mr-auto">Discard changes?</strong>
-          <Button variant="secondary" onclick={() => (editor.confirmDiscard = false)}
-            >Keep editing</Button
-          >
+          <Button variant="secondary" onclick={() => editor.keepScoring()}>Keep editing</Button>
           <Button variant="danger" onclick={closeCounts}>Discard</Button>
         </div>
       {/if}
