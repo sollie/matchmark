@@ -1,6 +1,5 @@
 import { api } from "./api/client";
 import { settle } from "./api/util";
-import { Command } from "./command.svelte";
 import type { EntryCommands } from "./entries";
 import type { components } from "./api/schema";
 
@@ -10,8 +9,16 @@ type RingCounts = components["schemas"]["RingCounts"];
 
 export const ringKeys = ["x", "10", "9", "8", "7", "0", "miss"] as const;
 
-export type OpenDialog =
-  "add" | "edit" | "remark" | "correct" | "withdraw" | "remove" | "score" | "discard";
+type ScoreDialog = {
+  kind: "score";
+  entry: Entry;
+  segment: number;
+  counts: RingCounts;
+  original: RingCounts;
+  discarding: boolean;
+};
+
+type Dialog = { kind: "withdraw" | "remove"; entry: Entry } | ScoreDialog;
 
 export const blankCounts = (): RingCounts => ({
   x: 0,
@@ -45,7 +52,6 @@ type Deps = {
   entries: () => Entry[];
   categories: () => string[];
   commands: () => EntryCommands;
-  reload: () => Promise<void>;
 };
 
 export class EntryEditor {
@@ -58,27 +64,15 @@ export class EntryEditor {
   editing = $state<{ id: number; category: string; lane: number } | null>(null);
   remarking = $state<{ id: number; text: string } | null>(null);
   correcting = $state<{ id: number; classification: string; class: string } | null>(null);
-  confirming = $state<{ kind: "withdraw" | "remove"; entry: Entry } | null>(null);
-  scoring = $state<{
-    entry: Entry;
-    segment: number;
-    counts: RingCounts;
-    original: RingCounts;
-  } | null>(null);
-  confirmDiscard = $state(false);
+  dialog = $state<Dialog | null>(null);
+  error = $state("");
   countsError = $state("");
   openedStored = $state("");
 
   readonly #deps: Deps;
-  readonly #command: Command;
 
   constructor(deps: Deps) {
     this.#deps = deps;
-    this.#command = new Command(deps.reload);
-  }
-
-  get error(): string {
-    return this.#command.error;
   }
 
   get nextLane(): number {
@@ -104,14 +98,28 @@ export class EntryEditor {
       : "";
   }
 
-  get openDialog(): OpenDialog | null {
-    if (this.confirmDiscard) return "discard";
-    if (this.scoring) return "score";
-    if (this.confirming) return this.confirming.kind;
-    if (this.correcting) return "correct";
-    if (this.remarking) return "remark";
-    if (this.editing) return "edit";
-    return null;
+  get confirming(): { kind: "withdraw" | "remove"; entry: Entry } | null {
+    return this.dialog && this.dialog.kind !== "score" ? this.dialog : null;
+  }
+
+  get scoring(): ScoreDialog | null {
+    return this.dialog?.kind === "score" ? this.dialog : null;
+  }
+
+  get confirmDiscard(): boolean {
+    return this.scoring?.discarding ?? false;
+  }
+
+  confirm(kind: "withdraw" | "remove", entry: Entry): void {
+    this.dialog = { kind, entry };
+  }
+
+  cancelConfirm(): void {
+    if (this.confirming) this.dialog = null;
+  }
+
+  keepScoring(): void {
+    if (this.dialog?.kind === "score") this.dialog.discarding = false;
   }
 
   get storedChanged(): boolean {
@@ -128,17 +136,17 @@ export class EntryEditor {
   }
 
   clearError(): void {
-    this.#command.clear();
+    this.error = "";
   }
 
   setError(message: string): void {
-    this.#command.fail(message);
+    this.error = message;
   }
 
   async #run(command: Promise<string | null>): Promise<boolean> {
-    this.#command.clear();
+    this.error = "";
     const failed = await command;
-    if (failed !== null) this.#command.fail(failed);
+    if (failed !== null) this.error = failed;
     return failed === null;
   }
 
@@ -158,7 +166,7 @@ export class EntryEditor {
         .add({ shooter_id: this.shooterId, category: this.category, lane: this.lane }),
     );
     if (!ok && this.error === "shooter_archived") {
-      this.#command.clear();
+      this.error = "";
       this.archivedBlock = this.chosen;
     }
     if (ok) {
@@ -177,7 +185,7 @@ export class EntryEditor {
       }),
     );
     if (result.ok) this.archivedBlock = null;
-    else this.#command.fail(result.error);
+    else this.error = result.error;
   }
 
   startEdit(entry: Entry): void {
@@ -230,7 +238,7 @@ export class EntryEditor {
   async confirmed(): Promise<void> {
     if (!this.confirming) return;
     const { kind, entry } = this.confirming;
-    this.confirming = null;
+    this.dialog = null;
     const commands = this.#deps.commands();
     await this.#run(kind === "withdraw" ? commands.withdraw(entry.id) : commands.remove(entry.id));
   }
@@ -249,25 +257,30 @@ export class EntryEditor {
 
   openCounts(entry: Entry, segment: number): void {
     this.countsError = "";
-    this.#command.clear();
-    this.confirmDiscard = false;
+    this.error = "";
     const stored = entry.segments.find((s) => s.segment_number === segment);
     const counts = blankCounts();
     for (const k of ringKeys) counts[k] = stored?.[k] ?? 0;
-    this.scoring = { entry, segment, counts, original: { ...counts } };
+    this.dialog = {
+      kind: "score",
+      entry,
+      segment,
+      counts,
+      original: { ...counts },
+      discarding: false,
+    };
     this.openedStored = storedKey(stored);
   }
 
   closeCounts(): void {
-    this.scoring = null;
+    if (this.scoring) this.dialog = null;
     this.countsError = "";
-    this.confirmDiscard = false;
   }
 
   requestClose(): boolean {
     if (!this.scoring) return true;
     if (isDirty(this.scoring.counts, this.scoring.original)) {
-      this.confirmDiscard = true;
+      this.scoring.discarding = true;
       return false;
     }
     this.closeCounts();

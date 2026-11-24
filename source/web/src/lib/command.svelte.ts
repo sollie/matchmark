@@ -2,15 +2,6 @@ import { settle, type Settled } from "./api/util";
 
 type Call<T> = Promise<{ data?: T; error?: unknown; response: Response }>;
 
-export async function runCommand<T>(
-  call: Call<T>,
-  reload: () => Promise<void>,
-): Promise<Settled<T>> {
-  const result = await settle(call);
-  if (result.ok) await reload();
-  return result;
-}
-
 export class Command {
   error = $state("");
   notice = $state("");
@@ -29,7 +20,11 @@ export class Command {
     this.error = message;
   }
 
-  async run<T>(call: Call<T>, notice?: string | ((data: T) => string)): Promise<Settled<T>> {
+  async run<T>(
+    call: Call<T>,
+    notice?: string | ((data: T) => string),
+    reload: (data: T) => Promise<void> = this.#reload,
+  ): Promise<Settled<T>> {
     this.clear();
     const result = await settle(call);
     if (!result.ok) {
@@ -39,7 +34,7 @@ export class Command {
     if (notice !== undefined) {
       this.notice = typeof notice === "function" ? notice(result.data) : notice;
     }
-    await this.#reload();
+    await reload(result.data);
     return result;
   }
 }

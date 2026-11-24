@@ -53,15 +53,18 @@
   async function pair(e: SubmitEvent) {
     e.preventDefault();
     if (lane === null) return;
-    const result = await command.run(
+    await command.run(
       api.POST("/api/matches/{matchID}/pairings", {
         params: { path: { matchID: matchId } },
         body: { lane },
       }),
+      undefined,
+      async (data) => {
+        const url = pairingUrl(data.token);
+        issued = { lane: data.lane, url, svg: qrSvg(url) };
+        await load();
+      },
     );
-    if (!result.ok) return;
-    const url = pairingUrl(result.data.token);
-    issued = { lane: result.data.lane, url, svg: qrSvg(url) };
   }
 
   async function revoke(p: Pairing) {

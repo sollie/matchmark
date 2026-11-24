@@ -92,26 +92,26 @@
 
   async function saveWaid(e: SubmitEvent, u: User) {
     e.preventDefault();
-    await command.run(
+    const result = await command.run(
       api.PUT("/api/users/{userID}/waid", {
         params: { path: { userID: u.id } },
         body: { waid: waidValue },
       }),
       `WAID for ${u.username} saved.`,
     );
-    if (!command.error) waidFor = null;
+    if (result.ok) waidFor = null;
   }
 
   async function reset(e: SubmitEvent, u: User) {
     e.preventDefault();
-    await command.run(
+    const result = await command.run(
       api.POST("/api/users/{userID}/reset-password", {
         params: { path: { userID: u.id } },
         body: { password: resetPassword },
       }),
       `Password for ${u.username} reset. They must change it at next login.`,
     );
-    if (!command.error) {
+    if (result.ok) {
       resetFor = null;
       resetPassword = "";
     }
