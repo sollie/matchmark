@@ -9,7 +9,10 @@ type Snapshot = components["schemas"]["SpectatorSnapshot"];
 
 export type SpectatorFeedDeps = {
   openStream(options: StreamOptions): StreamHandle;
-  screenControl: Pick<ScreenControl, "managed" | "assignment" | "start" | "stop">;
+  screenControl: Pick<
+    ScreenControl,
+    "managed" | "assignment" | "registration" | "notice" | "error" | "start" | "stop"
+  >;
 };
 
 const browserDeps: SpectatorFeedDeps = { openStream, screenControl };
@@ -32,13 +35,12 @@ export class SpectatorFeed {
     return this.#deps.screenControl;
   }
 
-  viewed = $derived(
-    this.#deps.screenControl.managed
-      ? this.#deps.screenControl.assignment?.state === "match"
-        ? this.#deps.screenControl.assignment.match_id
-        : null
-      : this.selected,
-  );
+  get viewed(): number | null {
+    const control = this.#deps.screenControl;
+    if (!control.managed) return this.selected;
+    return control.assignment?.state === "match" ? control.assignment.match_id : null;
+  }
+
   current = $derived(this.matches.find((c) => c.id === this.viewed));
   finished = $derived((this.current?.status ?? this.snapshot?.status) === "finished");
   acceptance = $derived.by(() => {
