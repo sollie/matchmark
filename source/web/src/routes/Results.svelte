@@ -8,6 +8,7 @@
   import EmptyState from "../lib/ui/EmptyState.svelte";
   import LoadingState from "../lib/ui/LoadingState.svelte";
   import Select from "../lib/ui/Select.svelte";
+  import { resultsColumns, type ResultsCategory } from "../lib/standings";
   import Table from "../lib/ui/Table.svelte";
   import type { components } from "../lib/api/schema";
 
@@ -25,11 +26,7 @@
     ["M", "miss"],
   ] as const;
 
-  type Category = Results["categories"][number];
-
-  const allRows = (c: Category): Row[] => [...c.rows, ...c.groups.flatMap((g) => g.rows)];
-
-  function sections(c: Category) {
+  function sections(c: ResultsCategory) {
     if (c.groups.length === 0) return [{ heading: null, rows: c.rows, dnf: c.did_not_finish }];
     return c.groups.map((g, i) => ({
       heading: g.class.name,
@@ -56,30 +53,7 @@
   let missing = $state(false);
 
   const id = $derived(matchRoute("/results/:id", router.path)?.id ?? null);
-  const showNames = $derived(
-    results?.categories.some((c) => allRows(c).some((r) => r.last_name !== undefined)) ?? false,
-  );
-  const showClubs = $derived(
-    results?.categories.some((c) => allRows(c).some((r) => r.club !== undefined)) ?? false,
-  );
-  const showClass = $derived(
-    results?.categories.some((c) => allRows(c).some((r) => (r.classification?.value ?? 0) > 0)) ??
-      false,
-  );
-  const showCountries = $derived(
-    results?.categories.some((c) => allRows(c).some((r) => r.country !== undefined)) ?? false,
-  );
-  const showRemarks = $derived(
-    results?.categories.some((c) => allRows(c).some((r) => r.remarks !== undefined)) ?? false,
-  );
-  const showSegments = $derived(
-    results?.categories.some((c) =>
-      allRows(c).some((r) => r.segments.some((s) => s.score !== undefined)),
-    ) ?? false,
-  );
-  const showX = $derived(
-    results?.categories.some((c) => allRows(c).some((r) => r.x_count !== undefined)) ?? false,
-  );
+  const columns = $derived(resultsColumns(results?.categories ?? []));
 
   $effect(() => {
     void loadRulebook();
@@ -192,55 +166,55 @@
                 <thead>
                   <tr>
                     <th class="text-right">#</th>
-                    {#if showNames}<th>Shooter</th><th>WAID</th>{/if}
-                    {#if showClass}<th>Classification</th>{/if}
-                    {#if showClubs}<th>Club</th>{/if}
-                    {#if showCountries}<th>Country</th>{/if}
-                    {#if showSegments}{#each results.segments as n (n)}<th class="text-right"
+                    {#if columns.names}<th>Shooter</th><th>WAID</th>{/if}
+                    {#if columns.class}<th>Classification</th>{/if}
+                    {#if columns.clubs}<th>Club</th>{/if}
+                    {#if columns.countries}<th>Country</th>{/if}
+                    {#if columns.segments}{#each results.segments as n (n)}<th class="text-right"
                           >{segmentLabel(results.match.course, n)}</th
                         >{/each}{/if}
                     <th class="text-right">Total</th>
-                    {#if showX}<th class="text-right">X</th>{/if}
-                    {#if showRemarks}<th>Remarks</th>{/if}
+                    {#if columns.x}<th class="text-right">X</th>{/if}
+                    {#if columns.remarks}<th>Remarks</th>{/if}
                   </tr>
                 </thead>
                 <tbody>
                   {#each section.rows as row, i (i)}
                     <tr>
                       <td class="text-right tabular-nums">{row.rank}</td>
-                      {#if showNames}<td>{row.first_name} {row.last_name}</td><td
+                      {#if columns.names}<td>{row.first_name} {row.last_name}</td><td
                           >{row.waid ?? ""}</td
                         >{/if}
-                      {#if showClass}<td
+                      {#if columns.class}<td
                           >{row.classification && row.classification.value > 0
                             ? row.classification.name
                             : ""}</td
                         >{/if}
-                      {#if showClubs}<td>{row.club}</td>{/if}
-                      {#if showCountries}<td>{row.country}</td>{/if}
-                      {#if showSegments}{#each row.segments as st (st.segment)}<td
+                      {#if columns.clubs}<td>{row.club}</td>{/if}
+                      {#if columns.countries}<td>{row.country}</td>{/if}
+                      {#if columns.segments}{#each row.segments as st (st.segment)}<td
                             class="text-right tabular-nums">{st.score ?? ""}</td
                           >{/each}{/if}
                       <td class="text-right font-bold tabular-nums">{row.total}</td>
-                      {#if showX}<td class="text-right tabular-nums">{row.x_count}</td>{/if}
-                      {#if showRemarks}<td>{row.remarks ?? ""}</td>{/if}
+                      {#if columns.x}<td class="text-right tabular-nums">{row.x_count}</td>{/if}
+                      {#if columns.remarks}<td>{row.remarks ?? ""}</td>{/if}
                     </tr>
                   {/each}
                   {#each section.dnf as row, i (i)}
                     <tr class="text-muted">
                       <td class="text-right"></td>
-                      {#if showNames}<td>{row.first_name} {row.last_name}</td><td
+                      {#if columns.names}<td>{row.first_name} {row.last_name}</td><td
                           >{row.waid ?? ""}</td
                         >{/if}
-                      {#if showClass}<td></td>{/if}
-                      {#if showClubs}<td>{row.club}</td>{/if}
-                      {#if showCountries}<td>{row.country}</td>{/if}
-                      {#if showSegments}{#each row.segments as st (st.segment)}<td
+                      {#if columns.class}<td></td>{/if}
+                      {#if columns.clubs}<td>{row.club}</td>{/if}
+                      {#if columns.countries}<td>{row.country}</td>{/if}
+                      {#if columns.segments}{#each row.segments as st (st.segment)}<td
                             class="text-right tabular-nums">{st.score ?? ""}</td
                           >{/each}{/if}
                       <td class="text-right font-bold">DNF</td>
-                      {#if showX}<td class="text-right"></td>{/if}
-                      {#if showRemarks}<td>{row.remarks ?? ""}</td>{/if}
+                      {#if columns.x}<td class="text-right"></td>{/if}
+                      {#if columns.remarks}<td>{row.remarks ?? ""}</td>{/if}
                     </tr>
                   {/each}
                 </tbody>
@@ -286,10 +260,10 @@
                 <tr>
                   <th>Shooter</th>
                   <th>Category</th>
-                  {#if showClubs}<th>Club</th>{/if}
-                  {#if showCountries}<th>Country</th>{/if}
+                  {#if columns.clubs}<th>Club</th>{/if}
+                  {#if columns.countries}<th>Country</th>{/if}
                   <th class="text-right">Total</th>
-                  {#if showX}<th class="text-right">X</th>{/if}
+                  {#if columns.x}<th class="text-right">X</th>{/if}
                 </tr>
               </thead>
               <tbody>
@@ -297,10 +271,10 @@
                   <tr>
                     <td>{s.first_name} {s.last_name}</td>
                     <td>{s.category}</td>
-                    {#if showClubs}<td>{s.club}</td>{/if}
-                    {#if showCountries}<td>{s.country}</td>{/if}
+                    {#if columns.clubs}<td>{s.club}</td>{/if}
+                    {#if columns.countries}<td>{s.country}</td>{/if}
                     <td class="text-right font-bold tabular-nums">{s.total}</td>
-                    {#if showX}<td class="text-right tabular-nums">{s.x_count}</td>{/if}
+                    {#if columns.x}<td class="text-right tabular-nums">{s.x_count}</td>{/if}
                   </tr>
                 {/each}
               </tbody>
