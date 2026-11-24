@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api/client";
   import { failure } from "../lib/api/util";
+  import { Command } from "../lib/command.svelte";
   import { openStream } from "../lib/sse";
   import type { components } from "../lib/api/schema";
   import Badge from "../lib/ui/Badge.svelte";
@@ -24,8 +25,7 @@
   let allMatch = $state("");
   let renaming = $state<number | null>(null);
   let newName = $state("");
-  let error = $state("");
-  let notice = $state("");
+  const command = new Command(load);
 
   async function load() {
     const [s, m] = await Promise.all([
@@ -33,9 +33,9 @@
       api.GET("/api/screens/assignable-matches"),
     ]);
     if (s.data) screens = s.data.screens;
-    else error = failure(s);
+    else command.fail(failure(s));
     if (m.data) matches = m.data.matches;
-    else error = failure(m);
+    else command.fail(failure(m));
   }
 
   onMount(() => {
@@ -49,18 +49,8 @@
     return () => stream.close();
   });
 
-  async function act(request: Promise<{ response: Response }>, message: string) {
-    error = "";
-    notice = "";
-    const result = await request;
-    if (!result.response.ok) {
-      error = failure(result as Parameters<typeof failure>[0]);
-      return false;
-    }
-    notice = message;
-    await load();
-    return true;
-  }
+  const act = async (request: Parameters<typeof command.run>[0], message: string) =>
+    (await command.run(request, message)).ok;
 
   async function approve(e: SubmitEvent) {
     e.preventDefault();
@@ -113,8 +103,10 @@
 
 <div class="mx-auto flex max-w-5xl flex-col gap-4">
   <h1 class="m-0 text-xl">Screens</h1>
-  {#if error}<ErrorState title={error} />{/if}
-  {#if notice}<p class="m-0 font-medium text-success-fg" role="status">{notice}</p>{/if}
+  {#if command.error}<ErrorState title={command.error} />{/if}
+  {#if command.notice}<p class="m-0 font-medium text-success-fg" role="status">
+      {command.notice}
+    </p>{/if}
 
   <div class="grid gap-4 lg:grid-cols-2">
     <form
