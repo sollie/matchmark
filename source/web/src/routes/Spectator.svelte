@@ -1,6 +1,5 @@
 <script lang="ts">
   import { autoScroll } from "../lib/autoScroll";
-  import { api } from "../lib/api/client";
   import { clockTime } from "../lib/datetime";
   import NumberFlow from "@number-flow/svelte";
   import Badge from "../lib/ui/Badge.svelte";
@@ -14,96 +13,34 @@
     segmentColumn,
     segmentLabel,
   } from "../lib/rulebook.svelte";
-  import { openStream, type StreamState } from "../lib/sse";
   import { spectatorColumns, standingsGroups, type StandingRow } from "../lib/standings";
-  import { screenControl } from "../lib/screenControl.svelte";
-  import type { components } from "../lib/api/schema";
+  import { SpectatorFeed } from "../lib/spectatorFeed.svelte";
 
-  type Match = components["schemas"]["Match"];
-  type Standing = components["schemas"]["Standing"];
-  type Snapshot = components["schemas"]["SpectatorSnapshot"];
+  const feed = new SpectatorFeed();
+  const control = feed.control;
 
-  let matches = $state<Match[]>([]);
-  let selected = $state<number | null>(null);
-  let standings = $state<Standing[]>([]);
-  let snapshot = $state<Snapshot | null>(null);
-  let connection = $state<StreamState>("connecting");
-  let updated = $state<Date | null>(null);
-  const control = screenControl;
-
-  const viewed = $derived(
-    control.managed
-      ? control.assignment?.state === "match"
-        ? control.assignment.match_id
-        : null
-      : selected,
-  );
-
-  const columns = $derived(spectatorColumns(standings));
-  const current = $derived(matches.find((c) => c.id === viewed));
-  const finished = $derived((current?.status ?? snapshot?.status) === "finished");
-  const acceptance = $derived.by(() => {
-    if (!snapshot) return null;
-    const segments = snapshot.standings
-      .filter((s) => !s.withdrawn)
-      .flatMap((s) => s.segments?.filter((st) => st.segment === snapshot?.current_segment) ?? []);
-    return { accepted: segments.filter((st) => st.accepted).length, total: segments.length };
-  });
-  async function loadMatches() {
-    const { data } = await api.GET("/api/spectator/matches");
-    if (!data) return;
-    matches = data.matches;
-    if (control.managed) return;
-    if (selected === null || !data.matches.some((c) => c.id === selected)) {
-      selected = (data.matches.find((c) => c.status === "active") ?? data.matches[0])?.id ?? null;
-    }
-  }
+  const columns = $derived(spectatorColumns(feed.standings));
 
   $effect(() => {
     void loadRulebook();
-    void loadMatches();
+    void feed.loadMatches();
   });
 
-  $effect(() => {
-    control.start();
-    return () => control.stop();
-  });
+  $effect(() => feed.startScreen());
 
-  $effect(() => {
-    const id = viewed;
-    snapshot = null;
-    standings = [];
-    updated = null;
-    if (id === null) return;
-    const stream = openStream({
-      url: `/api/spectator/matches/${id}/stream`,
-      onEvent: (event, data) => {
-        if (event !== "snapshot") return;
-        snapshot = JSON.parse(data);
-        standings = snapshot?.standings ?? [];
-        updated = new Date();
-        const status = snapshot?.status;
-        if (status) matches = matches.map((c) => (c.id === id ? { ...c, status } : c));
-      },
-      onState: (next) => {
-        connection = next;
-        if (next === "live") void loadMatches();
-      },
-    });
-    return () => stream.close();
-  });
+  $effect(() => feed.watch(feed.viewed));
 
   const groups = $derived(
-    standingsGroups(standings, {
-      groupByCategory: snapshot?.group_by_category ?? false,
-      categoryOrder: courseCategories(current?.course ?? ""),
+    standingsGroups(feed.standings, {
+      groupByCategory: feed.snapshot?.group_by_category ?? false,
+      categoryOrder: courseCategories(feed.current?.course ?? ""),
     }),
   );
   const headingHidden = $derived(groups.length <= 1 && groups[0]?.category === null);
 
   function rank(rows: StandingRow[], i: number): number {
     const tied = (a: StandingRow, b: StandingRow) =>
-      a.total === b.total && (!snapshot?.group_by_category || a.x_count === b.x_count);
+      a.total === b.total && (!feed.snapshot?.group_by_category || a.x_count === b.x_count);
     let r = i;
     while (r > 0 && tied(rows[r - 1], rows[i])) r--;
     return r + 1;
@@ -123,12 +60,12 @@
         <th class="hidden md:table-cell">Category</th>
         {#each columns.segments as n (n)}<th
             class="hidden text-right sm:table-cell"
-            title={segmentLabel(current?.course ?? "", n)}
-            >{segmentColumn(current?.course ?? "", n)}</th
+            title={segmentLabel(feed.current?.course ?? "", n)}
+            >{segmentColumn(feed.current?.course ?? "", n)}</th
           >{/each}
         <th class="text-right">Total</th>
         {#if columns.x}<th class="text-right">X</th>{/if}
-        {#if finished}<th>Scorecard</th>{/if}
+        {#if feed.finished}<th>Scorecard</th>{/if}
       </tr>
     </thead>
     <tbody>
@@ -175,10 +112,10 @@
                 format={{ useGrouping: false }}
               /></td
             >{/if}
-          {#if finished}<td
+          {#if feed.finished}<td
               >{#if !s.withdrawn}<a
                   class="text-link underline"
-                  href={`/scorecard/${viewed}/${s.lane}`}
+                  href={`/scorecard/${feed.viewed}/${s.lane}`}
                   aria-label={`Scorecard for lane ${s.lane}`}>View</a
                 >{/if}</td
             >{/if}
@@ -229,7 +166,7 @@
       >
     </div>
   {/if}
-  {#if control.managed && viewed === null}
+  {#if control.managed && feed.viewed === null}
     <div
       class="flex min-h-[40dvh] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface px-4 py-12 text-center"
       role="status"
@@ -241,7 +178,7 @@
         This screen will show a match as soon as one is assigned.
       </p>
     </div>
-  {:else if !control.managed && matches.length === 0}
+  {:else if !control.managed && feed.matches.length === 0}
     <EmptyState
       title="No matches are live yet."
       description="Reload this page once a match has started."
@@ -253,8 +190,8 @@
           class="flex min-w-0 max-w-full flex-none items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2 font-semibold"
         >
           <span class="shrink-0">Match</span>
-          <NativeSelect bind:value={selected} class="w-80 max-w-full font-normal">
-            {#each matches as c (c.id)}
+          <NativeSelect bind:value={feed.selected} class="w-80 max-w-full font-normal">
+            {#each feed.matches as c (c.id)}
               <option value={c.id}>{c.name} ({c.date}, {c.status})</option>
             {/each}
           </NativeSelect>
@@ -265,24 +202,27 @@
         role="status"
       >
         <div class="flex flex-wrap items-center gap-2">
-          {#if current}<Badge tone="neutral">{current.status}</Badge>{/if}
-          {#if finished}
+          {#if feed.current}<Badge tone="neutral">{feed.current.status}</Badge>{/if}
+          {#if feed.finished}
             <strong class="text-lg">Finished</strong>
-            <a class="text-link underline" href={`/results/${viewed}`}>View results</a>
-          {:else if snapshot && acceptance}
+            <a class="text-link underline" href={`/results/${feed.viewed}`}>View results</a>
+          {:else if feed.snapshot && feed.acceptance}
             <strong class="text-lg"
-              >Segment {snapshot.current_segment} of {snapshot.total_segments}</strong
+              >Segment {feed.snapshot.current_segment} of {feed.snapshot.total_segments}</strong
             >
-            <span class="text-muted">{acceptance.accepted}/{acceptance.total} accepted</span>
+            <span class="text-muted"
+              >{feed.acceptance.accepted}/{feed.acceptance.total} accepted</span
+            >
           {/if}
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          {#if connection === "stale"}
+          {#if feed.connection === "stale"}
             <Badge tone="danger">Offline</Badge>
-            {#if updated}<span class="text-muted">Last update {clockTime(updated)}</span>{/if}
-          {:else if updated}
+            {#if feed.updated}<span class="text-muted">Last update {clockTime(feed.updated)}</span
+              >{/if}
+          {:else if feed.updated}
             <Badge tone="success">Live</Badge>
-            <span class="text-muted">Updated {clockTime(updated)}</span>
+            <span class="text-muted">Updated {clockTime(feed.updated)}</span>
           {:else}
             <Badge tone="neutral">Loading</Badge>
           {/if}
@@ -291,7 +231,7 @@
     </div>
 
     <h2 class={headingHidden ? "sr-only" : "m-0 text-lg"}>Standings</h2>
-    {#if standings.length === 0}
+    {#if feed.standings.length === 0}
       <EmptyState title="No results yet." heading="h3" />
     {:else}
       <div class="flex min-h-0 flex-col gap-4 overflow-y-auto" use:autoScroll>
